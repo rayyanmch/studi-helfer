@@ -32,7 +32,7 @@ function helperCommand(isPackaged) {
   const python = path.join(SERVICE_DIR, ".venv", "bin", "python");
   if (!fs.existsSync(python)) {
     throw new Error(
-      `Python-Umgebung fehlt: ${python}. Einmal "services/ilias-sync/setup.sh" ausführen.`,
+      `Python environment missing: ${python}. Run "services/ilias-sync/setup.sh" once.`,
     );
   }
   return { cmd: python, args: ["-m", "studi_sync"], cwd: SERVICE_DIR };
@@ -68,7 +68,7 @@ function runHelper(isPackaged, args, { stdin, timeoutMs = 120_000 } = {}) {
     child.stderr.on("data", (d) => (err += d));
     child.on("error", (e) => {
       clearTimeout(timer);
-      resolve({ type: "error", code: "setup", message: `Helfer startet nicht: ${e.message}` });
+      resolve({ type: "error", code: "setup", message: `Helper failed to start: ${e.message}` });
     });
     child.on("close", (code) => {
       clearTimeout(timer);
@@ -84,7 +84,7 @@ function runHelper(isPackaged, args, { stdin, timeoutMs = 120_000 } = {}) {
       resolve({
         type: "error",
         code: code === null ? "timeout" : "internal",
-        message: (err || out).trim().split("\n").slice(-3).join(" ") || `Helfer beendet (${code})`,
+        message: (err || out).trim().split("\n").slice(-3).join(" ") || `Helper exited (${code})`,
       });
     });
     if (stdin !== undefined) child.stdin.write(stdin);
@@ -175,7 +175,7 @@ function readRuns(limit = 30) {
 /** Startet einen Sync losgelöst von der App: er läuft weiter, auch wenn die App beendet wird. */
 function startSync(isPackaged) {
   const state = readState();
-  if (state.running) return { ok: false, code: "busy", message: "Es läuft bereits ein Sync." };
+  if (state.running) return { ok: false, code: "busy", message: "A sync is already running." };
   let helper;
   try {
     helper = helperCommand(isPackaged);
@@ -197,7 +197,7 @@ function startSync(isPackaged) {
 /** Bricht einen laufenden Sync ab (auch einen von launchd gestarteten). Fertige Dateien bleiben. */
 function cancelSync() {
   const state = readState();
-  if (!state.running || !state.pid) return { ok: false, code: "invalid", message: "Es läuft kein Sync." };
+  if (!state.running || !state.pid) return { ok: false, code: "invalid", message: "No sync is running." };
   try {
     process.kill(state.pid, "SIGTERM");
     return { ok: true };
@@ -225,19 +225,19 @@ const KINDS = {
 function formatSize(bytes) {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
-  if (bytes < 1024 ** 3) return `${(bytes / 1024 / 1024).toFixed(1).replace(".", ",")} MB`;
-  return `${(bytes / 1024 ** 3).toFixed(1).replace(".", ",")} GB`;
+  if (bytes < 1024 ** 3) return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+  return `${(bytes / 1024 ** 3).toFixed(1)} GB`;
 }
 
 function formatDate(d) {
   const now = new Date();
-  const time = d.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+  const time = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
   const day = (x) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
   const diff = Math.round((day(now) - day(d)) / 86_400_000);
-  if (diff === 0) return `Heute, ${time}`;
-  if (diff === 1) return "Gestern";
+  if (diff === 0) return `Today, ${time}`;
+  if (diff === 1) return "Yesterday";
   const sameYear = d.getFullYear() === now.getFullYear();
-  return d.toLocaleDateString("de-DE", {
+  return d.toLocaleDateString("en-US", {
     day: "numeric",
     month: "short",
     ...(sameYear ? {} : { year: "numeric" }),
@@ -264,7 +264,7 @@ async function walk(dir, base, out) {
 
 /**
  * Dateien im Zielordner in der Form von web/src/lib/mock-data.ts (Kurs → Ordner → Datei).
- * Ordnername = Pfad innerhalb des Kurses ("Vorlesung/Woche 1"), Dateien direkt im Kurs: "Allgemein".
+ * Ordnername = Pfad innerhalb des Kurses ("Vorlesung/Woche 1"), Dateien direkt im Kurs: "General".
  */
 async function listFiles() {
   const cfg = loadConfig();
@@ -286,7 +286,7 @@ async function listFiles() {
       const dir = path.dirname(f.rel);
       const key = dir === "." ? "" : dir;
       if (!folders.has(key)) {
-        folders.set(key, { id: `${c.id}:${key || "."}`, name: key || "Allgemein", files: [] });
+        folders.set(key, { id: `${c.id}:${key || "."}`, name: key || "General", files: [] });
       }
       const ext = path.extname(f.rel).slice(1).toLowerCase();
       folders.get(key).files.push({
@@ -309,7 +309,7 @@ async function listFiles() {
       total: files.length,
       folder: root,
       folders: [...folders.values()].sort((a, b) =>
-        a.name === "Allgemein" ? -1 : b.name === "Allgemein" ? 1 : a.name.localeCompare(b.name, "de"),
+        a.name === "General" ? -1 : b.name === "General" ? 1 : a.name.localeCompare(b.name, "de"),
       ),
     });
   }
@@ -360,7 +360,7 @@ function getDoneDeadlines() {
 
 function setDeadlineDone(id, done) {
   if (typeof id !== "string" || id.length === 0 || id.length > 300) {
-    return { ok: false, code: "invalid", message: "Ungültige Frist-Id." };
+    return { ok: false, code: "invalid", message: "Invalid deadline id." };
   }
   const data = readJson(DONE_DEADLINES, { done: {} });
   data.done = data.done ?? {};
@@ -399,7 +399,7 @@ async function applySchedule(isPackaged, schedule) {
     .split(":")
     .map((n) => Number.parseInt(n, 10));
   if (!(hour >= 0 && hour < 24 && minute >= 0 && minute < 60)) {
-    return { ok: false, code: "invalid", message: "Uhrzeit im Format HH:MM angeben." };
+    return { ok: false, code: "invalid", message: "Enter the time as HH:MM." };
   }
   let helper;
   try {
@@ -447,7 +447,7 @@ ${programArgs}
   const ok = await launchctl(["bootstrap", domain, PLIST]);
   return ok
     ? { ok: true, enabled: true, time: schedule.time }
-    : { ok: false, code: "launchd", message: "Täglicher Sync konnte nicht eingerichtet werden." };
+    : { ok: false, code: "launchd", message: "Could not set up the daily sync." };
 }
 
 async function scheduleLoaded() {

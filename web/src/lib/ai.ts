@@ -66,10 +66,10 @@ export async function extractFromSlides(pdf: Buffer, heute = new Date()): Promis
   });
 
   if (response.stop_reason === "refusal") {
-    throw new Error("Die KI hat die Anfrage abgelehnt.");
+    throw new Error("The AI declined the request.");
   }
   if (!response.parsed_output) {
-    throw new Error(`Keine gültige Antwort erhalten (stop_reason: ${response.stop_reason}).`);
+    throw new Error(`No valid response received (stop_reason: ${response.stop_reason}).`);
   }
   return response.parsed_output;
 }
@@ -77,7 +77,7 @@ export async function extractFromSlides(pdf: Buffer, heute = new Date()): Promis
 export const SheetDeadlines = z.object({
   fristen: z.array(
     z.object({
-      titel: z.string().describe('Kurz und konkret, z. B. "Abgabe Übungsblatt 7" oder "Testat 2"'),
+      titel: z.string().describe('Short and specific, in English, e.g. "Submit exercise sheet 7" or "Quiz 2"'),
       datum: z.string().describe("Datum als YYYY-MM-DD"),
       uhrzeit: z.string().nullable().describe("Uhrzeit als HH:MM, falls angegeben, sonst null"),
       art: z
@@ -103,10 +103,10 @@ export async function extractDeadlinesFromSheet(
     betas: ["server-side-fallback-2026-07-01"],
     fallbacks: "default",
     system:
-      "Du liest Übungsblätter und Aufgabenzettel von Studierenden und findest Fristen, die sie nicht verpassen dürfen: " +
-      "Abgabetermine, Testate, Präsentationen, Klausuren. Nimm nur auf, was im Dokument mit Datum steht oder sich " +
-      "eindeutig daraus ergibt (z. B. „Abgabe bis Montag, 24.11.“). Relative Angaben ohne Datum („nächste Woche“) " +
-      "und reine Vorlesungstermine lässt du weg. Gibt es keine Frist, liefere eine leere Liste.",
+      "You read university exercise sheets (often in German) and find deadlines students must not miss: " +
+      "submission deadlines, quizzes/tests, presentations, exams. Only include what the document states with a date " +
+      "or what follows unambiguously from it (e.g. „Abgabe bis Montag, 24.11.“). Skip relative mentions without a date " +
+      "(„next week“) and plain lecture dates. Write titles in English. If there is no deadline, return an empty list.",
     messages: [
       {
         role: "user",
@@ -118,7 +118,7 @@ export async function extractDeadlinesFromSheet(
           },
           {
             type: "text",
-            text: `Kurs: ${info.course}\nDatei: ${info.fileName}\nHeute ist der ${info.today}. Fehlt im Dokument die Jahreszahl, nimm das Jahr, in dem das Datum am nächsten an heute liegt.`,
+            text: `Course: ${info.course}\nFile: ${info.fileName}\nToday is ${info.today}. If the year is missing, use the year that puts the date closest to today.`,
           },
         ],
       },
@@ -127,10 +127,10 @@ export async function extractDeadlinesFromSheet(
   });
 
   if (response.stop_reason === "refusal") {
-    throw new Error("Die KI hat die Anfrage abgelehnt.");
+    throw new Error("The AI declined the request.");
   }
   if (!response.parsed_output) {
-    throw new Error(`Keine gültige Antwort erhalten (stop_reason: ${response.stop_reason}).`);
+    throw new Error(`No valid response received (stop_reason: ${response.stop_reason}).`);
   }
   return response.parsed_output;
 }

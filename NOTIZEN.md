@@ -7,7 +7,6 @@ Gemeinsames Gedächtnis für alle KI-Agenten und Menschen im Projekt. Wird über
 
 Wer gerade woran arbeitet (Person, Aufgabe, betroffene Dateien). Eintragen beim Start, löschen wenn fertig.
 
-- Rayyan: Hintergrundteil auf Englisch (Texte in `desktop/`, `services/ilias-sync/`, `web/src/lib/ai.ts`, Doku-Kommentare in `web/src/lib/desktop.ts`).
 
 
 

@@ -57,7 +57,7 @@ def install_patches() -> None:
     from PFERD.auth.authenticator import AuthError
 
     async def _no_prompt(*_args: Any, **_kwargs: Any) -> str:
-        raise AuthError("Login failed: Passwort im Schlüsselbund fehlt oder ist falsch")
+        raise AuthError("Login failed: password missing from the Keychain or wrong")
 
     keyring_mod.agetpass = _no_prompt  # type: ignore[attr-defined]
     keyring_mod.ainput = _no_prompt  # type: ignore[attr-defined]

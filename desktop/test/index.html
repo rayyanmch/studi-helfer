@@ -1,46 +1,46 @@
 <!doctype html>
-<html lang="de">
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'" />
-    <title>Studi-Helfer – Testfenster</title>
+    <title>Studi-Helfer – Test window</title>
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
-    <header class="titlebar">Studi-Helfer · Testfenster für den Hintergrundteil</header>
+    <header class="titlebar">Studi-Helfer · Backend test window</header>
     <p id="hinweis" class="notice" hidden></p>
 
     <main>
       <section>
         <h2>Status</h2>
-        <pre id="status">lädt …</pre>
+        <pre id="status">loading …</pre>
       </section>
 
       <section id="login-box">
-        <h2>ILIAS-Anmeldung</h2>
+        <h2>ILIAS sign-in</h2>
         <!-- Bewusst kein <form>: ohne Skript könnte ein Formular Kennung und Passwort in die Seitenadresse schreiben. -->
         <div id="login-form" class="form">
-          <label>Uni-Kennung <input id="username" autocomplete="username" /></label>
-          <label>Passwort <input id="password" type="password" autocomplete="current-password" /></label>
-          <button id="login" type="button">Anmelden</button>
+          <label>University username <input id="username" autocomplete="username" /></label>
+          <label>Password <input id="password" type="password" autocomplete="current-password" /></label>
+          <button id="login" type="button">Sign in</button>
         </div>
-        <p class="hint">Deine Zugangsdaten bleiben im Schlüsselbund deines Macs.</p>
+        <p class="hint">Your credentials stay in your Mac's Keychain.</p>
         <p id="login-msg" class="msg"></p>
       </section>
 
       <section id="setup-box">
-        <h2>Einrichtung</h2>
+        <h2>Setup</h2>
         <div class="row">
-          <span>Zielordner: <code id="target">–</code></span>
-          <button id="choose">Ordner wählen …</button>
+          <span>Destination folder: <code id="target">–</code></span>
+          <button id="choose">Choose folder …</button>
         </div>
         <div class="row">
-          <button id="load-courses">Kurse von ILIAS laden</button>
-          <button id="save-setup">Auswahl speichern</button>
+          <button id="load-courses">Load courses from ILIAS</button>
+          <button id="save-setup">Save selection</button>
           <span id="setup-msg" class="msg"></span>
         </div>
         <table id="courses">
-          <thead><tr><th>Laden</th><th>Kurs</th><th>Semester</th><th>Videos</th></tr></thead>
+          <thead><tr><th>Sync</th><th>Course</th><th>Semester</th><th>Videos</th></tr></thead>
           <tbody></tbody>
         </table>
       </section>
@@ -48,28 +48,28 @@
       <section>
         <h2>Sync</h2>
         <div class="row">
-          <button id="sync">Jetzt synchronisieren</button>
-          <button id="cancel">Abbrechen</button>
-          <label><input id="sched-on" type="checkbox" /> Täglich um</label>
+          <button id="sync">Sync now</button>
+          <button id="cancel">Cancel</button>
+          <label><input id="sched-on" type="checkbox" /> Daily at</label>
           <input id="sched-time" type="time" value="07:00" />
-          <button id="sched-save">Zeitplan speichern</button>
+          <button id="sched-save">Save schedule</button>
           <span id="sync-msg" class="msg"></span>
         </div>
         <pre id="sync-state">–</pre>
       </section>
 
       <section>
-        <h2>Fristen <button id="deadlines-refresh">Von ILIAS holen</button> <span id="deadlines-msg" class="msg"></span></h2>
+        <h2>Deadlines <button id="deadlines-refresh">Refresh</button> <span id="deadlines-msg" class="msg"></span></h2>
         <div id="deadlines"></div>
       </section>
 
       <section>
-        <h2>Dateien <button id="files-reload">Neu laden</button></h2>
+        <h2>Files <button id="files-reload">Reload</button></h2>
         <div id="files"></div>
       </section>
 
       <section>
-        <button id="logout" class="danger">Abmelden (Schlüsselbund-Eintrag löschen)</button>
+        <button id="logout" class="danger">Sign out (delete Keychain entry)</button>
       </section>
     </main>
     <script src="test.js"></script>

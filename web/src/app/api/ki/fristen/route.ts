@@ -20,24 +20,24 @@ function fromLocalhost(request: Request): boolean {
 }
 
 export async function POST(request: Request) {
-  if (!fromLocalhost(request)) return fail(403, "forbidden", "Nur lokal erreichbar.");
+  if (!fromLocalhost(request)) return fail(403, "forbidden", "Only reachable locally.");
   if (!aiConfigured()) {
-    return fail(503, "no_key", "Kein KI-Schlüssel eingerichtet (ANTHROPIC_API_KEY in web/.env.local).");
+    return fail(503, "no_key", "No AI key set up (ANTHROPIC_API_KEY in web/.env.local).");
   }
 
   let body: { pdfBase64?: unknown; fileName?: unknown; course?: unknown; today?: unknown };
   try {
     body = await request.json();
   } catch {
-    return fail(400, "invalid", "Ungültige Anfrage.");
+    return fail(400, "invalid", "Invalid request.");
   }
   const { pdfBase64, fileName, course, today } = body;
   if (typeof pdfBase64 !== "string" || typeof fileName !== "string" || typeof course !== "string") {
-    return fail(400, "invalid", "pdfBase64, fileName und course sind nötig.");
+    return fail(400, "invalid", "pdfBase64, fileName and course are required.");
   }
   const pdf = Buffer.from(pdfBase64, "base64");
-  if (pdf.length === 0 || pdf.length > MAX_PDF_BYTES) return fail(413, "too_large", "PDF fehlt oder ist zu groß.");
-  if (pdf.subarray(0, 5).toString("latin1") !== "%PDF-") return fail(400, "invalid", "Keine PDF-Datei.");
+  if (pdf.length === 0 || pdf.length > MAX_PDF_BYTES) return fail(413, "too_large", "PDF missing or too large.");
+  if (pdf.subarray(0, 5).toString("latin1") !== "%PDF-") return fail(400, "invalid", "Not a PDF file.");
 
   try {
     const result = await extractDeadlinesFromSheet(pdf, {
@@ -47,10 +47,10 @@ export async function POST(request: Request) {
     });
     return Response.json({ ok: true, fristen: result.fristen });
   } catch (e) {
-    if (e instanceof Anthropic.AuthenticationError) return fail(503, "no_key", "KI-Schlüssel ungültig.");
-    if (e instanceof Anthropic.RateLimitError) return fail(429, "rate_limited", "KI gerade ausgelastet, später erneut.");
-    if (e instanceof Anthropic.APIConnectionError) return fail(502, "unreachable", "KI nicht erreichbar.");
-    if (e instanceof Anthropic.APIError) return fail(502, "ai_error", `KI-Fehler (${e.status ?? "?"}).`);
-    return fail(500, "internal", e instanceof Error ? e.message : "Unbekannter Fehler.");
+    if (e instanceof Anthropic.AuthenticationError) return fail(503, "no_key", "Invalid AI key.");
+    if (e instanceof Anthropic.RateLimitError) return fail(429, "rate_limited", "AI is busy right now, try again later.");
+    if (e instanceof Anthropic.APIConnectionError) return fail(502, "unreachable", "AI not reachable.");
+    if (e instanceof Anthropic.APIError) return fail(502, "ai_error", `AI error (${e.status ?? "?"}).`);
+    return fail(500, "internal", e instanceof Error ? e.message : "Unknown error.");
   }
 }

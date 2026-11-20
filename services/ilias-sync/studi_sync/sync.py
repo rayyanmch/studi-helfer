@@ -220,12 +220,12 @@ def run_pferd(run: Run, log: Any) -> int:
 def sync(auto: bool) -> dict[str, Any]:
     cfg = load_config()
     if not cfg.get("username"):
-        raise AppError("not_logged_in", "Noch nicht bei ILIAS angemeldet.")
+        raise AppError("not_logged_in", "Not signed in to ILIAS yet.")
     if not cfg.get("targetDir"):
-        raise AppError("not_configured", "Noch kein Zielordner gewählt.")
+        raise AppError("not_configured", "No destination folder chosen yet.")
     courses = [c for c in cfg.get("courses", []) if c.get("selected")]
     if not courses:
-        raise AppError("not_configured", "Keine Kurse ausgewählt.")
+        raise AppError("not_configured", "No courses selected.")
 
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     LOGS.mkdir(exist_ok=True)
@@ -233,7 +233,7 @@ def sync(auto: bool) -> dict[str, Any]:
     try:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
     except BlockingIOError:
-        raise AppError("busy", "Es läuft bereits ein Sync.") from None
+        raise AppError("busy", "A sync is already running.") from None
 
     trigger = "auto" if auto else "manual"
     run = Run(trigger, courses)
@@ -280,7 +280,7 @@ def sync(auto: bool) -> dict[str, Any]:
         try:
             if not wait_for_network(300 if auto else 20, log):
                 offline = True
-                run.problems = [{"course": None, "message": "Keine Verbindung zu ILIAS"}]
+                run.problems = [{"course": None, "message": "Can't reach ILIAS"}]
             else:
                 exit_code = run_pferd(run, log)
                 offline = bool(run.problems) and all(
@@ -343,11 +343,11 @@ def sync(auto: bool) -> dict[str, Any]:
     if auto and status != "cancelled" and cfg.get("notifications", True):
         n = len(run.added)
         if status == "login":
-            notify("ILIAS-Anmeldung abgelaufen. Bitte in Studi-Helfer neu anmelden.")
+            notify("Your ILIAS sign-in expired. Please sign in again in Studi-Helfer.")
         elif status != "ok":
-            notify("Keine Verbindung zu ILIAS" if status == "offline" else "Fehler beim Sync, Details in Studi-Helfer")
+            notify("Can't reach ILIAS" if status == "offline" else "Sync failed, details in Studi-Helfer")
         elif n:
-            notify(f"{n} neue Datei{'en' if n != 1 else ''} von ILIAS")
+            notify(f"{n} new file{'s' if n != 1 else ''} from ILIAS")
 
     for old in LOGS.glob("20*.log"):
         if time.time() - old.stat().st_mtime > 30 * 86400:

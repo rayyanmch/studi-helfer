@@ -7,6 +7,7 @@
 //   const desktop = getDesktop();
 //   if (desktop) { const files = await desktop.getFiles(); } else { /* Beispieldaten */ }
 //
+// Alle Texte, die von hier kommen (message, time, title, updated), sind englisch.
 // Das Uni-Passwort geht nur an login() und landet im macOS-Schlüsselbund. Nie speichern oder loggen.
 
 import type { Course, CourseFile, Deadline, Folder } from "./mock-data";
@@ -84,7 +85,7 @@ export interface DesktopFile extends CourseFile {
   previousVersion?: string; // Pfad zur gesicherten alten Fassung (für den KI-Unterschied)
 }
 export interface DesktopFolder extends Omit<Folder, "files"> {
-  files: DesktopFile[]; // name = Pfad im Kurs, z. B. "Vorlesung/Woche 1"; Dateien direkt im Kurs: "Allgemein"
+  files: DesktopFile[]; // name = Pfad im Kurs, z. B. "Vorlesung/Woche 1"; Dateien direkt im Kurs: "General"
 }
 export interface DesktopCourse extends Omit<Course, "folders"> {
   folder: string; // Kursordner auf dem Mac
@@ -94,12 +95,12 @@ export interface DesktopCourse extends Omit<Course, "folders"> {
 /**
  * Frist oder Termin aus dem ILIAS-Kalender. Form wie Deadline in mock-data.ts plus Extras.
  * kind "abgabe" = Abgabetermin einer Übung; "termin" = Sitzung (Vorlesung/Übung mit Ort) oder Anmeldeschluss.
- * time: "bis 23:55", "bis 24:00", "10:00" oder "ganztägig". date: "2026-11-23" (Berliner Zeit).
+ * time: "by 23:55", "by midnight", "10:00" or "all day" (English, shown as is). date: "2026-11-23" (Berlin time).
  * Kommen nur für ausgewählte Kurse, ab 14 Tagen in der Vergangenheit.
  */
 export interface DesktopDeadline extends Deadline {
-  // sheet = per Regeln lokal in einem Übungsblatt gefunden (source "Übungsblatt: <Datei>", dazu file + evidence)
-  // ai = von der KI in einem Übungsblatt gefunden (nur mit Schlüssel; source "KI: <Datei>")
+  // sheet = per Regeln lokal in einem Übungsblatt gefunden (source "Exercise sheet: <Datei>", dazu file + evidence)
+  // ai = von der KI in einem Übungsblatt gefunden (nur mit Schlüssel; source "AI: <Datei>")
   category: "exercise" | "session" | "registration" | "sheet" | "ai";
   start: string; // ISO-Zeitpunkt, z. B. "2026-11-23T10:00:00+01:00"
   url: string | null; // ILIAS-Seite (Übung/Sitzung), z. B. für „In ILIAS öffnen“

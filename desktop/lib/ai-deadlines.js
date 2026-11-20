@@ -85,7 +85,7 @@ function createAiDeadlines({ dataDir, readJson, writeJson, listFiles, loadConfig
           });
           res = await r.json();
         } catch (e) {
-          lastError = { code: "unreachable", message: `KI-Server nicht erreichbar (${e.name}).` };
+          lastError = { code: "unreachable", message: `AI server not reachable (${e.name}).` };
           break;
         }
         if (!res.ok) {
@@ -132,10 +132,10 @@ function createAiDeadlines({ dataDir, readJson, writeJson, listFiles, loadConfig
           courseId: entry.courseId,
           title: d.titel,
           date: d.datum,
-          time: time ? (d.art === "abgabe" ? `bis ${time}` : time) : "ganztägig",
+          time: time ? (d.art === "abgabe" ? `by ${time}` : time) : "all day",
           kind: ["termin", "klausur"].includes(d.art) ? d.art : "abgabe",
           category: "ai",
-          source: `KI: ${entry.fileName}`,
+          source: `AI: ${entry.fileName}`,
           start: `${d.datum}T${time ?? "00:00"}:00`,
           url: null,
           location: null,

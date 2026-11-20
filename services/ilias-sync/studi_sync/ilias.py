@@ -19,9 +19,9 @@ def _get(session: requests.Session, url: str, **kwargs: Any) -> requests.Respons
     try:
         r = session.get(url, timeout=TIMEOUT, **kwargs)
     except requests.RequestException as e:
-        raise AppError("unreachable", f"ILIAS ist nicht erreichbar ({type(e).__name__}).") from None
+        raise AppError("unreachable", f"Can't reach ILIAS ({type(e).__name__}).") from None
     if r.status_code >= 500:
-        raise AppError("unreachable", f"ILIAS antwortet mit Fehler {r.status_code}.")
+        raise AppError("unreachable", f"ILIAS returned error {r.status_code}.")
     return r
 
 
@@ -39,7 +39,7 @@ def login(username: str, password: str) -> requests.Session:
     soup = BeautifulSoup(r.content, "html.parser")
     form = soup.find("form", attrs={"name": "login_form"})
     if not isinstance(form, Tag) or not form.get("action"):
-        raise AppError("unexpected", "Die ILIAS-Anmeldeseite sieht anders aus als erwartet.")
+        raise AppError("unexpected", "The ILIAS sign-in page looks different than expected.")
 
     # Feldnamen aus dem Formular lesen; Fallback sind die Namen, die PFERD nutzt.
     user_field = "login_form/input_3/input_4"
@@ -60,14 +60,14 @@ def login(username: str, password: str) -> requests.Session:
             timeout=TIMEOUT,
         )
     except requests.RequestException as e:
-        raise AppError("unreachable", f"ILIAS ist nicht erreichbar ({type(e).__name__}).") from None
+        raise AppError("unreachable", f"Can't reach ILIAS ({type(e).__name__}).") from None
 
     if _logged_in(r):
         return session
     if BeautifulSoup(r.content, "html.parser").find("form", attrs={"name": "login_form"}):
-        raise AppError("wrong_password", "Uni-Kennung oder Passwort stimmen nicht.")
-    raise AppError("unexpected", "Anmeldung nicht abgeschlossen. Bitte einmal im Browser bei ILIAS anmelden "
-                   "(z. B. Nutzungsbedingungen bestätigen) und es dann erneut versuchen.")
+        raise AppError("wrong_password", "Wrong username or password.")
+    raise AppError("unexpected", "Sign-in not completed. Please sign in to ILIAS once in your browser "
+                   "(e.g. to accept the terms of use) and try again.")
 
 
 # ------------------------------------------------------------------ Kurse finden

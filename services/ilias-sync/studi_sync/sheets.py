@@ -162,7 +162,7 @@ def _pdf_text(path: Path) -> str:
 def _title(file_name: str, kind: str) -> str:
     stem = re.sub(r"[_\-]+", " ", Path(file_name).stem)
     stem = re.sub(r"\s{2,}", " ", stem).strip()
-    return {"abgabe": f"Abgabe {stem}", "klausur": f"Klausur/Test {stem}"}.get(kind, stem)
+    return {"abgabe": f"Submit {stem}", "klausur": f"Exam/Test: {stem}"}.get(kind, stem)
 
 
 def candidates(cfg: dict[str, Any]) -> list[tuple[dict[str, Any], Path]]:
@@ -219,7 +219,7 @@ def refresh() -> dict[str, Any]:
             if not (oldest <= day <= newest):
                 continue
             title = _title(path.name, f["kind"])
-            time_label = (f"bis {f['time']}" if f["kind"] == "abgabe" else f["time"]) if f["time"] else "ganztägig"
+            time_label = (f"by {f['time']}" if f["kind"] == "abgabe" else f["time"]) if f["time"] else "all day"
             results.append({
                 "id": deadline_id(course["id"], title, f["date"]),
                 "courseId": course["id"],
@@ -228,7 +228,7 @@ def refresh() -> dict[str, Any]:
                 "time": time_label,
                 "kind": f["kind"],
                 "category": "sheet",
-                "source": f"Übungsblatt: {path.name}",
+                "source": f"Exercise sheet: {path.name}",
                 "start": f"{f['date']}T{f['time'] or '00:00'}:00",
                 "url": None,
                 "location": None,

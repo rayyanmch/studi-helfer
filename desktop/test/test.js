@@ -24,7 +24,7 @@ function el(tag, attrs = {}, ...children) {
   return node;
 }
 
-const SEMESTER = { current: "aktuell", past: "alt", unknown: "?" };
+const SEMESTER = { current: "current", past: "past", unknown: "?" };
 
 async function refreshStatus() {
   const s = await api.getStatus();
@@ -65,13 +65,13 @@ function renderSync(state) {
   if (!state) return;
   const lines = [];
   if (state.running) {
-    lines.push(state.waitingUntil ? `Wartet bis ${new Date(state.waitingUntil * 1000).toLocaleTimeString("de-DE")}` : "Läuft …");
+    lines.push(state.waitingUntil ? `Waiting until ${new Date(state.waitingUntil * 1000).toLocaleTimeString("en-US")}` : "Running …");
     for (const id of state.order || []) {
       const c = state.courses[id];
-      lines.push(`${c.status.padEnd(8)} ${c.title}: ${c.added} neu, ${c.changed} geändert${c.problems.length ? " – " + c.problems[0] : ""}`);
+      lines.push(`${c.status.padEnd(8)} ${c.title}: ${c.added} new, ${c.changed} changed${c.problems.length ? " – " + c.problems[0] : ""}`);
     }
   } else {
-    lines.push(`Kein Sync aktiv. Letzter Status: ${state.lastStatus ?? "–"}${state.interrupted ? " (abgebrochen)" : ""}`);
+    lines.push(`No sync running. Last status: ${state.lastStatus ?? "–"}${state.interrupted ? " (interrupted)" : ""}`);
   }
   $("sync-state").textContent = lines.join("\n");
   $("sync").disabled = Boolean(state.running);
@@ -82,22 +82,22 @@ async function renderFiles() {
   const list = await api.getFiles();
   const box = $("files");
   if (!list.length) {
-    box.textContent = "Noch keine Dateien.";
+    box.textContent = "No files yet.";
     return;
   }
   box.replaceChildren(
     ...list.flatMap((course) => [
-      el("h3", {}, `${course.name} (${course.total} Dateien)`),
+      el("h3", {}, `${course.name} (${course.total} files)`),
       ...course.folders.flatMap((folder) => [
-        el("div", { class: "meta" }, `Ordner: ${folder.name}`),
+        el("div", { class: "meta" }, `Folder: ${folder.name}`),
         ...folder.files.map((f) =>
           el(
             "div",
             { class: "file" },
             el("span", { class: f.isNew ? "name new" : "name" }, `${f.isNew ? "● " : ""}${f.name}`),
             el("span", { class: "meta" }, `${f.size} · ${f.updated}`),
-            el("button", { onclick: () => api.openFile(f.path) }, "Öffnen"),
-            el("button", { onclick: () => api.revealFile(f.path) }, "Im Finder zeigen"),
+            el("button", { onclick: () => api.openFile(f.path) }, "Open"),
+            el("button", { onclick: () => api.revealFile(f.path) }, "Show in Finder"),
           ),
         ),
       ]),
@@ -106,11 +106,11 @@ async function renderFiles() {
 }
 
 async function doLogin() {
-  msg("login-msg", "Melde an …");
+  msg("login-msg", "Signing in …");
   const res = await api.login($("username").value, $("password").value);
   $("password").value = "";
   if (res.ok) {
-    msg("login-msg", `Angemeldet als ${res.username}.`);
+    msg("login-msg", `Signed in as ${res.username}.`);
     await refreshStatus();
   } else {
     msg("login-msg", `${res.message} (${res.code})`, true);
@@ -130,34 +130,34 @@ $("choose").addEventListener("click", async () => {
 });
 
 $("load-courses").addEventListener("click", async () => {
-  msg("setup-msg", "Lade Kurse …");
+  msg("setup-msg", "Loading courses …");
   const res = await api.listCourses();
   if (!res.ok) return msg("setup-msg", `${res.message} (${res.code})`, true);
   courses = res.courses;
   renderCourses();
-  msg("setup-msg", `${courses.length} Kurse gefunden, ${courses.filter((c) => c.selected).length} ausgewählt.`);
+  msg("setup-msg", `${courses.length} courses found, ${courses.filter((c) => c.selected).length} selected.`);
 });
 
 $("save-setup").addEventListener("click", async () => {
-  if (!courses.length) return msg("setup-msg", "Erst Kurse laden.", true);
+  if (!courses.length) return msg("setup-msg", "Load courses first.", true);
   const res = await api.saveSetup({ targetDir, courses });
-  msg("setup-msg", res.ok ? "Gespeichert." : res.message, !res.ok);
+  msg("setup-msg", res.ok ? "Saved." : res.message, !res.ok);
   await refreshStatus();
 });
 
 $("sync").addEventListener("click", async () => {
   const res = await api.startSync();
-  msg("sync-msg", res.ok ? "Sync gestartet." : res.message, !res.ok);
+  msg("sync-msg", res.ok ? "Sync started." : res.message, !res.ok);
 });
 
 $("cancel").addEventListener("click", async () => {
   const res = await api.cancelSync();
-  msg("sync-msg", res.ok ? "Wird abgebrochen …" : res.message, !res.ok);
+  msg("sync-msg", res.ok ? "Cancelling …" : res.message, !res.ok);
 });
 
 $("sched-save").addEventListener("click", async () => {
   const res = await api.setSchedule({ enabled: $("sched-on").checked, time: $("sched-time").value });
-  msg("sync-msg", res.ok ? (res.enabled ? `Täglich um ${res.time}.` : "Täglicher Sync aus.") : res.message, !res.ok);
+  msg("sync-msg", res.ok ? (res.enabled ? `Daily at ${res.time}.` : "Daily sync off.") : res.message, !res.ok);
 });
 
 $("files-reload").addEventListener("click", renderFiles);
@@ -166,7 +166,7 @@ async function renderDeadlines() {
   const { updatedAt, deadlines } = await api.getDeadlines();
   const box = $("deadlines");
   if (!deadlines.length) {
-    box.textContent = updatedAt ? "Keine Fristen." : "Noch nicht geholt.";
+    box.textContent = updatedAt ? "No deadlines." : "Not fetched yet.";
     return;
   }
   box.replaceChildren(
@@ -188,9 +188,9 @@ async function renderDeadlines() {
 }
 
 $("deadlines-refresh").addEventListener("click", async () => {
-  msg("deadlines-msg", "Hole Fristen …");
+  msg("deadlines-msg", "Fetching deadlines …");
   const res = await api.refreshDeadlines();
-  msg("deadlines-msg", res.ok ? `${res.count} Fristen/Termine.` : res.message, !res.ok);
+  msg("deadlines-msg", res.ok ? `${res.count} deadlines/events.` : res.message, !res.ok);
   renderDeadlines();
 });
 
@@ -214,7 +214,7 @@ api.onSyncState((state) => {
 const hinweis = new URLSearchParams(window.location.search).get("hinweis");
 if (hinweis) {
   $("hinweis").hidden = false;
-  $("hinweis").textContent = `${hinweis} Zeige das Testfenster. (Oberfläche starten: npm run dev in web/)`;
+  $("hinweis").textContent = `${hinweis} Showing the test window. (Start the interface: npm run dev in web/)`;
 }
 
 refreshStatus().then(renderFiles).then(renderDeadlines);

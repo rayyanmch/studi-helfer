@@ -28,9 +28,9 @@ def _password_for(username: str) -> str:
     try:
         password = keyring.get_password(KEYCHAIN_SERVICE, username)
     except keyring.errors.KeyringError as e:
-        raise AppError("keychain", f"Schlüsselbund nicht lesbar ({type(e).__name__}).") from None
+        raise AppError("keychain", f"Could not read the Keychain ({type(e).__name__}).") from None
     if not password:
-        raise AppError("not_logged_in", "Kein Passwort im Schlüsselbund. Bitte neu anmelden.")
+        raise AppError("not_logged_in", "No password in the Keychain. Please sign in again.")
     return password
 
 
@@ -40,12 +40,12 @@ def cmd_login(args: argparse.Namespace) -> None:
     username = args.username.strip()
     password = sys.stdin.readline().rstrip("\r\n")
     if not username or not password:
-        raise AppError("wrong_password", "Uni-Kennung und Passwort eingeben.")
+        raise AppError("wrong_password", "Enter your university username and password.")
     login(username, password)
     try:
         keyring.set_password(KEYCHAIN_SERVICE, username, password)
     except keyring.errors.KeyringError as e:
-        raise AppError("keychain", f"Passwort konnte nicht im Schlüsselbund gespeichert werden ({type(e).__name__}).") from None
+        raise AppError("keychain", f"Could not save the password to the Keychain ({type(e).__name__}).") from None
     emit({"type": "result", "ok": True, "username": username})
 
 
@@ -70,7 +70,7 @@ def cmd_courses(args: argparse.Namespace) -> None:
 
     username = load_config().get("username")
     if not username:
-        raise AppError("not_logged_in", "Noch nicht bei ILIAS angemeldet.")
+        raise AppError("not_logged_in", "Not signed in to ILIAS yet.")
     session = login(username, _password_for(username))
     emit({"type": "result", "courses": list_courses(session, dump=args.dump)})
 
@@ -81,7 +81,7 @@ def cmd_deadlines(args: argparse.Namespace) -> None:
 
     username = load_config().get("username")
     if not username:
-        raise AppError("not_logged_in", "Noch nicht bei ILIAS angemeldet.")
+        raise AppError("not_logged_in", "Not signed in to ILIAS yet.")
     result = refresh(login(username, _password_for(username)))
     from .sheets import refresh as refresh_sheets
 

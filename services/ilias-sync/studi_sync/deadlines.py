@@ -39,18 +39,18 @@ def fetch_ics(session: requests.Session) -> str:
         modal_links = {html.unescape(x) for x in re.findall(
             r'["\']([^"\']*cmd=getModalForSubscription[^"\']*)["\']', cal.text)}
         if not modal_links:
-            raise AppError("unexpected", "ILIAS-Kalender: Abo-Dialog nicht gefunden.")
+            raise AppError("unexpected", "ILIAS calendar: subscription dialog not found.")
         link = sorted(modal_links)[0]
         modal = session.get(link if link.startswith("http") else f"{BASE_URL}/{link.lstrip('./')}", timeout=TIMEOUT)
         urls = sorted(set(re.findall(r'(https?://[^"\'<>\s]*calendar\.php\?[^"\'<>\s]*)', html.unescape(modal.text))))
         if not urls:
-            raise AppError("unexpected", "ILIAS-Kalender: Abo-Adresse nicht gefunden.")
+            raise AppError("unexpected", "ILIAS calendar: subscription URL not found.")
         url = next((u for u in urls if "limited=0" in u), urls[0])
         r = session.get(url, timeout=TIMEOUT)
     except requests.RequestException as e:
-        raise AppError("unreachable", f"ILIAS ist nicht erreichbar ({type(e).__name__}).") from None
+        raise AppError("unreachable", f"Can't reach ILIAS ({type(e).__name__}).") from None
     if "BEGIN:VCALENDAR" not in r.text:
-        raise AppError("unexpected", "ILIAS-Kalender: keine Kalenderdaten erhalten.")
+        raise AppError("unexpected", "ILIAS calendar: no calendar data received.")
     return r.text
 
 
@@ -110,19 +110,19 @@ def classify(ev: dict[str, Any]) -> Optional[dict[str, Any]]:
     if obj_type == "exc" and "abgabe" in tag:
         # ILIAS speichert "bis Mitternacht" oft als 00:00 des Folgetags.
         if not ev["allDay"] and start.hour == 0 and start.minute == 0:
-            day, time = (start - timedelta(minutes=1)).date(), "bis 24:00"
+            day, time = (start - timedelta(minutes=1)).date(), "by midnight"
         else:
-            day, time = start.date(), "ganztägig" if ev["allDay"] else f"bis {start:%H:%M}"
+            day, time = start.date(), "all day" if ev["allDay"] else f"by {start:%H:%M}"
         return {"category": "exercise", "kind": "abgabe", "title": base_title, "day": day, "time": time,
                 "object": f"exc/{obj_id}"}
     if obj_type == "grp" and "ende der anmeldung" in tag:
-        return {"category": "registration", "kind": "termin", "title": f"Anmeldeschluss {base_title}",
-                "day": start.date(), "time": "ganztägig" if ev["allDay"] else f"bis {start:%H:%M}",
+        return {"category": "registration", "kind": "termin", "title": f"Registration closes: {base_title}",
+                "day": start.date(), "time": "all day" if ev["allDay"] else f"by {start:%H:%M}",
                 "object": f"grp/{obj_id}"}
     if obj_type == "sess":
         return {"category": "session", "kind": "klausur" if EXAM.search(ev["summary"]) else "termin",
                 "title": ev["summary"], "day": start.date(),
-                "time": "ganztägig" if ev["allDay"] else f"{start:%H:%M}", "object": f"sess/{obj_id}"}
+                "time": "all day" if ev["allDay"] else f"{start:%H:%M}", "object": f"sess/{obj_id}"}
     return None  # Beginn der Anmeldung, Kursbeginn/-ende, eigene Termine ohne Objekt
 
 
@@ -175,7 +175,7 @@ def refresh(session: requests.Session) -> dict[str, Any]:
             "time": info["time"],
             "kind": info["kind"],
             "category": info["category"],
-            "source": "ILIAS-Kalender",
+            "source": "ILIAS calendar",
             "start": ev["start"].isoformat(),
             "url": ev["url"] or None,
             "location": ev["location"],

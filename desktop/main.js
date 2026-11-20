@@ -64,7 +64,7 @@ function createWindow() {
     win.loadFile(TEST_PAGE);
   } else {
     win.loadURL(uiUrl).catch(() => {
-      win.loadFile(TEST_PAGE, { query: { hinweis: `Oberfläche unter ${uiUrl} nicht erreichbar.` } });
+      win.loadFile(TEST_PAGE, { query: { hinweis: `Interface at ${uiUrl} not reachable.` } });
     });
   }
   return win;
@@ -114,10 +114,10 @@ async function getStatus() {
 
 async function login(username, password) {
   if (typeof username !== "string" || typeof password !== "string") {
-    return { ok: false, code: "wrong_password", message: "Uni-Kennung und Passwort eingeben." };
+    return { ok: false, code: "wrong_password", message: "Enter your university username and password." };
   }
   if (password.includes("\n")) {
-    return { ok: false, code: "wrong_password", message: "Passwort enthält ungültige Zeichen." };
+    return { ok: false, code: "wrong_password", message: "The password contains invalid characters." };
   }
   const res = await backend.runHelper(packaged(), ["login", "--username", username.trim()], {
     stdin: `${password}\n`,
@@ -173,11 +173,11 @@ async function listCourses() {
 async function saveSetup(setup) {
   const cfg = backend.loadConfig();
   if (!setup || !Array.isArray(setup.courses)) {
-    return { ok: false, code: "invalid", message: "Ungültige Einrichtung." };
+    return { ok: false, code: "invalid", message: "Invalid setup." };
   }
   const targetDir = setup.targetDir || cfg.targetDir || backend.DEFAULT_TARGET;
   if (!path.isAbsolute(targetDir)) {
-    return { ok: false, code: "invalid", message: "Zielordner muss ein absoluter Pfad sein." };
+    return { ok: false, code: "invalid", message: "The destination folder must be an absolute path." };
   }
   const saved = new Map(cfg.courses.map((c) => [c.id, c]));
   const used = new Set();
@@ -213,10 +213,10 @@ async function chooseFolder() {
   const cfg = backend.loadConfig();
   const start = cfg.targetDir || backend.DEFAULT_TARGET;
   const res = await dialog.showOpenDialog(BrowserWindow.getFocusedWindow() ?? undefined, {
-    title: "Zielordner für ILIAS-Dateien",
+    title: "Destination folder for ILIAS files",
     defaultPath: fs.existsSync(start) ? start : path.dirname(start),
     properties: ["openDirectory", "createDirectory", "promptToCreate"],
-    buttonLabel: "Auswählen",
+    buttonLabel: "Choose",
   });
   return res.canceled ? null : res.filePaths[0];
 }
@@ -233,13 +233,13 @@ async function setSchedule(schedule) {
 }
 
 async function openFile(p) {
-  if (!backend.insideTarget(p)) return { ok: false, code: "invalid", message: "Pfad liegt nicht im Zielordner." };
+  if (!backend.insideTarget(p)) return { ok: false, code: "invalid", message: "This path is outside the destination folder." };
   const err = await shell.openPath(p);
   return err ? { ok: false, code: "open", message: err } : { ok: true };
 }
 
 function revealFile(p) {
-  if (!backend.insideTarget(p)) return { ok: false, code: "invalid", message: "Pfad liegt nicht im Zielordner." };
+  if (!backend.insideTarget(p)) return { ok: false, code: "invalid", message: "This path is outside the destination folder." };
   shell.showItemInFolder(p);
   return { ok: true };
 }
@@ -275,7 +275,7 @@ handle("studi:setDeadlineDone", (id, done) => backend.setDeadlineDone(id, Boolea
 async function runAiDeadlines() {
   const cfg = backend.loadConfig();
   if (!cfg.targetDir || !cfg.courses.some((c) => c.selected)) {
-    return { ok: false, code: "not_configured", message: "Noch keine Kurse eingerichtet." };
+    return { ok: false, code: "not_configured", message: "No courses set up yet." };
   }
   const aiUrl = process.env.STUDI_AI_URL || uiUrl;
   const res = await backend.aiDeadlines.run(aiUrl);

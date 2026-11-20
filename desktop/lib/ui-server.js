@@ -29,7 +29,7 @@ function waitForHttp(url, timeoutMs) {
         resolve();
       });
       req.on("error", () => {
-        if (Date.now() > deadline) reject(new Error("Oberfläche startet nicht"));
+        if (Date.now() > deadline) reject(new Error("Interface failed to start"));
         else setTimeout(attempt, 150);
       });
       req.setTimeout(2000, () => req.destroy());
@@ -45,7 +45,7 @@ function waitForHttp(url, timeoutMs) {
  */
 async function startBundledUi(uiDir, logFile) {
   const server = path.join(uiDir, "server.js");
-  if (!fs.existsSync(server)) throw new Error(`Oberfläche fehlt im Paket: ${server}`);
+  if (!fs.existsSync(server)) throw new Error(`Interface missing from the app bundle: ${server}`);
   const port = await freePort();
   fs.mkdirSync(path.dirname(logFile), { recursive: true });
   const log = fs.openSync(logFile, "a");
