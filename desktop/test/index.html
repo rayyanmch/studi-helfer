@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'" />
+    <title>Studi-Helfer – Testfenster</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <header class="titlebar">Studi-Helfer · Testfenster für den Hintergrundteil</header>
+    <p id="hinweis" class="notice" hidden></p>
+
+    <main>
+      <section>
+        <h2>Status</h2>
+        <pre id="status">lädt …</pre>
+      </section>
+
+      <section id="login-box">
+        <h2>ILIAS-Anmeldung</h2>
+        <form id="login-form">
+          <label>Uni-Kennung <input id="username" autocomplete="username" required /></label>
+          <label>Passwort <input id="password" type="password" autocomplete="current-password" required /></label>
+          <button type="submit">Anmelden</button>
+        </form>
+        <p class="hint">Deine Zugangsdaten bleiben im Schlüsselbund deines Macs.</p>
+        <p id="login-msg" class="msg"></p>
+      </section>
+
+      <section id="setup-box">
+        <h2>Einrichtung</h2>
+        <div class="row">
+          <span>Zielordner: <code id="target">–</code></span>
+          <button id="choose">Ordner wählen …</button>
+        </div>
+        <div class="row">
+          <button id="load-courses">Kurse von ILIAS laden</button>
+          <button id="save-setup">Auswahl speichern</button>
+          <span id="setup-msg" class="msg"></span>
+        </div>
+        <table id="courses">
+          <thead><tr><th>Laden</th><th>Kurs</th><th>Semester</th><th>Videos</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </section>
+
+      <section>
+        <h2>Sync</h2>
+        <div class="row">
+          <button id="sync">Jetzt synchronisieren</button>
+          <label><input id="sched-on" type="checkbox" /> Täglich um</label>
+          <input id="sched-time" type="time" value="07:00" />
+          <button id="sched-save">Zeitplan speichern</button>
+          <span id="sync-msg" class="msg"></span>
+        </div>
+        <pre id="sync-state">–</pre>
+      </section>
+
+      <section>
+        <h2>Dateien <button id="files-reload">Neu laden</button></h2>
+        <div id="files"></div>
+      </section>
+
+      <section>
+        <button id="logout" class="danger">Abmelden (Schlüsselbund-Eintrag löschen)</button>
+      </section>
+    </main>
+    <script src="test.js"></script>
+  </body>
+</html>

@@ -1,0 +1,16 @@
+{
+  "name": "studi-helfer-desktop",
+  "productName": "Studi-Helfer",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Mac-App-Hülle für Studi-Helfer: ILIAS-Login, Sync und Dateien",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "test-window": "electron . --test",
+    "check": "node --check main.js && node --check preload.js && node --check lib/backend.js && node --check test/test.js"
+  },
+  "devDependencies": {
+    "electron": "45.4.1"
+  }
+}
