@@ -9,13 +9,17 @@ import {
   ChevronRight,
   Inbox,
   LogIn,
+  Monitor,
+  Moon,
   RefreshCw,
   Search,
+  Sun,
   WifiOff,
   X,
 } from "lucide-react";
 import { Button, FileIcon, Notice, Spinner, Swatch, colorOf, nameOf, shortOf, tone } from "./ui";
 import { ImportPanel, jobProgress, useJob, type Job } from "./ImportJob";
+import { applyTheme, getTheme, type Theme } from "./theme";
 import type { Problem } from "./AppShell";
 import {
   courses,
@@ -224,6 +228,11 @@ export function Overview({
 
 function ProfileMenu({ user, onEditCourses, onLogout }: { user: string; onEditCourses: () => void; onLogout: () => void }) {
   const [open, setOpen] = useState(false);
+  const [theme, setThemeState] = useState<Theme>(getTheme);
+  const chooseTheme = (t: Theme) => {
+    setThemeState(t);
+    applyTheme(t);
+  };
   const ref = useRef<HTMLDivElement>(null);
 
   // Klick daneben oder Esc schließt das Menü
@@ -274,6 +283,31 @@ function ProfileMenu({ user, onEditCourses, onLogout }: { user: string; onEditCo
           >
             Change courses
           </button>
+          <div className="my-1 h-px bg-line" />
+          <p className="px-2.5 pb-1 pt-1.5 text-[12px] text-muted">Appearance</p>
+          <div role="radiogroup" aria-label="Appearance" className="mx-1 mb-1 grid grid-cols-3 gap-0.5 rounded-lg bg-bg p-[3px]">
+            {(
+              [
+                ["system", "Auto", Monitor],
+                ["light", "Light", Sun],
+                ["dark", "Dark", Moon],
+              ] as const
+            ).map(([t, label, Icon]) => (
+              <button
+                key={t}
+                role="radio"
+                aria-checked={theme === t}
+                onClick={() => chooseTheme(t)}
+                title={t === "system" ? "Same as your Mac" : undefined}
+                className={`flex h-7 items-center justify-center gap-1 rounded-md text-[12px] transition-colors ${
+                  theme === t ? "bg-surface font-semibold shadow-sm" : "text-muted hover:text-text"
+                }`}
+              >
+                <Icon size={12} aria-hidden />
+                {label}
+              </button>
+            ))}
+          </div>
           <div className="my-1 h-px bg-line" />
           <button
             role="menuitem"

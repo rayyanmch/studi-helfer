@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Instrument_Sans } from "next/font/google";
 import "./globals.css";
+import { THEME_BOOT_SCRIPT } from "@/components/theme";
 
 // Schrift wird beim Bauen mitgeliefert, die App lädt nichts aus dem Netz nach.
 const instrument = Instrument_Sans({
@@ -15,7 +16,11 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${instrument.variable} h-full antialiased`}>
+    <html lang="en" className={`${instrument.variable} h-full antialiased`} suppressHydrationWarning>
+      <head>
+        {/* Gewähltes Erscheinungsbild vor dem ersten Bild setzen */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
+      </head>
       <body className="h-full">{children}</body>
     </html>
   );
