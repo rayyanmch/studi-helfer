@@ -189,6 +189,19 @@ Von Mika aus vier Entwürfen gewählt (2026-11-20). Variablen in `web/src/app/gl
 - Demo-Fenster unten rechts (`DemoPanel.tsx`) schaltet Zustände um. Vor der echten App aus `AppShell.tsx` entfernen.
 - Offen: „Öffnen“, „Im Finder zeigen“, „Unterschied“ tun noch nichts. Lernzettel, Karteikarten und Einstellungen haben noch keinen Screen.
 
+## Später (Ideen, noch nicht gebaut)
+
+Von Mika für später zurückgestellt. Reihenfolge = grob nach Nutzen. Nicht vergessen:
+
+- **Mail: Anhang in den Kursordner speichern.** „Save to SE / Exercises“ speichert die PDF vom Prof mit einem Klick in den richtigen Ordner in `~/Uni`.
+- **Mail: Datum im Text erkennen.** „Update deadline“ und „Add to Google Calendar“ aus Sätzen wie „due Tuesday 10:00“ (Regeln, ohne KI).
+- **Mail: Kurs automatisch erkennen** (Absender = Dozent aus ILIAS, Kurskürzel im Betreff), mit Korrektur per Klick.
+- **Eine Suche für alles:** ⌘F findet Mails, Dateien und Fristen zusammen.
+- **Mail: Anhänge direkt aus dem Kursordner anhängen** („Attach from Software Engineering“) und Empfänger-Vorschläge aus den Kursen (Prof, Tutor, Studienbüro).
+- **Mail: Ruhe-Modus** (nur Uni-Mails, Rest wartet), Tastenkürzel E / R / ⌘↵.
+- **Mensaplan** der Kölner Mensen in der Heute-Ansicht, **Belastungs-Ampel** für volle Tage, **Klausur-Countdown** pro Kurs, **Altklausuren-Fach**, **Lösung neben dem Blatt** (Lösung wird automatisch an das Übungsblatt gehängt), **Apple-Kalender abonnieren**, **Widget**, **Siri/Kurzbefehle**.
+- **KI-Funktionen (wenn Geld da ist):** Lernzettel, Karteikarten, Glossar, „Frag deine Folien“.
+
 ## Wissen und Stolperfallen
 
 - Update-Knopf: Jede neue Fassung bringt ein neu gebautes, unsigniertes `studi-sync`, deshalb fragt der Schlüsselbund nach einem Update einmal „studi-sync möchte zugreifen“ (Immer erlauben). In der Entwicklung (`npm start`) zeigt das Menü „Development build“, dort kommt der Stand per git. Version steht im Menü unter „Check for updates“.
