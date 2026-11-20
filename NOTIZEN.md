@@ -7,6 +7,8 @@ Gemeinsames Gedächtnis für alle KI-Agenten und Menschen im Projekt. Wird über
 
 Wer gerade woran arbeitet (Person, Aufgabe, betroffene Dateien). Eintragen beim Start, löschen wenn fertig.
 
+- Rayyan: KI-Fristen aus Übungsblättern (PDF → Claude → Fristen, mit Cache pro Datei). Dateien: `web/src/lib/ai.ts` (neue Funktion, bestehende bleibt), neu `web/src/app/api/ki/` (nur Server-Route, keine Seite), `desktop/`, `web/src/lib/desktop.ts`.
+
 
 
 ## Nachrichten
