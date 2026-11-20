@@ -11,6 +11,7 @@ Wer gerade woran arbeitet (Person, Aufgabe, betroffene Dateien). Eintragen beim 
 
 ## Entscheidungen
 
+- 2026-11-20: **Funktionsumfang beschlossen**, siehe Abschnitt „Funktionsumfang“. „Frag deine Folien“ (Chat mit Unterlagen) vorerst zurückgestellt.
 - 2026-11-20: **Aufteilung: Mika macht das Design** (Oberfläche in `web/` mit Beispieldaten), **Rayyan Electron, ILIAS-Login und Sync**. Electron blendet die Titelleiste aus (Fensterknöpfe schweben über der App), Details im Abschnitt „Design“.
 - 2026-11-20: **Mac-App mit Electron statt reiner Web-App.** Eine Website kann sich nicht bei ILIAS einloggen, keine Passwörter sicher ablegen und keine Ordner auf dem Mac befüllen. Electron packt die Oberfläche aus `web/` (React/Tailwind) in eine echte Mac-App; ein Hintergrundteil (`desktop/`, kommt noch) erledigt Login, PFERD, Dateien und Sync. **ILIAS-Zugangsdaten bleiben lokal im macOS-Schlüsselbund**, nie auf einem Server. Kostenlos; Apple-Signierung (Developer Program, kostenpflichtig) erst nötig, wenn andere die App installieren sollen. Offen: wie Next.js in Electron eingebunden wird, und ob KI-Aufrufe später über einen eigenen Server laufen (der API-Key darf nicht in die ausgelieferte App).
 - 2026-11-20: **Git macht Claude, nicht die Menschen.** Alle arbeiten auf `main`. Hooks in `.claude/settings.json` holen vor jedem Prompt den neuesten Stand und verlangen am Ende jeder Antwort Commit und Push. Die Hooks brauchen `bash` und `git` (macOS/Linux, unter Windows Git Bash).
@@ -19,6 +20,28 @@ Wer gerade woran arbeitet (Person, Aufgabe, betroffene Dateien). Eintragen beim 
 - 2026-11-20: **Supabase** für Daten, Login und Datei-Speicher (Folien).
 - 2026-11-20: **KI = Claude API, nur serverseitig.** Die App bezahlt die Aufrufe zentral, Nutzer brauchen keinen Key. Modell über `AI_MODEL` (Standard `claude-opus-5-5`). Günstiger: `claude-sonnet-5-5` oder `claude-haiku-5-5`. PDFs gehen direkt als `document`-Block an die API, kein eigenes PDF-Parsing nötig.
 - 2026-11-20: **ILIAS über PFERD** (v3.10.1, MIT) als Python-Dienst statt eigenem Scraper. PFERD lädt nur Dateien; Termine kommen aus dem iCal-Export des ILIAS-Kalenders.
+
+## Funktionsumfang
+
+Leitsatz: **App öffnen und sofort wissen, was diese Woche in der Uni wichtig ist.** Reihenfolge = Priorität.
+
+**Wichtig für alle KI-Features: Die Einheit ist ein Thema, nicht eine Datei.** Zu einem Thema gehören meist mehrere Materialien (Vorlesungsfolien, Übungsblatt, Selbstlerneinheit, Tutorium, Lösungen …). Die KI bekommt deshalb immer eine Auswahl von Dateien, nicht nur ein PDF.
+
+1. **Fundament**
+   - ILIAS-Login (Schlüsselbund) und Sync per PFERD nach `~/Uni/<Kurs>/…`.
+   - Übersicht mit „Neu seit letztem Sync“ (Dateiliste vorher/nachher vergleichen, ohne KI). Aktionen „Öffnen“, „Im Finder zeigen“.
+2. **KI**
+   - **Fristen-Radar**: eine Liste „Diese Woche fällig“ aus dem ILIAS-iCal und aus Terminen, die die KI in neuen Übungsblättern/Folien findet (`extractFromSlides`). Höchste Priorität unter den KI-Features.
+   - **Wochen-Digest**: nach dem Sync pro Kurs zwei, drei Sätze, was neu ist und was ansteht.
+   - **Lernzettel**: frei wählbar, zu einem oder mehreren Themen. Nutzer wählt Themen oder Dateien aus (auch kursübergreifend möglich), die KI fasst alle Materialien dazu zusammen und nennt die Quelle (Datei, Folie/Seite).
+   - **Karteikarten mit Lernsystem**: KI erzeugt Karten aus gewählten Themen/Dateien; Wiederholung nach Lernsystem (Leitner oder SM-2, „gewusst / nicht gewusst“), Fälligkeiten pro Tag. **Export nach Anki**: zuerst als Textdatei (tab-getrennt, importiert Anki direkt), `.apkg` später.
+3. **Mac**
+   - **Mitteilungen**: „Neues Übungsblatt in BWL“, Klick öffnet die Datei; auch für nahende Fristen.
+   - **Symbol in der Menüleiste**: Sync-Status, letzter Sync, „Jetzt synchronisieren“, App öffnen.
+   - **Sync im Hintergrund**, Intervall einstellbar (z. B. aus / 30 min / 1 h / 3 h / täglich), optional Start beim Login.
+   - **Spotlight**: Dateien liegen echt in `~/Uni`, macOS indexiert sie von selbst. Nichts zu bauen, in der Demo zeigen.
+
+Zurückgestellt: „Frag deine Folien“ (Fragen an ausgewählte PDFs). Nicht geplant: Abgaben hochladen, Noten aus KLIPS, Lerngruppen/Teilen, Handy-App.
 
 ## Design (für Mika)
 
@@ -67,7 +90,7 @@ Auch ohne Skills gilt: keine lila Verläufe, kein Glow, kein Verlaufstext, keine
   5. **Sync-Status**, immer sichtbar (z. B. unten in der Seitenleiste): letzter Sync, läuft gerade, Fehler, Button „Jetzt synchronisieren“.
 - Fehlerzustände mitdesignen: offline, Login abgelaufen, einzelner Kurs fehlgeschlagen.
 - Die Daten liefert später der Hintergrundteil. Bis dahin mit Beispieldaten arbeiten (Kurse wie „Softwaretechnik“, „BWL“, „Mathematik für Informatik I“; Dateien wie Folien-PDFs und Übungsblätter). Die genaue Datenform legen wir in `web/src/lib/` fest, sobald der Login steht.
-- Kalender und KI-Merkzettel kommen danach, für jetzt nicht nötig.
+- Weitere Screens kommen aus dem Abschnitt „Funktionsumfang“ (Fristen-Radar, Digest, Lernzettel, Karteikarten, Einstellungen für das Sync-Intervall).
 
 ### Designsprache
 
