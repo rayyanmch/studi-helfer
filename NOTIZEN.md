@@ -7,6 +7,7 @@ Gemeinsames Gedächtnis für alle KI-Agenten und Menschen im Projekt. Wird über
 
 Wer gerade woran arbeitet (Person, Aufgabe, betroffene Dateien). Eintragen beim Start, löschen wenn fertig.
 
+- Mika: Feinschliff Übersicht (Kurznamen + freie Tage schmal, Abgaben abhaken, Suche oben rechts). Dateien: `web/src/components/`, `web/src/lib/mock-data.ts`.
 
 ## Entscheidungen
 
