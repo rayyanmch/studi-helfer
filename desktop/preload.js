@@ -17,6 +17,7 @@ contextBridge.exposeInMainWorld("studi", {
   saveSetup: call("studi:saveSetup"),
   chooseFolder: call("studi:chooseFolder"),
   startSync: call("studi:startSync"),
+  cancelSync: call("studi:cancelSync"),
   getSyncState: call("studi:getSyncState"),
   getRuns: call("studi:getRuns"),
   getFiles: call("studi:getFiles"),

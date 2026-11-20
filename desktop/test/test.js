@@ -75,6 +75,7 @@ function renderSync(state) {
   }
   $("sync-state").textContent = lines.join("\n");
   $("sync").disabled = Boolean(state.running);
+  $("cancel").disabled = !state.running;
 }
 
 async function renderFiles() {
@@ -147,6 +148,11 @@ $("save-setup").addEventListener("click", async () => {
 $("sync").addEventListener("click", async () => {
   const res = await api.startSync();
   msg("sync-msg", res.ok ? "Sync gestartet." : res.message, !res.ok);
+});
+
+$("cancel").addEventListener("click", async () => {
+  const res = await api.cancelSync();
+  msg("sync-msg", res.ok ? "Wird abgebrochen …" : res.message, !res.ok);
 });
 
 $("sched-save").addEventListener("click", async () => {

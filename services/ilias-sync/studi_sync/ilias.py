@@ -174,9 +174,11 @@ def list_courses(session: requests.Session, dump: bool = False) -> list[dict[str
     today = date.today()
     for c in courses:
         c["semester"] = _semester_of(c["title"] + " " + c.pop("_text"), today)
-    # Vorauswahl: aktuelles Semester; ist keins erkennbar, alles außer eindeutig alten Kursen.
-    any_current = any(c["semester"] == "current" for c in courses)
+    # Vorauswahl: nur Kurse (keine Gruppen) des aktuellen Semesters; ist keiner erkennbar, alle Kurse
+    # außer eindeutig alten. Gruppen (Tutorien, Altklausur-Sammlungen) können riesig sein: nur auf Wunsch.
+    any_current = any(c["semester"] == "current" and c["kind"] == "crs" for c in courses)
     for c in courses:
-        c["suggested"] = c["semester"] == "current" or (not any_current and c["semester"] == "unknown")
+        fits = c["semester"] == "current" or (not any_current and c["semester"] == "unknown")
+        c["suggested"] = c["kind"] == "crs" and fits
     courses.sort(key=lambda c: ({"current": 0, "unknown": 1, "past": 2}[c["semester"]], c["title"].lower()))
     return courses

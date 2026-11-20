@@ -13,6 +13,7 @@ import json
 import os
 import random
 import re
+import signal
 import socket
 import subprocess
 import time
@@ -105,6 +106,10 @@ def notify(text: str) -> None:
                    capture_output=True)
 
 
+class Cancelled(Exception):
+    """Abbruch per SIGTERM, während gerade kein PFERD läuft (Wartezeit)."""
+
+
 class Run:
     def __init__(self, trigger: str, courses: list[dict[str, Any]]):
         self.trigger = trigger
@@ -120,6 +125,11 @@ class Run:
         self.deleted: list[dict[str, str]] = []
         self.problems: list[dict[str, Any]] = []
         self.versions: dict[tuple[str, str], str] = {}  # (Kurs, Pfad) → gesicherte alte Fassung
+        # Während des Laufs gemeldete Dateien. Fallback, falls PFERD vor dem Bericht beendet wird.
+        self.live: dict[str, dict[str, list[str]]] = {}
+        self.proc: Optional[subprocess.Popen[str]] = None
+        self.cancelled = False
+
 
     def state(self, **extra: Any) -> None:
         write_json(STATE, {
@@ -143,6 +153,7 @@ def run_pferd(run: Run, log: Any) -> int:
     proc = subprocess.Popen([*self_command(), "pferd-run", "--config", str(PFERD_CFG)],
                             stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                             text=True, env=env, bufsize=1)
+    run.proc = proc
     assert proc.stdout is not None
     in_report = False
     report_crawler: Optional[str] = None
@@ -171,6 +182,7 @@ def run_pferd(run: Run, log: Any) -> int:
                 final[report_crawler][m.group(1)].append(path)
             elif run.current in run.courses and m.group(1) in ("Added", "Changed"):
                 run.courses[run.current][m.group(1).lower()] += 1
+                run.live.setdefault(run.current, {"Added": [], "Changed": [], "Deleted": []})[m.group(1)].append(path)
                 if time.time() - last_state > 0.5:
                     run.state()
                     last_state = time.time()
@@ -182,7 +194,10 @@ def run_pferd(run: Run, log: Any) -> int:
                 if cid in run.courses:
                     run.courses[cid]["problems"].append(line.strip())
     proc.wait()
+    run.proc = None
 
+    for cid, lists in run.live.items():
+        final.setdefault(cid, lists)  # kein Bericht (abgebrochen): live gemeldete Dateien nehmen
     for cid, lists in final.items():
         for kind, target in (("Added", run.added), ("Changed", run.changed), ("Deleted", run.deleted)):
             target.extend({"course": cid, "path": p} for p in lists[kind])
@@ -193,7 +208,9 @@ def run_pferd(run: Run, log: Any) -> int:
             run.courses[cid]["added"] = len(lists["Added"])
             run.courses[cid]["changed"] = len(lists["Changed"])
     for c in run.courses.values():
-        if c["status"] in ("running", "waiting"):
+        if run.cancelled and c["status"] in ("running", "waiting"):
+            c["status"] = "cancelled"
+        elif c["status"] in ("running", "waiting"):
             c["status"] = "error" if c["problems"] or c["status"] == "waiting" else "done"
         elif c["problems"]:
             c["status"] = "error"
@@ -221,11 +238,25 @@ def sync(auto: bool) -> dict[str, Any]:
     trigger = "auto" if auto else "manual"
     run = Run(trigger, courses)
 
+    # Abbrechen (Knopf in der App schickt SIGTERM): PFERD beenden, Lauf sauber als "cancelled" abschließen.
+    def on_term(_signum: int, _frame: Any) -> None:
+        run.cancelled = True
+        if run.proc is not None and run.proc.poll() is None:
+            run.proc.terminate()
+        else:
+            raise Cancelled()
+
+    signal.signal(signal.SIGTERM, on_term)
+
     delay_min = int(cfg.get("randomDelayMin", 15))
     if auto and delay_min > 0:
         delay = random.randint(0, delay_min * 60)
         run.state(waitingUntil=time.time() + delay)
-        time.sleep(delay)
+        try:
+            time.sleep(delay)
+        except Cancelled:
+            write_json(STATE, {"running": False, "lastEnd": time.time(), "lastStatus": "cancelled"})
+            return {"status": "cancelled", "added": [], "changed": [], "problems": [], "courses": run.courses}
         run.started = time.time()
 
     daily = open(LOGS / f"{datetime.now():%Y-%m-%d}.log", "a", encoding="utf-8")
@@ -246,21 +277,29 @@ def sync(auto: bool) -> dict[str, Any]:
     offline = False
     attempt = 1
     for attempt in range(1, attempts + 1):
-        if not wait_for_network(300 if auto else 20, log):
-            offline = True
-            run.problems = [{"course": None, "message": "Keine Verbindung zu ILIAS"}]
-        else:
-            exit_code = run_pferd(run, log)
-            offline = bool(run.problems) and all(
-                any(e in p["message"] for e in NET_ERRORS) for p in run.problems)
-        if not offline or attempt == attempts:
+        try:
+            if not wait_for_network(300 if auto else 20, log):
+                offline = True
+                run.problems = [{"course": None, "message": "Keine Verbindung zu ILIAS"}]
+            else:
+                exit_code = run_pferd(run, log)
+                offline = bool(run.problems) and all(
+                    any(e in p["message"] for e in NET_ERRORS) for p in run.problems)
+            if run.cancelled or not offline or attempt == attempts:
+                break
+            log(f"Verbindungsproblem, neuer Versuch in 10 min ({attempt + 1}/{attempts})")
+            run.state(retryAt=time.time() + 600)
+            time.sleep(600)
+        except Cancelled:
             break
-        log(f"Verbindungsproblem, neuer Versuch in 10 min ({attempt + 1}/{attempts})")
-        run.state(retryAt=time.time() + 600)
-        time.sleep(600)
 
     login_problem = any(any(e in p["message"] for e in AUTH_ERRORS) for p in run.problems)
-    if offline:
+    if run.cancelled:
+        status = "cancelled"
+        for c in run.courses.values():
+            if c["status"] in ("running", "waiting"):
+                c["status"] = "cancelled"
+    elif offline:
         status = "offline"
     elif login_problem:
         status = "login"
@@ -281,7 +320,7 @@ def sync(auto: bool) -> dict[str, Any]:
     write_json(STATE, {"running": False, "lastEnd": ended, "lastStatus": status})
     log(f"Fertig: {status}, {len(run.added)} neu, {round(ended - run.started)} s")
 
-    if auto and cfg.get("notifications", True):
+    if auto and status != "cancelled" and cfg.get("notifications", True):
         n = len(run.added)
         if status == "login":
             notify("ILIAS-Anmeldung abgelaufen. Bitte in Studi-Helfer neu anmelden.")

@@ -193,6 +193,18 @@ function startSync(isPackaged) {
   return { ok: true };
 }
 
+/** Bricht einen laufenden Sync ab (auch einen von launchd gestarteten). Fertige Dateien bleiben. */
+function cancelSync() {
+  const state = readState();
+  if (!state.running || !state.pid) return { ok: false, code: "invalid", message: "Es läuft kein Sync." };
+  try {
+    process.kill(state.pid, "SIGTERM");
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, code: "internal", message: e.message };
+  }
+}
+
 // ------------------------------------------------------------------ Dateien
 
 const KINDS = {
@@ -398,6 +410,7 @@ module.exports = {
   readState,
   readRuns,
   startSync,
+  cancelSync,
   listFiles,
   insideTarget,
   applySchedule,

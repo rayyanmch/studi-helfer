@@ -7,11 +7,10 @@ Gemeinsames Gedächtnis für alle KI-Agenten und Menschen im Projekt. Wird über
 
 Wer gerade woran arbeitet (Person, Aufgabe, betroffene Dateien). Eintragen beim Start, löschen wenn fertig.
 
-- Rayyan: ILIAS-Infrastruktur: Login (Schlüsselbund), Kurssuche, Download per PFERD, täglicher Sync (launchd), Electron-Gerüst mit Schnittstelle für die Oberfläche. Dateien: `desktop/`, `services/ilias-sync/`, neu `web/src/lib/desktop.ts` (nur Typen + Zugriff, Mikas Dateien bleiben unberührt).
 
 ## Entscheidungen
 
-- 2026-11-20: **ILIAS-Infrastruktur steht** (mit echtem Account getestet). Aufbau: Electron (`desktop/`) ↔ Python-Helfer (`services/ilias-sync/studi_sync`, JSON-Zeilen über stdin/stdout) ↔ PFERD. Passwort geht nur per stdin an den Helfer und liegt danach nur im Schlüsselbund („Studi-Helfer ILIAS“). Kurse findet der Helfer selbst über „Meine Kurse und Gruppen“, Vorschlag = aktuelles Semester. Ordner `~/Uni/<Kurs ohne [WS26/27]>/…` wie in ILIAS. Täglich 07:00 per launchd (`de.studihelfer.sync`, läuft auch bei geschlossener App) plus Sync beim App-Start (wenn letzter > 6 h her). App-Daten: `~/Library/Application Support/Studi-Helfer/`.
+- 2026-11-20: **ILIAS-Infrastruktur steht** (mit echtem Account getestet). Aufbau: Electron (`desktop/`) ↔ Python-Helfer (`services/ilias-sync/studi_sync`, JSON-Zeilen über stdin/stdout) ↔ PFERD. Passwort geht nur per stdin an den Helfer und liegt danach nur im Schlüsselbund („Studi-Helfer ILIAS“). Kurse findet der Helfer selbst über „Meine Kurse und Gruppen“. Vorgeschlagen werden nur Kurse (`crs`) des aktuellen Semesters, keine Gruppen: Die Gruppe „Übungs- Altklausuren“ hatte über 500 Dateien / 500 MB. Abbrechen geht mit `cancelSync()` (Status `cancelled`, fertige Dateien bleiben). Ordner `~/Uni/<Kurs ohne [WS26/27]>/…` wie in ILIAS. Täglich 07:00 per launchd (`de.studihelfer.sync`, läuft auch bei geschlossener App) plus Sync beim App-Start (wenn letzter > 6 h her). App-Daten: `~/Library/Application Support/Studi-Helfer/`.
 - 2026-11-20: **PFERD mit `on_conflict = no-delete`, alte Fassung wird vorher gesichert** (`<App-Daten>/versions/<Kursordner>/<Datei>@<Zeit>`; Pfad steht in `runs.jsonl` unter `changed[].previous` und als `previousVersion` an der Datei). Grundlage für „Geänderte Dateien erkennen“.
 - 2026-11-20: **Design „Wochenstreifen“** (Mika hat aus vier Entwürfen gewählt): Startseite zeigt die nächsten 7 Tage mit Fristen in Kursfarben. Details unter „Designsprache“.
 - 2026-11-20: **Funktionsumfang beschlossen**, siehe Abschnitt „Funktionsumfang“. „Frag deine Folien“ (Chat mit Unterlagen) vorerst zurückgestellt.
@@ -116,7 +115,7 @@ Von Mika aus vier Entwürfen gewählt (2026-11-20). Variablen in `web/src/app/gl
 
 ## Wissen und Stolperfallen
 
-- ILIAS Uni Köln: `base_url = https://www.ilias.uni-koeln.de/ilias`, `client_id=uk`, PFERD mit `login_type = local`. Echter Login und Kurssuche getestet (2026-11-20). Kurstitel tragen das Semester vorn: `[WS26/27] Softwaretechnik`, `[SoSe26] …`; Gruppen (`grp`) teils ohne Semester.
+- ILIAS Uni Köln: `base_url = https://www.ilias.uni-koeln.de/ilias`, `client_id=uk`, PFERD mit `login_type = local`. Echter Login, Kurssuche und Sync getestet (2026-11-20): erster Import von 8 Kursen ca. 15 min / 300 MB, ein Sync ohne Neues ca. 7 min. Kurstitel tragen das Semester vorn: `[WS26/27] Softwaretechnik`, `[SoSe26] …`; Gruppen (`grp`) teils ohne Semester.
 - PFERD kann in Köln das Dashboard nicht lesen und braucht drei Korrekturen (Unterpfad `/ilias`, Link-Auflösung, nie nach Passwort fragen). Die setzt `studi_sync/pferd_run.py` zur Laufzeit ein, nicht durch Umschreiben der installierten Dateien.
 - PFERD `on_conflict = local-first` übernimmt geänderte Dateien aus ILIAS **nie** (deshalb war „changed“ in Rayyans altem Sync immer leer).
 - PFERD fragt ohne Schlüsselbund-Eintrag per `getpass` nach dem Passwort und hängt dann ewig (liest `/dev/tty`). Ist gepatcht, beim Testen im Terminal trotzdem dran denken.

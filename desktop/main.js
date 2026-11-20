@@ -248,6 +248,7 @@ handle("studi:listCourses", listCourses);
 handle("studi:saveSetup", saveSetup);
 handle("studi:chooseFolder", chooseFolder);
 handle("studi:startSync", () => backend.startSync(packaged()));
+handle("studi:cancelSync", () => backend.cancelSync());
 handle("studi:getSyncState", () => backend.readState());
 handle("studi:getRuns", (limit) => backend.readRuns(Math.min(Number(limit) || 20, 200)));
 handle("studi:getFiles", () => backend.listFiles());

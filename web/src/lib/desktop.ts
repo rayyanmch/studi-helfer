@@ -40,8 +40,8 @@ export interface IliasCourse {
   videos: boolean; // Videos mitladen (Standard aus)
 }
 
-export type SyncRunStatus = "ok" | "error" | "offline" | "login";
-export type CourseSyncStatus = "waiting" | "running" | "done" | "error";
+export type SyncRunStatus = "ok" | "error" | "offline" | "login" | "cancelled"; // login = Anmeldung abgelaufen
+export type CourseSyncStatus = "waiting" | "running" | "done" | "error" | "cancelled";
 
 /** Laufender Sync. Kommt über onSyncState() etwa jede Sekunde, solange sich etwas ändert. */
 export interface SyncState {
@@ -118,6 +118,8 @@ export interface StudiDesktop {
   chooseFolder(): Promise<string | null>;
   /** Startet einen Sync im Hintergrund (läuft auch weiter, wenn die App geschlossen wird). */
   startSync(): Promise<Ok | Fail>;
+  /** Bricht den laufenden Sync ab. Schon geladene Dateien bleiben, der Lauf endet mit Status "cancelled". */
+  cancelSync(): Promise<Ok | Fail>;
   getSyncState(): Promise<SyncState>;
   onSyncState(callback: (state: SyncState) => void): () => void;
   getRuns(limit?: number): Promise<SyncRun[]>;
