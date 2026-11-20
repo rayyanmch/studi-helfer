@@ -174,6 +174,30 @@ def list_courses(session: requests.Session, dump: bool = False) -> list[dict[str
     today = date.today()
     for c in courses:
         c["semester"] = _semester_of(c["title"] + " " + c.pop("_text"), today)
+
+    # Übungsgruppen gehören zu einem Kurs: Elternkurs aus der Brotkrumen-Navigation (gecacht).
+    from .common import read_json, write_json
+    from .deadlines import PARENTS, _breadcrumb_parents
+
+    cache: dict[str, list[str]] = read_json(PARENTS, {})
+    for c in courses:
+        c["parent"] = None
+        if c["kind"] != "grp":
+            continue
+        key = f"grp/{c['refId']}"
+        if key not in cache:
+            try:
+                cache[key] = _breadcrumb_parents(session, key)
+            except requests.RequestException:
+                continue
+        parents = [p for p in cache[key] if p.startswith("crs-")]
+        c["parent"] = parents[-1] if parents else None
+    write_json(PARENTS, cache)
+    # Gruppen im Semester ihres Kurses (z. B. „Gruppe 05“ ohne Semester im Titel)
+    by_id = {c["id"]: c for c in courses}
+    for c in courses:
+        if c["parent"] in by_id and c["semester"] == "unknown":
+            c["semester"] = by_id[c["parent"]]["semester"]
     # Vorauswahl: nur Kurse (keine Gruppen) des aktuellen Semesters; ist keiner erkennbar, alle Kurse
     # außer eindeutig alten. Gruppen (Tutorien, Altklausur-Sammlungen) können riesig sein: nur auf Wunsch.
     any_current = any(c["semester"] == "current" and c["kind"] == "crs" for c in courses)

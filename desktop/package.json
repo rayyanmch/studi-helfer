@@ -26,7 +26,8 @@
       "preload.js",
       "lib/**",
       "test/**",
-      "package.json"
+      "package.json",
+      "assets/**"
     ],
     "extraResources": [
       {
@@ -51,7 +52,8 @@
         }
       ],
       "identity": null,
-      "hardenedRuntime": false
+      "hardenedRuntime": false,
+      "icon": "assets/icon.png"
     },
     "dmg": {
       "title": "Studi-Helfer"

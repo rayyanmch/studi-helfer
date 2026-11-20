@@ -8,6 +8,8 @@
     deadlines                    Fristen/Termine aus dem ILIAS-Kalender holen (→ deadlines.json),
                                  danach Übungsblätter per Regeln auswerten (→ sheet-deadlines.json).
     sheet-deadlines              Nur Übungsblätter per Regeln auswerten (lokal, ohne Netz).
+    calendars                    Zusätzliche Kalender (iCal-Links aus config.json) laden.
+    calendar-test --url URL      Prüft einen iCal-Link (Anzahl Termine, Beispiele), speichert nichts.
     sync [--auto]                Ein Sync-Lauf (--auto: von launchd, mit Zufallsverzögerung,
                                  Netz-Wartezeit, Wiederholungen und Mitteilungen).
     pferd-run --config DATEI     Intern: PFERD mit Köln-Korrekturen starten.
@@ -86,8 +88,28 @@ def cmd_deadlines(args: argparse.Namespace) -> None:
     from .sheets import refresh as refresh_sheets
 
     sheets = refresh_sheets()
+    from .calendars import refresh as refresh_calendars
+
+    cals = refresh_calendars()
     emit({"type": "result", "count": len(result["deadlines"]), "sheetCount": len(sheets["deadlines"]),
-          "updatedAt": result["updatedAt"]})
+          "calendarCount": len(cals["events"]), "updatedAt": result["updatedAt"]})
+
+
+def cmd_calendars(args: argparse.Namespace) -> None:
+    from .calendars import refresh
+
+    result = refresh()
+    emit({"type": "result", "count": len(result["events"]), "calendars": result["calendars"]})
+
+
+def cmd_calendar_test(args: argparse.Namespace) -> None:
+    from .calendars import fetch, parse
+
+    try:
+        events = parse(fetch(args.url))
+    except Exception as e:  # noqa: BLE001
+        raise AppError("invalid", str(e) or "This link did not work.") from None
+    emit({"type": "result", "count": len(events), "sample": [e["title"] for e in events[:5]]})
 
 
 def cmd_sheet_deadlines(args: argparse.Namespace) -> None:
@@ -121,6 +143,8 @@ def main() -> int:
     p = sub.add_parser("courses"); p.add_argument("--dump", action="store_true"); p.set_defaults(fn=cmd_courses)
     p = sub.add_parser("deadlines"); p.set_defaults(fn=cmd_deadlines)
     p = sub.add_parser("sheet-deadlines"); p.set_defaults(fn=cmd_sheet_deadlines)
+    p = sub.add_parser("calendars"); p.set_defaults(fn=cmd_calendars)
+    p = sub.add_parser("calendar-test"); p.add_argument("--url", required=True); p.set_defaults(fn=cmd_calendar_test)
     p = sub.add_parser("sync"); p.add_argument("--auto", action="store_true"); p.set_defaults(fn=cmd_sync)
     p = sub.add_parser("pferd-run"); p.add_argument("--config", required=True); p.set_defaults(fn=cmd_pferd_run)
     args = parser.parse_args()

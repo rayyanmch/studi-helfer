@@ -16,11 +16,10 @@ from typing import Any, Iterator, Optional
 from .common import DATA_DIR, load_config, read_json, write_json
 from .deadlines import deadline_id
 
-RULES_VERSION = 2  # erhöhen, wenn sich die Regeln ändern → alles wird neu ausgewertet
+RULES_VERSION = 3  # erhöhen, wenn sich die Regeln ändern → alles wird neu ausgewertet
 CACHE = DATA_DIR / "sheet-deadlines-cache.json"
 OUTPUT = DATA_DIR / "sheet-deadlines.json"
-RECENT_DAYS = 28
-MAX_PAGES = 4  # Fristen stehen fast immer auf den ersten Seiten
+MAX_PAGES = 8  # Fristen und Klausurtermine stehen fast immer auf den ersten Seiten (Orga-Folien)
 MAX_BYTES = 30 * 1024 * 1024
 
 SHEET_NAME = re.compile(
@@ -70,8 +69,8 @@ def _year_for(day: int, month: int, ref: date) -> int:
     return best.year if best else ref.year
 
 
-def _find_date(text: str, ref: date) -> Optional[tuple[date, int, int]]:
-    """Erstes plausibles Datum in text → (Datum, Start, Ende im Text)."""
+def _find_dates(text: str, ref: date) -> list[tuple[date, int, int]]:
+    """Alle plausiblen Daten in text → [(Datum, Start, Ende)], nach Position, ohne Überlappungen."""
     hits = []
     for pat in DATE_PATTERNS:
         for m in pat.finditer(text):
@@ -83,10 +82,37 @@ def _find_date(text: str, ref: date) -> Optional[tuple[date, int, int]]:
                 hits.append((m.start(), date(year, month, d), m.end()))
             except (ValueError, KeyError, TypeError):
                 continue
-    if not hits:
+    hits.sort(key=lambda h: (h[0], -(h[2] - h[0])))
+    out: list[tuple[date, int, int]] = []
+    last_end = -1
+    for start, d, end in hits:
+        if start >= last_end:
+            out.append((d, start, end))
+            last_end = end
+    return out
+
+
+def _find_date(text: str, ref: date) -> Optional[tuple[date, int, int]]:
+    """Erstes plausibles Datum in text → (Datum, Start, Ende im Text)."""
+    hits = _find_dates(text, ref)
+    return hits[0] if hits else None
+
+
+_NOISE = re.compile(
+    rf"(\d{{1,2}}\.\s?\d{{1,2}}\.(\d{{2,4}})?|\d{{4}}-\d{{2}}-\d{{2}}|\b\d{{1,2}}[:.]\d{{2}}\b|\b\d{{1,2}}\s?uhr\b|"
+    rf"\b({_MONTH_RE})\.?\b|\b\d{{4}}\b|\b(montag|dienstag|mittwoch|donnerstag|freitag|samstag|sonntag|mo|di|mi|do|fr|"
+    rf"monday|tuesday|wednesday|thursday|friday|am|um|uhr|bis|zum|spätestens|by|at|on|the|der|den|dem)\b|[•·▪●\-–—:,;()\[\]!])",
+    re.I,
+)
+
+
+def _label(evidence: str) -> Optional[str]:
+    """Kurzer Titel aus der Textstelle („21.01.27, 12:00 Uhr: Abgabe Designübung“ → „Abgabe Designübung“)."""
+    words = [w for w in _NOISE.sub(" ", evidence).split() if len(w) > 1 or w.isdigit()]
+    if len(words) < 2 or len(" ".join(words)) > 60:
         return None
-    start, d, end = min(hits, key=lambda h: h[0])
-    return d, start, end
+    text = " ".join(words)
+    return text[0].upper() + text[1:]
 
 
 def _find_time(text: str) -> Optional[str]:
@@ -124,21 +150,30 @@ def extract(text: str, ref: date) -> list[dict[str, Any]]:
             continue
         # Datum in derselben Zeile hinter/um das Fristwort, sonst in der nächsten Zeile („Abgabe:\n24.11.“).
         window = line[max(0, kw.start() - 40):]
-        hit = _find_date(window, ref)
+        hits = _find_dates(window, ref)
         evidence = line
-        if hit is None and i + 1 < len(lines) and len(line) - kw.end() < 15:
+        if not hits and i + 1 < len(lines) and len(line) - kw.end() < 15:
             window = lines[i + 1]
-            hit = _find_date(window, ref)
+            hits = _find_dates(window, ref)
             evidence = f"{line} {lines[i + 1]}"
-        if hit is None:
+        if not hits:
             continue
-        day, _, end = hit
-        found.append({
-            "date": day,
-            "time": _find_time(window[end:end + 40]),
-            "kind": ("klausur" if EXAM_WORDS.search(kw.group(0)) else "termin") if EVENT_WORDS.search(kw.group(0)) else "abgabe",
-            "evidence": evidence[:200],
-        })
+        kind = ("klausur" if EXAM_WORDS.search(kw.group(0)) else "termin") if EVENT_WORDS.search(kw.group(0)) else "abgabe"
+        base_label = _label(evidence) if len(hits) == 1 else kw.group(0)[0].upper() + kw.group(0)[1:]
+        for n, (day, _, end) in enumerate(hits):
+            # Mehrere Daten in einer Zeile („Klausur 16. Februar (1. Termin) und 24. März (2. Termin)“):
+            # je Datum ein Eintrag, Klammerzusatz direkt dahinter wird Teil des Titels.
+            nxt = hits[n + 1][1] if n + 1 < len(hits) else len(window)
+            segment = window[end:nxt]
+            extra = re.match(r"\s*\(([^)]{1,30})\)", segment)
+            label = f"{base_label} ({extra.group(1)})" if extra and len(hits) > 1 and base_label else base_label
+            found.append({
+                "date": day,
+                "time": _find_time(segment[:40]),
+                "kind": kind,
+                "label": label,
+                "evidence": evidence[:200],
+            })
     # Doppelte (gleicher Tag, gleiche Art) zusammenfassen, die mit Uhrzeit gewinnt.
     best: dict[tuple[date, str], dict[str, Any]] = {}
     for f in found:
@@ -159,15 +194,18 @@ def _pdf_text(path: Path) -> str:
     return "\n".join((page.extract_text() or "") for page in reader.pages[:MAX_PAGES])
 
 
-def _title(file_name: str, kind: str) -> str:
+def _title(file_name: str, kind: str, label: Optional[str] = None) -> str:
+    """Titel: aus der Textstelle, wenn sie aussagekräftig ist, sonst aus dem Dateinamen."""
+    generic = {"abgabe", "deadline", "due", "due date", "submission", "submit", "frist", "abgabetermin", "abgabefrist"}
+    if label and label.lower() not in generic:
+        return label
     stem = re.sub(r"[_\-]+", " ", Path(file_name).stem)
     stem = re.sub(r"\s{2,}", " ", stem).strip()
-    return {"abgabe": f"Submit {stem}", "klausur": f"Exam/Test: {stem}"}.get(kind, stem)
+    return {"abgabe": f"Submit {stem}", "klausur": f"Exam: {stem}"}.get(kind, stem)
 
 
 def candidates(cfg: dict[str, Any]) -> list[tuple[dict[str, Any], Path]]:
     target = Path(cfg.get("targetDir") or "")
-    since = time.time() - RECENT_DAYS * 86400
     out = []
     for c in cfg.get("courses", []):
         if not c.get("selected"):
@@ -178,14 +216,14 @@ def candidates(cfg: dict[str, Any]) -> list[tuple[dict[str, Any], Path]]:
         for p in root.rglob("*.pdf"):
             if any(part.startswith(".") for part in p.relative_to(root).parts):
                 continue
-            rel = str(p.relative_to(root))
-            if SOLUTION.search(p.name) or not SHEET_NAME.search(rel):
+            # Alle PDFs außer Lösungen: Klausurtermine stehen oft in Orga-Folien, Abgaben auch in Vorlesungsfolien.
+            if SOLUTION.search(p.name):
                 continue
             try:
                 st = p.stat()
             except OSError:
                 continue
-            if st.st_mtime >= since and st.st_size <= MAX_BYTES:
+            if st.st_size <= MAX_BYTES:
                 out.append((c, p))
     return out
 
@@ -218,7 +256,7 @@ def refresh() -> dict[str, Any]:
             day = date.fromisoformat(f["date"])
             if not (oldest <= day <= newest):
                 continue
-            title = _title(path.name, f["kind"])
+            title = _title(path.name, f["kind"], f.get("label"))
             time_label = (f"by {f['time']}" if f["kind"] == "abgabe" else f["time"]) if f["time"] else "all day"
             results.append({
                 "id": deadline_id(course["id"], title, f["date"]),

@@ -1,13 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   AlertTriangle,
   CalendarDays,
-  Check,
   ChevronDown,
-  ChevronRight,
   Inbox,
+  Library,
   LogIn,
   Monitor,
   Moon,
@@ -17,14 +16,18 @@ import {
   WifiOff,
   X,
 } from "lucide-react";
-import { Button, FileIcon, Notice, Spinner, Swatch, colorOf, nameOf, shortOf, tone } from "./ui";
-import { ImportPanel, jobProgress, useJob, type Job } from "./ImportJob";
+import { Button, Notice, Spinner, Swatch, colorOf, nameOf, shortOf, tone } from "./ui";
+import { CheckButton, FileRow, Highlight } from "./files";
+import { CoursesView } from "./CoursesView";
+import { ModuleView } from "./ModuleView";
+import { Settings } from "./Settings";
+import { ImportPanel, jobProgress, useJob, useTick, type Job } from "./ImportJob";
 import { applyTheme, getTheme, type Theme } from "./theme";
 import { UpdateMenuItem } from "./UpdateNotice";
 import type { Problem } from "./AppShell";
-import { countFiles, countNew, type Course, type CourseFile, type Deadline } from "@/lib/mock-data";
+import { countFiles, countNew, type Course, type Deadline } from "@/lib/mock-data";
 import * as store from "@/lib/app-store";
-import { appStore, useApp } from "@/lib/app-store";
+import { appStore, etaLabel, realCourses, useApp, useCommand } from "@/lib/app-store";
 
 const FAIL_ID = "rechnernetze";
 const DAY_MS = 86_400_000;
@@ -33,7 +36,7 @@ const LONG = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", 
 // Titel ohne „Submit “ vorne, für enge Stellen
 const bare = (t: string) => t.replace(/^Submit /, "");
 
-type View = "week" | "new" | string;
+type View = "week" | "new" | "courses" | string; // string = Modul-Id
 
 function parseDay(iso: string) {
   const [y, m, d] = iso.split("-").map(Number);
@@ -46,7 +49,6 @@ const daysFromToday = (iso: string) => Math.round((parseDay(iso) - todayMs()) / 
 const isUrgent = (d: Deadline) => d.kind === "abgabe" && daysFromToday(d.date) <= 3;
 const courseById = (id: string) => appStore.get().courses.find((c) => c.id === id);
 const digestsNow = () => appStore.get().digests;
-const isDesktop = () => appStore.get().mode === "desktop";
 
 export function Overview({
   courseIds,
@@ -81,6 +83,7 @@ export function Overview({
   const [query, setQuery] = useState("");
   const [closedRun, setClosedRun] = useState(0); // Import-Lauf, dessen Fenster geschlossen wurde
   const searchRef = useRef<HTMLInputElement>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const { job, start, stop, dismiss, retry } = useJob((finished) => {
     if (finished.rows.some((r) => r.status === "failed")) return;
@@ -116,6 +119,23 @@ export function Overview({
     start("sync", list);
   };
 
+  // Befehle aus dem App-Menü (⌘1–3, ⌘R, ⌘F, ⌘,)
+  const onCommand = useCallback(
+    (cmd: string) => {
+      if (cmd === "week" || cmd === "new" || cmd === "courses") {
+        setQuery("");
+        setView(cmd);
+      } else if (cmd === "search") {
+        searchRef.current?.focus();
+        searchRef.current?.select();
+      } else if (cmd === "settings") setSettingsOpen(true);
+      else if (cmd === "sync") sync();
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [syncing, problem],
+  );
+  useCommand(onCommand);
+
   const toggleDone = (id: string) =>
     desktop ? void store.toggleDone(id) : setDone((d) => (d.includes(id) ? d.filter((x) => x !== id) : [...d, id]));
   const open = (v: View) => {
@@ -124,7 +144,8 @@ export function Overview({
   };
 
   const course = list.find((c) => c.id === view);
-  const newCount = list.reduce((n, c) => n + countNew(c), 0);
+  const newCount = list.reduce((n, c) => n + countNew(c) + c.folders.reduce((m, f) => m + f.files.filter((x) => x.changeNote && !x.isNew).length, 0), 0);
+  const modules = realCourses(list);
   const mine = app.deadlines.filter((d) => courseIds.includes(d.courseId));
   const searching = query.trim().length > 0;
 
@@ -132,7 +153,7 @@ export function Overview({
     <div className="flex h-full bg-bg">
       <aside className="flex w-[236px] shrink-0 flex-col border-r border-line bg-sidebar">
         <div className="drag h-[44px] shrink-0" />
-        <ProfileMenu user={user} onEditCourses={onEditCourses} onLogout={onLogout} />
+        <ProfileMenu user={user} onEditCourses={onEditCourses} onLogout={onLogout} onSettings={() => setSettingsOpen(true)} />
         <nav className="scroll flex-1 px-3 pb-3 pt-3" aria-label="Navigation">
           <div className="flex flex-col gap-0.5">
             <NavItem active={!searching && view === "week"} onClick={() => open("week")} icon={<CalendarDays size={15} aria-hidden />}>
@@ -141,21 +162,15 @@ export function Overview({
             <NavItem active={!searching && view === "new"} onClick={() => open("new")} icon={<Inbox size={15} aria-hidden />} count={newCount}>
               New
             </NavItem>
-          </div>
-          <p className="mb-1.5 mt-6 px-2.5 text-[12px] text-muted">Your courses</p>
-          <div className="flex flex-col gap-0.5">
-            {list.map((c) => (
-              <NavItem
-                key={c.id}
-                active={!searching && view === c.id}
-                onClick={() => open(c.id)}
-                icon={<Swatch color={colorOf(c)} />}
-                count={countNew(c)}
-                warn={failedIds.includes(c.id)}
-              >
-                {nameOf(c)}
-              </NavItem>
-            ))}
+            <NavItem
+              active={!searching && (view === "courses" || Boolean(course))}
+              onClick={() => open("courses")}
+              icon={<Library size={15} aria-hidden />}
+              count={modules.length}
+              warn={failedIds.length > 0}
+            >
+              Courses
+            </NavItem>
           </div>
         </nav>
         <SyncStatus problem={problem} job={job} lastSync={lastSync} failed={failedIds.length} onSync={sync} onStop={stop} />
@@ -216,13 +231,16 @@ export function Overview({
             ) : (
               <>
                 {view === "week" && <WeekView list={list} deadlines={mine} done={done} onToggle={toggleDone} onOpen={open} />}
-                {view === "new" && <NewView list={list} />}
+                {view === "new" && <NewView list={list} onOpen={open} />}
+                {view === "courses" && <CoursesView onOpen={open} onEditCourses={onEditCourses} />}
                 {course && (
-                  <CourseView
+                  <ModuleView
+                    key={course.id}
                     course={course}
                     deadlines={mine.filter((d) => d.courseId === course.id)}
                     done={done}
                     onToggle={toggleDone}
+                    onBack={() => open("courses")}
                   />
                 )}
               </>
@@ -230,13 +248,24 @@ export function Overview({
           </div>
         </div>
       </main>
+      {settingsOpen && <Settings onClose={() => setSettingsOpen(false)} onEditCourses={onEditCourses} onLogout={onLogout} />}
     </div>
   );
 }
 
 // --- Seitenleiste -----------------------------------------------------------
 
-function ProfileMenu({ user, onEditCourses, onLogout }: { user: string; onEditCourses: () => void; onLogout: () => void }) {
+function ProfileMenu({
+  user,
+  onEditCourses,
+  onLogout,
+  onSettings,
+}: {
+  user: string;
+  onEditCourses: () => void;
+  onLogout: () => void;
+  onSettings: () => void;
+}) {
   const [open, setOpen] = useState(false);
   const [theme, setThemeState] = useState<Theme>(getTheme);
   const chooseTheme = (t: Theme) => {
@@ -292,6 +321,16 @@ function ProfileMenu({ user, onEditCourses, onLogout }: { user: string; onEditCo
             }}
           >
             Change courses
+          </button>
+          <button
+            role="menuitem"
+            className={`${item} justify-between`}
+            onClick={() => {
+              setOpen(false);
+              onSettings();
+            }}
+          >
+            Settings… <kbd className="font-sans text-[12px] text-muted">⌘,</kbd>
           </button>
           <div className="my-1 h-px bg-line" />
           <p className="px-2.5 pb-1 pt-1.5 text-[12px] text-muted">Appearance</p>
@@ -387,9 +426,11 @@ function SyncStatus({
   onSync: () => void;
   onStop: () => void;
 }) {
-  // Variante D2: während des Holens Balken, „3 von 6 Kursen, gerade BWL“ und Stopp
+  // Variante D2: während des Holens Balken, Restzeit („About 2 min left“) und Stopp
+  useTick(Boolean(job?.running));
   if (job?.running) {
     const { n, done, cur, frac } = jobProgress(job);
+    const eta = etaLabel(appStore.get().job);
     return (
       <div className="p-3">
         <div className="rounded-[10px] bg-bg px-3 py-2.5" aria-live="polite">
@@ -401,8 +442,8 @@ function SyncStatus({
             <div className="h-full rounded-full bg-accent transition-[width] duration-200 ease-out" style={{ width: `${frac * 100}%` }} />
           </div>
           <div className="mt-1.5 flex items-center gap-2">
-            <span className="min-w-0 flex-1 truncate text-[12px] text-muted">
-              {done} of {n} courses{cur ? `, now ${cur.name}` : ""}
+            <span className="min-w-0 flex-1 truncate text-[12px] text-muted" title={cur ? `Now: ${cur.name}` : undefined}>
+              {eta ?? `${done} of ${n}${cur ? `, now ${cur.name}` : ""}`}
             </span>
             <button
               onClick={onStop}
@@ -520,10 +561,29 @@ function WeekView({
   onOpen: (id: string) => void;
 }) {
   const [range, setRange] = useState<"week" | "month">("week");
+  // Vorlesungen/Übungstermine (kind "termin") im Wochenstreifen ein-/ausblenden; gemerkt pro Mac
+  const [showClasses, setShowClasses] = useState(() => {
+    try {
+      return localStorage.getItem("studi.showClasses") !== "0";
+    } catch {
+      return true;
+    }
+  });
+  const toggleClasses = () =>
+    setShowClasses((v) => {
+      try {
+        localStorage.setItem("studi.showClasses", v ? "0" : "1");
+      } catch {
+        // egal
+      }
+      return !v;
+    });
+  const hasClasses = deadlines.some((d) => d.kind === "termin");
+  const visible = showClasses ? deadlines : deadlines.filter((d) => d.kind !== "termin");
   const days = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(todayMs() + i * DAY_MS);
     const iso = d.toISOString().slice(0, 10);
-    const items = deadlines.filter((x) => x.date === iso);
+    const items = visible.filter((x) => x.date === iso);
     return { iso, num: d.getUTCDate(), wd: d.getUTCDay(), items, wide: items.length > 0, today: i === 0 };
   });
 
@@ -554,7 +614,9 @@ function WeekView({
               `${openIn4} open ${openIn4 === 1 ? "deadline" : "deadlines"}${examsIn4 > 0 ? `, ${examsIn4} ${examsIn4 === 1 ? "exam" : "exams"}` : ""}.`
             ) : (
               <>
-                {open.length === 0
+                {open.length === 0 && deadlines.length === 0 && appStore.get().job?.kind === "import"
+                  ? "Your deadlines are on their way…"
+                  : open.length === 0
                   ? "All done. No open deadlines in the next 7 days."
                   : `${open.length} open ${open.length === 1 ? "deadline" : "deadlines"} in ${kurse} ${kurse === 1 ? "course" : "courses"}.`}
                 {first && ` Next up: ${bare(first.title)} on ${LONG[new Date(parseDay(first.date)).getUTCDay()]}.`}
@@ -577,7 +639,14 @@ function WeekView({
         </div>
       </header>
 
-      {range === "month" && <MonthView deadlines={deadlines} done={done} onOpen={onOpen} />}
+      {hasClasses && (
+        <label className="mt-4 inline-flex cursor-default items-center gap-2 text-[13px] text-muted">
+          <input type="checkbox" checked={showClasses} onChange={toggleClasses} className="accent-[var(--accent)]" />
+          Show classes and events
+        </label>
+      )}
+
+      {range === "month" && <MonthView deadlines={visible} done={done} onOpen={onOpen} />}
 
       {/* Tage ohne Termine werden schmal, Tage mit Terminen teilen sich den Platz. */}
       {range === "week" && (
@@ -620,7 +689,7 @@ function WeekView({
           ) : (
             <ul className="rounded-[10px] bg-surface px-1.5 py-1">
               {newFiles.map(({ file, course }) => (
-                <FileRow key={file.id} file={file} sub={nameOf(course)} color={colorOf(course)} compact />
+                <FileRow key={file.id} file={file} sub={nameOf(course)} courseId={course.id} compact />
               ))}
             </ul>
           )}
@@ -754,26 +823,6 @@ function DayHead({ day }: { day: { num: number; wd: number; wide: boolean; today
         </>
       )}
     </div>
-  );
-}
-
-function CheckButton({ done, onClick, label, onSolid }: { done: boolean; onClick: () => void; label: string; onSolid?: boolean }) {
-  return (
-    <button
-      onClick={onClick}
-      aria-pressed={done}
-      aria-label={done ? `${label}: mark as open` : `${label}: mark as done`}
-      title={done ? "Mark as open" : "Done"}
-      className={`flex size-[22px] shrink-0 items-center justify-center rounded-full transition-colors ${
-        done
-          ? "bg-accent text-on-accent"
-          : onSolid
-            ? "border-2 border-[var(--on-solid)] opacity-90 hover:bg-white/20"
-            : "border-2 border-current bg-surface hover:bg-hover"
-      }`}
-    >
-      {done && <Check size={12} strokeWidth={3.2} aria-hidden />}
-    </button>
   );
 }
 
@@ -926,7 +975,7 @@ function SearchView({
             <h2 className="mb-2 text-[15px] font-bold">Files</h2>
             <ul className="rounded-[10px] bg-surface px-1.5 py-1">
               {foundFiles.map(({ file, course, folder }) => (
-                <FileRow key={file.id} file={file} sub={`${nameOf(course)}, ${folder}`} color={colorOf(course)} highlight={q} />
+                <FileRow key={file.id} file={file} sub={[nameOf(course), file.part, folder].filter(Boolean).join(" · ")} courseId={course.id} highlight={q} />
               ))}
             </ul>
           </section>
@@ -957,203 +1006,65 @@ function SearchView({
   );
 }
 
-function Highlight({ text, q }: { text: string; q?: string }) {
-  if (!q) return <>{text}</>;
-  const i = text.toLowerCase().indexOf(q);
-  if (i < 0) return <>{text}</>;
-  return (
-    <>
-      {text.slice(0, i)}
-      <mark className="rounded-[3px] bg-[var(--c-ochre-soft)] px-px font-semibold text-inherit">{text.slice(i, i + q.length)}</mark>
-      {text.slice(i + q.length)}
-    </>
-  );
-}
-
 // --- Neu ------------------------------------------------------------------
 
-function NewView({ list }: { list: Course[] }) {
-  const items = list.flatMap((c) =>
-    c.folders.flatMap((f) =>
-      f.files.filter((x) => x.isNew || x.changeNote).map((file) => ({ file, course: c, where: `${nameOf(c)}, ${f.name}` })),
-    ),
-  );
-  return (
-    <>
-      <header>
-        <h1 className="text-[30px] font-bold leading-tight tracking-[-0.02em]">New</h1>
-        <p className="mt-1 text-muted">New and changed files since the last update.</p>
-      </header>
-      {items.length === 0 ? (
-        <p className="mt-6 rounded-[10px] bg-surface px-4 py-5 text-muted">Nothing new since the last update.</p>
-      ) : (
-        <ul className="mt-6 rounded-[10px] bg-surface px-1.5 py-1">
-          {items.map(({ file, course, where }) => (
-            <FileRow key={file.id} file={file} sub={where} color={colorOf(course)} />
-          ))}
-        </ul>
-      )}
-    </>
-  );
-}
-
-// --- Kurs -------------------------------------------------------------------
-
-function CourseView({
-  course,
-  deadlines,
-  done,
-  onToggle,
-}: {
-  course: Course;
-  deadlines: Deadline[];
-  done: string[];
-  onToggle: (id: string) => void;
-}) {
-  const [closed, setClosed] = useState<string[]>([]);
-  const toggle = (id: string) => setClosed((c) => (c.includes(id) ? c.filter((x) => x !== id) : [...c, id]));
-  const c = colorOf(course);
-  const n = countFiles(course);
-  const upcoming = deadlines.filter((d) => daysFromToday(d.date) >= 0).sort((a, b) => a.date.localeCompare(b.date));
-  const digests = digestsNow();
-
+function NewView({ list, onOpen }: { list: Course[]; onOpen: (id: string) => void }) {
+  const desktop = appStore.get().mode === "desktop";
+  const groups = realCourses(list)
+    .map((c) => ({
+      course: c,
+      files: c.folders
+        .flatMap((f) => f.files)
+        .filter((x) => x.isNew || x.changeNote)
+        .sort((a, b) => (b.modifiedAt ?? 0) - (a.modifiedAt ?? 0)),
+    }))
+    .filter((g) => g.files.length > 0);
+  const all = groups.flatMap((g) => g.files.map((f) => f.id));
   return (
     <>
       <header className="flex flex-wrap items-end gap-4">
         <div className="min-w-0 flex-1">
-          <h1 className="flex items-center gap-3 text-[30px] font-bold leading-tight tracking-[-0.02em]">
-            <Swatch color={c} size={14} />
-            <span className="truncate">{nameOf(course)}</span>
-          </h1>
+          <h1 className="text-[30px] font-bold leading-tight tracking-[-0.02em]">New</h1>
           <p className="mt-1 text-muted">
-            {course.lecturer ? `${course.lecturer}, ` : ""}
-            {n} {n === 1 ? "file" : "files"}
+            {all.length === 0
+              ? "You are all caught up."
+              : `${all.length} new or updated ${all.length === 1 ? "file" : "files"} you have not opened yet.`}
           </p>
         </div>
-        <Button onClick={() => store.revealFile(course.folder)}>Show in Finder</Button>
+        {desktop && all.length > 0 && <Button onClick={() => void store.markSeen(all)}>Mark all as seen</Button>}
       </header>
-
-      {(digests[course.id] || upcoming.length > 0) && (
-        <div className="mt-6 grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,320px)]">
-          {digests[course.id] && (
-            <p className="rounded-[10px] bg-surface px-4 py-3.5 leading-relaxed">{digests[course.id]}</p>
-          )}
-          {upcoming.length > 0 && (
-            <ul className="flex flex-col gap-1.5">
-              {upcoming.map((d) => {
-                const wd = new Date(parseDay(d.date)).getUTCDay();
-                const isDone = done.includes(d.id);
-                const solid = isUrgent(d) && !isDone;
-                const style = isDone
-                  ? { background: "var(--sunken)", color: "var(--muted)" }
-                  : d.kind === "klausur"
-                    ? { background: "var(--surface)", boxShadow: `inset 0 0 0 2.5px ${tone(c)}` }
-                    : solid
-                      ? { background: tone(c), color: "var(--on-solid)" }
-                      : { background: tone(c, "soft") };
-                return (
-                  <li key={d.id} className="flex items-center gap-3 rounded-[10px] px-3.5 py-2.5 transition-colors" style={style}>
-                    <span className="w-8 text-center">
-                      <span className="block text-[11px] font-semibold opacity-80">{SHORT[wd]}</span>
-                      <span className="block text-[17px] font-bold leading-none">{Number(d.date.slice(8))}</span>
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className={`block truncate font-semibold ${isDone ? "line-through" : ""}`}>{d.title}</span>
-                      <span className="block text-[12px] opacity-80">{isDone ? "done" : d.time}</span>
-                    </span>
-                    {d.kind === "abgabe" && (
-                      <span style={isDone || solid ? undefined : { color: tone(c) }}>
-                        <CheckButton done={isDone} onClick={() => onToggle(d.id)} label={d.title} onSolid={solid} />
-                      </span>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
-          )}
+      {groups.length === 0 ? (
+        <p className="mt-6 rounded-[10px] bg-surface px-4 py-5 text-muted">
+          Nothing new. New files from ILIAS show up here until you open them.
+        </p>
+      ) : (
+        <div className="mt-6 flex flex-col gap-6">
+          {groups.map(({ course, files }) => (
+            <section key={course.id}>
+              <div className="mb-1.5 flex items-center gap-2">
+                <Swatch color={colorOf(course)} />
+                <button onClick={() => onOpen(course.id)} className="rounded text-[15px] font-bold hover:underline">
+                  {course.name}
+                </button>
+                <span className="text-[13px] text-muted">{files.length}</span>
+                {desktop && (
+                  <button
+                    onClick={() => void store.markSeen(files.map((f) => f.id))}
+                    className="ml-auto rounded px-1 text-[12px] font-semibold text-muted hover:text-text"
+                  >
+                    Mark as seen
+                  </button>
+                )}
+              </div>
+              <ul className="rounded-[10px] bg-surface px-1.5 py-1">
+                {files.map((file) => (
+                  <FileRow key={file.id} file={file} />
+                ))}
+              </ul>
+            </section>
+          ))}
         </div>
       )}
-
-      <div className="mt-7 flex flex-col gap-5">
-        {course.folders.map((f) => {
-          const isOpen = !closed.includes(f.id);
-          return (
-            <section key={f.id}>
-              <button
-                onClick={() => toggle(f.id)}
-                aria-expanded={isOpen}
-                className="-ml-1.5 mb-1.5 flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[15px] font-bold hover:bg-hover"
-              >
-                {isOpen ? <ChevronDown size={15} aria-hidden /> : <ChevronRight size={15} aria-hidden />}
-                {f.name}
-                <span className="ml-1 text-[13px] font-normal text-muted">{f.files.length}</span>
-              </button>
-              {isOpen && (
-                <ul className="rounded-[10px] bg-surface px-1.5 py-1">
-                  {f.files.map((x) => (
-                    <FileRow key={x.id} file={x} />
-                  ))}
-                </ul>
-              )}
-            </section>
-          );
-        })}
-      </div>
     </>
-  );
-}
-
-// --- Datei-Zeile ------------------------------------------------------------
-
-function FileRow({
-  file,
-  sub,
-  color,
-  compact,
-  highlight,
-}: {
-  file: CourseFile;
-  sub?: string;
-  color?: ReturnType<typeof colorOf>;
-  compact?: boolean;
-  highlight?: string;
-}) {
-  const changed = Boolean(file.changeNote);
-  return (
-    <li
-      onDoubleClick={() => store.openFile(file.path)}
-      title={isDesktop() ? "Double-click to open" : undefined}
-      className="group flex min-h-[46px] items-center gap-3 rounded-[7px] px-2.5 py-1.5 hover:bg-hover focus-within:bg-hover"
-    >
-      {color ? <Swatch color={color} /> : <FileIcon kind={file.kind} />}
-      <div className="min-w-0 flex-1">
-        <p className="truncate font-medium">
-          <Highlight text={file.name} q={highlight} />
-          {changed && <span className="ml-2 text-[12px] font-semibold text-warn">changed</span>}
-          {!changed && file.isNew && !compact && <span className="ml-2 text-[12px] font-semibold text-ok">new</span>}
-        </p>
-        {(sub || changed) && (
-          <p className="truncate text-[12px] text-muted">{changed ? file.changeNote : sub}</p>
-        )}
-      </div>
-      <div className="hidden items-center gap-1.5 group-hover:flex group-focus-within:flex">
-        {/* „What changed“ braucht die KI-Auswertung, in der Mac-App ohne Schlüssel noch nicht verfügbar */}
-        {changed && !isDesktop() && <Button className="h-7 px-2.5">What changed</Button>}
-        <Button className="h-7 px-2.5" onClick={() => store.openFile(file.path)}>
-          Open
-        </Button>
-        {!compact && (
-          <Button className="h-7 px-2.5" onClick={() => store.revealFile(file.path)}>
-            Show in Finder
-          </Button>
-        )}
-      </div>
-      <span className="w-[64px] shrink-0 text-right text-[12px] text-muted group-hover:hidden group-focus-within:hidden">
-        {file.updated}
-      </span>
-      {!compact && (
-        <span className="w-[56px] shrink-0 text-right text-[12px] tabular-nums text-muted">{file.size}</span>
-      )}
-    </li>
   );
 }

@@ -8,7 +8,17 @@ import { AlertTriangle, Check, ChevronDown, ChevronUp, X } from "lucide-react";
 import { Spinner, Swatch, colorOf, nameOf } from "./ui";
 import type { Course, CourseColor } from "@/lib/mock-data";
 import * as store from "@/lib/app-store";
-import { useApp } from "@/lib/app-store";
+import { etaLabel, useApp } from "@/lib/app-store";
+
+/** Neu rendern im Sekundentakt, solange active (für die herunterzählende Restzeit). */
+export function useTick(active: boolean) {
+  const [, setN] = useState(0);
+  useEffect(() => {
+    if (!active) return;
+    const t = window.setInterval(() => setN((n) => n + 1), 1000);
+    return () => window.clearInterval(t);
+  }, [active]);
+}
 
 export type JobKind = "import" | "sync";
 type RowStatus = "waiting" | "running" | "done" | "failed";
@@ -42,7 +52,7 @@ export function useJob(onFinish: (job: Job) => void) {
     kind: j.kind,
     running: j.running,
     stopped: j.stopped,
-    rows: j.rows.map((r) => ({ ...r, color: colorOf({ id: r.id }) })),
+    rows: j.rows.map((r) => ({ ...r, color: colorOf({ id: r.moduleId ?? r.id, color: app.courses.find((c) => c.id === r.moduleId)?.color }) })),
   };
   return {
     job,
@@ -151,6 +161,8 @@ export function ImportPanel({ job, onRetry, onClose }: { job: Job; onRetry: (id:
   const [small, setSmall] = useState(false);
   const { n, done, cur, frac, failed } = jobProgress(job);
   const finished = !job.running;
+  useTick(job.running);
+  const eta = etaLabel(store.appStore.get().job);
   const visible = job.rows.filter((r) => r.status === "running" || r.status === "failed" || r.status === "waiting").slice(0, 4);
   const waitingRest = job.rows.filter((r) => r.status === "waiting").length - visible.filter((r) => r.status === "waiting").length;
 
@@ -201,6 +213,7 @@ export function ImportPanel({ job, onRetry, onClose }: { job: Job; onRetry: (id:
           <div className="h-full rounded-full bg-accent transition-[width] duration-200 ease-out" style={{ width: `${frac * 100}%` }} />
         </div>
       )}
+      {!finished && eta && <p className="mt-1.5 text-[12px] font-semibold tabular-nums">{eta}</p>}
 
       {!small && (
         <ul className="mt-2.5 flex flex-col gap-1.5 text-[12px]">

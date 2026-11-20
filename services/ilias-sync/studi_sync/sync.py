@@ -18,6 +18,7 @@ import socket
 import subprocess
 import time
 from datetime import datetime
+from pathlib import Path
 from typing import Any, Optional
 
 from .common import (
@@ -71,7 +72,9 @@ def write_pferd_config(cfg: dict[str, Any], courses: list[dict[str, Any]]) -> No
             # Geänderte Dateien aus ILIAS übernehmen (alte Fassung sichert pferd_run.py vorher),
             # lokal nie etwas löschen. local-first würde geänderte Dateien nie aktualisieren.
             "on_conflict = no-delete",
-            "tasks = 1",
+            # Mehrere Anfragen gleichzeitig: deutlich schneller als 1, für ILIAS noch zurückhaltend.
+            "tasks = 2",
+            "downloads = 2",
             f"videos = {'yes' if c.get('videos') else 'no'}",
             "forums = no",
             "links = ignore",
@@ -110,10 +113,46 @@ class Cancelled(Exception):
     """Abbruch per SIGTERM, während gerade kein PFERD läuft (Wartezeit)."""
 
 
+def course_history() -> dict[str, float]:
+    """Typische Dauer pro Kurs (Median der letzten 3 normalen Läufe, ohne erste Importe) für die Restzeit."""
+    durations: dict[str, list[float]] = {}
+    try:
+        lines = RUNS.read_text(encoding="utf-8").strip().splitlines()[-40:]
+    except OSError:
+        return {}
+    for line in lines:
+        try:
+            r = json.loads(line)
+        except ValueError:
+            continue
+        initial = set(r.get("initialCourses") or [])
+        for cid, c in (r.get("courses") or {}).items():
+            if cid not in initial and c.get("status") == "done" and c.get("duration"):
+                durations.setdefault(cid, []).append(float(c["duration"]))
+    out = {}
+    for cid, ds in durations.items():
+        last = sorted(ds[-3:])
+        out[cid] = last[len(last) // 2]
+    return out
+
+
+def app_running() -> bool:
+    """Läuft die App gerade? Dann schickt sie selbst die Mitteilungen (klickbar)."""
+    try:
+        pid = int((DATA_DIR / "app.pid").read_text().strip())
+        os.kill(pid, 0)
+        return True
+    except (OSError, ValueError):
+        return False
+
+
 class Run:
     def __init__(self, trigger: str, courses: list[dict[str, Any]]):
         self.trigger = trigger
         self.started = time.time()
+        self.history = course_history()
+        self.initial: set[str] = set()  # Kurse, die zum ersten Mal geladen werden
+        self.course_started: dict[str, float] = {}
         self.order = [c["id"] for c in courses]
         self.courses: dict[str, dict[str, Any]] = {
             c["id"]: {"title": c["title"], "status": "waiting", "added": 0, "changed": 0, "problems": []}
@@ -131,18 +170,48 @@ class Run:
         self.cancelled = False
 
 
+    def eta(self) -> Optional[int]:
+        """Geschätzte Restzeit in Sekunden; None, solange es keine Grundlage gibt (erster Kurs beim ersten Import)."""
+        now = time.time()
+        finished = [c["duration"] for c in self.courses.values() if c.get("duration") and c["status"] == "done"]
+        avg_this = sum(finished) / len(finished) if finished else None
+        total, known = 0.0, True
+        for cid in self.order:
+            c = self.courses[cid]
+            if c["status"] in ("done", "error", "cancelled"):
+                continue
+            expected = None if cid in self.initial else self.history.get(cid)
+            if expected is None:
+                expected = avg_this
+            if expected is None:
+                known = False
+                continue
+            if c["status"] == "running":
+                elapsed = now - self.course_started.get(cid, now)
+                total += max(expected - elapsed, expected * 0.15, 5) if elapsed < expected else max(expected * 0.15, 8)
+            else:
+                total += expected
+        return round(total) if known else None
+
     def state(self, **extra: Any) -> None:
         write_json(STATE, {
             "running": True, "pid": os.getpid(), "trigger": self.trigger, "startedAt": self.started,
-            "currentCourse": self.current, "order": self.order, "courses": self.courses, **extra,
+            "currentCourse": self.current, "order": self.order, "courses": self.courses,
+            "initialCourses": sorted(self.initial), "etaSeconds": self.eta(), "etaAt": time.time(), **extra,
         })
+
+    def finish_course(self, cid: Optional[str]) -> None:
+        if cid and cid in self.courses and cid in self.course_started and not self.courses[cid].get("duration"):
+            self.courses[cid]["duration"] = round(time.time() - self.course_started[cid], 1)
 
     def start_course(self, cid: str) -> None:
         if self.current and self.courses.get(self.current, {}).get("status") == "running":
             self.courses[self.current]["status"] = "done"
+        self.finish_course(self.current)
         self.current = cid
         if cid in self.courses:
             self.courses[cid]["status"] = "running"
+            self.course_started[cid] = time.time()
         self.state()
 
 
@@ -186,6 +255,8 @@ def run_pferd(run: Run, log: Any) -> int:
                 if time.time() - last_state > 0.5:
                     run.state()
                     last_state = time.time()
+        elif "parallel requests" in line or "instance's greatest bottleneck" in line:
+            pass  # pauschaler PFERD-Hinweis bei tasks > 1 (für das ILIAS in Karlsruhe), kein Fehler
         elif re.match(r"^\s*(Error|Warning)\b", line) or any(e in line for e in AUTH_ERRORS):
             cid = report_crawler if in_report else run.current
             problem = {"course": cid, "message": line.strip()}
@@ -195,6 +266,7 @@ def run_pferd(run: Run, log: Any) -> int:
                     run.courses[cid]["problems"].append(line.strip())
     proc.wait()
     run.proc = None
+    run.finish_course(run.current)
 
     for cid, lists in run.live.items():
         final.setdefault(cid, lists)  # kein Bericht (abgebrochen): live gemeldete Dateien nehmen
@@ -270,7 +342,27 @@ def sync(auto: bool) -> dict[str, Any]:
     log(f"=== {datetime.now():%Y-%m-%d %H:%M:%S} ({'automatisch' if auto else 'manuell'})")
     run.state()
     os.makedirs(os.path.expanduser(cfg["targetDir"]), exist_ok=True)
+    target = Path(os.path.expanduser(cfg["targetDir"]))
+    for c in courses:
+        folder = target / (c.get("folder") or folder_name(c["title"]))
+        if not folder.is_dir() or not any(p for p in folder.rglob("*") if p.is_file() and not p.name.startswith(".")):
+            run.initial.add(c["id"])
     write_pferd_config(cfg, courses)
+
+    # Erster Import: Fristen aus dem ILIAS-Kalender schon vorab holen, damit die Wochenansicht nicht
+    # minutenlang leer bleibt (die Dateien brauchen beim ersten Mal deutlich länger).
+    if run.initial:
+        try:
+            import keyring
+
+            from .deadlines import refresh as refresh_deadlines
+            from .ilias import login
+
+            password = keyring.get_password(KEYCHAIN_SERVICE, cfg["username"]) or ""
+            n = len(refresh_deadlines(login(cfg["username"], password))["deadlines"])
+            log(f"Fristen vorab (erster Import): {n}")
+        except Exception as e:  # noqa: BLE001
+            log(f"Fristen vorab nicht möglich: {type(e).__name__}: {e}")
 
     attempts = 3 if auto else 1
     exit_code = 1
@@ -327,12 +419,18 @@ def sync(auto: bool) -> dict[str, Any]:
             log(f"Fristen aus Übungsblättern (Regeln): {len(refresh_sheets()['deadlines'])}")
         except Exception as e:  # noqa: BLE001
             log(f"Übungsblätter konnten nicht ausgewertet werden: {type(e).__name__}: {e}")
+        try:
+            from .calendars import refresh as refresh_calendars
+
+            log(f"Termine aus weiteren Kalendern: {len(refresh_calendars()['events'])}")
+        except Exception as e:  # noqa: BLE001
+            log(f"Weitere Kalender konnten nicht geladen werden: {type(e).__name__}: {e}")
 
     ended = time.time()
     record = {
         "id": str(int(run.started)), "start": run.started, "end": ended,
         "duration": round(ended - run.started, 1), "trigger": trigger, "status": status,
-        "attempts": attempt, "exit": exit_code, "courses": run.courses,
+        "attempts": attempt, "exit": exit_code, "courses": run.courses, "initialCourses": sorted(run.initial),
         "added": run.added, "changed": run.changed, "deleted": run.deleted, "problems": run.problems,
     }
     with open(RUNS, "a", encoding="utf-8") as f:
@@ -340,7 +438,7 @@ def sync(auto: bool) -> dict[str, Any]:
     write_json(STATE, {"running": False, "lastEnd": ended, "lastStatus": status})
     log(f"Fertig: {status}, {len(run.added)} neu, {round(ended - run.started)} s")
 
-    if auto and status != "cancelled" and cfg.get("notifications", True):
+    if auto and status != "cancelled" and cfg.get("notifications", True) and not app_running():
         n = len(run.added)
         if status == "login":
             notify("Your ILIAS sign-in expired. Please sign in again in Studi-Helfer.")

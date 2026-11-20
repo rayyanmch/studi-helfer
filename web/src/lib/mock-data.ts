@@ -13,11 +13,15 @@ export interface CourseFile {
   isNew: boolean; // neu seit dem letzten Sync
   changeNote?: string; // geänderte Datei: was die KI als Unterschied gefunden hat
   path?: string; // nur in der Mac-App: Pfad auf dem Mac (Öffnen, Im Finder zeigen)
+  part?: string | null; // Teil des Moduls („Lecture“, „Exercises“, „Tutorial group 05“)
+  where?: string; // Ordner in ILIAS, z. B. „Woche 3/Vorlesung“
+  modifiedAt?: number; // ms, zum Sortieren nach Datum
 }
 
 export interface Folder {
   id: string;
   name: string;
+  category?: string; // Art der Dateien („lectures“, „exercises“ …), in der Mac-App gesetzt
   files: CourseFile[];
 }
 
@@ -34,6 +38,10 @@ export interface Course {
   semester?: "current" | "past"; // wie IliasCourse.semester in desktop.ts; fehlt es, gilt "current"
   folder?: string; // nur in der Mac-App: Kursordner auf dem Mac (Im Finder zeigen)
   note?: string; // Zeile unter dem Namen auf der Einrichtungs-Kachel; fehlt sie: "Lehrende, N files"
+  fullName?: string; // voller Name, wenn name ein Kurzname ist („Mathematik für Studierende der Informatik I“)
+  parts?: { id: string; label: string }[]; // Teile des Moduls (Vorlesung, Übung, Übungsgruppe)
+  renamed?: boolean; // Name selbst vergeben
+  iliasUrl?: string | null; // Kursseite in ILIAS
 }
 
 /** Frist aus dem ILIAS-Kalender oder von der KI in einem Übungsblatt gefunden. */

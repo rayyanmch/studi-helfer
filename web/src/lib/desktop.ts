@@ -10,7 +10,7 @@
 // Alle Texte, die von hier kommen (message, time, title, updated), sind englisch.
 // Das Uni-Passwort geht nur an login() und landet im macOS-Schlüsselbund. Nie speichern oder loggen.
 
-import type { Course, CourseFile, Deadline, Folder } from "./mock-data";
+import type { Course, CourseColor, CourseFile, Deadline, Folder } from "./mock-data";
 
 /** Fehlercodes, die die Oberfläche übersetzen sollte. */
 export type DesktopErrorCode =
@@ -42,6 +42,19 @@ export interface IliasCourse {
   suggested: boolean; // vom Programm vorgeschlagen (aktuelles Semester)
   selected: boolean; // gespeicherte Auswahl (bei Ersteinrichtung = suggested)
   videos: boolean; // Videos mitladen (Standard aus)
+  parent: string | null; // nur Gruppen: Kurs, zu dem die Gruppe gehört
+}
+
+/** Modul = Kurs + Übung + Übungsgruppe(n), ohne KI zusammengefasst (desktop/lib/modules.js). */
+export interface SetupModule {
+  id: string; // "mod-crs-6999275"
+  name: string; // Kurzname, z. B. "Mathe I" (oder selbst vergebener Name)
+  fullName: string; // "Mathematik für Studierende der Informatik I"
+  semester: "current" | "past" | "unknown";
+  parts: { courseId: string; label: string }[]; // "Lecture", "Exercises", "Tutorial group 05"
+  suggested: boolean;
+  selected: boolean;
+  videos: boolean;
 }
 
 export type SyncRunStatus = "ok" | "error" | "offline" | "login" | "cancelled"; // login = Anmeldung abgelaufen
@@ -60,6 +73,9 @@ export interface SyncState {
     string,
     { title: string; status: CourseSyncStatus; added: number; changed: number; problems: string[] }
   >;
+  etaSeconds?: number | null; // geschätzte Restzeit beim Zeitpunkt etaAt; null = noch keine Schätzung möglich
+  etaAt?: number; // Sekunden (Unix); Restzeit jetzt ≈ etaSeconds − (jetzt − etaAt)
+  initialCourses?: string[]; // Kurse, die zum ersten Mal geladen werden (= erster Import)
   // Nur wenn running = false:
   lastEnd?: number;
   lastStatus?: SyncRunStatus;
@@ -75,20 +91,47 @@ export interface DesktopStatus {
   schedule: { enabled: boolean; time: string; active: boolean }; // täglich, auch wenn die App zu ist
   lastSync: { at: number; status: SyncRunStatus; added: number } | null; // at in Millisekunden
   sync: SyncState;
+  notifications: boolean;
+  launchAtLogin: boolean;
 }
 
 /** Datei auf dem Mac: Form wie in mock-data.ts plus Pfad für Öffnen/Im Finder zeigen. */
+export type FileCategory =
+  | "lectures"
+  | "exercises"
+  | "solutions"
+  | "readings"
+  | "selfstudy"
+  | "exams"
+  | "info"
+  | "recordings"
+  | "other";
+
 export interface DesktopFile extends CourseFile {
   path: string;
   modifiedAt: number;
+  part: string | null; // Teil des Moduls ("Lecture", "Exercises" …), null bei nur einem Teil
+  where: string; // Ordner in ILIAS, z. B. "Woche 3 - Absatzmärkte/Vorlesung"
+  unit: number | null; // Nummer zum Sortieren (Woche 3, VL08 …)
+  category: FileCategory;
   isChanged: boolean; // im letzten Sync durch eine neue Fassung aus ILIAS ersetzt
   previousVersion?: string; // Pfad zur gesicherten alten Fassung (für den KI-Unterschied)
 }
+/** Eine Art von Dateien im Modul („Lecture slides“, „Exercises“ …), schon sortiert. */
 export interface DesktopFolder extends Omit<Folder, "files"> {
-  files: DesktopFile[]; // name = Pfad im Kurs, z. B. "Vorlesung/Woche 1"; Dateien direkt im Kurs: "General"
+  category: FileCategory;
+  files: DesktopFile[];
 }
-export interface DesktopCourse extends Omit<Course, "folders"> {
-  folder: string; // Kursordner auf dem Mac
+/** Modul mit Dateien (id = Modul-Id, z. B. "mod-crs-6999275"). */
+export interface DesktopCourse extends Omit<Course, "folders" | "color" | "semester" | "parts"> {
+  fullName: string;
+  autoName: string; // automatischer Kurzname
+  renamed: boolean; // name selbst vergeben
+  color: CourseColor | null; // selbst gewählt, sonst null (Oberfläche vergibt eine)
+  semester: "current" | "past" | "unknown";
+  folder: string; // Modulordner auf dem Mac
+  iliasUrl: string | null;
+  parts: { courseId: string; label: string; folder: string | null }[];
   folders: DesktopFolder[]; // lecturer ist leer, total = Anzahl lokaler Dateien
 }
 
@@ -101,7 +144,9 @@ export interface DesktopCourse extends Omit<Course, "folders"> {
 export interface DesktopDeadline extends Deadline {
   // sheet = per Regeln lokal in einem Übungsblatt gefunden (source "Exercise sheet: <Datei>", dazu file + evidence)
   // ai = von der KI in einem Übungsblatt gefunden (nur mit Schlüssel; source "AI: <Datei>")
-  category: "exercise" | "session" | "registration" | "sheet" | "ai";
+  // calendar = aus einem eingefügten Kalender (KLIPS-Stundenplan o. Ä.), moduleId per Namensabgleich (kann null sein)
+  category: "exercise" | "session" | "registration" | "sheet" | "calendar" | "ai";
+  moduleId: string | null; // Modul, zu dem der Termin gehört
   start: string; // ISO-Zeitpunkt, z. B. "2026-11-23T10:00:00+01:00"
   url: string | null; // ILIAS-Seite (Übung/Sitzung), z. B. für „In ILIAS öffnen“
   location: string | null; // Raum bei Sitzungen
@@ -131,11 +176,12 @@ export interface StudiDesktop {
   /** Löscht den Schlüsselbund-Eintrag und schaltet den täglichen Sync aus. Dateien bleiben. */
   logout(): Promise<Ok>;
   /** Holt „Meine Kurse“ live von ILIAS (mehrere Sekunden). */
-  listCourses(): Promise<Ok<{ courses: IliasCourse[] }> | Fail>;
+  listCourses(): Promise<Ok<{ courses: IliasCourse[]; modules: SetupModule[] }> | Fail>;
   /** Speichert Zielordner und Auswahl. Beim ersten Mal wird der tägliche Sync (07:00) eingeschaltet. */
   saveSetup(setup: {
     targetDir?: string;
-    courses: Pick<IliasCourse, "id" | "kind" | "refId" | "title" | "selected" | "videos">[];
+    courses: (Pick<IliasCourse, "id" | "kind" | "refId" | "title" | "selected" | "videos"> &
+      Partial<Pick<IliasCourse, "semester" | "parent">>)[];
   }): Promise<Ok | Fail>;
   /** Mac-Ordnerdialog. null = abgebrochen. */
   chooseFolder(): Promise<string | null>;
@@ -166,6 +212,21 @@ export interface StudiDesktop {
   >;
   /** Fristen haben sich geändert (Sync fertig oder KI hat neue gefunden) → getDeadlines() neu aufrufen. */
   onDeadlinesChanged(callback: () => void): () => void;
+  /** Modul umbenennen (leer = automatischer Name). Der Ordner auf dem Mac wird mit umbenannt. */
+  renameModule(id: string, name: string): Promise<Ok<{ moved: number; deferred: boolean }> | Fail>;
+  /** Farbe eines Moduls (null = automatisch). */
+  setModuleColor(id: string, color: CourseColor | null): Promise<Ok | Fail>;
+  /** Dateien als gesehen markieren (verschwinden aus „New“). */
+  markSeen(fileIds: string[]): Promise<Ok>;
+  setNotifications(on: boolean): Promise<Ok>;
+  setLaunchAtLogin(on: boolean): Promise<Ok>;
+  /** Eingefügte Kalender (z. B. KLIPS-Stundenplan als iCal-Link). */
+  getCalendars(): Promise<{ id: string; name: string; url: string; ok: boolean | null; error: string | null; count: number }[]>;
+  addCalendar(url: string, name: string): Promise<Ok<{ count: number }> | Fail>;
+  removeCalendar(id: string): Promise<Ok>;
+  openIlias(url: string): Promise<{ ok: boolean }>;
+  /** Befehle aus dem App-Menü/Tastenkürzeln: "sync", "settings", "search", "week", "new", "courses". */
+  onCommand(callback: (cmd: string) => void): () => void;
   /** Ids aller abgehakten Fristen. Lokal in den App-Daten gespeichert, übersteht Neustarts und Syncs. */
   getDoneDeadlines(): Promise<string[]>;
   /** Frist abhaken (done = true) oder wieder öffnen. Id am besten mit deadlineId() bilden. */

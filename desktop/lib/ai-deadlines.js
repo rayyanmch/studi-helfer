@@ -123,7 +123,7 @@ function createAiDeadlines({ dataDir, readJson, writeJson, listFiles, loadConfig
     const oldest = new Date(Date.now() - 14 * 86_400_000).toISOString().slice(0, 10);
     const out = [];
     for (const entry of Object.values(loadCache().files)) {
-      if (!selected.has(entry.courseId)) continue;
+      if (!String(entry.courseId).startsWith("mod-") && !selected.has(entry.courseId)) continue;
       for (const d of entry.deadlines ?? []) {
         if (!/^\d{4}-\d{2}-\d{2}$/.test(d.datum) || d.datum < oldest) continue;
         const time = d.uhrzeit && /^\d{1,2}:\d{2}$/.test(d.uhrzeit) ? d.uhrzeit.padStart(5, "0") : null;

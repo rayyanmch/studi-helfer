@@ -59,7 +59,7 @@ export function Setup({
 
       {loading && (
         <p className="mt-8 flex items-center gap-2.5 rounded-[12px] bg-surface px-4 py-5 text-muted" aria-live="polite">
-          <Spinner /> Looking up your courses on ILIAS…
+          <Spinner /> Looking up your courses on ILIAS… <span className="text-[12px]">(up to a minute the first time)</span>
         </p>
       )}
       {app.setupStatus === "error" && (

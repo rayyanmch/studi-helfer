@@ -8,10 +8,11 @@
 // Die Oberfläche erreicht den Hintergrundteil nur über window.studi (preload.js).
 // Typen dazu: web/src/lib/desktop.ts.
 
-const { app, BrowserWindow, dialog, ipcMain, shell } = require("electron");
+const { app, BrowserWindow, Menu, Notification, dialog, ipcMain, nativeImage, shell } = require("electron");
 const fs = require("node:fs");
 const path = require("node:path");
 const backend = require("./lib/backend");
+const { buildModules } = require("./lib/modules");
 const { startBundledUi } = require("./lib/ui-server");
 const updater = require("./lib/updater");
 
@@ -110,6 +111,8 @@ async function getStatus() {
     schedule: { ...cfg.schedule, active: await backend.scheduleLoaded() },
     lastSync: last ? { at: last.end * 1000, status: last.status, added: last.added.length } : null,
     sync: backend.readState(),
+    notifications: cfg.notifications !== false,
+    launchAtLogin: app.getLoginItemSettings().openAtLogin,
   };
 }
 
@@ -159,12 +162,31 @@ async function listCourses() {
       refId: c.refId,
       title: c.title,
       semester: c.semester,
+      parent: c.parent ?? null,
       suggested: c.suggested,
       selected: s ? Boolean(s.selected) : firstSetup && c.suggested,
       videos: s ? Boolean(s.videos) : false,
     };
   });
-  return { ok: true, courses };
+  // Module für die Einrichtung: Kurs + Übung + Übungsgruppe als eine Kachel.
+  const { modules } = buildModules(courses, cfg.modules || {});
+  const byId = new Map(courses.map((c) => [c.id, c]));
+  const out = modules.map((m) => {
+    const parts = m.parts.map((p) => byId.get(p.courseId));
+    const groupsOnly = parts.every((p) => p.kind === "grp");
+    return {
+      id: m.id,
+      name: m.name,
+      fullName: m.fullName,
+      semester: m.semester,
+      parts: m.parts.map((p) => ({ courseId: p.courseId, label: p.label })),
+      // Vorschlag: aktuelles Semester und mindestens ein richtiger Kurs (Gruppen wie „Altklausuren“ nur auf Wunsch)
+      suggested: m.semester === "current" && !groupsOnly && parts.some((p) => p.suggested || p.kind === "crs"),
+      selected: parts.some((p) => p.selected),
+      videos: parts.some((p) => p.videos),
+    };
+  });
+  return { ok: true, courses, modules: out };
 }
 
 /**
@@ -194,6 +216,8 @@ async function saveSetup(setup) {
       refId: String(c.refId),
       title: String(c.title),
       folder,
+      semester: ["current", "past", "unknown"].includes(c.semester) ? c.semester : undefined,
+      parent: typeof c.parent === "string" && /^crs-\d+$/.test(c.parent) ? c.parent : null,
       selected: Boolean(c.selected),
       videos: Boolean(c.videos),
     });
@@ -206,6 +230,8 @@ async function saveSetup(setup) {
     fs.writeFileSync(path.join(backend.DATA_DIR, "schedule-set"), "");
   }
   backend.saveConfig(cfg);
+  // Ordner an die Module anpassen („~/Uni/Mathe I/Exercises“), bestehende werden verschoben.
+  backend.applyLayout();
   if (firstSchedule) await backend.applySchedule(packaged(), cfg.schedule);
   return { ok: true };
 }
@@ -274,6 +300,35 @@ handle("studi:refreshDeadlines", async () => {
 });
 handle("studi:refreshAiDeadlines", () => runAiDeadlines());
 handle("studi:getDoneDeadlines", () => backend.getDoneDeadlines());
+handle("studi:renameModule", (id, name) => backend.renameModule(id, name));
+handle("studi:setModuleColor", (id, color) => backend.setModuleColor(id, color));
+handle("studi:markSeen", (ids) => backend.markSeen(ids));
+handle("studi:setNotifications", (on) => backend.setNotifications(on));
+handle("studi:setLaunchAtLogin", (on) => {
+  app.setLoginItemSettings({ openAtLogin: Boolean(on), openAsHidden: true });
+  return { ok: true };
+});
+handle("studi:getCalendars", () => backend.getCalendars());
+handle("studi:addCalendar", async (url, name) => {
+  if (typeof url !== "string" || url.length > 2000) return { ok: false, code: "invalid", message: "Paste a calendar link." };
+  const test = await backend.runHelper(packaged(), ["calendar-test", "--url", url.trim()], { timeoutMs: 60_000 });
+  if (test.type !== "result") return { ok: false, code: test.code, message: test.message };
+  backend.saveCalendar(url.trim(), name);
+  await backend.runHelper(packaged(), ["calendars"], { timeoutMs: 120_000 });
+  for (const win of windows) win.webContents.send("studi:deadlinesChanged");
+  return { ok: true, count: test.count };
+});
+handle("studi:removeCalendar", async (id) => {
+  backend.removeCalendar(id);
+  await backend.runHelper(packaged(), ["calendars"], { timeoutMs: 120_000 });
+  for (const win of windows) win.webContents.send("studi:deadlinesChanged");
+  return { ok: true };
+});
+handle("studi:openIlias", (url) => {
+  if (typeof url !== "string" || !url.startsWith("https://www.ilias.uni-koeln.de/")) return { ok: false };
+  shell.openExternal(url);
+  return { ok: true };
+});
 handle("studi:setDeadlineDone", (id, done) => backend.setDeadlineDone(id, Boolean(done)));
 // Update-Knopf: neueste Fassung von GitHub (lib/updater.js)
 updater.register(handle, () => windows);
@@ -295,7 +350,24 @@ async function runAiDeadlines() {
 
 let lastStateText = "";
 let wasRunning = false;
+let deadlineStamp = "";
+/** Fristen-Dateien geändert (z. B. vorab beim ersten Import)? → Oberfläche lädt neu. */
+function watchDeadlineFiles() {
+  const stamp = ["deadlines.json", "sheet-deadlines.json", "calendar-events.json"]
+    .map((f) => {
+      try {
+        return fs.statSync(path.join(backend.DATA_DIR, f)).mtimeMs;
+      } catch {
+        return 0;
+      }
+    })
+    .join("|");
+  if (deadlineStamp && stamp !== deadlineStamp) for (const win of windows) win.webContents.send("studi:deadlinesChanged");
+  deadlineStamp = stamp;
+}
+
 function pushState() {
+  watchDeadlineFiles();
   let text = "";
   try {
     text = fs.readFileSync(backend.STATE, "utf8");
@@ -306,17 +378,98 @@ function pushState() {
   lastStateText = text;
   const state = backend.readState();
   for (const win of windows) win.webContents.send("studi:syncState", state);
-  // Sync gerade fertig: Fristen haben sich ggf. geändert, neue Übungsblätter auswerten.
+  // Sync gerade fertig: Fristen haben sich ggf. geändert, neue Übungsblätter auswerten, Mitteilung zeigen.
   if (wasRunning && !state.running) {
     for (const win of windows) win.webContents.send("studi:deadlinesChanged");
     runAiDeadlines();
+    notifyNewFiles();
   }
   wasRunning = Boolean(state.running);
+}
+
+/** Mitteilung „3 new files in BWL, Mathe I“ (klickbar), wenn die App gerade nicht im Vordergrund ist. */
+async function notifyNewFiles() {
+  const cfg = backend.loadConfig();
+  if (cfg.notifications === false || !Notification.isSupported()) return;
+  if (BrowserWindow.getFocusedWindow()) return;
+  const last = backend.readRuns(1).pop();
+  if (!last || last.status === "cancelled") return;
+  const initial = new Set(last.initialCourses || []);
+  const added = (last.added || []).filter((a) => !initial.has(a.course));
+  if (added.length === 0) return;
+  const { moduleOfCourse, modules } = backend.currentModules(cfg);
+  const names = [...new Set(added.map((a) => modules.find((m) => m.id === moduleOfCourse.get(a.course))?.name).filter(Boolean))];
+  const n = new Notification({
+    title: `${added.length} new ${added.length === 1 ? "file" : "files"}`,
+    body: names.length ? `in ${names.slice(0, 3).join(", ")}${names.length > 3 ? " and more" : ""}` : "from ILIAS",
+  });
+  n.on("click", () => {
+    const win = BrowserWindow.getAllWindows()[0] ?? createWindow();
+    win.show();
+    win.focus();
+    win.webContents.send("studi:command", "new");
+  });
+  n.show();
+}
+
+/** App-Menü mit Tastenkürzeln (⌘R Sync, ⌘, Einstellungen, ⌘1–3 Ansichten). */
+function buildMenu() {
+  const send = (cmd) => () => {
+    const win = BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0];
+    win?.webContents.send("studi:command", cmd);
+  };
+  const template = [
+    {
+      label: app.name,
+      submenu: [
+        { role: "about" },
+        { type: "separator" },
+        { label: "Settings…", accelerator: "CmdOrCtrl+,", click: send("settings") },
+        { type: "separator" },
+        { role: "hide" },
+        { role: "hideOthers" },
+        { role: "unhide" },
+        { type: "separator" },
+        { role: "quit" },
+      ],
+    },
+    { role: "editMenu" },
+    {
+      label: "View",
+      submenu: [
+        { label: "Next 7 Days", accelerator: "CmdOrCtrl+1", click: send("week") },
+        { label: "New", accelerator: "CmdOrCtrl+2", click: send("new") },
+        { label: "Courses", accelerator: "CmdOrCtrl+3", click: send("courses") },
+        { type: "separator" },
+        { label: "Search", accelerator: "CmdOrCtrl+F", click: send("search") },
+        { label: "Get New Files", accelerator: "CmdOrCtrl+R", click: send("sync") },
+        { type: "separator" },
+        { role: "togglefullscreen" },
+        ...(app.isPackaged ? [] : [{ role: "toggleDevTools" }, { role: "forceReload" }]),
+      ],
+    },
+    { role: "windowMenu" },
+  ];
+  Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }
 
 // ------------------------------------------------------------------ Start
 
 app.whenReady().then(async () => {
+  // App läuft: der Hintergrund-Sync überlässt die Mitteilungen der App (klickbar).
+  fs.mkdirSync(backend.DATA_DIR, { recursive: true });
+  fs.writeFileSync(path.join(backend.DATA_DIR, "app.pid"), String(process.pid));
+  if (process.platform === "darwin" && !app.isPackaged) {
+    const icon = nativeImage.createFromPath(path.join(__dirname, "assets", "icon.png"));
+    if (!icon.isEmpty()) app.dock.setIcon(icon);
+  }
+  buildMenu();
+  // Ordner an die Module anpassen (z. B. nach einem Update), bestehende werden verschoben.
+  try {
+    backend.applyLayout();
+  } catch (e) {
+    console.error("[layout]", e);
+  }
   if (app.isPackaged && !process.env.STUDI_UI_URL && !TEST_MODE) {
     try {
       uiServer = await startBundledUi(
@@ -352,7 +505,14 @@ app.whenReady().then(async () => {
   });
 });
 
-app.on("will-quit", () => uiServer?.stop());
+app.on("will-quit", () => {
+  uiServer?.stop();
+  try {
+    fs.rmSync(path.join(backend.DATA_DIR, "app.pid"), { force: true });
+  } catch {
+    // egal
+  }
+});
 
 app.on("window-all-closed", () => {
   // Mac-typisch: App bleibt im Dock. Der tägliche Sync läuft ohnehin über launchd.

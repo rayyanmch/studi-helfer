@@ -15,9 +15,10 @@ export type LoginResult = "ok" | "wrong" | "offline";
 
 export function AppShell() {
   const app = useApp();
+  // Auch nach einem Neuladen des Stores (Entwicklung) wieder starten
   useEffect(() => {
-    void store.initApp();
-  }, []);
+    if (app.mode === "loading") void store.initApp();
+  }, [app.mode]);
 
   // Bis klar ist, ob Browser (Beispieldaten) oder Mac-App (echte Daten): leere Fläche statt Aufblitzen.
   if (app.mode === "loading") return <div className="h-full bg-bg" />;

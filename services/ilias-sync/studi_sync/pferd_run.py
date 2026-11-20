@@ -9,6 +9,8 @@ es auch im fertig gepackten Programm, und ein PFERD-Update überschreibt nichts.
    ("resolve_link_target failed") und bricht den ganzen Kurs ab.
 3. Nie interaktiv nach Kennung/Passwort fragen.
 4. Alte Version sichern, bevor PFERD eine geänderte Datei überschreibt (on_conflict = no-delete).
+5. Lernmodule (Selbststudium-Seiten) überspringen: PFERD ruft sonst jede Seite einzeln ab, nur um HTML zu
+   speichern, das die App ohnehin verwirft. Spart bei BWL über zwei Minuten pro Sync.
 """
 
 import shutil
@@ -89,6 +91,14 @@ def install_patches() -> None:
             return False
 
     out_cls._conflict_lfrf = _conflict_lfrf  # type: ignore[method-assign]
+
+    async def _skip_learning_module(self: Any, element: Any, element_path: Any) -> None:
+        from PFERD.utils import fmt_path
+
+        log.status("[bold bright_black]", "Ignored", fmt_path(element_path), "[bright_black](learning module pages)")
+        return None
+
+    cls._handle_learning_module = _skip_learning_module  # type: ignore[method-assign]
 
 
 def run(config_path: str) -> None:

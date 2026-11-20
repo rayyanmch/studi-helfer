@@ -10,8 +10,10 @@ const fsp = require("node:fs/promises");
 const os = require("node:os");
 const path = require("node:path");
 const { createAiDeadlines } = require("./ai-deadlines");
+const { buildModules, categoryOf, unitNumber, matchModule, CATEGORY_ORDER, CATEGORY_LABEL } = require("./modules");
 
-const DATA_DIR = path.join(os.homedir(), "Library", "Application Support", "Studi-Helfer");
+// STUDI_DATA_DIR nur für Tests (z. B. Ordner-Umzug in einem Temp-Ordner ausprobieren)
+const DATA_DIR = process.env.STUDI_DATA_DIR || path.join(os.homedir(), "Library", "Application Support", "Studi-Helfer");
 const CONFIG = path.join(DATA_DIR, "config.json");
 const STATE = path.join(DATA_DIR, "state.json");
 const RUNS = path.join(DATA_DIR, "runs.jsonl");
@@ -262,58 +264,284 @@ async function walk(dir, base, out) {
   }
 }
 
+// ------------------------------------------------------------------ Module
+
+const PARENTS = path.join(DATA_DIR, "object-parents.json");
+const SEEN = path.join(DATA_DIR, "seen.json");
+const CALENDAR_EVENTS = path.join(DATA_DIR, "calendar-events.json");
+const NEW_DAYS = 14; // so lange gilt eine Datei als „neu“, wenn man sie nicht angesehen hat
+
+/** Kurse aus config.json mit Elternkurs (Gruppen) – fehlt er, aus dem Brotkrumen-Cache des Helfers. */
+function coursesWithParents(cfg) {
+  const cache = readJson(PARENTS, {});
+  return cfg.courses.map((c) => {
+    if (c.kind !== "grp" || c.parent) return c;
+    const chain = (cache[`grp/${c.refId}`] || []).filter((x) => x.startsWith("crs-"));
+    return { ...c, parent: chain[chain.length - 1] || null };
+  });
+}
+
+/** Ordnername auf dem Mac (keine Schrägstriche, keine führenden Punkte). */
+function safeName(name) {
+  return (
+    String(name || "")
+      .replace(/[/:\\\n\r\t]+/g, " - ")
+      .replace(/^[ .]+|[ .]+$/g, "")
+      .replace(/\s{2,}/g, " ")
+      .slice(0, 100) || "Course"
+  );
+}
+
+/** Module der ausgewählten Kurse (für Übersicht, Fristen, Ordner). */
+function currentModules(cfg = loadConfig(), fileNamesByCourse = {}) {
+  const selected = coursesWithParents(cfg).filter((c) => c.selected);
+  return buildModules(selected, cfg.modules || {}, fileNamesByCourse);
+}
+
+/** Gewünschter Ordner eines Kurses: „<Modul>/<Teil>“ bzw. „<Modul>“, wenn das Modul nur einen Teil hat. */
+function desiredFolders(cfg) {
+  const { modules } = currentModules(cfg);
+  const out = new Map();
+  for (const m of modules) {
+    const base = safeName(m.name);
+    for (const p of m.parts) out.set(p.courseId, m.parts.length > 1 ? `${base}/${safeName(p.label)}` : base);
+  }
+  return out;
+}
+
+function removeEmptyParents(dir, stop) {
+  let d = dir;
+  while (d.startsWith(`${stop}${path.sep}`)) {
+    try {
+      const rest = fs.readdirSync(d).filter((n) => n !== ".DS_Store");
+      if (rest.length) return;
+      fs.rmSync(d, { recursive: true, force: true });
+    } catch {
+      return;
+    }
+    d = path.dirname(d);
+  }
+}
+
 /**
- * Dateien im Zielordner in der Form von web/src/lib/mock-data.ts (Kurs → Ordner → Datei).
- * Ordnername = Pfad innerhalb des Kurses ("Vorlesung/Woche 1"), Dateien direkt im Kurs: "General".
+ * Ordner auf dem Mac an die Module anpassen („~/Uni/Mathe I/Exercises“). Bestehende Ordner werden verschoben,
+ * nicht neu geladen (PFERDs .report wandert mit, es wird nichts doppelt geladen). Läuft nur ohne laufenden Sync.
+ * Zwei Phasen, damit verschachtelte Ziele („Visualisierung“ → „Visualisierung/Lecture“) sicher klappen:
+ * erst alle betroffenen Ordner auf temporäre Namen, dann an ihren Platz.
+ */
+function applyLayout() {
+  const cfg = loadConfig();
+  if (!cfg.targetDir || readState().running) return { ok: false, moved: [] };
+  const root = path.resolve(cfg.targetDir);
+  const want = desiredFolders(cfg);
+  const plan = [];
+  let changed = false;
+  for (const c of cfg.courses) {
+    const target = want.get(c.id);
+    if (!target || target === c.folder) continue;
+    const from = c.folder ? path.join(root, c.folder) : null;
+    if (!from || !fs.existsSync(from)) {
+      c.folder = target; // noch nichts geladen: einfach den neuen Ordner verwenden
+      changed = true;
+      continue;
+    }
+    plan.push({ course: c, from, to: path.join(root, target), target });
+  }
+  // Ziele, die schon belegt sind (und nicht selbst verschoben werden), auslassen
+  const leaving = new Set(plan.map((p) => p.from));
+  const safe = plan.filter((p) => !fs.existsSync(p.to) || leaving.has(p.to) || [...leaving].some((f) => p.to.startsWith(`${f}${path.sep}`)));
+  const moved = [];
+  const staged = [];
+  try {
+    for (const p of safe) {
+      const tmp = path.join(root, `.studi-move-${p.course.id}-${Date.now()}`);
+      fs.renameSync(p.from, tmp);
+      staged.push({ ...p, tmp });
+    }
+    for (const p of staged) {
+      if (fs.existsSync(p.to)) {
+        // Ziel inzwischen belegt (sollte nicht vorkommen): zurück an den alten Ort
+        fs.mkdirSync(path.dirname(p.from), { recursive: true });
+        fs.renameSync(p.tmp, p.from);
+        continue;
+      }
+      fs.mkdirSync(path.dirname(p.to), { recursive: true });
+      fs.renameSync(p.tmp, p.to);
+      moved.push({ from: path.relative(root, p.from), to: p.target });
+      p.course.folder = p.target;
+      changed = true;
+    }
+    for (const p of staged) removeEmptyParents(path.dirname(p.from), root);
+  } catch (e) {
+    console.error("[layout]", e.message);
+    // Was schon auf einem temporären Namen liegt, zurückholen
+    for (const p of staged) {
+      try {
+        if (fs.existsSync(p.tmp)) {
+          fs.mkdirSync(path.dirname(p.from), { recursive: true });
+          fs.renameSync(p.tmp, p.from);
+        }
+      } catch {
+        // bleibt als .studi-move-… liegen, nichts geht verloren
+      }
+    }
+  }
+  if (changed) saveConfig(cfg);
+  return { ok: true, moved };
+}
+
+// ------------------------------------------------------------------ Neu / gesehen
+
+function readSeen() {
+  return readJson(SEEN, { seen: {} }).seen ?? {};
+}
+
+function markSeen(ids) {
+  if (!Array.isArray(ids)) return { ok: false };
+  const data = readJson(SEEN, { seen: {} });
+  data.seen = data.seen ?? {};
+  const now = Date.now();
+  for (const id of ids.slice(0, 5000)) if (typeof id === "string") data.seen[id] = now;
+  // Alte Einträge aufräumen
+  for (const [id, t] of Object.entries(data.seen)) if (now - t > 120 * 86_400_000) delete data.seen[id];
+  writeJson(SEEN, data);
+  return { ok: true };
+}
+
+/**
+ * Neue und geänderte Dateien der letzten Tage (aus runs.jsonl). Der erste Import eines Kurses zählt nicht als „neu“.
+ * → { added: Set("<kursId>\0<pfad>"), changed: Map(... → alte Fassung) }
+ */
+function recentChanges() {
+  const runs = readRuns(400);
+  const since = Date.now() / 1000 - NEW_DAYS * 86400;
+  const firstSeen = new Set();
+  const added = new Set();
+  const changed = new Map();
+  for (const r of runs) {
+    const initial = new Set(r.initialCourses || []);
+    for (const id of Object.keys(r.courses || {})) {
+      if (!firstSeen.has(id)) {
+        initial.add(id); // erster Lauf mit diesem Kurs = erster Import
+        firstSeen.add(id);
+      }
+    }
+    if ((r.end || 0) < since) continue;
+    for (const a of r.added || []) if (!initial.has(a.course)) added.add(`${a.course}\u0000${a.path}`);
+    for (const c of r.changed || []) changed.set(`${c.course}\u0000${c.path}`, c.previous ?? null);
+  }
+  return { added, changed };
+}
+
+// ------------------------------------------------------------------ Dateien
+
+async function walk(dir, base, out) {
+  let entries;
+  try {
+    entries = await fsp.readdir(dir, { withFileTypes: true });
+  } catch {
+    return;
+  }
+  for (const e of entries) {
+    if (e.name.startsWith(".")) continue;
+    const full = path.join(dir, e.name);
+    if (e.isDirectory()) await walk(full, base, out);
+    else if (e.isFile()) {
+      const st = await fsp.stat(full);
+      out.push({ full, rel: path.relative(base, full), size: st.size, mtime: st.mtime });
+    }
+  }
+}
+
+/**
+ * Module mit Dateien (Form wie mock-data.ts plus Extras). Dateien je Art gruppiert
+ * („Lecture slides“, „Exercises“ …), innerhalb nach Nummer/Name sortiert.
  */
 async function listFiles() {
   const cfg = loadConfig();
   if (!cfg.targetDir) return [];
-  const last = readRuns(10)
-    .reverse()
-    .find((r) => r.status !== "offline");
-  const fresh = new Set((last?.added ?? []).map((a) => `${a.course}\u0000${a.path}`));
-  const changed = new Map((last?.changed ?? []).map((c) => [`${c.course}\u0000${c.path}`, c.previous ?? null]));
+  const { added, changed } = recentChanges();
+  const seen = readSeen();
 
-  const courses = [];
+  // Dateien je Kurs einlesen
+  const perCourse = new Map();
   for (const c of cfg.courses.filter((x) => x.selected)) {
     const root = path.join(cfg.targetDir, c.folder || folderName(c.title));
     const files = [];
     await walk(root, root, files);
-    const folders = new Map();
-    files.sort((a, b) => a.rel.localeCompare(b.rel, "de", { numeric: true }));
-    for (const f of files) {
-      const dir = path.dirname(f.rel);
-      const key = dir === "." ? "" : dir;
-      if (!folders.has(key)) {
-        folders.set(key, { id: `${c.id}:${key || "."}`, name: key || "General", files: [] });
-      }
-      const ext = path.extname(f.rel).slice(1).toLowerCase();
-      folders.get(key).files.push({
-        id: `${c.id}:${f.rel}`,
-        name: path.basename(f.rel),
-        kind: KINDS[ext] ?? "other",
-        size: formatSize(f.size),
-        updated: formatDate(f.mtime),
-        isNew: fresh.has(`${c.id}\u0000${f.rel}`),
-        isChanged: changed.has(`${c.id}\u0000${f.rel}`),
-        previousVersion: changed.get(`${c.id}\u0000${f.rel}`) ?? undefined,
-        path: f.full,
-        modifiedAt: f.mtime.getTime(),
-      });
-    }
-    courses.push({
-      id: c.id,
-      name: c.title,
-      lecturer: "",
-      total: files.length,
-      folder: root,
-      folders: [...folders.values()].sort((a, b) =>
-        a.name === "General" ? -1 : b.name === "General" ? 1 : a.name.localeCompare(b.name, "de"),
-      ),
-    });
+    perCourse.set(c.id, { root, files });
   }
-  return courses;
+  const names = Object.fromEntries([...perCourse].map(([id, v]) => [id, v.files.map((f) => path.basename(f.rel))]));
+  const { modules } = currentModules(cfg, names);
+
+  return modules.map((m) => {
+    const cats = new Map();
+    const seenFiles = new Set(); // dieselbe Datei in Übung und Gruppe (gleicher Name + Größe) nur einmal zeigen
+    let total = 0;
+    for (const part of m.parts) {
+      const pc = perCourse.get(part.courseId);
+      if (!pc) continue;
+      for (const f of pc.files) {
+        const name = path.basename(f.rel);
+        const dupKey = `${name.toLowerCase()}\u0000${f.size}`;
+        if (seenFiles.has(dupKey)) continue;
+        seenFiles.add(dupKey);
+        total += 1;
+        const dir = path.dirname(f.rel) === "." ? "" : path.dirname(f.rel);
+        const cat = categoryOf(name, dir, part.label);
+        const id = `${part.courseId}:${f.rel}`;
+        const key = `${part.courseId}\u0000${f.rel}`;
+        const ext = path.extname(name).slice(1).toLowerCase();
+        if (!cats.has(cat)) cats.set(cat, []);
+        cats.get(cat).push({
+          id,
+          name,
+          kind: KINDS[ext] ?? "other",
+          size: formatSize(f.size),
+          updated: formatDate(f.mtime),
+          isNew: added.has(key) && !seen[id],
+          isChanged: changed.has(key) && !seen[id],
+          previousVersion: changed.get(key) ?? undefined,
+          path: f.full,
+          modifiedAt: f.mtime.getTime(),
+          part: m.parts.length > 1 ? part.label : null,
+          where: dir,
+          unit: unitNumber(name, dir),
+          category: cat,
+        });
+      }
+    }
+    const folders = CATEGORY_ORDER.filter((c) => cats.has(c)).map((c) => ({
+      id: `${m.id}:${c}`,
+      name: CATEGORY_LABEL[c],
+      category: c,
+      files: cats
+        .get(c)
+        .sort(
+          (a, b) =>
+            (a.unit ?? 999) - (b.unit ?? 999) || a.name.localeCompare(b.name, "de", { numeric: true }) || a.path.localeCompare(b.path),
+        ),
+    }));
+    const first = perCourse.get(m.parts[0].courseId);
+    const moduleFolder =
+      m.parts.length > 1 && first ? path.dirname(first.root) : first ? first.root : path.join(cfg.targetDir, safeName(m.name));
+    const main = cfg.courses.find((c) => c.id === m.mainCourseId);
+    return {
+      id: m.id,
+      name: m.name,
+      fullName: m.fullName,
+      autoName: m.autoName,
+      renamed: m.renamed,
+      color: m.color,
+      semester: m.semester,
+      lecturer: "",
+      total,
+      folder: moduleFolder,
+      iliasUrl: main ? `https://www.ilias.uni-koeln.de/ilias/goto.php/${main.kind}/${main.refId}` : null,
+      parts: m.parts.map((p) => ({ courseId: p.courseId, label: p.label, folder: perCourse.get(p.courseId)?.root ?? null })),
+      folders,
+    };
+  });
 }
 
 // ------------------------------------------------------------------ Fristen
@@ -322,34 +550,132 @@ const DONE_DEADLINES = path.join(DATA_DIR, "deadlines-done.json");
 const DEADLINES = path.join(DATA_DIR, "deadlines.json");
 const SHEET_DEADLINES = path.join(DATA_DIR, "sheet-deadlines.json");
 
+const normTitle = (t) =>
+  String(t || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9äöüß]+/g, " ")
+    .trim();
+
 /**
- * Fristen/Termine aus drei Quellen, jeweils mit abgehakt ja/nein:
- *   1. ILIAS-Kalender (deadlines.json)        2. Übungsblätter per Regeln, lokal (sheet-deadlines.json)
- *   3. Übungsblätter per KI (nur mit Schlüssel)
- * Doppelte fallen weg: gleiche Id, oder dieselbe Abgabe (gleicher Kurs, gleicher Tag) aus einer früheren Quelle.
+ * Fristen/Termine aus allen Quellen, je mit Modul (moduleId) und abgehakt ja/nein:
+ *   1. ILIAS-Kalender   2. Übungsblätter/Folien per Regeln   3. weitere Kalender (KLIPS …)   4. KI (nur mit Schlüssel)
+ * Doppelte fallen weg: gleiche Id; dieselbe Abgabe/Klausur im selben Modul am selben Tag; gleicher Titel am selben Tag.
  */
 function getDeadlines() {
+  const cfg = loadConfig();
   const data = readJson(DEADLINES, { updatedAt: null, deadlines: [] });
   const done = new Set(getDoneDeadlines());
+  const { modules, moduleOfCourse } = currentModules(cfg);
+  const moduleOf = (courseId) => (String(courseId).startsWith("mod-") ? courseId : moduleOfCourse.get(courseId));
+
+  const external = readJson(CALENDAR_EVENTS, { events: [] }).events ?? [];
+  const fromCalendars = external.map((e) => {
+    const m = matchModule(e.title, modules);
+    return {
+      id: `cal|${e.uid}`,
+      courseId: m ? m.mainCourseId : null,
+      moduleId: m ? m.id : null,
+      title: e.title,
+      date: e.date,
+      time: e.kind === "abgabe" && e.time !== "all day" ? `by ${e.time}` : e.end ? `${e.time}–${e.end}` : e.time,
+      kind: e.kind,
+      category: "calendar",
+      source: "Calendar",
+      start: e.start,
+      url: null,
+      location: e.location,
+    };
+  });
+
   const ids = new Set();
-  const abgaben = new Set();
+  const sameDay = new Set();
   const all = [];
-  const sources = [data.deadlines ?? [], readJson(SHEET_DEADLINES, { deadlines: [] }).deadlines ?? [], aiDeadlines.list()];
+  const sources = [
+    data.deadlines ?? [],
+    readJson(SHEET_DEADLINES, { deadlines: [] }).deadlines ?? [],
+    fromCalendars,
+    aiDeadlines.list(),
+  ];
   for (const list of sources) {
-    const fresh = list.filter((d) => !ids.has(d.id) && !(d.kind === "abgabe" && abgaben.has(`${d.courseId}|${d.date}`)));
-    for (const d of fresh) {
+    for (const d0 of list) {
+      const moduleId = d0.moduleId !== undefined ? d0.moduleId : moduleOf(d0.courseId) ?? null;
+      const d = { ...d0, moduleId };
+      const scope = moduleId ?? "none";
+      const kindKey = d.kind !== "termin" ? `${scope}|${d.date}|${d.kind}` : null;
+      const titleKey = `${scope}|${d.date}|${normTitle(d.title)}`;
+      if (ids.has(d.id) || (kindKey && sameDay.has(kindKey) && d.category !== "exercise") || sameDay.has(titleKey)) continue;
       ids.add(d.id);
-      if (d.kind === "abgabe") abgaben.add(`${d.courseId}|${d.date}`);
+      if (kindKey) sameDay.add(kindKey);
+      sameDay.add(titleKey);
       all.push(d);
     }
   }
-  all.sort((a, b) =>
-    a.date === b.date ? String(a.start).localeCompare(String(b.start)) : a.date.localeCompare(b.date),
-  );
+  all.sort((a, b) => (a.date === b.date ? String(a.start).localeCompare(String(b.start)) : a.date.localeCompare(b.date)));
   return {
     updatedAt: data.updatedAt ? data.updatedAt * 1000 : null,
     deadlines: all.map((d) => ({ ...d, done: done.has(d.id) })),
   };
+}
+
+// ------------------------------------------------------------------ Module anpassen, Einstellungen
+
+const COLORS = ["blue", "orange", "green", "plum", "ochre", "teal", "rose", "indigo"];
+
+/** Modul umbenennen (leer = automatischer Name). Der Ordner auf dem Mac zieht mit. */
+function renameModule(id, name) {
+  if (typeof id !== "string" || !id.startsWith("mod-")) return { ok: false, code: "invalid", message: "Unknown course." };
+  const clean = typeof name === "string" ? name.replace(/\s+/g, " ").trim().slice(0, 40) : "";
+  const cfg = loadConfig();
+  cfg.modules = cfg.modules || {};
+  cfg.modules[id] = { ...(cfg.modules[id] || {}) };
+  if (clean) cfg.modules[id].name = clean;
+  else delete cfg.modules[id].name;
+  saveConfig(cfg);
+  const layout = applyLayout();
+  return { ok: true, moved: layout.moved.length, deferred: !layout.ok };
+}
+
+function setModuleColor(id, color) {
+  if (typeof id !== "string" || !id.startsWith("mod-")) return { ok: false, code: "invalid", message: "Unknown course." };
+  const cfg = loadConfig();
+  cfg.modules = cfg.modules || {};
+  cfg.modules[id] = { ...(cfg.modules[id] || {}) };
+  if (COLORS.includes(color)) cfg.modules[id].color = color;
+  else delete cfg.modules[id].color;
+  saveConfig(cfg);
+  return { ok: true };
+}
+
+function getCalendars() {
+  const cfg = loadConfig();
+  const status = readJson(CALENDAR_EVENTS, { calendars: [] }).calendars ?? [];
+  return (cfg.calendars || []).map((c) => {
+    const st = status.find((s) => s.id === c.id);
+    return { id: c.id, name: c.name, url: c.url, ok: st ? st.ok : null, error: st?.error ?? null, count: st?.count ?? 0 };
+  });
+}
+
+function saveCalendar(url, name) {
+  const cfg = loadConfig();
+  cfg.calendars = cfg.calendars || [];
+  const id = `cal-${Date.now().toString(36)}`;
+  cfg.calendars.push({ id, url, name: String(name || "").trim().slice(0, 40) || "Calendar" });
+  saveConfig(cfg);
+  return id;
+}
+
+function removeCalendar(id) {
+  const cfg = loadConfig();
+  cfg.calendars = (cfg.calendars || []).filter((c) => c.id !== id);
+  saveConfig(cfg);
+  return { ok: true };
+}
+
+function setNotifications(on) {
+  const cfg = loadConfig();
+  cfg.notifications = Boolean(on);
+  saveConfig(cfg);
+  return { ok: true };
 }
 
 /** Ids der abgehakten Fristen (bleiben über Neustarts und Syncs erhalten). */
@@ -457,6 +783,15 @@ async function scheduleLoaded() {
 const aiDeadlines = createAiDeadlines({ dataDir: DATA_DIR, readJson, writeJson, listFiles, loadConfig });
 
 module.exports = {
+  applyLayout,
+  currentModules,
+  markSeen,
+  renameModule,
+  setModuleColor,
+  getCalendars,
+  saveCalendar,
+  removeCalendar,
+  setNotifications,
   aiDeadlines,
   getDeadlines,
   getDoneDeadlines,

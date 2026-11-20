@@ -7,19 +7,23 @@
 //
 // Komponenten lesen mit useApp() und rufen die Aktionen unten auf. Sie müssen nicht wissen, woher
 // die Daten kommen. Formen sind die aus mock-data.ts (Course, Deadline, …).
+//
+// In der Mac-App ist ein „Course“ hier ein **Modul**: Vorlesung + Übung + Übungsgruppe(n) zusammengefasst
+// (desktop/lib/modules.js), mit Kurznamen („Mathe I“) und Dateien nach Art sortiert (Lecture slides …).
 
-import { useSyncExternalStore } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import * as mock from "./mock-data";
 import type { Course, CourseColor, CourseFile, Deadline } from "./mock-data";
 import {
   getDesktop,
   type DesktopCourse,
   type DesktopDeadline,
-  type IliasCourse,
+  type SetupModule,
   type StudiDesktop,
   type SyncRunStatus,
   type SyncState,
 } from "./desktop";
+import { displayName } from "./names";
 
 export type Mode = "loading" | "demo" | "desktop";
 export type Problem = "none" | "offline" | "loginExpired" | "courseFailed";
@@ -30,7 +34,18 @@ export interface StoreJob {
   kind: "import" | "sync";
   running: boolean;
   stopped: boolean;
-  rows: { id: string; name: string; count: number; total: number; status: JobRowStatus }[];
+  etaSeconds: number | null; // Restzeit zum Zeitpunkt etaAt (ms)
+  etaAt: number;
+  rows: { id: string; moduleId: string | null; name: string; count: number; total: number; status: JobRowStatus }[];
+}
+
+export interface CalendarInfo {
+  id: string;
+  name: string;
+  url: string;
+  ok: boolean | null;
+  error: string | null;
+  count: number;
 }
 
 export interface AppState {
@@ -40,20 +55,25 @@ export interface AppState {
   configured: boolean;
   targetDir: string; // Anzeige, z. B. "~/Uni"
   targetPath: string | null; // absoluter Pfad
-  courses: Course[]; // ausgewählte Kurse mit Dateien (Übersicht)
-  setupCourses: Course[]; // alle Kurse aus ILIAS (Einrichtung)
+  courses: Course[]; // Module mit Dateien (Übersicht)
+  setupCourses: Course[]; // Module zur Auswahl (Einrichtung)
   setupSelected: string[];
   setupStatus: "idle" | "loading" | "ready" | "error";
   setupError: string | null;
   deadlines: Deadline[];
   done: string[];
   digests: Record<string, string>;
-  lastSync: string; // fertiger Text, z. B. "today, 09:41"
+  lastSync: string; // fertiger Text, z. B. "today, 9:41 AM"
+  lastSyncAt: number | null;
   lastStatus: SyncRunStatus | null;
-  failedCourseIds: string[];
+  failedCourseIds: string[]; // Modul-Ids, bei denen der letzte Sync scheiterte
   problem: Problem;
   job: StoreJob | null;
   today: string; // "2026-11-20"
+  schedule: { enabled: boolean; time: string };
+  notifications: boolean;
+  launchAtLogin: boolean;
+  calendars: CalendarInfo[];
 }
 
 const DEMO: AppState = {
@@ -72,11 +92,16 @@ const DEMO: AppState = {
   done: [],
   digests: mock.digests,
   lastSync: `today, ${mock.LAST_SYNC}`,
+  lastSyncAt: null,
   lastStatus: "ok",
   failedCourseIds: [],
   problem: "none",
   job: null,
   today: mock.TODAY,
+  schedule: { enabled: true, time: "07:00" },
+  notifications: true,
+  launchAtLogin: false,
+  calendars: [],
 };
 
 const INITIAL: AppState = { ...DEMO, mode: "loading" };
@@ -102,12 +127,26 @@ export function useApp(): AppState {
 /** Für Hilfsfunktionen außerhalb von Komponenten (z. B. Farben, „heute“). */
 export const appStore = { get: () => state };
 
+// ------------------------------------------------------------------ Menübefehle (⌘R, ⌘, …)
+
+const commandListeners = new Set<(cmd: string) => void>();
+
+/** Auf Befehle aus dem App-Menü reagieren („sync“, „settings“, „search“, „week“, „new“, „courses“). */
+export function useCommand(handler: (cmd: string) => void) {
+  useEffect(() => {
+    commandListeners.add(handler);
+    return () => {
+      commandListeners.delete(handler);
+    };
+  }, [handler]);
+}
+
 // ------------------------------------------------------------------ Farben
 
 const ORDER: CourseColor[] = ["blue", "orange", "green", "plum", "ochre", "teal", "rose", "indigo"];
 let colorOrder: string[] = [];
 
-/** Farbe eines Kurses: feste Reihenfolge nach den ausgewählten Kursen, damit Farben überall gleich bleiben. */
+/** Farbe eines Moduls: feste Reihenfolge nach den ausgewählten Modulen, damit Farben überall gleich bleiben. */
 export function colorFor(id: string): CourseColor {
   if (state.mode !== "desktop") {
     const i = mock.courses.findIndex((c) => c.id === id);
@@ -121,11 +160,13 @@ export function colorFor(id: string): CourseColor {
   return ORDER[i % ORDER.length];
 }
 
+export const COURSE_COLORS = ORDER;
+
 // ------------------------------------------------------------------ Hilfen
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-function localIso(d = new Date()) {
+export function localIso(d = new Date()) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
@@ -144,16 +185,37 @@ function lastSyncLabel(at: number | null): string {
   return `${d.toLocaleDateString("en-US", { month: "short", day: "numeric" })}, ${time}`;
 }
 
+/** „about 3 min left“ – Restzeit lesbar, mit Rundung, damit die Zahl nicht zappelt. */
+export function etaLabel(job: StoreJob | null, now = Date.now()): string | null {
+  if (!job || !job.running) return null;
+  if (job.etaSeconds == null) return "Estimating time…";
+  const left = Math.max(0, job.etaSeconds - (now - job.etaAt) / 1000);
+  if (left < 20) return "Almost done";
+  if (left < 60) return "Less than a minute left";
+  const min = Math.round(left / 60);
+  if (min < 60) return `About ${min} min left`;
+  const h = Math.floor(min / 60);
+  return `About ${h} h ${min % 60} min left`;
+}
+
 function toCourse(c: DesktopCourse): Course {
   return {
     id: c.id,
     name: c.name,
-    lecturer: c.lecturer,
+    short: c.name,
+    fullName: c.fullName,
+    renamed: c.renamed,
+    lecturer: "",
     total: c.total,
     folder: c.folder,
+    iliasUrl: c.iliasUrl,
+    color: c.color ?? undefined,
+    semester: c.semester === "past" ? "past" : "current",
+    parts: c.parts.map((p) => ({ id: p.courseId, label: p.label })),
     folders: c.folders.map((f) => ({
       id: f.id,
       name: f.name,
+      category: f.category,
       files: f.files.map(
         (x): CourseFile => ({
           id: x.id,
@@ -163,6 +225,9 @@ function toCourse(c: DesktopCourse): Course {
           updated: x.updated,
           isNew: x.isNew,
           path: x.path,
+          part: x.part,
+          where: x.where,
+          modifiedAt: x.modifiedAt,
           changeNote: x.isChanged ? "Updated on ILIAS. Your old copy was kept." : undefined,
         }),
       ),
@@ -170,25 +235,38 @@ function toCourse(c: DesktopCourse): Course {
   };
 }
 
-function toSetupCourse(c: IliasCourse): Course {
+function toSetupModule(m: SetupModule): Course {
   return {
-    id: c.id,
-    name: c.title,
+    id: m.id,
+    name: m.name,
+    short: m.name,
+    fullName: m.fullName,
     lecturer: "",
     total: 0,
     folders: [],
-    semester: c.semester === "current" || c.selected ? "current" : "past",
-    note: c.kind === "grp" ? "Group" : "Course",
+    semester: m.semester === "current" || m.selected ? "current" : "past",
+    parts: m.parts.map((p) => ({ id: p.courseId, label: p.label })),
+    note:
+      m.parts.length > 1
+        ? m.parts.map((p) => p.label).join(" · ")
+        : m.fullName.replace(/[\s-]+/g, "").toLowerCase() !== m.name.replace(/[\s-]+/g, "").toLowerCase()
+          ? m.fullName
+          : m.parts[0]?.courseId.startsWith("grp-")
+            ? "Group"
+            : "Course",
   };
 }
 
+const OTHER_ID = "other";
+
 function toDeadline(d: DesktopDeadline): Deadline {
   // In der Oberfläche heißt source „wo“: Raum bei Terminen/Klausuren, Datei bei Fristen aus Übungsblättern.
-  const source = d.location ?? (d.category === "sheet" || d.category === "ai" ? d.source : undefined);
-  return { id: d.id, courseId: d.courseId, title: d.title, date: d.date, time: d.time, kind: d.kind, source };
+  const fromFile = d.file ? `From ${displayName(d.file.split("/").pop() ?? "")}` : undefined;
+  const source = d.location ?? (d.category === "sheet" || d.category === "ai" ? fromFile : undefined);
+  return { id: d.id, courseId: d.moduleId ?? OTHER_ID, title: d.title, date: d.date, time: d.time, kind: d.kind, source };
 }
 
-/** Kurze Zusammenfassung pro Kurs ohne KI: neue/geänderte Dateien und die nächste Frist. */
+/** Kurze Zusammenfassung pro Modul ohne KI: neue/geänderte Dateien und die nächste Frist. */
 function buildDigests(courses: Course[], deadlines: Deadline[], done: string[], today: string): Record<string, string> {
   const out: Record<string, string> = {};
   for (const c of courses) {
@@ -203,8 +281,12 @@ function buildDigests(courses: Course[], deadlines: Deadline[], done: string[], 
     if (changed) parts.push(`${changed} updated`);
     let text = parts.length ? `${parts.join(", ")}.` : "";
     if (next) {
-      const wd = WEEKDAYS[new Date(`${next.date}T12:00:00`).getDay()];
-      text += `${text ? " " : ""}Next up: ${next.title}, ${wd} ${next.time}.`;
+      const d = new Date(`${next.date}T12:00:00`);
+      const days = Math.round((d.getTime() - new Date(`${today}T12:00:00`).getTime()) / 86_400_000);
+      const when =
+        days === 0 ? "today" : days === 1 ? "tomorrow" : days < 7 ? WEEKDAYS[d.getDay()] : d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+      const time = next.time === "all day" ? "" : ` ${next.time}`;
+      text += `${text ? " " : ""}${next.kind === "klausur" ? "Exam" : "Next up"}: ${next.title}, ${when}${time}.`;
     }
     if (text) out[c.id] = text;
   }
@@ -220,6 +302,7 @@ function api(): StudiDesktop {
 // ------------------------------------------------------------------ Laden
 
 let started = false;
+let courseToModule = new Map<string, { moduleId: string; label: string; name: string }>();
 
 /** Einmal beim Start aufrufen (AppShell). Erkennt Browser oder Mac-App und lädt die Daten. */
 export async function initApp() {
@@ -244,23 +327,33 @@ export async function initApp() {
   });
   desktop.onSyncState(onSyncState);
   desktop.onDeadlinesChanged(() => void refreshDeadlines());
+  desktop.onCommand((cmd) => {
+    for (const l of commandListeners) l(cmd);
+  });
   await refresh();
   const sync = await desktop.getSyncState();
   onSyncState(sync);
   set({ mode: "desktop" });
 }
 
-/** Alles neu laden (Status, Dateien, Fristen). */
+/** Alles neu laden (Status, Dateien, Fristen, Einstellungen). */
 export async function refresh() {
   const d = api();
-  const [status, files, runs] = await Promise.all([d.getStatus(), d.getFiles(), d.getRuns(1)]);
+  const [status, files, runs, calendars] = await Promise.all([d.getStatus(), d.getFiles(), d.getRuns(1), d.getCalendars()]);
   const courses = files.map(toCourse);
   colorOrder = courses.map((c) => c.id);
+  courseToModule = new Map(
+    files.flatMap((m) => m.parts.map((p) => [p.courseId, { moduleId: m.id, label: p.label, name: m.name }] as const)),
+  );
   const last = runs[runs.length - 1];
   const failed = last
-    ? Object.entries(last.courses ?? {})
-        .filter(([, c]) => c.status === "error")
-        .map(([id]) => id)
+    ? [
+        ...new Set(
+          Object.entries(last.courses ?? {})
+            .filter(([, c]) => c.status === "error")
+            .map(([id]) => courseToModule.get(id)?.moduleId ?? id),
+        ),
+      ]
     : [];
   const lastStatus = status.lastSync?.status ?? null;
   const problem: Problem =
@@ -273,10 +366,15 @@ export async function refresh() {
     targetDir: tildePath(status.targetDir ?? status.defaultTargetDir),
     courses,
     lastSync: lastSyncLabel(status.lastSync?.at ?? null),
+    lastSyncAt: status.lastSync?.at ?? null,
     lastStatus,
     failedCourseIds: failed,
     problem,
     today: localIso(),
+    schedule: { enabled: status.schedule.enabled, time: status.schedule.time },
+    notifications: status.notifications,
+    launchAtLogin: status.launchAtLogin,
+    calendars,
   });
   await refreshDeadlines();
 }
@@ -285,23 +383,68 @@ export async function refreshDeadlines() {
   const d = api();
   const [{ deadlines }, done] = await Promise.all([d.getDeadlines(), d.getDoneDeadlines()]);
   const list = deadlines.map(toDeadline);
-  set({ deadlines: list, done, digests: buildDigests(state.courses, list, done, localIso()) });
+  // Termine aus eingefügten Kalendern ohne passendes Modul landen unter „Other“
+  const hasOther = list.some((x) => x.courseId === OTHER_ID);
+  const courses = state.courses.filter((c) => c.id !== OTHER_ID);
+  if (hasOther) courses.push({ id: OTHER_ID, name: "Other", short: "Other", lecturer: "", total: 0, folders: [], color: "indigo", semester: "current" });
+  set({ courses, deadlines: list, done, digests: buildDigests(courses, list, done, localIso()) });
+}
+
+/** Module, die in der Kursübersicht erscheinen (ohne Sammelmodul „Other“). */
+export function realCourses(courses: Course[]) {
+  return courses.filter((c) => c.id !== OTHER_ID);
 }
 
 // ------------------------------------------------------------------ Sync-Fortschritt
 
 let importing = false;
 
+function rowName(courseId: string, title: string) {
+  const m = courseToModule.get(courseId);
+  if (m) return m.label && m.label !== "Course" ? `${m.name} · ${m.label}` : m.name;
+  return title.replace(/^\s*\[[^\]]*\]\s*/, "");
+}
+
+let doneCount = 0;
+let refreshTimer: ReturnType<typeof setTimeout> | null = null;
+
 function onSyncState(s: SyncState) {
   const prev = state.job;
   if (s.running) {
+    // Sobald ein Kurs fertig ist, seine Dateien schon zeigen (nicht erst am Ende)
+    const finished = Object.values(s.courses ?? {}).filter((c) => c.status === "done").length;
+    if (finished > doneCount && !refreshTimer) {
+      refreshTimer = setTimeout(() => {
+        refreshTimer = null;
+        void refresh();
+      }, 800);
+    }
+    doneCount = finished;
     const rows = (s.order ?? []).map((id) => {
       const c = s.courses?.[id];
       const status: JobRowStatus =
         c?.status === "running" ? "running" : c?.status === "done" ? "done" : c?.status === "error" ? "failed" : "waiting";
-      return { id, name: (c?.title ?? id).replace(/^\s*\[[^\]]*\]\s*/, ""), count: c?.added ?? 0, total: 0, status };
+      return {
+        id,
+        moduleId: courseToModule.get(id)?.moduleId ?? null,
+        name: rowName(id, c?.title ?? id),
+        count: c?.added ?? 0,
+        total: 0,
+        status,
+      };
     });
-    set({ job: { kind: importing ? "import" : "sync", running: true, stopped: false, rows } });
+    // Erster Import: alle Kurse werden zum ersten Mal geladen
+    const first = importing || (s.initialCourses?.length ?? 0) >= Math.max(1, (s.order?.length ?? 0) / 2);
+    set({
+      job: {
+        kind: first ? "import" : "sync",
+        running: true,
+        stopped: false,
+        etaSeconds: s.etaSeconds ?? null,
+        etaAt: (s.etaAt ?? Date.now() / 1000) * 1000,
+        rows,
+      },
+    });
     return;
   }
   if (prev?.running) {
@@ -312,7 +455,8 @@ function onSyncState(s: SyncState) {
       status: (r.status === "running" || r.status === "waiting" ? (stopped ? "waiting" : "done") : r.status) as JobRowStatus,
     }));
     importing = false;
-    set({ job: { ...prev, running: false, stopped, rows } });
+    doneCount = 0;
+    set({ job: { ...prev, running: false, stopped, etaSeconds: 0, rows } });
     void refresh();
   }
 }
@@ -335,9 +479,10 @@ export async function logout() {
   set({ loggedIn: false, user: null, configured: false, setupStatus: "idle", setupCourses: [], setupSelected: [] });
 }
 
-let iliasCourses: IliasCourse[] = [];
+let setupModules: SetupModule[] = [];
+let iliasCourses: Awaited<ReturnType<StudiDesktop["listCourses"]>> | null = null;
 
-/** Kurse live von ILIAS holen (Einrichtung). */
+/** Module live von ILIAS holen (Einrichtung). */
 export async function loadSetupCourses() {
   if (getDesktop() === null || state.setupStatus === "loading") return;
   set({ setupStatus: "loading", setupError: null });
@@ -346,11 +491,12 @@ export async function loadSetupCourses() {
     set({ setupStatus: "error", setupError: res.message });
     return;
   }
-  iliasCourses = res.courses;
+  iliasCourses = res;
+  setupModules = res.modules;
   set({
     setupStatus: "ready",
-    setupCourses: res.courses.map(toSetupCourse),
-    setupSelected: res.courses.filter((c) => c.selected).map((c) => c.id),
+    setupCourses: res.modules.map(toSetupModule),
+    setupSelected: res.modules.filter((m) => m.selected || (state.courses.length === 0 && m.suggested)).map((m) => m.id),
   });
 }
 
@@ -368,22 +514,27 @@ export async function chooseFolder() {
 export async function startImport(videos: boolean): Promise<{ ok: boolean; message?: string }> {
   if (state.mode !== "desktop") return { ok: true };
   // Sicherung: ohne frisch geladene ILIAS-Kurse nie speichern (würde die Auswahl leeren).
-  if (iliasCourses.length === 0) return { ok: false, message: "Courses are still loading. Please wait a moment." };
+  if (!iliasCourses || !iliasCourses.ok || setupModules.length === 0) {
+    return { ok: false, message: "Courses are still loading. Please wait a moment." };
+  }
   const d = api();
-  const selected = new Set(state.setupSelected);
+  const chosen = new Set(state.setupSelected);
+  const selectedCourses = new Set(setupModules.filter((m) => chosen.has(m.id)).flatMap((m) => m.parts.map((p) => p.courseId)));
   const saved = await d.saveSetup({
     targetDir: state.targetPath ?? undefined,
-    courses: iliasCourses.map((c) => ({
+    courses: iliasCourses.courses.map((c) => ({
       id: c.id,
       kind: c.kind,
       refId: c.refId,
       title: c.title,
-      selected: selected.has(c.id),
-      videos: selected.has(c.id) && videos,
+      semester: c.semester,
+      parent: c.parent,
+      selected: selectedCourses.has(c.id),
+      videos: selectedCourses.has(c.id) && videos,
     })),
   });
   if (!saved.ok) return { ok: false, message: saved.message };
-  importing = state.courses.length === 0;
+  importing = state.courses.filter((c) => c.id !== OTHER_ID).length === 0;
   await refresh();
   const started = await d.startSync();
   return started.ok || started.code === "busy" ? { ok: true } : { ok: false, message: started.message };
@@ -412,10 +563,82 @@ export async function toggleDone(id: string) {
   if (!res.ok) await refreshDeadlines();
 }
 
-export function openFile(path?: string) {
-  if (state.mode === "desktop" && path) void api().openFile(path);
+/** Dateien als gesehen markieren (sofort in der Oberfläche, dann gespeichert). */
+export async function markSeen(ids: string[]) {
+  if (state.mode !== "desktop" || ids.length === 0) return;
+  const set_ = new Set(ids);
+  const courses = state.courses.map((c) => ({
+    ...c,
+    folders: c.folders.map((f) => ({
+      ...f,
+      files: f.files.map((x) => (set_.has(x.id) ? { ...x, isNew: false, changeNote: undefined } : x)),
+    })),
+  }));
+  set({ courses, digests: buildDigests(courses, state.deadlines, state.done, state.today) });
+  await api().markSeen(ids);
+}
+
+export function openFile(path?: string, id?: string) {
+  if (state.mode !== "desktop" || !path) return;
+  void api().openFile(path);
+  if (id) void markSeen([id]);
 }
 
 export function revealFile(path?: string) {
   if (state.mode === "desktop" && path) void api().revealFile(path);
+}
+
+export function openIlias(url?: string | null) {
+  if (state.mode === "desktop" && url) void api().openIlias(url);
+}
+
+export async function renameModule(id: string, name: string): Promise<{ ok: boolean; message?: string }> {
+  if (state.mode !== "desktop") return { ok: true };
+  // Sofort anzeigen, dann speichern (Ordner wird im Hintergrund mit umbenannt)
+  const clean = name.replace(/\s+/g, " ").trim();
+  set({ courses: state.courses.map((c) => (c.id === id ? { ...c, name: clean || c.name, short: clean || c.short, renamed: Boolean(clean) } : c)) });
+  const res = await api().renameModule(id, clean);
+  await refresh();
+  return res.ok ? { ok: true } : { ok: false, message: res.message };
+}
+
+export async function setModuleColor(id: string, color: CourseColor | null) {
+  if (state.mode !== "desktop") return;
+  set({ courses: state.courses.map((c) => (c.id === id ? { ...c, color: color ?? undefined } : c)) });
+  await api().setModuleColor(id, color);
+}
+
+export async function setSchedule(enabled: boolean, time: string) {
+  if (state.mode !== "desktop") return { ok: true };
+  set({ schedule: { enabled, time } });
+  const res = await api().setSchedule({ enabled, time });
+  if (!res.ok) await refresh();
+  return res;
+}
+
+export async function setNotifications(on: boolean) {
+  if (state.mode !== "desktop") return;
+  set({ notifications: on });
+  await api().setNotifications(on);
+}
+
+export async function setLaunchAtLogin(on: boolean) {
+  if (state.mode !== "desktop") return;
+  set({ launchAtLogin: on });
+  await api().setLaunchAtLogin(on);
+}
+
+export async function addCalendar(url: string, name: string): Promise<{ ok: boolean; message?: string; count?: number }> {
+  if (state.mode !== "desktop") return { ok: false, message: "Only in the Mac app." };
+  const res = await api().addCalendar(url, name);
+  set({ calendars: await api().getCalendars() });
+  await refreshDeadlines();
+  return res.ok ? { ok: true, count: res.count } : { ok: false, message: res.message };
+}
+
+export async function removeCalendar(id: string) {
+  if (state.mode !== "desktop") return;
+  set({ calendars: state.calendars.filter((c) => c.id !== id) });
+  await api().removeCalendar(id);
+  await refreshDeadlines();
 }

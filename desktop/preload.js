@@ -29,6 +29,20 @@ contextBridge.exposeInMainWorld("studi", {
   getDoneDeadlines: call("studi:getDoneDeadlines"),
   setDeadlineDone: call("studi:setDeadlineDone"),
   refreshAiDeadlines: call("studi:refreshAiDeadlines"),
+  renameModule: call("studi:renameModule"),
+  setModuleColor: call("studi:setModuleColor"),
+  markSeen: call("studi:markSeen"),
+  setNotifications: call("studi:setNotifications"),
+  setLaunchAtLogin: call("studi:setLaunchAtLogin"),
+  getCalendars: call("studi:getCalendars"),
+  addCalendar: call("studi:addCalendar"),
+  removeCalendar: call("studi:removeCalendar"),
+  openIlias: call("studi:openIlias"),
+  onCommand(callback) {
+    const listener = (_event, cmd) => callback(cmd);
+    ipcRenderer.on("studi:command", listener);
+    return () => ipcRenderer.removeListener("studi:command", listener);
+  },
   // Update-Knopf (desktop/lib/updater.js, Typen in web/src/lib/updates.ts)
   updates: {
     getState: call("studi:getUpdateState"),
