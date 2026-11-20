@@ -32,24 +32,24 @@ export function Setup({
 
   return (
     <Stage width={680}>
-      <h1 className="text-[28px] font-bold leading-tight tracking-[-0.02em]">Was soll auf deinen Mac?</h1>
-      <p className="mt-1.5 text-muted">Tipp die Kurse an, die du brauchst. Du kannst das später ändern.</p>
+      <h1 className="text-[28px] font-bold leading-tight tracking-[-0.02em]">What should go on your Mac?</h1>
+      <p className="mt-1.5 text-muted">Pick the courses you need. You can change this later.</p>
 
       <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
         <div role="tablist" aria-label="Semester" className="inline-flex rounded-[9px] bg-sunken p-[3px]">
           <TabButton active={tab === "current"} onClick={() => setTab("current")}>
-            Dieses Semester
+            This semester
           </TabButton>
           <TabButton active={tab === "past"} onClick={() => setTab("past")}>
-            Frühere <span className="opacity-60">{past.length}</span>
+            Earlier <span className="opacity-60">{past.length}</span>
           </TabButton>
         </div>
         <button onClick={toggleAll} className="rounded-md px-2 py-1 font-semibold text-[var(--focus)] hover:bg-hover">
-          {allOn ? "Alle abwählen" : "Alle auswählen"}
+          {allOn ? "Deselect all" : "Select all"}
         </button>
       </div>
 
-      <ul className="mt-3 grid grid-cols-1 gap-2.5 sm:grid-cols-2" aria-label="Kurse">
+      <ul className="mt-3 grid grid-cols-1 gap-2.5 sm:grid-cols-2" aria-label="Courses">
         {list.map((c) => (
           <li key={c.id}>
             <CourseTile course={c} on={selected.includes(c.id)} onToggle={() => toggle(c.id)} />
@@ -59,8 +59,8 @@ export function Setup({
 
       <label className="mt-5 flex cursor-default items-center gap-3 rounded-[12px] bg-surface px-4 py-3">
         <span className="min-w-0 flex-1">
-          <span className="block font-semibold">Videos mitladen</span>
-          <span className="block text-[12px] text-muted">Vorlesungsaufzeichnungen brauchen viel Speicher.</span>
+          <span className="block font-semibold">Include videos</span>
+          <span className="block text-[12px] text-muted">Lecture recordings take up a lot of space.</span>
         </span>
         <input type="checkbox" role="switch" checked={videos} onChange={(e) => setVideos(e.target.checked)} className="peer sr-only" />
         <span
@@ -77,15 +77,15 @@ export function Setup({
 
       <div className="mt-6 flex flex-wrap items-center gap-4">
         <span className="flex-1 text-[12px] text-muted">
-          Speichern in {TARGET_FOLDER}{" "}
-          <button className="rounded font-semibold text-[var(--focus)] hover:underline">ändern</button>
+          Saving to {TARGET_FOLDER}{" "}
+          <button className="rounded font-semibold text-[var(--focus)] hover:underline">change</button>
         </span>
         <button
           onClick={onStart}
           disabled={n === 0}
           className="no-drag flex h-10 items-center rounded-[10px] bg-accent px-5 text-[14px] font-semibold text-on-accent transition-opacity hover:opacity-90 disabled:opacity-35"
         >
-          {n === 0 ? "Wähl mindestens einen Kurs" : `${n} ${n === 1 ? "Kurs" : "Kurse"} holen`}
+          {n === 0 ? "Pick at least one course" : `Get ${n} ${n === 1 ? "course" : "courses"}`}
         </button>
       </div>
     </Stage>
@@ -117,7 +117,7 @@ function CourseTile({ course, on, onToggle }: { course: Course; on: boolean; onT
     >
       <span className="block font-semibold leading-snug">{nameOf(course)}</span>
       <span className="mt-1 block text-[12px]" style={{ color: on ? tone(c, "ink") : "var(--muted)" }}>
-        {course.lecturer}, {course.total} Dateien
+        {course.lecturer}, {course.total} files
       </span>
       <span
         aria-hidden

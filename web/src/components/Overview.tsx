@@ -32,8 +32,10 @@ import {
 
 const FAIL_ID = "rechnernetze";
 const DAY_MS = 86_400_000;
-const SHORT = ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"];
-const LONG = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"];
+const SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const LONG = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+// Titel ohne „Submit “ vorne, für enge Stellen
+const bare = (t: string) => t.replace(/^Submit /, "");
 
 type View = "week" | "new" | string;
 
@@ -127,13 +129,13 @@ export function Overview({
         <nav className="scroll flex-1 px-3 pb-3 pt-3" aria-label="Navigation">
           <div className="flex flex-col gap-0.5">
             <NavItem active={!searching && view === "week"} onClick={() => open("week")} icon={<CalendarDays size={15} aria-hidden />}>
-              Nächste 7 Tage
+              Next 7 days
             </NavItem>
             <NavItem active={!searching && view === "new"} onClick={() => open("new")} icon={<Inbox size={15} aria-hidden />} count={newCount}>
-              Neu
+              New
             </NavItem>
           </div>
-          <p className="mb-1.5 mt-6 px-2.5 text-[12px] text-muted">Deine Kurse</p>
+          <p className="mb-1.5 mt-6 px-2.5 text-[12px] text-muted">Your courses</p>
           <div className="flex flex-col gap-0.5">
             {list.map((c) => (
               <NavItem
@@ -171,8 +173,8 @@ export function Overview({
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => e.key === "Escape" && setQuery("")}
-              placeholder="Suchen"
-              aria-label="Dateien, Abgaben und Kurse suchen"
+              placeholder="Search"
+              aria-label="Search files, deadlines and courses"
               className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-muted focus-visible:outline-none"
             />
             {searching ? (
@@ -181,7 +183,7 @@ export function Overview({
                   setQuery("");
                   searchRef.current?.focus();
                 }}
-                aria-label="Suche leeren"
+                aria-label="Clear search"
                 className="flex size-[18px] items-center justify-center rounded-full bg-muted/40 text-surface hover:bg-muted/60"
               >
                 <X size={11} strokeWidth={3} aria-hidden />
@@ -253,7 +255,7 @@ function ProfileMenu({ user, onEditCourses, onLogout }: { user: string; onEditCo
         <img src="/brand/logo-64.png" alt="" width={32} height={32} className="size-8 shrink-0" draggable={false} />
         <span className="min-w-0 flex-1">
           <span className="block truncate font-bold leading-tight">Studi-Helfer</span>
-          <span className="block truncate text-[12px] text-muted">{user}, Uni Köln</span>
+          <span className="block truncate text-[12px] text-muted">{user}, Uni Cologne</span>
         </span>
         <ChevronDown size={14} className={`shrink-0 text-muted transition-transform ${open ? "rotate-180" : ""}`} aria-hidden />
       </button>
@@ -270,7 +272,7 @@ function ProfileMenu({ user, onEditCourses, onLogout }: { user: string; onEditCo
               onEditCourses();
             }}
           >
-            Kurse ändern
+            Change courses
           </button>
           <div className="my-1 h-px bg-line" />
           <button
@@ -281,7 +283,7 @@ function ProfileMenu({ user, onEditCourses, onLogout }: { user: string; onEditCo
               onLogout();
             }}
           >
-            Abmelden
+            Sign out
           </button>
         </div>
       )}
@@ -315,7 +317,7 @@ function NavItem({
       <span className="flex w-4 shrink-0 justify-center">{icon}</span>
       <span className="line-clamp-2 min-w-0 flex-1">{children}</span>
       {warn ? (
-        <AlertTriangle size={13} className={active ? "" : "text-danger"} aria-label="Fehler beim Sync" />
+        <AlertTriangle size={13} className={active ? "" : "text-danger"} aria-label="Sync error" />
       ) : (
         count > 0 && (
           <span className={`text-[12px] tabular-nums ${active ? "opacity-80" : "text-muted"}`}>{count}</span>
@@ -346,20 +348,20 @@ function SyncStatus({
         <div className="rounded-[10px] bg-bg px-3 py-2.5" aria-live="polite">
           <p className="flex items-center gap-2 text-[13px] font-semibold">
             <Spinner size={12} />
-            {job.kind === "import" ? "Hole deine Kurse…" : "Hole neue Dateien…"}
+            {job.kind === "import" ? "Getting your courses…" : "Getting new files…"}
           </p>
           <div className="mt-2 h-[5px] overflow-hidden rounded-full bg-line">
             <div className="h-full rounded-full bg-accent transition-[width] duration-200 ease-out" style={{ width: `${frac * 100}%` }} />
           </div>
           <div className="mt-1.5 flex items-center gap-2">
             <span className="min-w-0 flex-1 truncate text-[12px] text-muted">
-              {done} von {n} Kursen{cur ? `, gerade ${cur.name}` : ""}
+              {done} of {n} courses{cur ? `, now ${cur.name}` : ""}
             </span>
             <button
               onClick={onStop}
               className="rounded-md bg-danger-soft px-2 py-0.5 text-[12px] font-semibold text-danger transition-opacity hover:opacity-80"
             >
-              Stopp
+              Stop
             </button>
           </div>
         </div>
@@ -368,24 +370,24 @@ function SyncStatus({
   }
 
   let icon = <span className="size-2 rounded-full bg-ok" aria-hidden />;
-  let label = "Zuletzt geholt";
-  let text = `heute, ${lastSync}`;
+  let label = "Last updated";
+  let text = `today, ${lastSync}`;
   if (job?.stopped) {
     icon = <span className="size-2 rounded-full bg-warn" aria-hidden />;
-    label = "Holen gestoppt";
-    text = `Stand: heute, ${lastSync}`;
+    label = "Update stopped";
+    text = `As of today, ${lastSync}`;
   } else if (problem === "offline") {
     icon = <WifiOff size={13} className="text-warn" aria-hidden />;
     label = "Offline";
-    text = `Stand: heute, ${lastSync}`;
+    text = `As of today, ${lastSync}`;
   } else if (problem === "loginExpired") {
     icon = <LogIn size={13} className="text-warn" aria-hidden />;
-    label = "Anmeldung abgelaufen";
-    text = "Bitte neu anmelden";
+    label = "Signed out";
+    text = "Please sign in again";
   } else if (problem === "courseFailed") {
     icon = <AlertTriangle size={13} className="text-danger" aria-hidden />;
-    label = "1 Kurs mit Fehler";
-    text = `Rest: heute, ${lastSync}`;
+    label = "1 course failed";
+    text = `Others: today, ${lastSync}`;
   }
 
   return (
@@ -399,8 +401,8 @@ function SyncStatus({
         <button
           onClick={onSync}
           disabled={problem === "loginExpired"}
-          aria-label="Jetzt neue Dateien holen"
-          title="Jetzt neue Dateien holen"
+          aria-label="Get new files now"
+          title="Get new files now"
           className="flex size-7 items-center justify-center rounded-md bg-surface hover:bg-hover disabled:opacity-45"
         >
           <RefreshCw size={13} aria-hidden />
@@ -424,24 +426,24 @@ function Banners({
   if (problem === "offline")
     return (
       <div className="mb-5">
-        <Notice tone="warn" icon={<WifiOff size={16} aria-hidden />} action={<Button onClick={onRetry}>Erneut versuchen</Button>}>
-          Keine Verbindung zu ILIAS. Du siehst den Stand von heute früh.
+        <Notice tone="warn" icon={<WifiOff size={16} aria-hidden />} action={<Button onClick={onRetry}>Try again</Button>}>
+          No connection to ILIAS. You are seeing this morning’s files.
         </Notice>
       </div>
     );
   if (problem === "loginExpired")
     return (
       <div className="mb-5">
-        <Notice tone="warn" icon={<LogIn size={16} aria-hidden />} action={<Button onClick={onRelogin}>Neu anmelden</Button>}>
-          Deine ILIAS-Anmeldung ist abgelaufen. Deine Dateien bleiben erhalten.
+        <Notice tone="warn" icon={<LogIn size={16} aria-hidden />} action={<Button onClick={onRelogin}>Sign in again</Button>}>
+          Your ILIAS session has expired. Your files are safe.
         </Notice>
       </div>
     );
   if (problem === "courseFailed" && (!courseId || courseId === FAIL_ID))
     return (
       <div className="mb-5">
-        <Notice tone="danger" icon={<AlertTriangle size={16} aria-hidden />} action={<Button onClick={onRetry}>Erneut versuchen</Button>}>
-          Rechnernetze konnte nicht synchronisiert werden. Die anderen Kurse sind aktuell.
+        <Notice tone="danger" icon={<AlertTriangle size={16} aria-hidden />} action={<Button onClick={onRetry}>Try again</Button>}>
+          Computer Networks could not be updated. All other courses are up to date.
         </Notice>
       </div>
     );
@@ -490,22 +492,22 @@ function WeekView({
       <header className="flex flex-wrap items-end gap-4">
         <div className="min-w-0 flex-1">
           <h1 className="text-[30px] font-bold leading-tight tracking-[-0.02em]">
-            {range === "week" ? "Nächste 7 Tage" : "Nächste 4 Wochen"}
+            {range === "week" ? "Next 7 days" : "Next 4 weeks"}
           </h1>
           <p className="mt-1 text-muted">
             {range === "month" ? (
-              `${openIn4} offene ${openIn4 === 1 ? "Abgabe" : "Abgaben"}${examsIn4 > 0 ? `, ${examsIn4} ${examsIn4 === 1 ? "Klausur" : "Klausuren"}` : ""}.`
+              `${openIn4} open ${openIn4 === 1 ? "deadline" : "deadlines"}${examsIn4 > 0 ? `, ${examsIn4} ${examsIn4 === 1 ? "exam" : "exams"}` : ""}.`
             ) : (
               <>
                 {open.length === 0
-                  ? "Alles erledigt. Keine offenen Abgaben in den nächsten 7 Tagen."
-                  : `${open.length} offene ${open.length === 1 ? "Abgabe" : "Abgaben"} in ${kurse} ${kurse === 1 ? "Kurs" : "Kursen"}.`}
-                {first && ` Zuerst fällig: ${first.title.replace(/ abgeben$/, "")} am ${LONG[new Date(parseDay(first.date)).getUTCDay()]}.`}
+                  ? "All done. No open deadlines in the next 7 days."
+                  : `${open.length} open ${open.length === 1 ? "deadline" : "deadlines"} in ${kurse} ${kurse === 1 ? "course" : "courses"}.`}
+                {first && ` Next up: ${bare(first.title)} on ${LONG[new Date(parseDay(first.date)).getUTCDay()]}.`}
               </>
             )}
           </p>
         </div>
-        <div role="tablist" aria-label="Zeitraum" className="inline-flex rounded-[9px] bg-sunken p-[3px]">
+        <div role="tablist" aria-label="Time range" className="inline-flex rounded-[9px] bg-sunken p-[3px]">
           {(["week", "month"] as const).map((r) => (
             <button
               key={r}
@@ -514,7 +516,7 @@ function WeekView({
               onClick={() => setRange(r)}
               className={`h-7 rounded-[7px] px-3.5 transition-colors ${range === r ? "bg-surface font-semibold shadow-sm" : "text-muted hover:text-text"}`}
             >
-              {r === "week" ? "7 Tage" : "4 Wochen"}
+              {r === "week" ? "7 days" : "4 weeks"}
             </button>
           ))}
         </div>
@@ -528,7 +530,7 @@ function WeekView({
         className="mt-6 grid gap-1.5 transition-[grid-template-columns] duration-300 ease-out"
         style={{ gridTemplateColumns: days.map((d) => (d.wide ? "minmax(0, 1fr)" : "44px")).join(" ") }}
         role="list"
-        aria-label="Die nächsten 7 Tage"
+        aria-label="The next 7 days"
       >
         {days.map((day) => (
           <div key={day.iso} role="listitem" className="flex min-w-0 flex-col gap-1.5" aria-label={`${LONG[day.wd]}, ${day.num}.`}>
@@ -556,10 +558,10 @@ function WeekView({
       <div className="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-2">
         <section aria-labelledby="neu-titel">
           <h2 id="neu-titel" className="mb-2.5 text-[17px] font-bold">
-            Neu in deinen Kursen
+            New in your courses
           </h2>
           {newFiles.length === 0 ? (
-            <p className="rounded-[10px] bg-surface px-4 py-5 text-muted">Seit dem letzten Sync ist nichts Neues dazugekommen.</p>
+            <p className="rounded-[10px] bg-surface px-4 py-5 text-muted">Nothing new since the last update.</p>
           ) : (
             <ul className="rounded-[10px] bg-surface px-1.5 py-1">
               {newFiles.map(({ file, course }) => (
@@ -571,7 +573,7 @@ function WeekView({
 
         <section aria-labelledby="kurz-titel">
           <h2 id="kurz-titel" className="mb-2.5 text-[17px] font-bold">
-            Kurz zusammengefasst
+            In short
           </h2>
           <div className="flex flex-col gap-3.5">
             {withDigest.map((c) => (
@@ -594,7 +596,7 @@ function WeekView({
 function MonthView({ deadlines, done, onOpen }: { deadlines: Deadline[]; done: string[]; onOpen: (id: string) => void }) {
   const wdToday = new Date(todayMs).getUTCDay();
   const start = todayMs - ((wdToday + 6) % 7) * DAY_MS; // Montag dieser Woche
-  const MONTHS = ["Jan.", "Feb.", "März", "Apr.", "Mai", "Juni", "Juli", "Aug.", "Sep.", "Okt.", "Nov.", "Dez."];
+  const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   const cells = Array.from({ length: 28 }, (_, i) => {
     const d = new Date(start + i * DAY_MS);
     const iso = d.toISOString().slice(0, 10);
@@ -613,11 +615,11 @@ function MonthView({ deadlines, done, onOpen }: { deadlines: Deadline[]; done: s
   return (
     <div className="mt-6">
       <div className="mb-1.5 grid grid-cols-7 gap-1.5 px-1 text-[12px] text-muted" aria-hidden>
-        {["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"].map((w) => (
+        {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((w) => (
           <span key={w}>{w}</span>
         ))}
       </div>
-      <div className="grid grid-cols-7 gap-1.5" role="list" aria-label="Die nächsten 4 Wochen">
+      <div className="grid grid-cols-7 gap-1.5" role="list" aria-label="The next 4 weeks">
         {cells.map((cell) => (
           <div
             key={cell.iso}
@@ -637,7 +639,7 @@ function MonthView({ deadlines, done, onOpen }: { deadlines: Deadline[]; done: s
                 const c = colorOf(course);
                 const isDone = d.kind === "abgabe" && done.includes(d.id);
                 const exam = d.kind === "klausur";
-                const label = exam && d.title === "Klausur" ? `Klausur ${shortOf(course)}` : d.title.replace(/ abgeben$/, "");
+                const label = exam && d.title === "Exam" ? `Exam ${shortOf(course)}` : bare(d.title);
                 return (
                   <button
                     key={d.id}
@@ -656,7 +658,7 @@ function MonthView({ deadlines, done, onOpen }: { deadlines: Deadline[]; done: s
                   </button>
                 );
               })}
-            {cell.items.length > 3 && <span className="px-1 text-[11px] text-muted">+{cell.items.length - 3} weitere</span>}
+            {cell.items.length > 3 && <span className="px-1 text-[11px] text-muted">+{cell.items.length - 3} more</span>}
           </div>
         ))}
       </div>
@@ -688,7 +690,7 @@ function DayHead({ day }: { day: { num: number; wd: number; wide: boolean; today
           <span className="flex h-7 min-w-7 items-center justify-center rounded-full bg-accent px-1.5 font-bold text-on-accent">
             {day.num}
           </span>
-          <span className="font-semibold">Heute</span>
+          <span className="font-semibold">Today</span>
         </>
       ) : (
         <>
@@ -705,8 +707,8 @@ function CheckButton({ done, onClick, label, onSolid }: { done: boolean; onClick
     <button
       onClick={onClick}
       aria-pressed={done}
-      aria-label={done ? `${label}: wieder offen` : `${label}: als erledigt markieren`}
-      title={done ? "Wieder offen" : "Erledigt"}
+      aria-label={done ? `${label}: mark as open` : `${label}: mark as done`}
+      title={done ? "Mark as open" : "Done"}
       className={`flex size-[22px] shrink-0 items-center justify-center rounded-full transition-colors ${
         done
           ? "bg-accent text-on-accent"
@@ -735,25 +737,25 @@ function DeadlineBlock({ d, done, onToggle, onOpen }: { d: Deadline; done: boole
       : solid
         ? { background: tone(c), color: "var(--on-solid)" }
         : { background: tone(c, "soft") };
-  const title = exam && d.title === "Klausur" ? shortOf(course) : d.title.replace(/ abgeben$/, "");
+  const title = exam && d.title === "Exam" ? shortOf(course) : bare(d.title);
 
   return (
     <div className="flex items-start gap-1.5 rounded-[7px] py-1.5 pl-2 pr-1.5 transition-colors" style={style}>
       <button
         onClick={onOpen}
-        title={d.source ? `${d.kind === "klausur" ? "Ort" : "Gefunden in"}: ${d.source}` : `${nameOf(course)} öffnen`}
+        title={d.source ? `${d.kind === "klausur" ? "Room" : "Found in"}: ${d.source}` : `Open ${nameOf(course)}`}
         className="min-w-0 flex-1 text-left"
       >
         {exam && (
           <span className="mb-1 inline-block rounded-full px-1.5 text-[11px] font-bold leading-[17px]" style={{ background: tone(c), color: "var(--on-solid)" }}>
-            Klausur
+            Exam
           </span>
         )}
         <span
           className="block truncate text-[12px] font-semibold"
           style={isDone || solid ? undefined : { color: tone(c, "ink") }}
         >
-          {isDone ? "erledigt" : d.time}
+          {isDone ? "done" : d.time}
         </span>
         <span className={`block text-[13px] font-semibold leading-snug ${isDone ? "line-through" : ""}`}>{title}</span>
         <span className={`block truncate text-[12px] ${solid ? "opacity-85" : isDone ? "" : "text-muted"}`}>
@@ -801,10 +803,10 @@ function SearchView({
   const total = foundCourses.length + foundDeadlines.length + foundFiles.length;
 
   const chips: { id: Filter; label: string; n: number }[] = [
-    { id: "alles", label: "Alles", n: total },
-    { id: "abgaben", label: "Abgaben", n: foundDeadlines.length },
-    { id: "dateien", label: "Dateien", n: foundFiles.length },
-    { id: "kurse", label: "Kurse", n: foundCourses.length },
+    { id: "alles", label: "All", n: total },
+    { id: "abgaben", label: "Deadlines", n: foundDeadlines.length },
+    { id: "dateien", label: "Files", n: foundFiles.length },
+    { id: "kurse", label: "Courses", n: foundCourses.length },
   ];
   const show = (f: Filter) => filter === "alles" || filter === f;
 
@@ -812,15 +814,15 @@ function SearchView({
     <>
       <header>
         <h1 className="text-[30px] font-bold leading-tight tracking-[-0.02em]">
-          {total === 0 ? "Nichts gefunden" : `${total} ${total === 1 ? "Treffer" : "Treffer"}`}
+          {total === 0 ? "No results" : `${total} ${total === 1 ? "result" : "results"}`}
         </h1>
         <p className="mt-1 text-muted">
-          {total === 0 ? `Für „${query}“ gibt es keine Datei, Abgabe oder Kurs.` : `für „${query}“`}
+          {total === 0 ? `No file, deadline or course matches “${query}”.` : `for “${query}”`}
         </p>
       </header>
 
       {total > 0 && (
-        <div className="mt-5 flex flex-wrap gap-2" role="group" aria-label="Treffer filtern">
+        <div className="mt-5 flex flex-wrap gap-2" role="group" aria-label="Filter results">
           {chips.map((ch) => (
             <button
               key={ch.id}
@@ -840,7 +842,7 @@ function SearchView({
       <div className="mt-6 flex flex-col gap-6">
         {show("abgaben") && foundDeadlines.length > 0 && (
           <section>
-            <h2 className="mb-2 text-[15px] font-bold">Abgaben</h2>
+            <h2 className="mb-2 text-[15px] font-bold">Deadlines</h2>
             <ul className="rounded-[10px] bg-surface px-1.5 py-1">
               {foundDeadlines.map((d) => {
                 const c = courseById(d.courseId)!;
@@ -856,7 +858,7 @@ function SearchView({
                         </span>
                         <span className="block truncate text-[12px] text-muted">{nameOf(c)}</span>
                       </span>
-                      <span className="text-[12px] text-muted">{isDone ? "erledigt" : `${LONG[wd]}, ${d.time}`}</span>
+                      <span className="text-[12px] text-muted">{isDone ? "done" : `${LONG[wd]}, ${d.time}`}</span>
                     </button>
                   </li>
                 );
@@ -866,7 +868,7 @@ function SearchView({
         )}
         {show("dateien") && foundFiles.length > 0 && (
           <section>
-            <h2 className="mb-2 text-[15px] font-bold">Dateien</h2>
+            <h2 className="mb-2 text-[15px] font-bold">Files</h2>
             <ul className="rounded-[10px] bg-surface px-1.5 py-1">
               {foundFiles.map(({ file, course, folder }) => (
                 <FileRow key={file.id} file={file} sub={`${nameOf(course)}, ${folder}`} color={colorOf(course)} highlight={q} />
@@ -876,7 +878,7 @@ function SearchView({
         )}
         {show("kurse") && foundCourses.length > 0 && (
           <section>
-            <h2 className="mb-2 text-[15px] font-bold">Kurse</h2>
+            <h2 className="mb-2 text-[15px] font-bold">Courses</h2>
             <ul className="rounded-[10px] bg-surface px-1.5 py-1">
               {foundCourses.map((c) => (
                 <li key={c.id}>
@@ -888,7 +890,7 @@ function SearchView({
                       </span>
                       <span className="block truncate text-[12px] text-muted">{c.lecturer}</span>
                     </span>
-                    <span className="text-[12px] text-muted">{countFiles(c)} Dateien</span>
+                    <span className="text-[12px] text-muted">{countFiles(c)} files</span>
                   </button>
                 </li>
               ))}
@@ -924,11 +926,11 @@ function NewView({ list }: { list: Course[] }) {
   return (
     <>
       <header>
-        <h1 className="text-[30px] font-bold leading-tight tracking-[-0.02em]">Neu</h1>
-        <p className="mt-1 text-muted">Neue und geänderte Dateien seit dem letzten Sync.</p>
+        <h1 className="text-[30px] font-bold leading-tight tracking-[-0.02em]">New</h1>
+        <p className="mt-1 text-muted">New and changed files since the last update.</p>
       </header>
       {items.length === 0 ? (
-        <p className="mt-6 rounded-[10px] bg-surface px-4 py-5 text-muted">Seit dem letzten Sync ist nichts Neues dazugekommen.</p>
+        <p className="mt-6 rounded-[10px] bg-surface px-4 py-5 text-muted">Nothing new since the last update.</p>
       ) : (
         <ul className="mt-6 rounded-[10px] bg-surface px-1.5 py-1">
           {items.map(({ file, course, where }) => (
@@ -968,10 +970,10 @@ function CourseView({
             <span className="truncate">{nameOf(course)}</span>
           </h1>
           <p className="mt-1 text-muted">
-            {course.lecturer}, {n} {n === 1 ? "Datei" : "Dateien"}
+            {course.lecturer}, {n} {n === 1 ? "file" : "files"}
           </p>
         </div>
-        <Button>Im Finder zeigen</Button>
+        <Button>Show in Finder</Button>
       </header>
 
       {(digests[course.id] || upcoming.length > 0) && (
@@ -1000,7 +1002,7 @@ function CourseView({
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className={`block truncate font-semibold ${isDone ? "line-through" : ""}`}>{d.title}</span>
-                      <span className="block text-[12px] opacity-80">{isDone ? "erledigt" : d.time}</span>
+                      <span className="block text-[12px] opacity-80">{isDone ? "done" : d.time}</span>
                     </span>
                     {d.kind === "abgabe" && (
                       <span style={isDone || solid ? undefined : { color: tone(c) }}>
@@ -1066,17 +1068,17 @@ function FileRow({
       <div className="min-w-0 flex-1">
         <p className="truncate font-medium">
           <Highlight text={file.name} q={highlight} />
-          {changed && <span className="ml-2 text-[12px] font-semibold text-warn">geändert</span>}
-          {!changed && file.isNew && !compact && <span className="ml-2 text-[12px] font-semibold text-ok">neu</span>}
+          {changed && <span className="ml-2 text-[12px] font-semibold text-warn">changed</span>}
+          {!changed && file.isNew && !compact && <span className="ml-2 text-[12px] font-semibold text-ok">new</span>}
         </p>
         {(sub || changed) && (
           <p className="truncate text-[12px] text-muted">{changed ? file.changeNote : sub}</p>
         )}
       </div>
       <div className="hidden items-center gap-1.5 group-hover:flex group-focus-within:flex">
-        {changed && <Button className="h-7 px-2.5">Unterschied</Button>}
-        <Button className="h-7 px-2.5">Öffnen</Button>
-        {!compact && <Button className="h-7 px-2.5">Im Finder zeigen</Button>}
+        {changed && <Button className="h-7 px-2.5">What changed</Button>}
+        <Button className="h-7 px-2.5">Open</Button>
+        {!compact && <Button className="h-7 px-2.5">Show in Finder</Button>}
       </div>
       <span className="w-[64px] shrink-0 text-right text-[12px] text-muted group-hover:hidden group-focus-within:hidden">
         {file.updated}

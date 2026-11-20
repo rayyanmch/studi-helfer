@@ -137,7 +137,7 @@ export function ImportPanel({ job, onRetry, onClose }: { job: Job; onRetry: (id:
 
   return (
     <section
-      aria-label="Kurse werden geholt"
+      aria-label="Getting your courses"
       aria-live="polite"
       className="no-drag absolute bottom-5 right-5 z-30 w-[300px] rounded-[12px] bg-surface p-3.5 shadow-[0_0_0_1px_var(--line),0_14px_34px_rgba(0,0,0,0.16)]"
     >
@@ -152,19 +152,19 @@ export function ImportPanel({ job, onRetry, onClose }: { job: Job; onRetry: (id:
           <Spinner size={13} />
         )}
         <b className="min-w-0 flex-1 truncate font-semibold">
-          {finished ? (failed.length > 0 ? `${n - failed.length} von ${n} Kursen da` : "Alle Kurse sind da") : "Hole deine Kurse"}
+          {finished ? (failed.length > 0 ? `${n - failed.length} of ${n} courses ready` : "All courses are ready") : "Getting your courses"}
         </b>
-        {!finished && <span className="text-[12px] tabular-nums text-muted">{done} von {n}</span>}
+        {!finished && <span className="text-[12px] tabular-nums text-muted">{done} of {n}</span>}
         {!finished ? (
           <button
             onClick={() => setSmall((v) => !v)}
-            aria-label={small ? "Fenster aufklappen" : "Fenster verkleinern"}
+            aria-label={small ? "Expand" : "Minimize"}
             className="flex size-6 items-center justify-center rounded-md text-muted hover:bg-hover"
           >
             {small ? <ChevronUp size={14} aria-hidden /> : <ChevronDown size={14} aria-hidden />}
           </button>
         ) : (
-          <button onClick={onClose} aria-label="Schließen" className="flex size-6 items-center justify-center rounded-md text-muted hover:bg-hover">
+          <button onClick={onClose} aria-label="Close" className="flex size-6 items-center justify-center rounded-md text-muted hover:bg-hover">
             <X size={14} aria-hidden />
           </button>
         )}
@@ -182,20 +182,20 @@ export function ImportPanel({ job, onRetry, onClose }: { job: Job; onRetry: (id:
             <li key={r.id} className={`flex items-center gap-2 ${r.status === "waiting" ? "text-muted" : ""}`}>
               <Swatch color={r.color} size={8} />
               <span className="min-w-0 flex-1 truncate">{r.name}</span>
-              {r.status === "running" && <span className="tabular-nums text-muted">{r.count} von {r.total}</span>}
-              {r.status === "waiting" && <span>wartet</span>}
+              {r.status === "running" && <span className="tabular-nums text-muted">{r.count} of {r.total}</span>}
+              {r.status === "waiting" && <span>waiting</span>}
               {r.status === "failed" && (
                 <button onClick={() => onRetry(r.id)} className="rounded font-semibold text-danger hover:underline">
-                  Erneut versuchen
+                  Try again
                 </button>
               )}
             </li>
           ))}
-          {waitingRest > 0 && <li className="text-muted">und {waitingRest} weitere</li>}
-          {finished && failed.length === 0 && <li className="text-muted">Alles liegt jetzt in ~/Uni.</li>}
+          {waitingRest > 0 && <li className="text-muted">and {waitingRest} more</li>}
+          {finished && failed.length === 0 && <li className="text-muted">Everything is now in ~/Uni.</li>}
         </ul>
       )}
-      {cur && small && <p className="mt-2 truncate text-[12px] text-muted">gerade {cur.name}</p>}
+      {cur && small && <p className="mt-2 truncate text-[12px] text-muted">now {cur.name}</p>}
     </section>
   );
 }

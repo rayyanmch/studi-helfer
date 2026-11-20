@@ -9,7 +9,7 @@ export interface CourseFile {
   name: string;
   kind: FileKind;
   size: string;
-  updated: string; // fertig formatierter Text, z. B. "Heute, 09:14"
+  updated: string; // fertig formatierter Text, z. B. "today", "Nov 12"
   isNew: boolean; // neu seit dem letzten Sync
   changeNote?: string; // geänderte Datei: was die KI als Unterschied gefunden hat
 }
@@ -39,7 +39,7 @@ export interface Deadline {
   courseId: string;
   title: string;
   date: string; // "2026-11-23"
-  time: string; // "bis 10:00", "14:00" oder "ganztägig"
+  time: string; // "due 10:00", "14:00" oder "all day"
   kind: "abgabe" | "termin" | "klausur"; // nur "abgabe" lässt sich abhaken
   source?: string; // wo die KI die Frist gefunden hat
 }
@@ -51,101 +51,101 @@ export const TARGET_FOLDER = "~/Uni";
 export const courses: Course[] = [
   {
     id: "softwaretechnik",
-    name: "Softwaretechnik",
-    short: "SWT",
+    name: "Software Engineering",
+    short: "SE",
     lecturer: "Prof. Dr. Wagner",
     total: 31,
     color: "blue",
     folders: [
       {
         id: "st-vorlesung",
-        name: "Vorlesung",
+        name: "Lectures",
         files: [
-          { id: "st1", name: "01 Einführung.pdf", kind: "pdf", size: "1,2 MB", updated: "12. Okt.", isNew: false },
-          { id: "st2", name: "02 Anforderungen.pdf", kind: "pdf", size: "2,4 MB", updated: "19. Okt.", isNew: false },
-          { id: "st3", name: "03 Entwurfsmuster.pdf", kind: "pdf", size: "3,1 MB", updated: "heute", isNew: true },
+          { id: "st1", name: "01 Introduction.pdf", kind: "pdf", size: "1.2 MB", updated: "Oct 12", isNew: false },
+          { id: "st2", name: "02 Requirements.pdf", kind: "pdf", size: "2.4 MB", updated: "Oct 19", isNew: false },
+          { id: "st3", name: "03 Design Patterns.pdf", kind: "pdf", size: "3.1 MB", updated: "today", isNew: true },
         ],
       },
       {
         id: "st-uebung",
-        name: "Übung",
+        name: "Exercises",
         files: [
-          { id: "st4", name: "Übungsblatt 4.pdf", kind: "pdf", size: "310 KB", updated: "heute", isNew: true },
+          { id: "st4", name: "Exercise Sheet 4.pdf", kind: "pdf", size: "310 KB", updated: "today", isNew: true },
           {
             id: "st5",
-            name: "Übungsblatt 3.pdf",
+            name: "Exercise Sheet 3.pdf",
             kind: "pdf",
             size: "290 KB",
-            updated: "heute",
+            updated: "today",
             isNew: false,
-            changeNote: "Aufgabe 2b hat eine neue Angabe.",
+            changeNote: "Task 2b has a new description.",
           },
-          { id: "st6", name: "Beispielprojekt.zip", kind: "zip", size: "4,8 MB", updated: "6. Nov.", isNew: false },
+          { id: "st6", name: "Sample Project.zip", kind: "zip", size: "4.8 MB", updated: "Nov 6", isNew: false },
         ],
       },
       {
         id: "st-selbst",
-        name: "Selbstlernen",
+        name: "Self-study",
         files: [
-          { id: "st7", name: "Selbstlerneinheit 3 Beobachter.pdf", kind: "pdf", size: "860 KB", updated: "12. Nov.", isNew: false },
+          { id: "st7", name: "Self-study 3 Observer.pdf", kind: "pdf", size: "860 KB", updated: "Nov 12", isNew: false },
         ],
       },
     ],
   },
   {
     id: "bwl",
-    name: "BWL",
-    short: "BWL",
+    name: "Business Administration",
+    short: "BA",
     lecturer: "Prof. Dr. Brandt",
     total: 18,
     color: "orange",
     folders: [
       {
         id: "bwl-folien",
-        name: "Folien",
+        name: "Slides",
         files: [
-          { id: "bw1", name: "Kapitel 5 Kostenrechnung.pdf", kind: "pdf", size: "2,9 MB", updated: "gestern", isNew: true },
-          { id: "bw2", name: "Kapitel 4 Marketing.pdf", kind: "pdf", size: "2,2 MB", updated: "9. Nov.", isNew: false },
+          { id: "bw1", name: "Chapter 5 Cost Accounting.pdf", kind: "pdf", size: "2.9 MB", updated: "yesterday", isNew: true },
+          { id: "bw2", name: "Chapter 4 Marketing.pdf", kind: "pdf", size: "2.2 MB", updated: "Nov 9", isNew: false },
         ],
       },
       {
         id: "bwl-fallstudien",
-        name: "Fallstudien",
+        name: "Case Studies",
         files: [
-          { id: "bw3", name: "Fallstudie Logistik.docx", kind: "doc", size: "86 KB", updated: "2. Nov.", isNew: false },
+          { id: "bw3", name: "Case Study Logistics.docx", kind: "doc", size: "86 KB", updated: "Nov 2", isNew: false },
         ],
       },
     ],
   },
   {
     id: "mathe",
-    name: "Mathematik für Informatik I",
-    short: "Mathe I",
+    name: "Mathematics for Computer Science I",
+    short: "Math I",
     lecturer: "Prof. Dr. Lindner",
     total: 42,
     color: "green",
     folders: [
       {
         id: "ma-skript",
-        name: "Skript",
+        name: "Lecture Notes",
         files: [
-          { id: "ma1", name: "Skript Teil 2.pdf", kind: "pdf", size: "5,6 MB", updated: "14. Nov.", isNew: false },
-          { id: "ma2", name: "Formelsammlung.pdf", kind: "pdf", size: "420 KB", updated: "30. Okt.", isNew: false },
+          { id: "ma1", name: "Lecture Notes Part 2.pdf", kind: "pdf", size: "5.6 MB", updated: "Nov 14", isNew: false },
+          { id: "ma2", name: "Formula Sheet.pdf", kind: "pdf", size: "420 KB", updated: "Oct 30", isNew: false },
         ],
       },
       {
         id: "ma-blaetter",
-        name: "Übungsblätter",
+        name: "Exercise Sheets",
         files: [
-          { id: "ma3", name: "Blatt 7.pdf", kind: "pdf", size: "180 KB", updated: "heute", isNew: true },
-          { id: "ma4", name: "Blatt 6.pdf", kind: "pdf", size: "175 KB", updated: "13. Nov.", isNew: false },
+          { id: "ma3", name: "Sheet 7.pdf", kind: "pdf", size: "180 KB", updated: "today", isNew: true },
+          { id: "ma4", name: "Sheet 6.pdf", kind: "pdf", size: "175 KB", updated: "Nov 13", isNew: false },
         ],
       },
     ],
   },
   {
     id: "datenbanken",
-    name: "Datenbanken",
+    name: "Databases",
     short: "DB",
     lecturer: "Prof. Dr. Krüger",
     total: 26,
@@ -153,34 +153,34 @@ export const courses: Course[] = [
     folders: [
       {
         id: "db-vorlesung",
-        name: "Vorlesung",
+        name: "Lectures",
         files: [
-          { id: "db1", name: "SQL Grundlagen.pdf", kind: "pdf", size: "1,8 MB", updated: "7. Nov.", isNew: false },
-          { id: "db2", name: "Normalformen.pdf", kind: "pdf", size: "1,4 MB", updated: "gestern", isNew: true },
+          { id: "db1", name: "SQL Basics.pdf", kind: "pdf", size: "1.8 MB", updated: "Nov 7", isNew: false },
+          { id: "db2", name: "Normal Forms.pdf", kind: "pdf", size: "1.4 MB", updated: "yesterday", isNew: true },
         ],
       },
     ],
   },
   {
     id: "rechnernetze",
-    name: "Rechnernetze",
-    short: "Netze",
+    name: "Computer Networks",
+    short: "Networks",
     lecturer: "Prof. Dr. Sommer",
     total: 12,
     color: "ochre",
     folders: [
       {
         id: "rn-folien",
-        name: "Folien",
+        name: "Slides",
         files: [
-          { id: "rn1", name: "Schichtenmodell.pdf", kind: "pdf", size: "2,0 MB", updated: "10. Nov.", isNew: false },
+          { id: "rn1", name: "Layer Model.pdf", kind: "pdf", size: "2.0 MB", updated: "Nov 10", isNew: false },
         ],
       },
     ],
   },
   {
     id: "programmierung",
-    name: "Programmierung I",
+    name: "Programming I",
     short: "Prog I",
     lecturer: "Prof. Dr. Albers",
     total: 54,
@@ -189,17 +189,17 @@ export const courses: Course[] = [
     folders: [
       {
         id: "pr-folien",
-        name: "Folien",
+        name: "Slides",
         files: [
-          { id: "pr1", name: "Klausurvorbereitung.pdf", kind: "pdf", size: "1,1 MB", updated: "3. Feb.", isNew: false },
+          { id: "pr1", name: "Exam Prep.pdf", kind: "pdf", size: "1.1 MB", updated: "Feb 3", isNew: false },
         ],
       },
     ],
   },
   {
     id: "linalg",
-    name: "Lineare Algebra",
-    short: "LinA",
+    name: "Linear Algebra",
+    short: "LinAlg",
     lecturer: "Prof. Dr. Hofmann",
     total: 38,
     color: "rose",
@@ -207,17 +207,17 @@ export const courses: Course[] = [
     folders: [
       {
         id: "la-skript",
-        name: "Skript",
+        name: "Lecture Notes",
         files: [
-          { id: "la1", name: "Skript komplett.pdf", kind: "pdf", size: "7,4 MB", updated: "28. Jan.", isNew: false },
+          { id: "la1", name: "Complete Lecture Notes.pdf", kind: "pdf", size: "7.4 MB", updated: "Jan 28", isNew: false },
         ],
       },
     ],
   },
   {
     id: "englisch",
-    name: "Englisch für IT",
-    short: "Engl",
+    name: "English for IT",
+    short: "English",
     lecturer: "Dr. Carter",
     total: 9,
     color: "indigo",
@@ -227,7 +227,7 @@ export const courses: Course[] = [
         id: "en-material",
         name: "Material",
         files: [
-          { id: "en1", name: "Vocabulary List.pdf", kind: "pdf", size: "240 KB", updated: "15. Jan.", isNew: false },
+          { id: "en1", name: "Vocabulary List.pdf", kind: "pdf", size: "240 KB", updated: "Jan 15", isNew: false },
         ],
       },
     ],
@@ -235,33 +235,33 @@ export const courses: Course[] = [
 ];
 
 export const deadlines: Deadline[] = [
-  { id: "d0", courseId: "softwaretechnik", title: "Tutorium", date: "2026-11-20", time: "14:00", kind: "termin" },
-  { id: "d1", courseId: "mathe", title: "Blatt 7 abgeben", date: "2026-11-23", time: "bis 10:00", kind: "abgabe" },
-  { id: "d2", courseId: "softwaretechnik", title: "Übungsblatt 4 abgeben", date: "2026-11-25", time: "bis 23:59", kind: "abgabe" },
-  { id: "d3", courseId: "bwl", title: "Fallstudie hochladen", date: "2026-11-26", time: "bis 12:00", kind: "abgabe" },
+  { id: "d0", courseId: "softwaretechnik", title: "Tutorial", date: "2026-11-20", time: "14:00", kind: "termin" },
+  { id: "d1", courseId: "mathe", title: "Submit Sheet 7", date: "2026-11-23", time: "due 10:00", kind: "abgabe" },
+  { id: "d2", courseId: "softwaretechnik", title: "Submit Exercise Sheet 4", date: "2026-11-25", time: "due 23:59", kind: "abgabe" },
+  { id: "d3", courseId: "bwl", title: "Upload Case Study", date: "2026-11-26", time: "due 12:00", kind: "abgabe" },
   {
     id: "d4",
     courseId: "datenbanken",
-    title: "Zur Klausur anmelden",
+    title: "Register for the exam",
     date: "2026-11-26",
-    time: "ganztägig",
+    time: "all day",
     kind: "abgabe",
-    source: "Normalformen.pdf, Folie 2",
+    source: "Normal Forms.pdf, slide 2",
   },
-  { id: "d5", courseId: "datenbanken", title: "Blatt 5 abgeben", date: "2026-11-27", time: "bis 18:00", kind: "abgabe" },
-  { id: "d6", courseId: "mathe", title: "Blatt 8 abgeben", date: "2026-11-30", time: "bis 10:00", kind: "abgabe" },
-  { id: "d7", courseId: "softwaretechnik", title: "Übungsblatt 5 abgeben", date: "2026-12-02", time: "bis 23:59", kind: "abgabe" },
-  { id: "d8", courseId: "softwaretechnik", title: "Tutorium", date: "2026-12-04", time: "14:00", kind: "termin" },
-  { id: "d9", courseId: "datenbanken", title: "Klausur", date: "2026-12-10", time: "10:00", kind: "klausur", source: "Hörsaal C" },
-  { id: "d10", courseId: "bwl", title: "Zwischentest", date: "2026-12-11", time: "12:00", kind: "klausur" },
+  { id: "d5", courseId: "datenbanken", title: "Submit Sheet 5", date: "2026-11-27", time: "due 18:00", kind: "abgabe" },
+  { id: "d6", courseId: "mathe", title: "Submit Sheet 8", date: "2026-11-30", time: "due 10:00", kind: "abgabe" },
+  { id: "d7", courseId: "softwaretechnik", title: "Submit Exercise Sheet 5", date: "2026-12-02", time: "due 23:59", kind: "abgabe" },
+  { id: "d8", courseId: "softwaretechnik", title: "Tutorial", date: "2026-12-04", time: "14:00", kind: "termin" },
+  { id: "d9", courseId: "datenbanken", title: "Exam", date: "2026-12-10", time: "10:00", kind: "klausur", source: "Lecture Hall C" },
+  { id: "d10", courseId: "bwl", title: "Midterm", date: "2026-12-11", time: "12:00", kind: "klausur" },
 ];
 
 /** Kurze Zusammenfassung pro Kurs nach dem Sync (später von der KI). */
 export const digests: Record<string, string> = {
-  softwaretechnik: "Neues Thema Entwurfsmuster. Beobachter und Strategie kommen direkt in Übungsblatt 4 dran.",
-  bwl: "Kapitel 5 zur Kostenrechnung ist online. Die Fallstudie am Donnerstag baut darauf auf.",
-  mathe: "Blatt 7 zu Eigenwerten. Für Aufgabe 3 brauchst du Satz 4.2 aus dem Skript.",
-  datenbanken: "In den Folien zu Normalformen steht die Frist für die Klausuranmeldung.",
+  softwaretechnik: "New topic: design patterns. Observer and Strategy show up right away in Exercise Sheet 4.",
+  bwl: "Chapter 5 on cost accounting is online. Thursday's case study builds on it.",
+  mathe: "Sheet 7 is about eigenvalues. For task 3 you need theorem 4.2 from the lecture notes.",
+  datenbanken: "The slides on normal forms include the deadline for exam registration.",
 };
 
 export function countFiles(course: Course): number {

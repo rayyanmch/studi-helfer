@@ -10,12 +10,12 @@ const instrument = Instrument_Sans({
 
 export const metadata: Metadata = {
   title: "Studi-Helfer",
-  description: "Deine Uni-Unterlagen an einem Ort",
+  description: "All your university files in one place",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="de" className={`${instrument.variable} h-full antialiased`}>
+    <html lang="en" className={`${instrument.variable} h-full antialiased`}>
       <body className="h-full">{children}</body>
     </html>
   );

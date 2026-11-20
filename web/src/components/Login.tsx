@@ -46,24 +46,24 @@ export function Login({ result, onSuccess }: { result: LoginResult; onSuccess: (
         <div className="mt-[9vh] w-[340px] max-w-full text-center">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/brand/logo-256.png" alt="" width={72} height={72} className="mx-auto size-[72px]" draggable={false} />
-          <h1 className="mt-5 text-[26px] font-bold leading-tight tracking-[-0.02em]">Bei ILIAS anmelden</h1>
-          <p className="mt-1 text-muted">Mit deiner Uni-Kennung</p>
+          <h1 className="mt-5 text-[26px] font-bold leading-tight tracking-[-0.02em]">Sign in to ILIAS</h1>
+          <p className="mt-1 text-muted">With your university ID</p>
 
           <form onSubmit={submit} className="mt-7 flex flex-col gap-2.5 text-left" noValidate>
             <label className="sr-only" htmlFor="kennung">
-              Uni-Kennung
+              University ID
             </label>
             <input
               id="kennung"
               value={user}
               onChange={(e) => setUser(e.target.value)}
               autoComplete="username"
-              placeholder="Uni-Kennung"
+              placeholder="University ID"
               disabled={loading}
               className={field}
             />
             <label className="sr-only" htmlFor="passwort">
-              Passwort
+              Password
             </label>
             <input
               id="passwort"
@@ -75,7 +75,7 @@ export function Login({ result, onSuccess }: { result: LoginResult; onSuccess: (
                 if (status === "wrong") setStatus("idle");
               }}
               autoComplete="current-password"
-              placeholder="Passwort"
+              placeholder="Password"
               disabled={loading}
               aria-invalid={status === "wrong"}
               aria-describedby={status === "wrong" || status === "offline" ? "login-fehler" : undefined}
@@ -84,12 +84,12 @@ export function Login({ result, onSuccess }: { result: LoginResult; onSuccess: (
 
             {status === "wrong" && (
               <p id="login-fehler" role="alert" className="flex items-center gap-1.5 px-1 text-[13px] font-medium text-danger">
-                <AlertCircle size={14} aria-hidden /> Kennung oder Passwort stimmt nicht.
+                <AlertCircle size={14} aria-hidden /> Wrong ID or password.
               </p>
             )}
             {status === "offline" && (
               <p id="login-fehler" role="alert" className="flex items-center gap-1.5 px-1 text-[13px] font-medium text-warn">
-                <WifiOff size={14} aria-hidden /> ILIAS antwortet gerade nicht. Versuch es gleich noch mal.
+                <WifiOff size={14} aria-hidden /> ILIAS is not responding. Try again in a moment.
               </p>
             )}
 
@@ -100,10 +100,10 @@ export function Login({ result, onSuccess }: { result: LoginResult; onSuccess: (
             >
               {loading ? (
                 <>
-                  <Spinner /> Verbinde mit ILIAS…
+                  <Spinner /> Connecting to ILIAS…
                 </>
               ) : (
-                "Anmelden"
+                "Sign in"
               )}
             </button>
           </form>
@@ -114,11 +114,11 @@ export function Login({ result, onSuccess }: { result: LoginResult; onSuccess: (
             rel="noopener noreferrer"
             className="mt-4 inline-block rounded font-semibold text-[var(--focus)] hover:underline"
           >
-            Passwort vergessen?
+            Forgot password?
           </a>
 
           <p className="mt-10 flex items-center justify-center gap-1.5 whitespace-nowrap text-[12px] text-muted">
-            <Lock size={12} aria-hidden /> Deine Zugangsdaten bleiben im Schlüsselbund deines Macs.
+            <Lock size={12} aria-hidden /> Your login stays in your Mac’s Keychain.
           </p>
         </div>
       </div>
