@@ -18,10 +18,19 @@ export function AppShell() {
   const [loginResult, setLoginResult] = useState<LoginResult>("ok");
   const [failImport, setFailImport] = useState(false);
   const [selected, setSelected] = useState<string[]>(courses.map((c) => c.id));
+  const [user, setUser] = useState("mmuster1");
 
   return (
     <>
-      {screen === "login" && <Login result={loginResult} onSuccess={() => setScreen("setup")} />}
+      {screen === "login" && (
+        <Login
+          result={loginResult}
+          onSuccess={(u) => {
+            setUser(u);
+            setScreen("setup");
+          }}
+        />
+      )}
       {screen === "setup" && (
         <Setup selected={selected} onChange={setSelected} onStart={() => setScreen("import")} />
       )}
@@ -37,6 +46,8 @@ export function AppShell() {
           courseIds={selected}
           problem={problem}
           onProblem={setProblem}
+          user={user}
+          onEditCourses={() => setScreen("setup")}
           onRelogin={() => {
             setProblem("none");
             setScreen("login");

@@ -51,11 +51,15 @@ export function Overview({
   problem,
   onProblem,
   onRelogin,
+  user,
+  onEditCourses,
 }: {
   courseIds: string[];
   problem: Problem;
   onProblem: (p: Problem) => void;
   onRelogin: () => void;
+  user: string;
+  onEditCourses: () => void;
 }) {
   const list = courses.filter((c) => courseIds.includes(c.id));
   const [view, setView] = useState<View>("week");
@@ -108,8 +112,9 @@ export function Overview({
   return (
     <div className="flex h-full bg-bg">
       <aside className="flex w-[236px] shrink-0 flex-col border-r border-line bg-sidebar">
-        <div className="drag h-[52px] shrink-0" />
-        <nav className="scroll flex-1 px-3 pb-3" aria-label="Navigation">
+        <div className="drag h-[44px] shrink-0" />
+        <ProfileMenu user={user} onEditCourses={onEditCourses} onLogout={onRelogin} />
+        <nav className="scroll flex-1 px-3 pb-3 pt-3" aria-label="Navigation">
           <div className="flex flex-col gap-0.5">
             <NavItem active={!searching && view === "week"} onClick={() => open("week")} icon={<CalendarDays size={15} aria-hidden />}>
               Nächste 7 Tage
@@ -194,6 +199,75 @@ export function Overview({
 }
 
 // --- Seitenleiste -----------------------------------------------------------
+
+function ProfileMenu({ user, onEditCourses, onLogout }: { user: string; onEditCourses: () => void; onLogout: () => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  // Klick daneben oder Esc schließt das Menü
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    window.addEventListener("mousedown", onDown);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("mousedown", onDown);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  const item = "flex h-8 w-full items-center rounded-md px-2.5 text-left hover:bg-hover";
+
+  return (
+    <div ref={ref} className="relative px-3">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        className="no-drag flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-left hover:bg-hover"
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/brand/logo-64.png" alt="" width={32} height={32} className="size-8 shrink-0" draggable={false} />
+        <span className="min-w-0 flex-1">
+          <span className="block truncate font-bold leading-tight">Studi-Helfer</span>
+          <span className="block truncate text-[12px] text-muted">{user}, Uni Köln</span>
+        </span>
+        <ChevronDown size={14} className={`shrink-0 text-muted transition-transform ${open ? "rotate-180" : ""}`} aria-hidden />
+      </button>
+      {open && (
+        <div
+          role="menu"
+          className="absolute left-3 right-3 top-full z-20 mt-1 rounded-[10px] bg-surface p-1.5 shadow-[0_0_0_1px_var(--line),0_10px_28px_rgba(0,0,0,0.14)]"
+        >
+          <button
+            role="menuitem"
+            className={item}
+            onClick={() => {
+              setOpen(false);
+              onEditCourses();
+            }}
+          >
+            Kurse ändern
+          </button>
+          <div className="my-1 h-px bg-line" />
+          <button
+            role="menuitem"
+            className={`${item} text-danger`}
+            onClick={() => {
+              setOpen(false);
+              onLogout();
+            }}
+          >
+            Abmelden
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function NavItem({
   active,
