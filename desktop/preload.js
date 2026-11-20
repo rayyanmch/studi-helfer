@@ -28,6 +28,12 @@ contextBridge.exposeInMainWorld("studi", {
   refreshDeadlines: call("studi:refreshDeadlines"),
   getDoneDeadlines: call("studi:getDoneDeadlines"),
   setDeadlineDone: call("studi:setDeadlineDone"),
+  refreshAiDeadlines: call("studi:refreshAiDeadlines"),
+  onDeadlinesChanged(callback) {
+    const listener = () => callback();
+    ipcRenderer.on("studi:deadlinesChanged", listener);
+    return () => ipcRenderer.removeListener("studi:deadlinesChanged", listener);
+  },
   onSyncState(callback) {
     const listener = (_event, state) => callback(state);
     ipcRenderer.on("studi:syncState", listener);

@@ -9,6 +9,7 @@ const fs = require("node:fs");
 const fsp = require("node:fs/promises");
 const os = require("node:os");
 const path = require("node:path");
+const { createAiDeadlines } = require("./ai-deadlines");
 
 const DATA_DIR = path.join(os.homedir(), "Library", "Application Support", "Studi-Helfer");
 const CONFIG = path.join(DATA_DIR, "config.json");
@@ -320,13 +321,26 @@ async function listFiles() {
 const DONE_DEADLINES = path.join(DATA_DIR, "deadlines-done.json");
 const DEADLINES = path.join(DATA_DIR, "deadlines.json");
 
-/** Fristen/Termine aus dem ILIAS-Kalender (letzter Stand, sofort verfügbar) plus abgehakt ja/nein. */
+/**
+ * Fristen/Termine: ILIAS-Kalender (letzter Stand, sofort verfügbar) plus KI-Fristen aus Übungsblättern,
+ * jeweils mit abgehakt ja/nein. Steht dieselbe Abgabe schon im ILIAS-Kalender (gleicher Kurs, gleicher Tag),
+ * gewinnt ILIAS.
+ */
 function getDeadlines() {
   const data = readJson(DEADLINES, { updatedAt: null, deadlines: [] });
   const done = new Set(getDoneDeadlines());
+  const ilias = data.deadlines ?? [];
+  const ids = new Set(ilias.map((d) => d.id));
+  const iliasAbgaben = new Set(ilias.filter((d) => d.kind === "abgabe").map((d) => `${d.courseId}|${d.date}`));
+  const ai = aiDeadlines
+    .list()
+    .filter((d) => !ids.has(d.id) && !(d.kind === "abgabe" && iliasAbgaben.has(`${d.courseId}|${d.date}`)));
+  const all = [...ilias, ...ai].sort((a, b) =>
+    a.date === b.date ? String(a.start).localeCompare(String(b.start)) : a.date.localeCompare(b.date),
+  );
   return {
     updatedAt: data.updatedAt ? data.updatedAt * 1000 : null,
-    deadlines: (data.deadlines ?? []).map((d) => ({ ...d, done: done.has(d.id) })),
+    deadlines: all.map((d) => ({ ...d, done: done.has(d.id) })),
   };
 }
 
@@ -432,7 +446,10 @@ async function scheduleLoaded() {
   return launchctl(["print", `gui/${process.getuid()}/${PLIST_LABEL}`]);
 }
 
+const aiDeadlines = createAiDeadlines({ dataDir: DATA_DIR, readJson, writeJson, listFiles, loadConfig });
+
 module.exports = {
+  aiDeadlines,
   getDeadlines,
   getDoneDeadlines,
   setDeadlineDone,

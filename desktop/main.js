@@ -265,12 +265,27 @@ handle("studi:refreshDeadlines", async () => {
     ? { ok: true, count: res.count }
     : { ok: false, code: res.code, message: res.message };
 });
+handle("studi:refreshAiDeadlines", () => runAiDeadlines());
 handle("studi:getDoneDeadlines", () => backend.getDoneDeadlines());
 handle("studi:setDeadlineDone", (id, done) => backend.setDeadlineDone(id, Boolean(done)));
 
 // ------------------------------------------------------------------ Sync-Stand an die Fenster schicken
 
+/** KI-Fristen aus neuen Übungsblättern holen (Server-Route in web/, siehe lib/ai-deadlines.js). */
+async function runAiDeadlines() {
+  const cfg = backend.loadConfig();
+  if (!cfg.targetDir || !cfg.courses.some((c) => c.selected)) {
+    return { ok: false, code: "not_configured", message: "Noch keine Kurse eingerichtet." };
+  }
+  const aiUrl = process.env.STUDI_AI_URL || uiUrl;
+  const res = await backend.aiDeadlines.run(aiUrl);
+  if (res.analyzed > 0) for (const win of windows) win.webContents.send("studi:deadlinesChanged");
+  if (!res.ok && process.env.STUDI_DEBUG) console.log("[ki-fristen]", res.code, res.message);
+  return res;
+}
+
 let lastStateText = "";
+let wasRunning = false;
 function pushState() {
   let text = "";
   try {
@@ -282,6 +297,12 @@ function pushState() {
   lastStateText = text;
   const state = backend.readState();
   for (const win of windows) win.webContents.send("studi:syncState", state);
+  // Sync gerade fertig: Fristen haben sich ggf. geändert, neue Übungsblätter auswerten.
+  if (wasRunning && !state.running) {
+    for (const win of windows) win.webContents.send("studi:deadlinesChanged");
+    runAiDeadlines();
+  }
+  wasRunning = Boolean(state.running);
 }
 
 // ------------------------------------------------------------------ Start
@@ -305,6 +326,8 @@ app.whenReady().then(async () => {
   const startCfg = backend.loadConfig();
   if (startCfg.schedule?.enabled) backend.applySchedule(packaged(), startCfg.schedule);
   setInterval(pushState, 700);
+  // Kurz nach dem Start Übungsblätter auswerten, die noch nicht ausgewertet sind (z. B. aus dem 7-Uhr-Sync).
+  setTimeout(() => runAiDeadlines(), 15_000);
 
   // Beim App-Start synchronisieren, wenn der letzte Lauf länger als 6 Stunden her ist.
   const cfg = backend.loadConfig();

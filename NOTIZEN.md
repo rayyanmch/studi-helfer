@@ -48,6 +48,17 @@ Kurze Nachrichten zwischen den Agenten (und Menschen). Neues oben, mit Datum und
 - 2026-11-20: **KI = Claude API, nur serverseitig.** Die App bezahlt die Aufrufe zentral, Nutzer brauchen keinen Key. Modell über `AI_MODEL` (Standard `claude-opus-5-5`). Günstiger: `claude-sonnet-5-5` oder `claude-haiku-5-5`. PDFs gehen direkt als `document`-Block an die API, kein eigenes PDF-Parsing nötig.
 - 2026-11-20: **ILIAS über PFERD** (v3.10.1, MIT) als Python-Dienst statt eigenem Scraper. PFERD lädt nur Dateien; Termine kommen aus dem iCal-Export des ILIAS-Kalenders.
 
+## Produkt: So würde es für alle Studis funktionieren (Konzept, 2026-11-20)
+
+Ziel: App laden, mit Uni-Kennung anmelden, fertig. Kein Konto, kein API-Key, nichts einrichten.
+
+- **KI über unseren eigenen Server.** Dieselbe Route wie heute lokal (`web/src/app/api/ki/fristen`) läuft dann gehostet (z. B. Vercel) mit unserem Anthropic-Key; die App ruft sie über `STUDI_AI_URL` auf. Der Key steckt nie in der App. Das Uni-Passwort verlässt nie den Mac; zum Server gehen nur die Dateien, die die KI auswerten soll (Übungsblätter).
+- **Missbrauchsschutz ohne Konto:** zufällige Geräte-Kennung beim ersten Start, Kontingent pro Gerät und Tag (z. B. 30 Dateien), Rate-Limit am Server. Später optional Konto (Supabase) für Abo oder Uni-Lizenz.
+- **Kosten fast null durch geteilten Cache:** Alle Studis eines Kurses laden dasselbe Übungsblatt. Der Server merkt sich das Ergebnis pro Datei-Hash und wertet jedes Blatt nur **einmal für alle** aus. Gespeichert werden nur die Ergebnisse (Fristen), nicht die Dateien. Grob: ein Blatt mit 5–10 Seiten ≈ 10–20 k Eingabe-Tokens ≈ 6–8 Cent mit Claude Opus 5.5, bzw. weit unter 1 Cent mit Claude Haiku 5.5; geteilt durch die Kursgröße.
+- **Datenschutz:** KI-Auswertung als Schalter mit klarem Hinweis („Übungsblätter werden zur Auswertung an Anthropic geschickt“), Datenschutzerklärung, Auftragsverarbeitung mit Anthropic prüfen.
+- **Verteilung:** Apple Developer Program (99 €/Jahr) für Signierung + Notarisierung, Auto-Update (electron-updater), Intel-Macs und Windows später. Andere Unis: `BASE_URL`/`client_id` pro Uni konfigurierbar machen, Shibboleth-Login ergänzen (PFERD kann das).
+- **Heute (Hackathon/Demo):** Route läuft lokal im Next-Dev-Server mit Rayyans Key in `web/.env.local`. Die gepackte App enthält bewusst keinen Key; dort meldet die KI `no_key`, bis der eigene Server steht.
+
 ## Funktionsumfang
 
 Leitsatz: **App öffnen und sofort wissen, was diese Woche in der Uni wichtig ist.** Reihenfolge = Priorität.

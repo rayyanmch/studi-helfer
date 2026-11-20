@@ -22,6 +22,9 @@ export type DesktopErrorCode =
   | "unexpected" // ILIAS-Seite sieht anders aus (z. B. Nutzungsbedingungen bestätigen)
   | "invalid"
   | "setup" // Python-Umgebung fehlt (nur Entwicklung)
+  | "no_key" // KI: kein Schlüssel eingerichtet
+  | "rate_limited" // KI: gerade ausgelastet
+  | "ai_error"
   | "timeout"
   | "internal";
 
@@ -95,11 +98,14 @@ export interface DesktopCourse extends Omit<Course, "folders"> {
  * Kommen nur für ausgewählte Kurse, ab 14 Tagen in der Vergangenheit.
  */
 export interface DesktopDeadline extends Deadline {
-  category: "exercise" | "session" | "registration";
+  // ai = von der KI in einem Übungsblatt gefunden (source "KI: <Datei>", dazu file + evidence)
+  category: "exercise" | "session" | "registration" | "ai";
   start: string; // ISO-Zeitpunkt, z. B. "2026-11-23T10:00:00+01:00"
   url: string | null; // ILIAS-Seite (Übung/Sitzung), z. B. für „In ILIAS öffnen“
   location: string | null; // Raum bei Sitzungen
   done: boolean; // abgehakt (setDeadlineDone)
+  file?: string; // nur KI: Pfad des Übungsblatts (für „Öffnen“)
+  evidence?: string; // nur KI: kurze Textstelle, auf der die Frist beruht
 }
 
 export interface SyncRun {
@@ -147,6 +153,16 @@ export interface StudiDesktop {
   getDeadlines(): Promise<{ updatedAt: number | null; deadlines: DesktopDeadline[] }>;
   /** Fristen jetzt neu aus ILIAS holen (ca. 5–30 Sekunden). Danach getDeadlines() aufrufen. */
   refreshDeadlines(): Promise<Ok<{ count: number }> | Fail>;
+  /**
+   * Übungsblätter der letzten 4 Wochen, die noch nicht ausgewertet sind, an die KI schicken (je Datei nur einmal).
+   * Läuft automatisch nach jedem Sync und kurz nach dem App-Start; danach meldet onDeadlinesChanged.
+   * Fehlercode "no_key": kein KI-Schlüssel eingerichtet.
+   */
+  refreshAiDeadlines(): Promise<
+    Ok<{ analyzed: number; found: number }> | (Fail & { analyzed: number; found: number })
+  >;
+  /** Fristen haben sich geändert (Sync fertig oder KI hat neue gefunden) → getDeadlines() neu aufrufen. */
+  onDeadlinesChanged(callback: () => void): () => void;
   /** Ids aller abgehakten Fristen. Lokal in den App-Daten gespeichert, übersteht Neustarts und Syncs. */
   getDoneDeadlines(): Promise<string[]>;
   /** Frist abhaken (done = true) oder wieder öffnen. Id am besten mit deadlineId() bilden. */
