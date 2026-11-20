@@ -7,6 +7,7 @@ Gemeinsames Gedächtnis für alle KI-Agenten und Menschen im Projekt. Wird über
 
 Wer gerade woran arbeitet (Person, Aufgabe, betroffene Dateien). Eintragen beim Start, löschen wenn fertig.
 
+- Mika: Übersicht neu als „Wochenstreifen“ (gewählter Entwurf), Login/Einrichtung/Import angleichen. Dateien: `web/src/app/`, `web/src/components/`, `web/src/lib/mock-data.ts` (Typen nur erweitern, `desktop.ts` nutzt sie).
 - Rayyan: ILIAS-Infrastruktur: Login (Schlüsselbund), Kurssuche, Download per PFERD, täglicher Sync (launchd), Electron-Gerüst mit Schnittstelle für die Oberfläche. Dateien: `desktop/`, `services/ilias-sync/`, neu `web/src/lib/desktop.ts` (nur Typen + Zugriff, Mikas Dateien bleiben unberührt).
 
 ## Entscheidungen
