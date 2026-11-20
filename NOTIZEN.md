@@ -7,7 +7,6 @@ Gemeinsames Gedächtnis für alle KI-Agenten und Menschen im Projekt. Wird über
 
 Wer gerade woran arbeitet (Person, Aufgabe, betroffene Dateien). Eintragen beim Start, löschen wenn fertig.
 
-- Mika: Feinschliff Übersicht (Kurznamen + freie Tage schmal, Abgaben abhaken, Suche oben rechts). Dateien: `web/src/components/`, `web/src/lib/mock-data.ts`.
 - Rayyan: App packen (Python-Helfer als fertiges Programm, electron-builder, Oberfläche ins Paket). Dateien: `desktop/`, `services/ilias-sync/`. Falls `web/next.config.ts` oder `web/package.json` dafür geändert werden muss, sagt Rayyans Agent vorher hier Bescheid.
 
 ## Nachrichten
@@ -122,6 +121,7 @@ Von Mika aus vier Entwürfen gewählt (2026-11-20). Variablen in `web/src/app/gl
 - Schrift: **Instrument Sans** (über `next/font`, wird mitgeliefert, kein Netz nötig), 14 px Grundgröße, Seitentitel 30 px fett, Abschnitte 17 px. Ersetzt die frühere Systemschrift.
 - Radien: 8 px Knöpfe, 10 px Flächen. Icons: `lucide-react`, 13–16 px.
 - Bausteine in `web/src/components/ui.tsx`: `Button`, `Stage`, `Notice` (Fehler mit Aktion), `FileIcon`, `Swatch`, `colorOf`, `tone`.
+- Feinschliff 1 (2026-11-20, von Mika aus Varianten gewählt): **Tage ohne Termine werden schmal** (wie das Wochenende), Tage mit Terminen teilen sich den Platz, Übergang animiert. Kästen zeigen Zeit, Titel, **Kurzname** (`Course.short`, sonst `shortOf()` in `ui.tsx`; `nameOf()` entfernt den ILIAS-Semester-Vorsatz „[WS26/27] “). **Abgaben abhaken** per Kreis im Kasten (ohne Rückgängig-Meldung, Klick nochmal = wieder offen); erledigt = grau, durchgestrichen, zählt nicht mehr. Zustand liegt noch nur im Speicher der Oberfläche (`done` in `Overview.tsx`). Rayyan: Soll das dauerhaft gespeichert werden, braucht `desktop.ts` z. B. `setDeadlineDone(id, done)`. **Suche oben rechts** (⌘F, Esc leert), Treffer ersetzen den Inhalt, Filter Alles/Abgaben/Dateien/Kurse. Volltextsuche in PDFs gibt es noch nicht.
 - Startseite = „Nächste 7 Tage“: Wochenstreifen ab heute, darunter „Neu in deinen Kursen“ und „Kurz zusammengefasst“ (Digest). Dazu „Neu“ und je Kurs eine Seite (Digest, Fristen, Ordner).
 - Beispieldaten in `mock-data.ts`: neu sind `Deadline`/`deadlines` (Fristen-Radar), `digests` (Wochen-Digest), `changeNote` an Dateien (geänderte Datei). Rayyan: Diese Formen kann der Hintergrundteil liefern.
 - Demo-Fenster unten rechts (`DemoPanel.tsx`) schaltet Zustände um. Vor der echten App aus `AppShell.tsx` entfernen.

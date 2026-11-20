@@ -29,6 +29,7 @@ export interface Course {
   total: number; // Dateien auf dem Server (für den Import)
   folders: Folder[];
   color?: CourseColor; // fehlt sie, vergibt die Oberfläche eine nach Reihenfolge
+  short?: string; // Kurzname für enge Stellen ("Mathe I"); fehlt er, kürzt die Oberfläche selbst
 }
 
 /** Frist aus dem ILIAS-Kalender oder von der KI in einem Übungsblatt gefunden. */
@@ -50,6 +51,7 @@ export const courses: Course[] = [
   {
     id: "softwaretechnik",
     name: "Softwaretechnik",
+    short: "SWT",
     lecturer: "Prof. Dr. Wagner",
     total: 31,
     color: "blue",
@@ -92,6 +94,7 @@ export const courses: Course[] = [
   {
     id: "bwl",
     name: "BWL",
+    short: "BWL",
     lecturer: "Prof. Dr. Brandt",
     total: 18,
     color: "orange",
@@ -116,6 +119,7 @@ export const courses: Course[] = [
   {
     id: "mathe",
     name: "Mathematik für Informatik I",
+    short: "Mathe I",
     lecturer: "Prof. Dr. Lindner",
     total: 42,
     color: "green",
@@ -141,6 +145,7 @@ export const courses: Course[] = [
   {
     id: "datenbanken",
     name: "Datenbanken",
+    short: "DB",
     lecturer: "Prof. Dr. Krüger",
     total: 26,
     color: "plum",
@@ -158,6 +163,7 @@ export const courses: Course[] = [
   {
     id: "rechnernetze",
     name: "Rechnernetze",
+    short: "Netze",
     lecturer: "Prof. Dr. Sommer",
     total: 12,
     color: "ochre",

@@ -43,6 +43,18 @@ export function colorOf(course: Pick<Course, "id" | "color">): CourseColor {
   return ORDER[(i < 0 ? 0 : i) % ORDER.length];
 }
 
+/** Kursname ohne Semester-Vorsatz aus ILIAS ("[WS26/27] Softwaretechnik" → "Softwaretechnik"). */
+export function nameOf(course: Pick<Course, "name">): string {
+  return course.name.replace(/^\s*\[[^\]]*\]\s*/, "");
+}
+
+/** Kurzname für enge Stellen (Wochenstreifen). Ohne `short`: Name, ab 14 Zeichen gekürzt. */
+export function shortOf(course: Pick<Course, "name" | "short">): string {
+  if (course.short) return course.short;
+  const n = nameOf(course);
+  return n.length > 14 ? `${n.slice(0, 12).trimEnd()}…` : n;
+}
+
 /** CSS-Farbe eines Kurses: "solid" kräftig, "soft" zarte Fläche, "ink" Schrift auf der Fläche. */
 export function tone(color: CourseColor, part: "solid" | "soft" | "ink" = "solid") {
   return part === "solid" ? `var(--c-${color})` : `var(--c-${color}-${part})`;
