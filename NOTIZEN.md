@@ -7,11 +7,11 @@ Gemeinsames Gedächtnis für alle KI-Agenten und Menschen im Projekt. Wird über
 
 Wer gerade woran arbeitet (Person, Aufgabe, betroffene Dateien). Eintragen beim Start, löschen wenn fertig.
 
-- Mika: Übersicht neu als „Wochenstreifen“ (gewählter Entwurf), Login/Einrichtung/Import angleichen. Dateien: `web/src/app/`, `web/src/components/`, `web/src/lib/mock-data.ts` (Typen nur erweitern, `desktop.ts` nutzt sie).
 - Rayyan: ILIAS-Infrastruktur: Login (Schlüsselbund), Kurssuche, Download per PFERD, täglicher Sync (launchd), Electron-Gerüst mit Schnittstelle für die Oberfläche. Dateien: `desktop/`, `services/ilias-sync/`, neu `web/src/lib/desktop.ts` (nur Typen + Zugriff, Mikas Dateien bleiben unberührt).
 
 ## Entscheidungen
 
+- 2026-11-20: **Design „Wochenstreifen“** (Mika hat aus vier Entwürfen gewählt): Startseite zeigt die nächsten 7 Tage mit Fristen in Kursfarben. Details unter „Designsprache“.
 - 2026-11-20: **Funktionsumfang beschlossen**, siehe Abschnitt „Funktionsumfang“. „Frag deine Folien“ (Chat mit Unterlagen) vorerst zurückgestellt.
 - 2026-11-20: **Aufteilung: Mika macht das Design** (Oberfläche in `web/` mit Beispieldaten), **Rayyan Electron, ILIAS-Login und Sync**. Electron blendet die Titelleiste aus (Fensterknöpfe schweben über der App), Details im Abschnitt „Design“.
 - 2026-11-20: **Mac-App mit Electron statt reiner Web-App.** Eine Website kann sich nicht bei ILIAS einloggen, keine Passwörter sicher ablegen und keine Ordner auf dem Mac befüllen. Electron packt die Oberfläche aus `web/` (React/Tailwind) in eine echte Mac-App; ein Hintergrundteil (`desktop/`, kommt noch) erledigt Login, PFERD, Dateien und Sync. **ILIAS-Zugangsdaten bleiben lokal im macOS-Schlüsselbund**, nie auf einem Server. Kostenlos; Apple-Signierung (Developer Program, kostenpflichtig) erst nötig, wenn andere die App installieren sollen. Offen: wie Next.js in Electron eingebunden wird, und ob KI-Aufrufe später über einen eigenen Server laufen (der API-Key darf nicht in die ausgelieferte App).
@@ -56,7 +56,7 @@ Mika macht das Design. **Agent von Mika: Lies diesen Abschnitt ganz, bevor du UI
 - **Electron-Mac-App.** Die Oberfläche ist ganz normales Next.js 16 in `web/` (App Router, React 19, TypeScript, Tailwind 4). Electron (`desktop/`, baut Rayyan gerade) öffnet diese Oberfläche später in einem Mac-Fenster und liefert die echten Daten (ILIAS-Login, Dateien in `~/Uni`, Sync).
 - **Design jetzt einfach im Browser bauen:** `npm run dev` in `web/`, Fenster auf ca. 1280×800. Für Electron muss am UI nichts Besonderes passieren, außer:
   - Titelleiste wird ausgeblendet: oben ca. 52 px hohe Leiste einplanen, links ca. 80 px frei für die Fensterknöpfe. Diese Leiste bekommt `-webkit-app-region: drag` (Buttons darin `no-drag`), damit man das Fenster daran ziehen kann.
-  - Wirkt wie eine Mac-App, nicht wie eine Website: Systemschrift (`-apple-system`/SF Pro statt Geist), Hell- und Dunkelmodus über `prefers-color-scheme`, kein Seiten-Scroll des ganzen Fensters (Seitenleiste fest, nur der Inhalt scrollt), Cursor `default` statt Hand-Cursor auf normalen Listeneinträgen.
+  - Wirkt wie eine Mac-App, nicht wie eine Website: Schrift laut „Designsprache“ unten, Hell- und Dunkelmodus über `prefers-color-scheme`, kein Seiten-Scroll des ganzen Fensters (Seitenleiste fest, nur der Inhalt scrollt), Cursor `default` statt Hand-Cursor auf normalen Listeneinträgen.
 - **Nur Beispieldaten**, kein Supabase, keine KI, kein Server-Code. Beispieldaten und ihre Typen in `web/src/lib/mock-data.ts`. Die Typen gleichen wir später mit dem ab, was der Hintergrundteil liefert, deshalb klar und flach halten (Kurs → Ordner → Datei, Sync-Status).
 - **Dateien von Mika:** `web/src/app/` (Seiten, `layout.tsx`, `globals.css`), `web/src/components/`, `web/src/lib/mock-data.ts`. Rayyan arbeitet in `desktop/` und `services/`, also kommt ihr euch nicht in die Quere. `web/src/lib/ai.ts` und `web/src/lib/supabase/` nicht anfassen.
 - `next.config.ts` hat `cacheComponents` an. Vor neuem Next-Code die Doku in `web/node_modules/next/dist/docs/` lesen.
@@ -96,15 +96,20 @@ Auch ohne Skills gilt: keine lila Verläufe, kein Glow, kein Verlaufstext, keine
 - Die Daten liefert später der Hintergrundteil. Bis dahin mit Beispieldaten arbeiten (Kurse wie „Softwaretechnik“, „BWL“, „Mathematik für Informatik I“; Dateien wie Folien-PDFs und Übungsblätter). Die genaue Datenform legen wir in `web/src/lib/` fest, sobald der Login steht.
 - Weitere Screens kommen aus dem Abschnitt „Funktionsumfang“ (Fristen-Radar, Digest, Lernzettel, Karteikarten, Einstellungen für das Sync-Intervall).
 
-### Designsprache
+### Designsprache „Wochenstreifen“
 
-Festgelegt (2026-11-20), Farben als Variablen in `web/src/app/globals.css`:
-- Akzent: ein ruhiges Grün (`--accent`), sonst warme Grautöne. Hell und Dunkel über `prefers-color-scheme`.
-- Schrift: Systemschrift (SF Pro), 13 px Grundgröße. Überschriften 22 px (Bildschirme) bzw. 15 px (Kopfleiste).
-- Radien: 6 px (Knöpfe, Felder), 8 px (Listen). Linien statt Schatten. Icons: `lucide-react`, 14–16 px.
-- Bausteine: `web/src/components/ui.tsx` (Button, Stage, Notice, FileIcon). Fehler = `Notice` mit Aktion.
-- Alle 5 Bildschirme stehen mit Beispieldaten. Das Demo-Fenster unten rechts (`DemoPanel.tsx`) schaltet Zustände um. Vor der echten App aus `AppShell.tsx` entfernen.
-- Offen: „Öffnen“ und „Im Finder zeigen“ tun noch nichts (kommen mit Electron).
+Von Mika aus vier Entwürfen gewählt (2026-11-20). Variablen in `web/src/app/globals.css`, Hell und Dunkel über `prefers-color-scheme`.
+- Flächen: kühles Hellgrau als Grund (`--bg`), weiße Flächen (`--surface`) statt Rahmen und Schatten. Wochenende/leer = `--sunken`.
+- Tinte (`--accent`, fast schwarz) ist die einzige UI-Farbe: Hauptknöpfe, aktiver Eintrag in der Seitenleiste, „Heute“.
+- **Jeder Kurs hat eine Farbe** (`blue`, `orange`, `green`, `plum`, `ochre`; je `--c-<farbe>`, `-soft`, `-ink`). Feld `color` in `Course` (optional, sonst nach Reihenfolge, `colorOf()` in `ui.tsx`). Kleines Farbquadrat (`Swatch`) überall, wo ein Kurs genannt wird.
+- Fristen: zarte Kursfläche; **dringend (Abgabe in ≤ 3 Tagen) = volle Kursfarbe**, Schrift `--on-solid`.
+- Schrift: **Instrument Sans** (über `next/font`, wird mitgeliefert, kein Netz nötig), 14 px Grundgröße, Seitentitel 30 px fett, Abschnitte 17 px. Ersetzt die frühere Systemschrift.
+- Radien: 8 px Knöpfe, 10 px Flächen. Icons: `lucide-react`, 13–16 px.
+- Bausteine in `web/src/components/ui.tsx`: `Button`, `Stage`, `Notice` (Fehler mit Aktion), `FileIcon`, `Swatch`, `colorOf`, `tone`.
+- Startseite = „Nächste 7 Tage“: Wochenstreifen ab heute, darunter „Neu in deinen Kursen“ und „Kurz zusammengefasst“ (Digest). Dazu „Neu“ und je Kurs eine Seite (Digest, Fristen, Ordner).
+- Beispieldaten in `mock-data.ts`: neu sind `Deadline`/`deadlines` (Fristen-Radar), `digests` (Wochen-Digest), `changeNote` an Dateien (geänderte Datei). Rayyan: Diese Formen kann der Hintergrundteil liefern.
+- Demo-Fenster unten rechts (`DemoPanel.tsx`) schaltet Zustände um. Vor der echten App aus `AppShell.tsx` entfernen.
+- Offen: „Öffnen“, „Im Finder zeigen“, „Unterschied“ tun noch nichts. Lernzettel, Karteikarten und Einstellungen haben noch keinen Screen.
 
 ## Wissen und Stolperfallen
 

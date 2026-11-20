@@ -1,6 +1,6 @@
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { File, FileArchive, FileText, Loader2 } from "lucide-react";
-import type { FileKind } from "@/lib/mock-data";
+import { courses, type Course, type CourseColor, type FileKind } from "@/lib/mock-data";
 
 type Variant = "primary" | "secondary" | "plain";
 
@@ -10,14 +10,14 @@ export function Button({
   ...props
 }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant }) {
   const styles: Record<Variant, string> = {
-    primary: "bg-accent text-on-accent hover:brightness-95 active:brightness-90",
-    secondary: "border border-line bg-bg hover:bg-hover active:bg-hover",
+    primary: "bg-accent text-on-accent hover:opacity-90 active:opacity-80",
+    secondary: "border border-line bg-surface hover:bg-hover active:bg-hover",
     plain: "hover:bg-hover active:bg-hover",
   };
   return (
     <button
       {...props}
-      className={`no-drag inline-flex h-7 items-center justify-center gap-1.5 rounded-md px-3 text-[13px] font-medium transition-colors disabled:opacity-50 ${styles[variant]} ${className}`}
+      className={`no-drag inline-flex h-8 items-center justify-center gap-1.5 rounded-lg px-3 text-[13px] font-semibold transition-colors disabled:opacity-45 ${styles[variant]} ${className}`}
     />
   );
 }
@@ -27,19 +27,45 @@ export function Spinner({ size = 14 }: { size?: number }) {
 }
 
 export function FileIcon({ kind }: { kind: FileKind }) {
-  const props = { size: 16, strokeWidth: 1.75, "aria-hidden": true };
-  if (kind === "pdf") return <FileText {...props} className="text-danger" />;
-  if (kind === "zip") return <FileArchive {...props} className="text-warn" />;
-  if (kind === "doc") return <FileText {...props} className="text-accent" />;
-  return <File {...props} className="text-muted" />;
+  const props = { size: 16, strokeWidth: 1.75, "aria-hidden": true, className: "shrink-0 text-muted" };
+  if (kind === "zip") return <FileArchive {...props} />;
+  if (kind === "pdf" || kind === "doc") return <FileText {...props} />;
+  return <File {...props} />;
 }
 
+// --- Kursfarben -------------------------------------------------------------
+
+const ORDER: CourseColor[] = ["blue", "orange", "green", "plum", "ochre"];
+
+export function colorOf(course: Pick<Course, "id" | "color">): CourseColor {
+  if (course.color) return course.color;
+  const i = courses.findIndex((c) => c.id === course.id);
+  return ORDER[(i < 0 ? 0 : i) % ORDER.length];
+}
+
+/** CSS-Farbe eines Kurses: "solid" kräftig, "soft" zarte Fläche, "ink" Schrift auf der Fläche. */
+export function tone(color: CourseColor, part: "solid" | "soft" | "ink" = "solid") {
+  return part === "solid" ? `var(--c-${color})` : `var(--c-${color}-${part})`;
+}
+
+export function Swatch({ color, size = 10 }: { color: CourseColor; size?: number }) {
+  return (
+    <span
+      aria-hidden
+      className="inline-block shrink-0 rounded-[3px]"
+      style={{ width: size, height: size, background: tone(color) }}
+    />
+  );
+}
+
+// --- Bausteine --------------------------------------------------------------
+
 // Bühne für Login, Einrichtung und Import: Fensterleiste oben, Inhalt zentriert.
-export function Stage({ children, width = 400 }: { children: ReactNode; width?: number }) {
+export function Stage({ children, width = 420 }: { children: ReactNode; width?: number }) {
   return (
     <div className="flex h-full flex-col bg-bg">
       <div className="drag h-[52px] shrink-0" />
-      <div className="scroll flex flex-1 items-start justify-center px-6 pb-10 pt-4">
+      <div className="scroll flex flex-1 items-start justify-center px-6 pb-12 pt-6">
         <div style={{ width }} className="max-w-full">
           {children}
         </div>
@@ -49,7 +75,7 @@ export function Stage({ children, width = 400 }: { children: ReactNode; width?: 
 }
 
 export function Notice({
-  tone,
+  tone: kind,
   icon,
   children,
   action,
@@ -59,11 +85,11 @@ export function Notice({
   children: ReactNode;
   action?: ReactNode;
 }) {
-  const color = tone === "danger" ? "bg-danger-soft text-danger" : "bg-warn-soft text-warn";
+  const color = kind === "danger" ? "bg-danger-soft text-danger" : "bg-warn-soft text-warn";
   return (
-    <div role="alert" className={`flex items-center gap-2.5 rounded-lg px-3 py-2.5 ${color}`}>
+    <div role="alert" className={`flex items-center gap-3 rounded-[10px] px-3.5 py-2.5 ${color}`}>
       <span className="shrink-0">{icon}</span>
-      <p className="min-w-0 flex-1 text-[13px]">{children}</p>
+      <p className="min-w-0 flex-1 font-medium">{children}</p>
       {action}
     </div>
   );

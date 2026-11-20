@@ -1,39 +1,81 @@
 @import "tailwindcss";
 
-/* Designsprache: ruhige Mac-App. Warme Grautöne, eine grüne Akzentfarbe, Systemschrift. */
+/* Designsprache „Wochenstreifen“: kühles Hellgrau, weiße Flächen, Tinte als Hauptfarbe,
+   jeder Kurs hat eine eigene Farbe (--c-<farbe>). Schrift: Instrument Sans. */
 :root {
-  --bg: #ffffff;
-  --sidebar: #efeeea;
-  --surface: #f7f6f3;
-  --hover: rgba(30, 30, 25, 0.055);
-  --line: rgba(30, 30, 25, 0.1);
-  --text: #1c1c1a;
-  --muted: #6a6963;
-  --accent: #1f6f50;
-  --accent-soft: rgba(31, 111, 80, 0.1);
+  --bg: #f2f4f7;
+  --sidebar: #ffffff;
+  --surface: #ffffff;
+  --sunken: #e9ecf0;
+  --hover: rgba(22, 32, 42, 0.05);
+  --line: #e1e5ea;
+  --line-soft: #edf0f3;
+  --text: #16202a;
+  --muted: #5b6774;
+  --accent: #16202a;
   --on-accent: #ffffff;
+  --focus: #3a6ea5;
+  --on-solid: #ffffff; /* Schrift auf kräftiger Kursfarbe */
+  --ok: #3f8a58;
   --danger: #b3261e;
-  --danger-soft: rgba(179, 38, 30, 0.08);
+  --danger-soft: #fbeceb;
   --warn: #8a5a00;
-  --warn-soft: rgba(138, 90, 0, 0.1);
+  --warn-soft: #fbf1df;
+
+  /* Kursfarben: kräftig, zarte Fläche, Schrift auf zarter Fläche */
+  --c-blue: #3a6ea5;
+  --c-blue-soft: #e9f0f8;
+  --c-blue-ink: #2c5683;
+  --c-orange: #c76b33;
+  --c-orange-soft: #f8ece3;
+  --c-orange-ink: #8f4a1f;
+  --c-green: #3f8a58;
+  --c-green-soft: #e6f2ea;
+  --c-green-ink: #2b6640;
+  --c-plum: #9a4f86;
+  --c-plum-soft: #f4e9f1;
+  --c-plum-ink: #7a3a69;
+  --c-ochre: #a8862a;
+  --c-ochre-soft: #f6f0dc;
+  --c-ochre-ink: #765d14;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #242422;
-    --sidebar: #1b1b1a;
-    --surface: #2c2c2a;
-    --hover: rgba(255, 255, 250, 0.07);
-    --line: rgba(255, 255, 250, 0.1);
-    --text: #ececea;
-    --muted: #9d9c95;
-    --accent: #52b88a;
-    --accent-soft: rgba(82, 184, 138, 0.14);
-    --on-accent: #0b1f17;
+    --bg: #15191e;
+    --sidebar: #1b2026;
+    --surface: #20262d;
+    --sunken: #191d22;
+    --hover: rgba(232, 236, 240, 0.06);
+    --line: #2c333b;
+    --line-soft: #283039;
+    --text: #e8ecf0;
+    --muted: #97a2ae;
+    --accent: #e8ecf0;
+    --on-accent: #15191e;
+    --focus: #79a8dc;
+    --on-solid: #15191e;
+    --ok: #6cbf86;
     --danger: #ff8a80;
-    --danger-soft: rgba(255, 138, 128, 0.12);
+    --danger-soft: #3a2223;
     --warn: #f0b84d;
-    --warn-soft: rgba(240, 184, 77, 0.12);
+    --warn-soft: #3a3020;
+
+    --c-blue: #6b9fd6;
+    --c-blue-soft: #1f2c3b;
+    --c-blue-ink: #a9c8ea;
+    --c-orange: #e08e5a;
+    --c-orange-soft: #3a2a20;
+    --c-orange-ink: #f0bc98;
+    --c-green: #6cbf86;
+    --c-green-soft: #1e3326;
+    --c-green-ink: #a8dcb7;
+    --c-plum: #c983b6;
+    --c-plum-soft: #352331;
+    --c-plum-ink: #e6b8d9;
+    --c-ochre: #d4b25a;
+    --c-ochre-soft: #352f1d;
+    --c-ochre-ink: #e9d496;
   }
 }
 
@@ -41,18 +83,20 @@
   --color-bg: var(--bg);
   --color-sidebar: var(--sidebar);
   --color-surface: var(--surface);
+  --color-sunken: var(--sunken);
   --color-hover: var(--hover);
   --color-line: var(--line);
+  --color-line-soft: var(--line-soft);
   --color-text: var(--text);
   --color-muted: var(--muted);
   --color-accent: var(--accent);
-  --color-accent-soft: var(--accent-soft);
   --color-on-accent: var(--on-accent);
+  --color-ok: var(--ok);
   --color-danger: var(--danger);
   --color-danger-soft: var(--danger-soft);
   --color-warn: var(--warn);
   --color-warn-soft: var(--warn-soft);
-  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+  --font-sans: var(--font-instrument), -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
 }
 
 html,
@@ -65,8 +109,8 @@ body {
   background: var(--bg);
   color: var(--text);
   font-family: var(--font-sans);
-  font-size: 13px;
-  line-height: 1.4;
+  font-size: 14px;
+  line-height: 1.45;
   cursor: default;
   user-select: none;
   -webkit-font-smoothing: antialiased;
@@ -91,7 +135,7 @@ input {
 }
 
 :focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--focus);
   outline-offset: 1px;
 }
 

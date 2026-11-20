@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { AlertTriangle, Check } from "lucide-react";
-import { Button, Spinner, Stage } from "./ui";
+import { Button, Spinner, Stage, Swatch, colorOf, tone } from "./ui";
 import { courses } from "@/lib/mock-data";
 
 const FAIL_ID = "rechnernetze";
@@ -46,66 +46,72 @@ export function ImportScreen({
   const allSettled = rows.every((r) => r.finished || r.failed);
   const ok = rows.filter((r) => r.finished).length;
   const failedCount = rows.filter((r) => r.failed).length;
+  const files = rows.reduce((n, r) => n + r.count, 0);
 
   return (
-    <Stage width={480}>
-      <h1 className="text-[22px] font-semibold tracking-tight">
-        {allSettled ? "Import abgeschlossen" : "Importiere deine Kurse…"}
+    <Stage width={520}>
+      <h1 className="text-[28px] font-bold leading-tight tracking-[-0.02em]">
+        {allSettled ? "Deine Kurse sind da" : "Hole deine Kurse…"}
       </h1>
-      <p className="mt-1 text-muted">
+      <p className="mt-1.5 text-muted">
         {allSettled
           ? failedCount > 0
-            ? `${ok} Kurse fertig, ${failedCount} mit Fehler.`
-            : "Alles ist in deinem Zielordner."
-          : "Das kann ein paar Minuten dauern. Du kannst die App weiter benutzen."}
+            ? `${ok} Kurse fertig, einer hat nicht geklappt.`
+            : `${files} Dateien liegen jetzt in ~/Uni.`
+          : "Das dauert beim ersten Mal ein paar Minuten. Du kannst solange weiterarbeiten."}
       </p>
 
-      <ul className="mt-6 divide-y divide-line overflow-hidden rounded-lg border border-line">
-        {rows.map(({ c, count, failed, finished }) => (
-          <li key={c.id} className="px-3 py-3">
-            <div className="flex items-center gap-2">
-              <span className="min-w-0 flex-1 truncate font-medium">{c.name}</span>
-              {failed ? (
-                <span className="flex items-center gap-1 text-danger">
-                  <AlertTriangle size={14} aria-hidden /> Fehlgeschlagen
-                </span>
-              ) : finished ? (
-                <span className="flex items-center gap-1 text-accent">
-                  <Check size={14} aria-hidden /> Fertig
-                </span>
-              ) : (
-                <span className="flex items-center gap-1.5 text-muted">
-                  <Spinner size={12} /> {count} von {c.total} Dateien
-                </span>
-              )}
-            </div>
-            <div
-              role="progressbar"
-              aria-valuenow={count}
-              aria-valuemax={c.total}
-              aria-label={`${c.name}: ${count} von ${c.total} Dateien`}
-              className="mt-2 h-1 overflow-hidden rounded-full bg-hover"
-            >
-              <div
-                className={`h-full rounded-full transition-[width] duration-300 ease-out ${failed ? "bg-danger" : "bg-accent"}`}
-                style={{ width: `${(count / c.total) * 100}%` }}
-              />
-            </div>
-            {failed && (
-              <div className="mt-2 flex items-center gap-3 text-[12px] text-muted">
-                <span className="flex-1">Der Kurs hat nicht geantwortet. Die anderen sind nicht betroffen.</span>
-                <Button className="h-6 px-2.5" onClick={() => setRetried(true)}>
-                  Erneut versuchen
-                </Button>
+      <ul className="mt-7 flex flex-col gap-1">
+        {rows.map(({ c, count, failed, finished }) => {
+          const col = colorOf(c);
+          return (
+            <li key={c.id} className="rounded-[10px] bg-surface px-3.5 py-3">
+              <div className="flex items-center gap-3">
+                <Swatch color={col} />
+                <span className="min-w-0 flex-1 truncate font-semibold">{c.name}</span>
+                {failed ? (
+                  <span className="flex items-center gap-1 text-[13px] font-medium text-danger">
+                    <AlertTriangle size={14} aria-hidden /> Fehlgeschlagen
+                  </span>
+                ) : finished ? (
+                  <span className="flex items-center gap-1 text-[13px] font-medium text-ok">
+                    <Check size={14} aria-hidden /> {c.total} Dateien
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1.5 text-[13px] tabular-nums text-muted">
+                    <Spinner size={12} /> {count} von {c.total}
+                  </span>
+                )}
               </div>
-            )}
-          </li>
-        ))}
+              <div
+                role="progressbar"
+                aria-valuenow={count}
+                aria-valuemax={c.total}
+                aria-label={`${c.name}: ${count} von ${c.total} Dateien`}
+                className="mt-2.5 h-1.5 overflow-hidden rounded-full"
+                style={{ background: tone(col, "soft") }}
+              >
+                <div
+                  className="h-full rounded-full transition-[width] duration-300 ease-out"
+                  style={{ width: `${(count / c.total) * 100}%`, background: failed ? "var(--danger)" : tone(col) }}
+                />
+              </div>
+              {failed && (
+                <div className="mt-2.5 flex items-center gap-3 text-[12px] text-muted">
+                  <span className="flex-1">ILIAS hat für diesen Kurs nicht geantwortet. Die anderen sind nicht betroffen.</span>
+                  <Button className="h-7 px-2.5" onClick={() => setRetried(true)}>
+                    Erneut versuchen
+                  </Button>
+                </div>
+              )}
+            </li>
+          );
+        })}
       </ul>
 
-      <div className="mt-6 flex justify-end">
-        <Button variant="primary" className="h-8 px-4" disabled={!allSettled} onClick={onDone}>
-          {allSettled ? "Zur Übersicht" : "Läuft…"}
+      <div className="mt-7 flex justify-end">
+        <Button variant="primary" className="h-10 px-5 text-[14px]" disabled={!allSettled} onClick={onDone}>
+          {allSettled ? "Los geht’s" : "Läuft…"}
         </Button>
       </div>
     </Stage>

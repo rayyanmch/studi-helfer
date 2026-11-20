@@ -1,5 +1,6 @@
 // Beispieldaten für die Oberfläche. Die Form (Kurs → Ordner → Datei) bleibt bewusst flach,
 // damit der Hintergrundteil (desktop/) später dasselbe liefern kann.
+// desktop.ts baut auf diesen Typen auf: neue Felder nur optional hinzufügen.
 
 export type FileKind = "pdf" | "zip" | "doc" | "other";
 
@@ -10,6 +11,7 @@ export interface CourseFile {
   size: string;
   updated: string; // fertig formatierter Text, z. B. "Heute, 09:14"
   isNew: boolean; // neu seit dem letzten Sync
+  changeNote?: string; // geänderte Datei: was die KI als Unterschied gefunden hat
 }
 
 export interface Folder {
@@ -18,15 +20,30 @@ export interface Folder {
   files: CourseFile[];
 }
 
+export type CourseColor = "blue" | "orange" | "green" | "plum" | "ochre";
+
 export interface Course {
   id: string;
   name: string;
   lecturer: string;
   total: number; // Dateien auf dem Server (für den Import)
   folders: Folder[];
+  color?: CourseColor; // fehlt sie, vergibt die Oberfläche eine nach Reihenfolge
 }
 
-export const LAST_SYNC = "Heute, 09:41";
+/** Frist aus dem ILIAS-Kalender oder von der KI in einem Übungsblatt gefunden. */
+export interface Deadline {
+  id: string;
+  courseId: string;
+  title: string;
+  date: string; // "2026-11-23"
+  time: string; // "bis 10:00", "14:00" oder "ganztägig"
+  kind: "abgabe" | "termin";
+  source?: string; // wo die KI die Frist gefunden hat
+}
+
+export const TODAY = "2026-11-20";
+export const LAST_SYNC = "09:41";
 export const TARGET_FOLDER = "~/Uni";
 
 export const courses: Course[] = [
@@ -35,6 +52,7 @@ export const courses: Course[] = [
     name: "Softwaretechnik",
     lecturer: "Prof. Dr. Wagner",
     total: 31,
+    color: "blue",
     folders: [
       {
         id: "st-vorlesung",
@@ -42,16 +60,31 @@ export const courses: Course[] = [
         files: [
           { id: "st1", name: "01 Einführung.pdf", kind: "pdf", size: "1,2 MB", updated: "12. Okt.", isNew: false },
           { id: "st2", name: "02 Anforderungen.pdf", kind: "pdf", size: "2,4 MB", updated: "19. Okt.", isNew: false },
-          { id: "st3", name: "03 Entwurfsmuster.pdf", kind: "pdf", size: "3,1 MB", updated: "Heute, 08:55", isNew: true },
+          { id: "st3", name: "03 Entwurfsmuster.pdf", kind: "pdf", size: "3,1 MB", updated: "heute", isNew: true },
         ],
       },
       {
         id: "st-uebung",
         name: "Übung",
         files: [
-          { id: "st4", name: "Übungsblatt 4.pdf", kind: "pdf", size: "310 KB", updated: "Heute, 09:14", isNew: true },
-          { id: "st5", name: "Übungsblatt 3 Lösung.pdf", kind: "pdf", size: "540 KB", updated: "13. Nov.", isNew: false },
+          { id: "st4", name: "Übungsblatt 4.pdf", kind: "pdf", size: "310 KB", updated: "heute", isNew: true },
+          {
+            id: "st5",
+            name: "Übungsblatt 3.pdf",
+            kind: "pdf",
+            size: "290 KB",
+            updated: "heute",
+            isNew: false,
+            changeNote: "Aufgabe 2b hat eine neue Angabe.",
+          },
           { id: "st6", name: "Beispielprojekt.zip", kind: "zip", size: "4,8 MB", updated: "6. Nov.", isNew: false },
+        ],
+      },
+      {
+        id: "st-selbst",
+        name: "Selbstlernen",
+        files: [
+          { id: "st7", name: "Selbstlerneinheit 3 Beobachter.pdf", kind: "pdf", size: "860 KB", updated: "12. Nov.", isNew: false },
         ],
       },
     ],
@@ -61,12 +94,13 @@ export const courses: Course[] = [
     name: "BWL",
     lecturer: "Prof. Dr. Brandt",
     total: 18,
+    color: "orange",
     folders: [
       {
         id: "bwl-folien",
         name: "Folien",
         files: [
-          { id: "bw1", name: "Kapitel 5 Kostenrechnung.pdf", kind: "pdf", size: "2,9 MB", updated: "Gestern", isNew: true },
+          { id: "bw1", name: "Kapitel 5 Kostenrechnung.pdf", kind: "pdf", size: "2,9 MB", updated: "gestern", isNew: true },
           { id: "bw2", name: "Kapitel 4 Marketing.pdf", kind: "pdf", size: "2,2 MB", updated: "9. Nov.", isNew: false },
         ],
       },
@@ -84,6 +118,7 @@ export const courses: Course[] = [
     name: "Mathematik für Informatik I",
     lecturer: "Prof. Dr. Lindner",
     total: 42,
+    color: "green",
     folders: [
       {
         id: "ma-skript",
@@ -97,7 +132,7 @@ export const courses: Course[] = [
         id: "ma-blaetter",
         name: "Übungsblätter",
         files: [
-          { id: "ma3", name: "Blatt 7.pdf", kind: "pdf", size: "180 KB", updated: "Heute, 07:30", isNew: true },
+          { id: "ma3", name: "Blatt 7.pdf", kind: "pdf", size: "180 KB", updated: "heute", isNew: true },
           { id: "ma4", name: "Blatt 6.pdf", kind: "pdf", size: "175 KB", updated: "13. Nov.", isNew: false },
         ],
       },
@@ -108,13 +143,14 @@ export const courses: Course[] = [
     name: "Datenbanken",
     lecturer: "Prof. Dr. Krüger",
     total: 26,
+    color: "plum",
     folders: [
       {
         id: "db-vorlesung",
         name: "Vorlesung",
         files: [
           { id: "db1", name: "SQL Grundlagen.pdf", kind: "pdf", size: "1,8 MB", updated: "7. Nov.", isNew: false },
-          { id: "db2", name: "Normalformen.pdf", kind: "pdf", size: "1,4 MB", updated: "14. Nov.", isNew: false },
+          { id: "db2", name: "Normalformen.pdf", kind: "pdf", size: "1,4 MB", updated: "gestern", isNew: true },
         ],
       },
     ],
@@ -124,6 +160,7 @@ export const courses: Course[] = [
     name: "Rechnernetze",
     lecturer: "Prof. Dr. Sommer",
     total: 12,
+    color: "ochre",
     folders: [
       {
         id: "rn-folien",
@@ -136,10 +173,34 @@ export const courses: Course[] = [
   },
 ];
 
+export const deadlines: Deadline[] = [
+  { id: "d0", courseId: "softwaretechnik", title: "Tutorium", date: "2026-11-20", time: "14:00", kind: "termin" },
+  { id: "d1", courseId: "mathe", title: "Blatt 7 abgeben", date: "2026-11-23", time: "bis 10:00", kind: "abgabe" },
+  { id: "d2", courseId: "softwaretechnik", title: "Übungsblatt 4 abgeben", date: "2026-11-25", time: "bis 23:59", kind: "abgabe" },
+  { id: "d3", courseId: "bwl", title: "Fallstudie hochladen", date: "2026-11-26", time: "bis 12:00", kind: "abgabe" },
+  {
+    id: "d4",
+    courseId: "datenbanken",
+    title: "Zur Klausur anmelden",
+    date: "2026-11-26",
+    time: "ganztägig",
+    kind: "abgabe",
+    source: "Normalformen.pdf, Folie 2",
+  },
+];
+
+/** Kurze Zusammenfassung pro Kurs nach dem Sync (später von der KI). */
+export const digests: Record<string, string> = {
+  softwaretechnik: "Neues Thema Entwurfsmuster. Beobachter und Strategie kommen direkt in Übungsblatt 4 dran.",
+  bwl: "Kapitel 5 zur Kostenrechnung ist online. Die Fallstudie am Donnerstag baut darauf auf.",
+  mathe: "Blatt 7 zu Eigenwerten. Für Aufgabe 3 brauchst du Satz 4.2 aus dem Skript.",
+  datenbanken: "In den Folien zu Normalformen steht die Frist für die Klausuranmeldung.",
+};
+
 export function countFiles(course: Course): number {
   return course.folders.reduce((n, f) => n + f.files.length, 0);
 }
 
 export function countNew(course: Course): number {
-  return course.folders.reduce((n, f) => n + f.files.filter((x) => x.isNew).length, 0);
+  return course.folders.reduce((n, f) => n + f.files.filter((x) => x.isNew || x.changeNote).length, 0);
 }
