@@ -11,6 +11,7 @@ Wer gerade woran arbeitet (Person, Aufgabe, betroffene Dateien). Eintragen beim 
 
 ## Entscheidungen
 
+- 2026-11-20: **Aufteilung: Mika macht das Design** (Oberfläche in `web/` mit Beispieldaten), **Rayyan Electron, ILIAS-Login und Sync**. Electron blendet die Titelleiste aus (Fensterknöpfe schweben über der App), Details im Abschnitt „Design“.
 - 2026-11-20: **Mac-App mit Electron statt reiner Web-App.** Eine Website kann sich nicht bei ILIAS einloggen, keine Passwörter sicher ablegen und keine Ordner auf dem Mac befüllen. Electron packt die Oberfläche aus `web/` (React/Tailwind) in eine echte Mac-App; ein Hintergrundteil (`desktop/`, kommt noch) erledigt Login, PFERD, Dateien und Sync. **ILIAS-Zugangsdaten bleiben lokal im macOS-Schlüsselbund**, nie auf einem Server. Kostenlos; Apple-Signierung (Developer Program, kostenpflichtig) erst nötig, wenn andere die App installieren sollen. Offen: wie Next.js in Electron eingebunden wird, und ob KI-Aufrufe später über einen eigenen Server laufen (der API-Key darf nicht in die ausgelieferte App).
 - 2026-11-20: **Git macht Claude, nicht die Menschen.** Alle arbeiten auf `main`. Hooks in `.claude/settings.json` holen vor jedem Prompt den neuesten Stand und verlangen am Ende jeder Antwort Commit und Push. Die Hooks brauchen `bash` und `git` (macOS/Linux, unter Windows Git Bash).
 - 2026-11-20: **Web-App statt Rust.** Next.js/TypeScript ist in zwei Tagen viel schneller gebaut, KI-Agenten können es am besten, und für Supabase, Claude und UI-Komponenten gibt es fertige Pakete. Rust bringt hier keinen Vorteil. Desktop-Hülle ist Electron (siehe oben), nicht Tauri.
@@ -21,9 +22,43 @@ Wer gerade woran arbeitet (Person, Aufgabe, betroffene Dateien). Eintragen beim 
 
 ## Design (für Mika)
 
+Mika macht das Design. **Agent von Mika: Lies diesen Abschnitt ganz, bevor du UI baust.**
+
+### So bauen wir die App
+
+- **Electron-Mac-App.** Die Oberfläche ist ganz normales Next.js 16 in `web/` (App Router, React 19, TypeScript, Tailwind 4). Electron (`desktop/`, baut Rayyan gerade) öffnet diese Oberfläche später in einem Mac-Fenster und liefert die echten Daten (ILIAS-Login, Dateien in `~/Uni`, Sync).
+- **Design jetzt einfach im Browser bauen:** `npm run dev` in `web/`, Fenster auf ca. 1280×800. Für Electron muss am UI nichts Besonderes passieren, außer:
+  - Titelleiste wird ausgeblendet: oben ca. 52 px hohe Leiste einplanen, links ca. 80 px frei für die Fensterknöpfe. Diese Leiste bekommt `-webkit-app-region: drag` (Buttons darin `no-drag`), damit man das Fenster daran ziehen kann.
+  - Wirkt wie eine Mac-App, nicht wie eine Website: Systemschrift (`-apple-system`/SF Pro statt Geist), Hell- und Dunkelmodus über `prefers-color-scheme`, kein Seiten-Scroll des ganzen Fensters (Seitenleiste fest, nur der Inhalt scrollt), Cursor `default` statt Hand-Cursor auf normalen Listeneinträgen.
+- **Nur Beispieldaten**, kein Supabase, keine KI, kein Server-Code. Beispieldaten und ihre Typen in `web/src/lib/mock-data.ts`. Die Typen gleichen wir später mit dem ab, was der Hintergrundteil liefert, deshalb klar und flach halten (Kurs → Ordner → Datei, Sync-Status).
+- **Dateien von Mika:** `web/src/app/` (Seiten, `layout.tsx`, `globals.css`), `web/src/components/`, `web/src/lib/mock-data.ts`. Rayyan arbeitet in `desktop/` und `services/`, also kommt ihr euch nicht in die Quere. `web/src/lib/ai.ts` und `web/src/lib/supabase/` nicht anfassen.
+- `next.config.ts` hat `cacheComponents` an. Vor neuem Next-Code die Doku in `web/node_modules/next/dist/docs/` lesen.
+
+### Design-Skills (damit es nicht nach KI-Slop aussieht)
+
+Rayyan nutzt diese Skills und sie haben gut funktioniert. Agent von Mika: Prüf, ob sie bei dir schon geladen sind (Skill-Liste). Falls nicht, frag Mika einmal, ob du sie global installieren darfst (`-g`, also **nicht** ins Repo, das ist öffentlich), und danach Claude neu starten:
+
+```bash
+npx skills add heydamir/unslop --skill unslop -g
+npx skills add pbakaus/impeccable --skill impeccable -g
+npx skills add anthropics/skills --skill frontend-design -g
+npx skills add emilkowalski/skills --skill emil-design-eng --skill apple-design --skill animate -g
+npx skills add vercel-labs/agent-skills --skill web-design-guidelines -g
+```
+
+(Falls ein Flag nicht passt: `npx skills --help`.) Wofür welcher:
+
+- **frontend-design** und **impeccable**: am Anfang eine klare Gestaltungsrichtung festlegen (Farben, Schrift, Abstände) und unten in diesem Abschnitt als „Designsprache“ festhalten, damit alle Screens gleich aussehen. impeccable auch zum Kritisieren und Polieren.
+- **apple-design** und **emil-design-eng**: Mac-Gefühl und Feinschliff (Typo, Abstände, Zustände, dezente Bewegung). **animate** nur, wo Bewegung wirklich hilft (Fortschritt beim Import, Sync läuft).
+- **unslop**: nach jedem fertigen Screen drüberlaufen lassen.
+- **web-design-guidelines**: Abschlussprüfung (Bedienbarkeit, Tastatur, Kontraste).
+
+Auch ohne Skills gilt: keine lila Verläufe, kein Glow, kein Verlaufstext, keine Emojis als Icons, keine „✨ Neu“-Badges, keine pulsierenden Punkte, keine Großbuchstaben-Labels mit Sperrung. Eine Akzentfarbe, ruhige Flächen, gleichmäßige Abstände, ein Icon-Set (z. B. `lucide-react`). Texte kurz und auf Deutsch.
+
+### Inhalt und Screens
+
 - Es wird ein **Mac-App-Fenster, keine Website**: keine Landingpage, kein Marketing, kein Cookie-Banner, keine Browser-Navigation. Eher wie Notion oder Slack: Seitenleiste links, Inhalt rechts.
 - Auf Laptop auslegen (ca. 1280×800), sollte bis ca. 1000×700 schrumpfen können.
-- Oben links Platz für die Mac-Fensterknöpfe (rot/gelb/grün) lassen, falls wir die Titelleiste ausblenden.
 - Screens:
   1. **ILIAS-Login**: Uni-Kennung + Passwort, Hinweis „Deine Zugangsdaten bleiben im Schlüsselbund deines Macs.“ Zustände: lädt, falsches Passwort, ILIAS nicht erreichbar.
   2. **Ersteinrichtung**: Zielordner wählen (Standard `~/Uni`), Kurse dieses Semesters anzeigen und an-/abwählen.
@@ -33,6 +68,10 @@ Wer gerade woran arbeitet (Person, Aufgabe, betroffene Dateien). Eintragen beim 
 - Fehlerzustände mitdesignen: offline, Login abgelaufen, einzelner Kurs fehlgeschlagen.
 - Die Daten liefert später der Hintergrundteil. Bis dahin mit Beispieldaten arbeiten (Kurse wie „Softwaretechnik“, „BWL“, „Mathematik für Informatik I“; Dateien wie Folien-PDFs und Übungsblätter). Die genaue Datenform legen wir in `web/src/lib/` fest, sobald der Login steht.
 - Kalender und KI-Merkzettel kommen danach, für jetzt nicht nötig.
+
+### Designsprache
+
+Noch offen. Agent von Mika: Hier festhalten, sobald die Richtung steht (Akzentfarbe, Schrift, Abstände, Radien, Icons).
 
 ## Wissen und Stolperfallen
 
@@ -47,4 +86,3 @@ Wer gerade woran arbeitet (Person, Aufgabe, betroffene Dateien). Eintragen beim 
 - [ ] Supabase-Projekt anlegen, Keys in `.env.local` beider Rechner
 - [ ] Anthropic-API-Key besorgen
 - [ ] PFERD mit echtem Uni-Account gegen ILIAS Köln testen
-- [ ] Aufteilen, wer was baut (siehe „In Arbeit“)
