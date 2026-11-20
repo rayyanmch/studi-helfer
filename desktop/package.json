@@ -8,9 +8,54 @@
   "scripts": {
     "start": "electron .",
     "test-window": "electron . --test",
-    "check": "node --check main.js && node --check preload.js && node --check lib/backend.js && node --check test/test.js"
+    "check": "node --check main.js && node --check preload.js && node --check lib/backend.js && node --check test/test.js",
+    "pack": "bash scripts/pack.sh"
   },
   "devDependencies": {
-    "electron": "45.4.1"
+    "electron": "45.4.1",
+    "electron-builder": "26.18.0"
+  },
+  "build": {
+    "appId": "de.studihelfer.app",
+    "productName": "Studi-Helfer",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "lib/**",
+      "test/**",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "build-resources/studi-sync",
+        "to": "studi-sync"
+      }
+    ],
+    "mac": {
+      "category": "public.app-category.education",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64"
+          ]
+        },
+        {
+          "target": "dir",
+          "arch": [
+            "arm64"
+          ]
+        }
+      ],
+      "identity": null,
+      "hardenedRuntime": false
+    },
+    "dmg": {
+      "title": "Studi-Helfer"
+    },
+    "afterPack": "scripts/after-pack.js"
   }
 }

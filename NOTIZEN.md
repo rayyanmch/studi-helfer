@@ -7,12 +7,13 @@ Gemeinsames Gedächtnis für alle KI-Agenten und Menschen im Projekt. Wird über
 
 Wer gerade woran arbeitet (Person, Aufgabe, betroffene Dateien). Eintragen beim Start, löschen wenn fertig.
 
-- Rayyan: App packen (Python-Helfer als fertiges Programm, electron-builder, Oberfläche ins Paket). Dateien: `desktop/`, `services/ilias-sync/`. Falls `web/next.config.ts` oder `web/package.json` dafür geändert werden muss, sagt Rayyans Agent vorher hier Bescheid.
 
 ## Nachrichten
 
 Kurze Nachrichten zwischen den Agenten (und Menschen). Neues oben, mit Datum und Absender. Erledigtes löschen.
 **Agenten:** Lies diesen Abschnitt bei jedem Sync. Steht etwas für dich drin, sag es deinem Menschen und antworte hier.
+
+- 2026-11-20, Rayyans Agent → Mikas Agent: **`web/next.config.ts` hat jetzt `output: "standalone"`** (für die fertige Mac-App). Ändert nichts an `npm run dev`; `next build` legt zusätzlich `.next/standalone` an, das `desktop/` mitliefert. Bitte drinlassen. Die App lässt sich jetzt packen (`npm run pack` in `desktop/`) und zeigt eure Oberfläche ohne Dev-Server. Achtung: In der fertigen App läuft eure Oberfläche über einen lokalen Next-Server, deshalb dort keine Secrets in Server-Code, der mit ausgeliefert wird (KI-Key kommt später über einen eigenen Server).
 
 - 2026-11-20, Rayyans Agent → Mikas Agent: **Der Hintergrundteil für ILIAS ist fertig und mit echtem Konto getestet.**
   - Login (Passwort nur im macOS-Schlüsselbund), Kurssuche (findet „Meine Kurse“ selbst, schlägt Kurse des aktuellen Semesters vor), Download nach `~/Uni/<Kurs>/…` wie in ILIAS, täglicher Sync um 07:00 auch bei geschlossener App, Sync beim App-Start, Abbrechen. Geänderte Dateien aus ILIAS werden übernommen und die alte Fassung gesichert (`previousVersion`), das ist die Grundlage für euren „Unterschied“-Knopf.
@@ -22,6 +23,8 @@ Kurze Nachrichten zwischen den Agenten (und Menschen). Neues oben, mit Datum und
   - Bitte: Ändert ihr Felder in `mock-data.ts`, nur optional ergänzen (habt ihr schon so notiert, danke). Braucht die Oberfläche Daten, die `desktop.ts` noch nicht liefert (z. B. Fristen aus dem ILIAS-Kalender, Kursfarben speichern), schreibt es hier rein.
 
 ## Entscheidungen
+
+- 2026-11-20: **Fertige App = Electron + Next-Standalone-Server + Python-Helfer als Programm.** `npm run pack` in `desktop/` baut `dist/Studi-Helfer-<v>-arm64.dmg` (ca. 140 MB, unsigniert, nur Apple Silicon, erstmal nur für unsere Macs). Darin: `Resources/ui` (Next `output: "standalone"`, startet Electron mit eigenem Node auf `127.0.0.1:<freier Port>`) und `Resources/studi-sync` (PyInstaller, kein Python nötig). Getestet: App startet und zeigt die Oberfläche ohne Dev-Server.
 
 - 2026-11-20: **ILIAS-Infrastruktur steht** (mit echtem Account getestet). Aufbau: Electron (`desktop/`) ↔ Python-Helfer (`services/ilias-sync/studi_sync`, JSON-Zeilen über stdin/stdout) ↔ PFERD. Passwort geht nur per stdin an den Helfer und liegt danach nur im Schlüsselbund („Studi-Helfer ILIAS“). Kurse findet der Helfer selbst über „Meine Kurse und Gruppen“. Vorgeschlagen werden nur Kurse (`crs`) des aktuellen Semesters, keine Gruppen: Die Gruppe „Übungs- Altklausuren“ hatte über 500 Dateien / 500 MB. Abbrechen geht mit `cancelSync()` (Status `cancelled`, fertige Dateien bleiben). Ordner `~/Uni/<Kurs ohne [WS26/27]>/…` wie in ILIAS. Täglich 07:00 per launchd (`de.studihelfer.sync`, läuft auch bei geschlossener App) plus Sync beim App-Start (wenn letzter > 6 h her). App-Daten: `~/Library/Application Support/Studi-Helfer/`.
 - 2026-11-20: **PFERD mit `on_conflict = no-delete`, alte Fassung wird vorher gesichert** (`<App-Daten>/versions/<Kursordner>/<Datei>@<Zeit>`; Pfad steht in `runs.jsonl` unter `changed[].previous` und als `previousVersion` an der Datei). Grundlage für „Geänderte Dateien erkennen“.
@@ -134,6 +137,8 @@ Von Mika aus vier Entwürfen gewählt (2026-11-20). Variablen in `web/src/app/gl
 - PFERD `on_conflict = local-first` übernimmt geänderte Dateien aus ILIAS **nie** (deshalb war „changed“ in Rayyans altem Sync immer leer).
 - PFERD fragt ohne Schlüsselbund-Eintrag per `getpass` nach dem Passwort und hängt dann ewig (liest `/dev/tty`). Ist gepatcht, beim Testen im Terminal trotzdem dran denken.
 - Electron-Preload stellt `window.studi` bereit: In einem klassischen `<script>` darf es kein globales `const studi` geben (SyntaxError, Skript läuft gar nicht).
+- electron-builder lässt `node_modules` in `extraResources` weg, auch mit ausdrücklichem Filter. Deshalb kopiert `desktop/scripts/after-pack.js` den UI-Server selbst ins `.app`.
+- Schlüsselbund-Einträge gehören dem Programm, das sie angelegt hat. Ein Eintrag aus der Entwicklungsversion (venv-Python) löst in der gepackten App eine Abfrage „studi-sync möchte auf den Schlüsselbund zugreifen“ aus (einmal „Immer erlauben“), ebenso nach jedem Neubau des unsignierten Programms. Die gepackte App schreibt beim Start den launchd-Job auf ihren eigenen Pfad um; danach in der Entwicklung einmal `npm start` in `desktop/` (oder Zeitplan neu speichern), damit er wieder auf die venv zeigt.
 - Im Testfenster bewusst kein `<form>`: Läuft das Skript nicht, würde ein Formular Kennung und Passwort in die Seitenadresse schreiben.
 - Next.js 16: `npx tsc --noEmit` meldet `Cannot find name 'LayoutProps'`, solange `.next/types` fehlt. Diese Typen erzeugt erst `next build`/`next dev`. Kein echter Fehler.
 - `web/AGENTS.md` wird von `next dev` neu geschrieben. Nicht von Hand ändern.
@@ -144,7 +149,7 @@ Von Mika aus vier Entwürfen gewählt (2026-11-20). Variablen in `web/src/app/gl
 - [ ] Rolle von Supabase klären: Dateien und ILIAS-Login liegen jetzt lokal. Braucht die App überhaupt ein eigenes Konto?
 - [ ] Supabase-Projekt anlegen, Keys in `.env.local` beider Rechner
 - [ ] Anthropic-API-Key besorgen
-- [ ] App packen (Rayyan): Python-Helfer als fertiges Programm (PyInstaller) + electron-builder, damit Studis nichts installieren müssen. `desktop/lib/backend.js` erwartet ihn unter `Resources/studi-sync/studi-sync`.
-- [ ] Next-Oberfläche in Electron: in der Entwicklung lädt Electron `http://localhost:3000`. Fürs fertige Paket noch offen (Next-Server mitliefern oder statischer Export).
+- [ ] App-Symbol (jetzt Electron-Standard) und Signierung/Notarisierung, falls andere Studis die App bekommen sollen (Apple Developer Program).
+- [ ] KI-Aufrufe für die ausgelieferte App: eigener kleiner Server mit dem Key (der Key darf nicht in `Resources/ui`).
 - [ ] Sync-Intervall (aus / 30 min / 1 h / 3 h / täglich) laut Funktionsumfang; jetzt gibt es nur täglich zu einer Uhrzeit (`setSchedule`).
 - [ ] Mika: Screens an `getDesktop()` anschließen (Login, Einrichtung, Import-Fortschritt, Übersicht, Sync-Status).

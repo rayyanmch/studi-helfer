@@ -3,6 +3,7 @@
 //   npm start            lädt die Oberfläche aus web/ (Next-Dev-Server, Standard http://localhost:3000,
 //                        anders per STUDI_UI_URL). Läuft der nicht, öffnet sich das Testfenster.
 //   npm run test-window  öffnet direkt das schlichte Testfenster (desktop/test/).
+//   Fertiges Paket       startet den mitgelieferten Next-Server (Resources/ui) lokal, siehe lib/ui-server.js.
 //
 // Die Oberfläche erreicht den Hintergrundteil nur über window.studi (preload.js).
 // Typen dazu: web/src/lib/desktop.ts.
@@ -11,8 +12,10 @@ const { app, BrowserWindow, dialog, ipcMain, shell } = require("electron");
 const fs = require("node:fs");
 const path = require("node:path");
 const backend = require("./lib/backend");
+const { startBundledUi } = require("./lib/ui-server");
 
-const UI_URL = process.env.STUDI_UI_URL || "http://localhost:3000";
+let uiUrl = process.env.STUDI_UI_URL || "http://localhost:3000";
+let uiServer = null;
 const TEST_MODE = process.argv.includes("--test");
 const TEST_PAGE = path.join(__dirname, "test", "index.html");
 
@@ -60,8 +63,8 @@ function createWindow() {
   if (TEST_MODE) {
     win.loadFile(TEST_PAGE);
   } else {
-    win.loadURL(UI_URL).catch(() => {
-      win.loadFile(TEST_PAGE, { query: { hinweis: `Oberfläche unter ${UI_URL} nicht erreichbar.` } });
+    win.loadURL(uiUrl).catch(() => {
+      win.loadFile(TEST_PAGE, { query: { hinweis: `Oberfläche unter ${uiUrl} nicht erreichbar.` } });
     });
   }
   return win;
@@ -71,7 +74,7 @@ function allowedUrl(url) {
   try {
     const u = new URL(url);
     if (u.protocol === "file:") return path.resolve(decodeURIComponent(u.pathname)).startsWith(__dirname);
-    return u.origin === new URL(UI_URL).origin;
+    return u.origin === new URL(uiUrl).origin;
   } catch {
     return false;
   }
@@ -274,8 +277,24 @@ function pushState() {
 
 // ------------------------------------------------------------------ Start
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
+  if (app.isPackaged && !process.env.STUDI_UI_URL && !TEST_MODE) {
+    try {
+      uiServer = await startBundledUi(
+        path.join(process.resourcesPath, "ui"),
+        path.join(backend.DATA_DIR, "logs", "ui-server.log"),
+      );
+      uiUrl = uiServer.url;
+    } catch (e) {
+      console.error(e);
+    }
+  }
   createWindow();
+
+  // Liegt die App jetzt woanders (z. B. nach /Applications verschoben), zeigt der launchd-Job
+  // sonst auf den alten Pfad. Deshalb beim Start neu schreiben.
+  const startCfg = backend.loadConfig();
+  if (startCfg.schedule?.enabled) backend.applySchedule(packaged(), startCfg.schedule);
   setInterval(pushState, 700);
 
   // Beim App-Start synchronisieren, wenn der letzte Lauf länger als 6 Stunden her ist.
@@ -290,6 +309,8 @@ app.whenReady().then(() => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
 });
+
+app.on("will-quit", () => uiServer?.stop());
 
 app.on("window-all-closed", () => {
   // Mac-typisch: App bleibt im Dock. Der tägliche Sync läuft ohnehin über launchd.
