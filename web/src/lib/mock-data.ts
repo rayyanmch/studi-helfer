@@ -20,7 +20,7 @@ export interface Folder {
   files: CourseFile[];
 }
 
-export type CourseColor = "blue" | "orange" | "green" | "plum" | "ochre";
+export type CourseColor = "blue" | "orange" | "green" | "plum" | "ochre" | "teal" | "rose" | "indigo";
 
 export interface Course {
   id: string;
@@ -30,6 +30,7 @@ export interface Course {
   folders: Folder[];
   color?: CourseColor; // fehlt sie, vergibt die Oberfläche eine nach Reihenfolge
   short?: string; // Kurzname für enge Stellen ("Mathe I"); fehlt er, kürzt die Oberfläche selbst
+  semester?: "current" | "past"; // wie IliasCourse.semester in desktop.ts; fehlt es, gilt "current"
 }
 
 /** Frist aus dem ILIAS-Kalender oder von der KI in einem Übungsblatt gefunden. */
@@ -173,6 +174,60 @@ export const courses: Course[] = [
         name: "Folien",
         files: [
           { id: "rn1", name: "Schichtenmodell.pdf", kind: "pdf", size: "2,0 MB", updated: "10. Nov.", isNew: false },
+        ],
+      },
+    ],
+  },
+  {
+    id: "programmierung",
+    name: "Programmierung I",
+    short: "Prog I",
+    lecturer: "Prof. Dr. Albers",
+    total: 54,
+    color: "teal",
+    semester: "past",
+    folders: [
+      {
+        id: "pr-folien",
+        name: "Folien",
+        files: [
+          { id: "pr1", name: "Klausurvorbereitung.pdf", kind: "pdf", size: "1,1 MB", updated: "3. Feb.", isNew: false },
+        ],
+      },
+    ],
+  },
+  {
+    id: "linalg",
+    name: "Lineare Algebra",
+    short: "LinA",
+    lecturer: "Prof. Dr. Hofmann",
+    total: 38,
+    color: "rose",
+    semester: "past",
+    folders: [
+      {
+        id: "la-skript",
+        name: "Skript",
+        files: [
+          { id: "la1", name: "Skript komplett.pdf", kind: "pdf", size: "7,4 MB", updated: "28. Jan.", isNew: false },
+        ],
+      },
+    ],
+  },
+  {
+    id: "englisch",
+    name: "Englisch für IT",
+    short: "Engl",
+    lecturer: "Dr. Carter",
+    total: 9,
+    color: "indigo",
+    semester: "past",
+    folders: [
+      {
+        id: "en-material",
+        name: "Material",
+        files: [
+          { id: "en1", name: "Vocabulary List.pdf", kind: "pdf", size: "240 KB", updated: "15. Jan.", isNew: false },
         ],
       },
     ],

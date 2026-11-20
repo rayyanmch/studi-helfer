@@ -1,8 +1,11 @@
 "use client";
 
-import { Check, Folder } from "lucide-react";
-import { Button, Stage, Swatch, colorOf } from "./ui";
-import { courses, TARGET_FOLDER } from "@/lib/mock-data";
+import { useState } from "react";
+import { Check } from "lucide-react";
+import { Stage, colorOf, nameOf, tone } from "./ui";
+import { courses, TARGET_FOLDER, type Course } from "@/lib/mock-data";
+
+type Tab = "current" | "past";
 
 export function Setup({
   selected,
@@ -13,69 +16,116 @@ export function Setup({
   onChange: (ids: string[]) => void;
   onStart: () => void;
 }) {
-  const toggle = (id: string) =>
-    onChange(selected.includes(id) ? selected.filter((x) => x !== id) : [...selected, id]);
+  const [tab, setTab] = useState<Tab>("current");
+  const [videos, setVideos] = useState(false);
 
-  const allOn = selected.length === courses.length;
+  const current = courses.filter((c) => c.semester !== "past");
+  const past = courses.filter((c) => c.semester === "past");
+  const list = tab === "current" ? current : past;
   const n = selected.length;
 
+  const toggle = (id: string) =>
+    onChange(selected.includes(id) ? selected.filter((x) => x !== id) : [...selected, id]);
+  const allOn = list.every((c) => selected.includes(c.id));
+  const toggleAll = () =>
+    onChange(allOn ? selected.filter((id) => !list.some((c) => c.id === id)) : [...new Set([...selected, ...list.map((c) => c.id)])]);
+
   return (
-    <Stage width={520}>
+    <Stage width={680}>
       <h1 className="text-[28px] font-bold leading-tight tracking-[-0.02em]">Was soll auf deinen Mac?</h1>
-      <p className="mt-1.5 text-muted">Wir haben die Kurse aus diesem Semester gefunden. Du kannst das später ändern.</p>
+      <p className="mt-1.5 text-muted">Tipp die Kurse an, die du brauchst. Du kannst das später ändern.</p>
 
-      <section className="mt-7">
-        <h2 className="mb-2 font-semibold">Speicherort</h2>
-        <div className="flex items-center gap-3 rounded-[10px] bg-surface py-2 pl-3.5 pr-2">
-          <Folder size={16} className="text-muted" aria-hidden />
-          <span className="flex-1 truncate font-medium">{TARGET_FOLDER}</span>
-          <Button>Ändern…</Button>
+      <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+        <div role="tablist" aria-label="Semester" className="inline-flex rounded-[9px] bg-sunken p-[3px]">
+          <TabButton active={tab === "current"} onClick={() => setTab("current")}>
+            Dieses Semester
+          </TabButton>
+          <TabButton active={tab === "past"} onClick={() => setTab("past")}>
+            Frühere <span className="opacity-60">{past.length}</span>
+          </TabButton>
         </div>
-      </section>
+        <button onClick={toggleAll} className="rounded-md px-2 py-1 font-semibold text-[var(--focus)] hover:bg-hover">
+          {allOn ? "Alle abwählen" : "Alle auswählen"}
+        </button>
+      </div>
 
-      <section className="mt-6">
-        <div className="mb-2 flex items-center justify-between">
-          <h2 className="font-semibold">Kurse</h2>
-          <Button variant="plain" className="-mr-2 h-7 px-2 text-muted" onClick={() => onChange(allOn ? [] : courses.map((c) => c.id))}>
-            {allOn ? "Keinen" : "Alle"}
-          </Button>
-        </div>
-        <ul className="flex flex-col gap-1">
-          {courses.map((c) => {
-            const on = selected.includes(c.id);
-            return (
-              <li key={c.id}>
-                <label className="flex items-center gap-3 rounded-[10px] bg-surface px-3.5 py-3 hover:bg-hover">
-                  <input type="checkbox" checked={on} onChange={() => toggle(c.id)} className="peer sr-only" />
-                  <span
-                    aria-hidden
-                    className={`flex size-[18px] shrink-0 items-center justify-center rounded-[5px] border peer-focus-visible:outline-2 peer-focus-visible:outline-[var(--focus)] ${
-                      on ? "border-accent bg-accent text-on-accent" : "border-line"
-                    }`}
-                  >
-                    {on && <Check size={12} strokeWidth={3} />}
-                  </span>
-                  <Swatch color={colorOf(c)} />
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate font-semibold">{c.name}</span>
-                    <span className="block truncate text-[12px] text-muted">{c.lecturer}</span>
-                  </span>
-                  <span className="text-[12px] tabular-nums text-muted">{c.total} Dateien</span>
-                </label>
-              </li>
-            );
-          })}
-        </ul>
-      </section>
+      <ul className="mt-3 grid grid-cols-1 gap-2.5 sm:grid-cols-2" aria-label="Kurse">
+        {list.map((c) => (
+          <li key={c.id}>
+            <CourseTile course={c} on={selected.includes(c.id)} onToggle={() => toggle(c.id)} />
+          </li>
+        ))}
+      </ul>
 
-      <div className="mt-7 flex items-center justify-end gap-4">
-        <span className="text-[12px] text-muted">
-          {n === 0 ? "Wähl mindestens einen Kurs." : `${n} von ${courses.length} Kursen`}
+      <label className="mt-5 flex cursor-default items-center gap-3 rounded-[12px] bg-surface px-4 py-3">
+        <span className="min-w-0 flex-1">
+          <span className="block font-semibold">Videos mitladen</span>
+          <span className="block text-[12px] text-muted">Vorlesungsaufzeichnungen brauchen viel Speicher.</span>
         </span>
-        <Button variant="primary" className="h-10 px-5 text-[14px]" disabled={n === 0} onClick={onStart}>
-          Kurse holen
-        </Button>
+        <input type="checkbox" role="switch" checked={videos} onChange={(e) => setVideos(e.target.checked)} className="peer sr-only" />
+        <span
+          aria-hidden
+          className={`relative h-[22px] w-[38px] shrink-0 rounded-full transition-colors peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[var(--focus)] ${
+            videos ? "bg-accent" : "bg-line"
+          }`}
+        >
+          <span
+            className={`absolute top-[2px] size-[18px] rounded-full bg-white shadow-sm transition-[left] duration-200 ${videos ? "left-[18px]" : "left-[2px]"}`}
+          />
+        </span>
+      </label>
+
+      <div className="mt-6 flex flex-wrap items-center gap-4">
+        <span className="flex-1 text-[12px] text-muted">
+          Speichern in {TARGET_FOLDER}{" "}
+          <button className="rounded font-semibold text-[var(--focus)] hover:underline">ändern</button>
+        </span>
+        <button
+          onClick={onStart}
+          disabled={n === 0}
+          className="no-drag flex h-10 items-center rounded-[10px] bg-accent px-5 text-[14px] font-semibold text-on-accent transition-opacity hover:opacity-90 disabled:opacity-35"
+        >
+          {n === 0 ? "Wähl mindestens einen Kurs" : `${n} ${n === 1 ? "Kurs" : "Kurse"} holen`}
+        </button>
       </div>
     </Stage>
+  );
+}
+
+function TabButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      role="tab"
+      aria-selected={active}
+      onClick={onClick}
+      className={`h-7 rounded-[7px] px-3.5 transition-colors ${active ? "bg-surface font-semibold shadow-sm" : "text-muted hover:text-text"}`}
+    >
+      {children}
+    </button>
+  );
+}
+
+// Variante K2: ausgewählte Kachel ist zart in der Kursfarbe gefärbt, Haken im Kreis.
+function CourseTile({ course, on, onToggle }: { course: Course; on: boolean; onToggle: () => void }) {
+  const c = colorOf(course);
+  return (
+    <button
+      onClick={onToggle}
+      aria-pressed={on}
+      className="relative flex min-h-[88px] w-full flex-col justify-center rounded-[12px] py-3.5 pl-4 pr-11 text-left transition-colors duration-150 hover:brightness-[0.985]"
+      style={{ background: on ? tone(c, "soft") : "var(--surface)" }}
+    >
+      <span className="block font-semibold leading-snug">{nameOf(course)}</span>
+      <span className="mt-1 block text-[12px]" style={{ color: on ? tone(c, "ink") : "var(--muted)" }}>
+        {course.lecturer}, {course.total} Dateien
+      </span>
+      <span
+        aria-hidden
+        className="absolute right-3.5 top-3.5 flex size-5 items-center justify-center rounded-full transition-colors"
+        style={on ? { background: tone(c), color: "var(--on-solid)" } : { boxShadow: `inset 0 0 0 2px ${tone(c)}` }}
+      >
+        {on && <Check size={11} strokeWidth={3.4} />}
+      </span>
+    </button>
   );
 }

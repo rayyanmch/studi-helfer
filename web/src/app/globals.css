@@ -38,6 +38,15 @@
   --c-ochre: #a8862a;
   --c-ochre-soft: #f6f0dc;
   --c-ochre-ink: #765d14;
+  --c-teal: #2f8a8a;
+  --c-teal-soft: #e2f2f1;
+  --c-teal-ink: #1f6363;
+  --c-rose: #b84a5a;
+  --c-rose-soft: #f8e8eb;
+  --c-rose-ink: #8c3341;
+  --c-indigo: #5a62b0;
+  --c-indigo-soft: #ebecf8;
+  --c-indigo-ink: #42489a;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -76,6 +85,15 @@
     --c-ochre: #d4b25a;
     --c-ochre-soft: #352f1d;
     --c-ochre-ink: #e9d496;
+    --c-teal: #5cc0bd;
+    --c-teal-soft: #1b3332;
+    --c-teal-ink: #a6e0dd;
+    --c-rose: #e07a8a;
+    --c-rose-soft: #3a2328;
+    --c-rose-ink: #f2b8c1;
+    --c-indigo: #8e95e0;
+    --c-indigo-soft: #262840;
+    --c-indigo-ink: #c3c7f2;
   }
 }
 

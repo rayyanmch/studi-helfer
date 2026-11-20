@@ -17,7 +17,7 @@ export function AppShell() {
   const [problem, setProblem] = useState<Problem>("none");
   const [loginResult, setLoginResult] = useState<LoginResult>("ok");
   const [failImport, setFailImport] = useState(false);
-  const [selected, setSelected] = useState<string[]>(courses.map((c) => c.id));
+  const [selected, setSelected] = useState<string[]>(courses.filter((c) => c.semester !== "past").map((c) => c.id));
   const [user, setUser] = useState("mmuster1");
 
   return (

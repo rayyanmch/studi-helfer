@@ -35,7 +35,7 @@ export function FileIcon({ kind }: { kind: FileKind }) {
 
 // --- Kursfarben -------------------------------------------------------------
 
-const ORDER: CourseColor[] = ["blue", "orange", "green", "plum", "ochre"];
+const ORDER: CourseColor[] = ["blue", "orange", "green", "plum", "ochre", "teal", "rose", "indigo"];
 
 export function colorOf(course: Pick<Course, "id" | "color">): CourseColor {
   if (course.color) return course.color;
