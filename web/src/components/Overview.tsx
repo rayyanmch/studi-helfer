@@ -15,6 +15,7 @@ import {
   X,
 } from "lucide-react";
 import { Button, FileIcon, Notice, Spinner, Swatch, colorOf, nameOf, shortOf, tone } from "./ui";
+import { ImportPanel, jobProgress, useJob, type Job } from "./ImportJob";
 import type { Problem } from "./AppShell";
 import {
   courses,
@@ -53,6 +54,8 @@ export function Overview({
   onRelogin,
   user,
   onEditCourses,
+  importRun = 0,
+  failImport = false,
 }: {
   courseIds: string[];
   problem: Problem;
@@ -60,17 +63,31 @@ export function Overview({
   onRelogin: () => void;
   user: string;
   onEditCourses: () => void;
+  importRun?: number; // zählt hoch, wenn ein erster Import starten soll
+  failImport?: boolean;
 }) {
   const list = courses.filter((c) => courseIds.includes(c.id));
   const [view, setView] = useState<View>("week");
-  const [syncing, setSyncing] = useState(false);
   const [lastSync, setLastSync] = useState(LAST_SYNC);
   const [done, setDone] = useState<string[]>([]);
   const [query, setQuery] = useState("");
-  const timer = useRef<number | undefined>(undefined);
+  const [closedRun, setClosedRun] = useState(0); // Import-Lauf, dessen Fenster geschlossen wurde
   const searchRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => () => window.clearTimeout(timer.current), []);
+  const { job, start, stop, dismiss, retry } = useJob((finished) => {
+    if (finished.rows.some((r) => r.status === "failed")) return;
+    if (problem === "courseFailed" || problem === "offline") onProblem("none");
+    const now = new Date();
+    setLastSync(`${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`);
+  });
+
+  // Erster Import: startet, sobald AppShell importRun hochzählt (Übersicht ist sofort benutzbar)
+  useEffect(() => {
+    if (importRun > 0) {
+      start("import", courses.filter((c) => courseIds.includes(c.id)), failImport);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [importRun]);
 
   // ⌘F springt ins Suchfeld (wie in jeder Mac-App)
   useEffect(() => {
@@ -85,17 +102,10 @@ export function Overview({
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
+  const syncing = Boolean(job?.running);
   const sync = () => {
-    if (syncing) return;
-    setSyncing(true);
-    timer.current = window.setTimeout(() => {
-      setSyncing(false);
-      if (problem === "courseFailed" || problem === "offline") onProblem("none");
-      if (problem !== "loginExpired") {
-        const now = new Date();
-        setLastSync(`${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`);
-      }
-    }, 1400);
+    if (syncing || problem === "loginExpired") return;
+    start("sync", list);
   };
 
   const toggleDone = (id: string) => setDone((d) => (d.includes(id) ? d.filter((x) => x !== id) : [...d, id]));
@@ -139,10 +149,20 @@ export function Overview({
             ))}
           </div>
         </nav>
-        <SyncStatus problem={problem} syncing={syncing} lastSync={lastSync} onSync={sync} />
+        <SyncStatus problem={problem} job={job} lastSync={lastSync} onSync={sync} onStop={stop} />
       </aside>
 
-      <main className="flex min-w-0 flex-1 flex-col">
+      <main className="relative flex min-w-0 flex-1 flex-col">
+        {job?.kind === "import" && closedRun !== importRun && (
+          <ImportPanel
+            job={job}
+            onRetry={retry}
+            onClose={() => {
+              setClosedRun(importRun);
+              if (!job.running) dismiss();
+            }}
+          />
+        )}
         <header className="drag flex h-[52px] shrink-0 items-center justify-end gap-3 px-6">
           <label className="no-drag flex h-8 w-[260px] items-center gap-2 rounded-lg bg-surface px-2.5 shadow-[inset_0_0_0_1px_var(--line)] focus-within:shadow-[inset_0_0_0_2px_var(--focus)]">
             <Search size={14} className="shrink-0 text-muted" aria-hidden />
@@ -307,43 +327,80 @@ function NavItem({
 
 function SyncStatus({
   problem,
-  syncing,
+  job,
   lastSync,
   onSync,
+  onStop,
 }: {
   problem: Problem;
-  syncing: boolean;
+  job: Job | null;
   lastSync: string;
   onSync: () => void;
+  onStop: () => void;
 }) {
+  // Variante D2: während des Holens Balken, „3 von 6 Kursen, gerade BWL“ und Stopp
+  if (job?.running) {
+    const { n, done, cur, frac } = jobProgress(job);
+    return (
+      <div className="p-3">
+        <div className="rounded-[10px] bg-bg px-3 py-2.5" aria-live="polite">
+          <p className="flex items-center gap-2 text-[13px] font-semibold">
+            <Spinner size={12} />
+            {job.kind === "import" ? "Hole deine Kurse…" : "Hole neue Dateien…"}
+          </p>
+          <div className="mt-2 h-[5px] overflow-hidden rounded-full bg-line">
+            <div className="h-full rounded-full bg-accent transition-[width] duration-200 ease-out" style={{ width: `${frac * 100}%` }} />
+          </div>
+          <div className="mt-1.5 flex items-center gap-2">
+            <span className="min-w-0 flex-1 truncate text-[12px] text-muted">
+              {done} von {n} Kursen{cur ? `, gerade ${cur.name}` : ""}
+            </span>
+            <button
+              onClick={onStop}
+              className="rounded-md bg-danger-soft px-2 py-0.5 text-[12px] font-semibold text-danger transition-opacity hover:opacity-80"
+            >
+              Stopp
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   let icon = <span className="size-2 rounded-full bg-ok" aria-hidden />;
-  let text = `Aktuell, ${lastSync}`;
-  if (syncing) {
-    icon = <Spinner size={12} />;
-    text = "Synchronisiere…";
+  let label = "Zuletzt geholt";
+  let text = `heute, ${lastSync}`;
+  if (job?.stopped) {
+    icon = <span className="size-2 rounded-full bg-warn" aria-hidden />;
+    label = "Holen gestoppt";
+    text = `Stand: heute, ${lastSync}`;
   } else if (problem === "offline") {
     icon = <WifiOff size={13} className="text-warn" aria-hidden />;
-    text = `Offline, Stand ${lastSync}`;
+    label = "Offline";
+    text = `Stand: heute, ${lastSync}`;
   } else if (problem === "loginExpired") {
     icon = <LogIn size={13} className="text-warn" aria-hidden />;
-    text = "Anmeldung abgelaufen";
+    label = "Anmeldung abgelaufen";
+    text = "Bitte neu anmelden";
   } else if (problem === "courseFailed") {
     icon = <AlertTriangle size={13} className="text-danger" aria-hidden />;
-    text = "1 Kurs mit Fehler";
+    label = "1 Kurs mit Fehler";
+    text = `Rest: heute, ${lastSync}`;
   }
 
   return (
     <div className="p-3">
       <div className="flex items-center gap-2 rounded-[10px] bg-bg py-2 pl-3 pr-1.5">
         <span className="flex w-3 justify-center">{icon}</span>
-        <span className="min-w-0 flex-1 truncate text-[12px]" aria-live="polite">
-          {text}
+        <span className="min-w-0 flex-1" aria-live="polite">
+          <span className="block truncate text-[11px] text-muted">{label}</span>
+          <span className="block truncate text-[12px] font-semibold">{text}</span>
         </span>
         <button
           onClick={onSync}
-          disabled={syncing || problem === "loginExpired"}
-          aria-label="Jetzt synchronisieren"
-          title="Jetzt synchronisieren"
+          disabled={problem === "loginExpired"}
+          aria-label="Jetzt neue Dateien holen"
+          title="Jetzt neue Dateien holen"
           className="flex size-7 items-center justify-center rounded-md bg-surface hover:bg-hover disabled:opacity-45"
         >
           <RefreshCw size={13} aria-hidden />
@@ -406,6 +463,7 @@ function WeekView({
   onToggle: (id: string) => void;
   onOpen: (id: string) => void;
 }) {
+  const [range, setRange] = useState<"week" | "month">("week");
   const days = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(todayMs + i * DAY_MS);
     const iso = d.toISOString().slice(0, 10);
@@ -418,6 +476,9 @@ function WeekView({
   );
   const first = [...open].sort((a, b) => a.date.localeCompare(b.date))[0];
   const kurse = new Set(open.map((d) => d.courseId)).size;
+  const in4 = deadlines.filter((d) => daysFromToday(d.date) >= 0 && daysFromToday(d.date) < 28);
+  const openIn4 = in4.filter((d) => d.kind === "abgabe" && !done.includes(d.id)).length;
+  const examsIn4 = in4.filter((d) => d.kind === "klausur").length;
 
   const newFiles = list.flatMap((c) =>
     c.folders.flatMap((f) => f.files.filter((x) => x.isNew || x.changeNote).map((file) => ({ file, course: c }))),
@@ -426,17 +487,43 @@ function WeekView({
 
   return (
     <>
-      <header>
-        <h1 className="text-[30px] font-bold leading-tight tracking-[-0.02em]">Nächste 7 Tage</h1>
-        <p className="mt-1 text-muted">
-          {open.length === 0
-            ? "Alles erledigt. Keine offenen Abgaben in den nächsten 7 Tagen."
-            : `${open.length} offene ${open.length === 1 ? "Abgabe" : "Abgaben"} in ${kurse} ${kurse === 1 ? "Kurs" : "Kursen"}.`}
-          {first && ` Zuerst fällig: ${first.title.replace(/ abgeben$/, "")} am ${LONG[new Date(parseDay(first.date)).getUTCDay()]}.`}
-        </p>
+      <header className="flex flex-wrap items-end gap-4">
+        <div className="min-w-0 flex-1">
+          <h1 className="text-[30px] font-bold leading-tight tracking-[-0.02em]">
+            {range === "week" ? "Nächste 7 Tage" : "Nächste 4 Wochen"}
+          </h1>
+          <p className="mt-1 text-muted">
+            {range === "month" ? (
+              `${openIn4} offene ${openIn4 === 1 ? "Abgabe" : "Abgaben"}${examsIn4 > 0 ? `, ${examsIn4} ${examsIn4 === 1 ? "Klausur" : "Klausuren"}` : ""}.`
+            ) : (
+              <>
+                {open.length === 0
+                  ? "Alles erledigt. Keine offenen Abgaben in den nächsten 7 Tagen."
+                  : `${open.length} offene ${open.length === 1 ? "Abgabe" : "Abgaben"} in ${kurse} ${kurse === 1 ? "Kurs" : "Kursen"}.`}
+                {first && ` Zuerst fällig: ${first.title.replace(/ abgeben$/, "")} am ${LONG[new Date(parseDay(first.date)).getUTCDay()]}.`}
+              </>
+            )}
+          </p>
+        </div>
+        <div role="tablist" aria-label="Zeitraum" className="inline-flex rounded-[9px] bg-sunken p-[3px]">
+          {(["week", "month"] as const).map((r) => (
+            <button
+              key={r}
+              role="tab"
+              aria-selected={range === r}
+              onClick={() => setRange(r)}
+              className={`h-7 rounded-[7px] px-3.5 transition-colors ${range === r ? "bg-surface font-semibold shadow-sm" : "text-muted hover:text-text"}`}
+            >
+              {r === "week" ? "7 Tage" : "4 Wochen"}
+            </button>
+          ))}
+        </div>
       </header>
 
+      {range === "month" && <MonthView deadlines={deadlines} done={done} onOpen={onOpen} />}
+
       {/* Tage ohne Termine werden schmal, Tage mit Terminen teilen sich den Platz. */}
+      {range === "week" && (
       <div
         className="mt-6 grid gap-1.5 transition-[grid-template-columns] duration-300 ease-out"
         style={{ gridTemplateColumns: days.map((d) => (d.wide ? "minmax(0, 1fr)" : "44px")).join(" ") }}
@@ -464,6 +551,7 @@ function WeekView({
           </div>
         ))}
       </div>
+      )}
 
       <div className="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-2">
         <section aria-labelledby="neu-titel">
@@ -500,6 +588,79 @@ function WeekView({
         </section>
       </div>
     </>
+  );
+}
+
+function MonthView({ deadlines, done, onOpen }: { deadlines: Deadline[]; done: string[]; onOpen: (id: string) => void }) {
+  const wdToday = new Date(todayMs).getUTCDay();
+  const start = todayMs - ((wdToday + 6) % 7) * DAY_MS; // Montag dieser Woche
+  const MONTHS = ["Jan.", "Feb.", "März", "Apr.", "Mai", "Juni", "Juli", "Aug.", "Sep.", "Okt.", "Nov.", "Dez."];
+  const cells = Array.from({ length: 28 }, (_, i) => {
+    const d = new Date(start + i * DAY_MS);
+    const iso = d.toISOString().slice(0, 10);
+    const diff = daysFromToday(iso);
+    return {
+      iso,
+      num: d.getUTCDate(),
+      month: d.getUTCDate() === 1 ? MONTHS[d.getUTCMonth()] : "",
+      weekend: i % 7 >= 5,
+      past: diff < 0,
+      today: diff === 0,
+      items: deadlines.filter((x) => x.date === iso),
+    };
+  });
+
+  return (
+    <div className="mt-6">
+      <div className="mb-1.5 grid grid-cols-7 gap-1.5 px-1 text-[12px] text-muted" aria-hidden>
+        {["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"].map((w) => (
+          <span key={w}>{w}</span>
+        ))}
+      </div>
+      <div className="grid grid-cols-7 gap-1.5" role="list" aria-label="Die nächsten 4 Wochen">
+        {cells.map((cell) => (
+          <div
+            key={cell.iso}
+            role="listitem"
+            className={`flex min-h-[92px] min-w-0 flex-col gap-1 rounded-[9px] p-1.5 ${cell.weekend ? "bg-sunken" : "bg-surface"} ${
+              cell.today ? "shadow-[inset_0_0_0_2px_var(--accent)]" : ""
+            } ${cell.past ? "opacity-45" : ""}`}
+          >
+            <span className="px-0.5 text-[12px] font-semibold">
+              {cell.num}
+              {cell.month && <span className="ml-1 font-normal text-muted">{cell.month}</span>}
+            </span>
+            {!cell.past &&
+              cell.items.slice(0, 3).map((d) => {
+                const course = courseById(d.courseId);
+                if (!course) return null;
+                const c = colorOf(course);
+                const isDone = d.kind === "abgabe" && done.includes(d.id);
+                const exam = d.kind === "klausur";
+                const label = exam && d.title === "Klausur" ? `Klausur ${shortOf(course)}` : d.title.replace(/ abgeben$/, "");
+                return (
+                  <button
+                    key={d.id}
+                    onClick={() => onOpen(d.courseId)}
+                    title={`${d.title}, ${nameOf(course)}, ${d.time}`}
+                    className={`truncate rounded-[5px] px-1.5 py-0.5 text-left text-[11px] font-semibold ${isDone ? "line-through" : ""}`}
+                    style={
+                      isDone
+                        ? { background: "var(--sunken)", color: "var(--muted)" }
+                        : exam
+                          ? { background: tone(c), color: "var(--on-solid)" }
+                          : { background: tone(c, "soft"), color: tone(c, "ink") }
+                    }
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            {cell.items.length > 3 && <span className="px-1 text-[11px] text-muted">+{cell.items.length - 3} weitere</span>}
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -563,34 +724,47 @@ function DeadlineBlock({ d, done, onToggle, onOpen }: { d: Deadline; done: boole
   const course = courseById(d.courseId);
   if (!course) return null;
   const c = colorOf(course);
-  const solid = isUrgent(d) && !done;
-  const style = done
+  const exam = d.kind === "klausur";
+  const checkable = d.kind === "abgabe"; // Termine und Klausuren hakt man nicht ab
+  const isDone = checkable && done;
+  const solid = isUrgent(d) && !isDone;
+  const style = isDone
     ? { background: "var(--sunken)", color: "var(--muted)" }
-    : solid
-      ? { background: tone(c), color: "var(--on-solid)" }
-      : { background: tone(c, "soft") };
+    : exam
+      ? { background: "var(--surface)", boxShadow: `inset 0 0 0 2.5px ${tone(c)}` }
+      : solid
+        ? { background: tone(c), color: "var(--on-solid)" }
+        : { background: tone(c, "soft") };
+  const title = exam && d.title === "Klausur" ? shortOf(course) : d.title.replace(/ abgeben$/, "");
 
   return (
     <div className="flex items-start gap-1.5 rounded-[7px] py-1.5 pl-2 pr-1.5 transition-colors" style={style}>
       <button
         onClick={onOpen}
-        title={d.source ? `Gefunden in ${d.source}` : `${nameOf(course)} öffnen`}
+        title={d.source ? `${d.kind === "klausur" ? "Ort" : "Gefunden in"}: ${d.source}` : `${nameOf(course)} öffnen`}
         className="min-w-0 flex-1 text-left"
       >
+        {exam && (
+          <span className="mb-1 inline-block rounded-full px-1.5 text-[11px] font-bold leading-[17px]" style={{ background: tone(c), color: "var(--on-solid)" }}>
+            Klausur
+          </span>
+        )}
         <span
           className="block truncate text-[12px] font-semibold"
-          style={done || solid ? undefined : { color: tone(c, "ink") }}
+          style={isDone || solid ? undefined : { color: tone(c, "ink") }}
         >
-          {done ? "erledigt" : d.time}
+          {isDone ? "erledigt" : d.time}
         </span>
-        <span className={`block text-[13px] font-semibold leading-snug ${done ? "line-through" : ""}`}>
-          {d.title.replace(/ abgeben$/, "")}
+        <span className={`block text-[13px] font-semibold leading-snug ${isDone ? "line-through" : ""}`}>{title}</span>
+        <span className={`block truncate text-[12px] ${solid ? "opacity-85" : isDone ? "" : "text-muted"}`}>
+          {exam && d.source ? d.source : shortOf(course)}
         </span>
-        <span className={`block truncate text-[12px] ${solid ? "opacity-85" : done ? "" : "text-muted"}`}>{shortOf(course)}</span>
       </button>
-      <span style={done || solid ? undefined : { color: tone(c) }}>
-        <CheckButton done={done} onClick={onToggle} label={d.title} onSolid={solid} />
-      </span>
+      {checkable && (
+        <span style={isDone || solid ? undefined : { color: tone(c) }}>
+          <CheckButton done={isDone} onClick={onToggle} label={d.title} onSolid={solid} />
+        </span>
+      )}
     </div>
   );
 }
@@ -813,9 +987,11 @@ function CourseView({
                 const solid = isUrgent(d) && !isDone;
                 const style = isDone
                   ? { background: "var(--sunken)", color: "var(--muted)" }
-                  : solid
-                    ? { background: tone(c), color: "var(--on-solid)" }
-                    : { background: tone(c, "soft") };
+                  : d.kind === "klausur"
+                    ? { background: "var(--surface)", boxShadow: `inset 0 0 0 2.5px ${tone(c)}` }
+                    : solid
+                      ? { background: tone(c), color: "var(--on-solid)" }
+                      : { background: tone(c, "soft") };
                 return (
                   <li key={d.id} className="flex items-center gap-3 rounded-[10px] px-3.5 py-2.5 transition-colors" style={style}>
                     <span className="w-8 text-center">
@@ -826,9 +1002,11 @@ function CourseView({
                       <span className={`block truncate font-semibold ${isDone ? "line-through" : ""}`}>{d.title}</span>
                       <span className="block text-[12px] opacity-80">{isDone ? "erledigt" : d.time}</span>
                     </span>
-                    <span style={isDone || solid ? undefined : { color: tone(c) }}>
-                      <CheckButton done={isDone} onClick={() => onToggle(d.id)} label={d.title} onSolid={solid} />
-                    </span>
+                    {d.kind === "abgabe" && (
+                      <span style={isDone || solid ? undefined : { color: tone(c) }}>
+                        <CheckButton done={isDone} onClick={() => onToggle(d.id)} label={d.title} onSolid={solid} />
+                      </span>
+                    )}
                   </li>
                 );
               })}

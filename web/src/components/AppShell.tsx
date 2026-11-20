@@ -4,7 +4,6 @@ import { useState } from "react";
 import { courses } from "@/lib/mock-data";
 import { Login } from "./Login";
 import { Setup } from "./Setup";
-import { ImportScreen } from "./ImportScreen";
 import { Overview } from "./Overview";
 import { DemoPanel } from "./DemoPanel";
 
@@ -19,6 +18,14 @@ export function AppShell() {
   const [failImport, setFailImport] = useState(false);
   const [selected, setSelected] = useState<string[]>(courses.filter((c) => c.semester !== "past").map((c) => c.id));
   const [user, setUser] = useState("mmuster1");
+  const [importRun, setImportRun] = useState(0);
+
+  // Erster Import läuft im Hintergrund, die Übersicht ist sofort da (Variante A2)
+  const startImport = () => {
+    setImportRun((n) => n + 1);
+    setScreen("overview");
+  };
+  const goTo = (s: Screen) => (s === "import" ? startImport() : setScreen(s));
 
   return (
     <>
@@ -32,14 +39,7 @@ export function AppShell() {
         />
       )}
       {screen === "setup" && (
-        <Setup selected={selected} onChange={setSelected} onStart={() => setScreen("import")} />
-      )}
-      {screen === "import" && (
-        <ImportScreen
-          courseIds={selected}
-          failOne={failImport}
-          onDone={() => setScreen("overview")}
-        />
+        <Setup selected={selected} onChange={setSelected} onStart={startImport} />
       )}
       {screen === "overview" && (
         <Overview
@@ -48,6 +48,8 @@ export function AppShell() {
           onProblem={setProblem}
           user={user}
           onEditCourses={() => setScreen("setup")}
+          importRun={importRun}
+          failImport={failImport}
           onRelogin={() => {
             setProblem("none");
             setScreen("login");
@@ -56,7 +58,7 @@ export function AppShell() {
       )}
       <DemoPanel
         screen={screen}
-        onScreen={setScreen}
+        onScreen={goTo}
         problem={problem}
         onProblem={setProblem}
         loginResult={loginResult}

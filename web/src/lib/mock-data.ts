@@ -40,7 +40,7 @@ export interface Deadline {
   title: string;
   date: string; // "2026-11-23"
   time: string; // "bis 10:00", "14:00" oder "ganztägig"
-  kind: "abgabe" | "termin";
+  kind: "abgabe" | "termin" | "klausur"; // nur "abgabe" lässt sich abhaken
   source?: string; // wo die KI die Frist gefunden hat
 }
 
@@ -248,6 +248,12 @@ export const deadlines: Deadline[] = [
     kind: "abgabe",
     source: "Normalformen.pdf, Folie 2",
   },
+  { id: "d5", courseId: "datenbanken", title: "Blatt 5 abgeben", date: "2026-11-27", time: "bis 18:00", kind: "abgabe" },
+  { id: "d6", courseId: "mathe", title: "Blatt 8 abgeben", date: "2026-11-30", time: "bis 10:00", kind: "abgabe" },
+  { id: "d7", courseId: "softwaretechnik", title: "Übungsblatt 5 abgeben", date: "2026-12-02", time: "bis 23:59", kind: "abgabe" },
+  { id: "d8", courseId: "softwaretechnik", title: "Tutorium", date: "2026-12-04", time: "14:00", kind: "termin" },
+  { id: "d9", courseId: "datenbanken", title: "Klausur", date: "2026-12-10", time: "10:00", kind: "klausur", source: "Hörsaal C" },
+  { id: "d10", courseId: "bwl", title: "Zwischentest", date: "2026-12-11", time: "12:00", kind: "klausur" },
 ];
 
 /** Kurze Zusammenfassung pro Kurs nach dem Sync (später von der KI). */
