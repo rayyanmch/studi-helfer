@@ -11,6 +11,7 @@ Neue wichtige Erkenntnisse und Entscheidungen trägst du in `NOTIZEN.md` ein und
 ## Aufbau
 
 - `web/`: Next.js 16 (App Router, TypeScript, Tailwind 4). UI, API-Routen, KI-Aufrufe. Laptop zuerst, aber responsiv fürs Handy.
+- `desktop/` (kommt): Electron-Hülle, macht daraus eine Mac-App. Hintergrundteil für ILIAS-Login (macOS-Schlüsselbund), PFERD, Dateien in `~/Uni` und Sync. `web/` ist die Oberfläche darin.
 - `services/ilias-sync/`: Python-Dienst um PFERD, holt Dateien aus dem ILIAS der Uni Köln.
 - Daten, Login und Datei-Speicher: Supabase. KI: Claude API über `web/src/lib/ai.ts`.
 
@@ -21,7 +22,7 @@ Next.js 16 weicht von älterem Wissen ab: Vor neuem Next-Code die passende Doku 
 - Sprache der Oberfläche: Deutsch. Code-Bezeichner dürfen Englisch sein.
 - Secrets nur in `web/.env.local` (Vorlage: `web/.env.example`). Nie committen, nie in Client-Code.
 - KI-Aufrufe und der Anthropic-Key laufen nur serverseitig (Route Handler / Server Actions, `import "server-only"`). Nutzer brauchen keinen eigenen Key.
-- Uni-Zugangsdaten nie speichern oder loggen.
+- Uni-Zugangsdaten nur im macOS-Schlüsselbund ablegen. Nie in Dateien, Datenbank, Logs oder an einen Server schicken.
 - Supabase: Für Code im Browser `@/lib/supabase/client`, für Server-Code `@/lib/supabase/server`. Tabellen bekommen Row Level Security.
 - Vor jedem Commit mit Änderungen in `web/`: `npm run lint` und `npm run build` müssen durchlaufen.
 - Kommen neue Pakete per Sync dazu (`web/package.json` geändert), zuerst `npm install` in `web/`.
