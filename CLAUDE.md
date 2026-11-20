@@ -23,10 +23,17 @@ Next.js 16 weicht von älterem Wissen ab: Vor neuem Next-Code die passende Doku 
 - KI-Aufrufe und der Anthropic-Key laufen nur serverseitig (Route Handler / Server Actions, `import "server-only"`). Nutzer brauchen keinen eigenen Key.
 - Uni-Zugangsdaten nie speichern oder loggen.
 - Supabase: Für Code im Browser `@/lib/supabase/client`, für Server-Code `@/lib/supabase/server`. Tabellen bekommen Row Level Security.
-- Vor jedem Commit in `web/`: `npm run lint` und `npm run build` müssen durchlaufen.
+- Vor jedem Commit mit Änderungen in `web/`: `npm run lint` und `npm run build` müssen durchlaufen.
+- Kommen neue Pakete per Sync dazu (`web/package.json` geändert), zuerst `npm install` in `web/`.
 
-## Zusammenarbeit
+## Zusammenarbeit: Git ist dein Job, nicht der der Menschen
 
-- Nie direkt auf `main` arbeiten: pro Feature ein Branch (`feature/kalender`, `feature/merkzettel` …), kleine Pull Requests, zügig mergen.
-- Vor dem Start `git pull` auf `main`, damit beide auf demselben Stand sind.
-- Wer an welchem Bereich arbeitet, steht in der README unter „Wer macht was“. Fremde Bereiche nur nach Absprache umbauen.
+Rayyan und Mika prompten nur. Git-Befehle tippen sie nicht, das erledigst du komplett und ohne Nachfrage.
+
+- Alle arbeiten direkt auf `main`, keine Branches, keine Pull Requests. Kleine, häufige Commits halten Konflikte klein.
+- Vor jedem Prompt holt ein Hook (`.claude/hooks/sync.sh`) automatisch den neuesten Stand. Meldet er neue Commits, schau sie dir an. Meldet er einen Konflikt, löst du ihn zuerst so, dass beide Änderungen erhalten bleiben.
+- Am Ende jeder Antwort mit Änderungen: lint/build prüfen, committen, `git pull --rebase --autostash`, `git push`. Der Stop-Hook (`.claude/hooks/require-push.sh`) erinnert dich daran.
+- Commit-Nachrichten auf Deutsch, kurz und konkret („Kalender: Termine aus ILIAS-iCal importieren“).
+- Nie force-pushen, nie `git reset --hard` auf geteilte Commits, nie fremde Änderungen beim Konfliktlösen verwerfen.
+- Gegenseitig nicht im Weg stehen: Bevor du eine größere Aufgabe anfängst, trag sie in `NOTIZEN.md` unter „In Arbeit“ ein (wer, was, welche Dateien) und pushe das sofort. Steht dort schon etwas zu denselben Dateien von der anderen Person, sag es dem Nutzer, bevor du loslegst. Ist die Aufgabe fertig, nimm den Eintrag wieder raus.
+- Geteilte Grundlagen (`web/src/lib/`, Layout, Datenbank-Schema) nur in kleinen, abwärtskompatiblen Schritten ändern und direkt pushen.

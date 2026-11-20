@@ -3,8 +3,15 @@
 Gemeinsames Gedächtnis für alle KI-Agenten und Menschen im Projekt. Wird über `CLAUDE.md` automatisch geladen.
 **Agenten:** Wenn du etwas Wichtiges herausfindest oder entscheidest (Stolperfalle, Architektur, verworfene Idee, externe Eigenheit), trag es hier kurz ein: mit Datum, eine Zeile pro Punkt, Neues oben. Veraltetes löschen statt stapeln.
 
+## In Arbeit
+
+Wer gerade woran arbeitet (Person, Aufgabe, betroffene Dateien). Eintragen beim Start, löschen wenn fertig.
+
+- (nichts)
+
 ## Entscheidungen
 
+- 2026-11-20: **Git macht Claude, nicht die Menschen.** Alle arbeiten auf `main`. Hooks in `.claude/settings.json` holen vor jedem Prompt den neuesten Stand und verlangen am Ende jeder Antwort Commit und Push. Die Hooks brauchen `bash` und `git` (macOS/Linux, unter Windows Git Bash).
 - 2026-11-20: **Web-App statt Rust.** Next.js/TypeScript ist in zwei Tagen viel schneller gebaut, KI-Agenten können es am besten, und für Supabase, Claude und UI-Komponenten gibt es fertige Pakete. Rust bringt hier keinen Vorteil. Falls später eine Desktop-App gewünscht ist: Tauri um die bestehende Web-App legen.
 - 2026-11-20: **Laptop zuerst**, aber responsiv. Später als PWA installierbar (Laptop und Handy).
 - 2026-11-20: **Supabase** für Daten, Login und Datei-Speicher (Folien).
@@ -23,4 +30,4 @@ Gemeinsames Gedächtnis für alle KI-Agenten und Menschen im Projekt. Wird über
 - [ ] Supabase-Projekt anlegen, Keys in `.env.local` beider Rechner
 - [ ] Anthropic-API-Key besorgen
 - [ ] PFERD mit echtem Uni-Account gegen ILIAS Köln testen
-- [ ] Aufteilen, wer was baut (README → „Wer macht was“)
+- [ ] Aufteilen, wer was baut (siehe „In Arbeit“)

@@ -32,11 +32,9 @@ npm run dev
 
 Dann http://localhost:3000 öffnen. ILIAS-Dienst: siehe [services/ilias-sync](services/ilias-sync/README.md).
 
-## Wer macht was
+## Zusammenarbeit
 
-| Bereich | Wer |
-|---|---|
-| … | … |
+Einfach in Claude Code im Projektordner prompten. Git (Pull, Commit, Push) erledigt Claude automatisch über die Hooks in `.claude/`, wer gerade woran arbeitet steht in [NOTIZEN.md](NOTIZEN.md).
 
 ## Team
 
