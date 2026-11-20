@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
-import { Check } from "lucide-react";
-import { Stage, colorOf, nameOf, tone } from "./ui";
-import { courses, TARGET_FOLDER, type Course } from "@/lib/mock-data";
+import { useEffect, useState } from "react";
+import { AlertCircle, Check } from "lucide-react";
+import { Button, Notice, Spinner, Stage, colorOf, nameOf, tone } from "./ui";
+import type { Course } from "@/lib/mock-data";
+import * as store from "@/lib/app-store";
+import { useApp } from "@/lib/app-store";
 
 type Tab = "current" | "past";
 
@@ -11,14 +13,34 @@ export function Setup({
   selected,
   onChange,
   onStart,
+  onCancel,
 }: {
   selected: string[];
   onChange: (ids: string[]) => void;
-  onStart: () => void;
+  onStart: (videos: boolean) => Promise<string | null>;
+  onCancel?: () => void; // „Back“, wenn schon eingerichtet (Kurse ändern)
 }) {
+  const app = useApp();
   const [tab, setTab] = useState<Tab>("current");
   const [videos, setVideos] = useState(false);
+  const [starting, setStarting] = useState(false);
+  const [startError, setStartError] = useState<string | null>(null);
 
+  // In der Mac-App: Kurse live von ILIAS holen
+  useEffect(() => {
+    if (app.mode === "desktop" && app.setupStatus === "idle") void store.loadSetupCourses();
+  }, [app.mode, app.setupStatus]);
+
+  const start = async () => {
+    setStarting(true);
+    setStartError(null);
+    const err = await onStart(videos);
+    setStarting(false);
+    if (err) setStartError(err);
+  };
+
+  const courses = app.setupCourses;
+  const loading = app.mode === "desktop" && (app.setupStatus === "loading" || app.setupStatus === "idle");
   const current = courses.filter((c) => c.semester !== "past");
   const past = courses.filter((c) => c.semester === "past");
   const list = tab === "current" ? current : past;
@@ -34,6 +56,21 @@ export function Setup({
     <Stage width={680}>
       <h1 className="text-[28px] font-bold leading-tight tracking-[-0.02em]">What should go on your Mac?</h1>
       <p className="mt-1.5 text-muted">Pick the courses you need. You can change this later.</p>
+
+      {loading && (
+        <p className="mt-8 flex items-center gap-2.5 rounded-[12px] bg-surface px-4 py-5 text-muted" aria-live="polite">
+          <Spinner /> Looking up your courses on ILIAS…
+        </p>
+      )}
+      {app.setupStatus === "error" && (
+        <div className="mt-8">
+          <Notice tone="danger" icon={<AlertCircle size={16} aria-hidden />} action={<Button onClick={() => void store.loadSetupCourses()}>Try again</Button>}>
+            {app.setupError ?? "Could not load your courses."}
+          </Notice>
+        </div>
+      )}
+      {!loading && app.setupStatus !== "error" && (
+      <>
 
       <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
         <div role="tablist" aria-label="Semester" className="inline-flex rounded-[9px] bg-sunken p-[3px]">
@@ -75,19 +112,44 @@ export function Setup({
         </span>
       </label>
 
+      {startError && (
+        <p role="alert" className="mt-5 flex items-center gap-1.5 text-[13px] font-medium text-danger">
+          <AlertCircle size={14} aria-hidden /> {startError}
+        </p>
+      )}
+
       <div className="mt-6 flex flex-wrap items-center gap-4">
         <span className="flex-1 text-[12px] text-muted">
-          Saving to {TARGET_FOLDER}{" "}
-          <button className="rounded font-semibold text-[var(--focus)] hover:underline">change</button>
+          Saving to {app.targetDir}{" "}
+          <button onClick={() => void store.chooseFolder()} className="rounded font-semibold text-[var(--focus)] hover:underline">
+            change
+          </button>
         </span>
+        {onCancel && (
+          <button onClick={onCancel} className="h-10 rounded-[10px] px-4 font-semibold hover:bg-hover">
+            Back
+          </button>
+        )}
         <button
-          onClick={onStart}
-          disabled={n === 0}
-          className="no-drag flex h-10 items-center rounded-[10px] bg-accent px-5 text-[14px] font-semibold text-on-accent transition-opacity hover:opacity-90 disabled:opacity-35"
+          onClick={() => void start()}
+          disabled={n === 0 || starting}
+          className="no-drag flex h-10 items-center gap-2 rounded-[10px] bg-accent px-5 text-[14px] font-semibold text-on-accent transition-opacity hover:opacity-90 disabled:opacity-35"
         >
-          {n === 0 ? "Pick at least one course" : `Get ${n} ${n === 1 ? "course" : "courses"}`}
+          {starting ? (
+            <>
+              <Spinner /> Saving…
+            </>
+          ) : n === 0 ? (
+            "Pick at least one course"
+          ) : onCancel ? (
+            `Save, ${n} ${n === 1 ? "course" : "courses"}`
+          ) : (
+            `Get ${n} ${n === 1 ? "course" : "courses"}`
+          )}
         </button>
       </div>
+      </>
+      )}
     </Stage>
   );
 }
@@ -117,7 +179,7 @@ function CourseTile({ course, on, onToggle }: { course: Course; on: boolean; onT
     >
       <span className="block font-semibold leading-snug">{nameOf(course)}</span>
       <span className="mt-1 block text-[12px]" style={{ color: on ? tone(c, "ink") : "var(--muted)" }}>
-        {course.lecturer}, {course.total} files
+        {course.note ?? `${course.lecturer}, ${course.total} files`}
       </span>
       <span
         aria-hidden

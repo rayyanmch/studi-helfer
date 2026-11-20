@@ -1,6 +1,7 @@
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { File, FileArchive, FileText, Loader2 } from "lucide-react";
-import { courses, type Course, type CourseColor, type FileKind } from "@/lib/mock-data";
+import { type Course, type CourseColor, type FileKind } from "@/lib/mock-data";
+import { colorFor } from "@/lib/app-store";
 
 type Variant = "primary" | "secondary" | "plain";
 
@@ -35,12 +36,9 @@ export function FileIcon({ kind }: { kind: FileKind }) {
 
 // --- Kursfarben -------------------------------------------------------------
 
-const ORDER: CourseColor[] = ["blue", "orange", "green", "plum", "ochre", "teal", "rose", "indigo"];
-
+// Reihenfolge der Farben steht in app-store.ts (colorFor), damit sie in der Mac-App überall gleich bleiben.
 export function colorOf(course: Pick<Course, "id" | "color">): CourseColor {
-  if (course.color) return course.color;
-  const i = courses.findIndex((c) => c.id === course.id);
-  return ORDER[(i < 0 ? 0 : i) % ORDER.length];
+  return course.color ?? colorFor(course.id);
 }
 
 /** Kursname ohne Semester-Vorsatz aus ILIAS ("[WS26/27] Softwaretechnik" → "Softwaretechnik"). */

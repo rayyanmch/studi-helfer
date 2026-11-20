@@ -1,71 +1,97 @@
 "use client";
 
-import { useState } from "react";
-import { courses } from "@/lib/mock-data";
+import { useEffect, useState } from "react";
+import * as store from "@/lib/app-store";
+import { useApp } from "@/lib/app-store";
 import { Login } from "./Login";
 import { Setup } from "./Setup";
 import { Overview } from "./Overview";
 import { DemoPanel } from "./DemoPanel";
 
 export type Screen = "login" | "setup" | "import" | "overview";
-export type Problem = "none" | "offline" | "loginExpired" | "courseFailed";
+export type Problem = store.Problem;
 export type LoginResult = "ok" | "wrong" | "offline";
 
 export function AppShell() {
-  const [screen, setScreen] = useState<Screen>("login");
-  const [problem, setProblem] = useState<Problem>("none");
+  const app = useApp();
+  useEffect(() => {
+    void store.initApp();
+  }, []);
+
+  // Bis klar ist, ob Browser (Beispieldaten) oder Mac-App (echte Daten): leere Fläche statt Aufblitzen.
+  if (app.mode === "loading") return <div className="h-full bg-bg" />;
+  const first: Screen = app.mode === "desktop" ? (!app.loggedIn ? "login" : !app.configured ? "setup" : "overview") : "login";
+  return <Shell first={first} />;
+}
+
+function Shell({ first }: { first: Screen }) {
+  const app = useApp();
+  const desktop = app.mode === "desktop";
+  const [screen, setScreen] = useState<Screen>(first);
+  // Nur für das Demo-Fenster im Browser
+  const [demoProblem, setDemoProblem] = useState<Problem>("none");
   const [loginResult, setLoginResult] = useState<LoginResult>("ok");
   const [failImport, setFailImport] = useState(false);
-  const [selected, setSelected] = useState<string[]>(courses.filter((c) => c.semester !== "past").map((c) => c.id));
-  const [user, setUser] = useState("mmuster1");
   const [importRun, setImportRun] = useState(0);
 
+  const problem = desktop ? app.problem : demoProblem;
+  const user = app.user ?? "";
+
   // Erster Import läuft im Hintergrund, die Übersicht ist sofort da (Variante A2)
-  const startImport = () => {
+  const startImport = async (videos = false) => {
+    if (desktop) {
+      const res = await store.startImport(videos);
+      if (!res.ok) return res.message ?? "Could not start.";
+    }
     setImportRun((n) => n + 1);
     setScreen("overview");
+    return null;
   };
-  const goTo = (s: Screen) => (s === "import" ? startImport() : setScreen(s));
+  const goTo = (s: Screen) => (s === "import" ? void startImport() : setScreen(s));
 
   return (
     <>
-      {screen === "login" && (
-        <Login
-          result={loginResult}
-          onSuccess={(u) => {
-            setUser(u);
-            setScreen("setup");
-          }}
-        />
-      )}
+      {screen === "login" && <Login result={loginResult} onSuccess={() => setScreen(desktop && app.configured ? "overview" : "setup")} />}
       {screen === "setup" && (
-        <Setup selected={selected} onChange={setSelected} onStart={startImport} />
+        <Setup
+          selected={app.setupSelected}
+          onChange={store.setSetupSelected}
+          onStart={startImport}
+          onCancel={desktop && app.configured ? () => setScreen("overview") : undefined}
+        />
       )}
       {screen === "overview" && (
         <Overview
-          courseIds={selected}
+          courseIds={desktop ? app.courses.map((c) => c.id) : app.setupSelected}
           problem={problem}
-          onProblem={setProblem}
+          onProblem={desktop ? () => {} : setDemoProblem}
           user={user}
           onEditCourses={() => setScreen("setup")}
           importRun={importRun}
           failImport={failImport}
           onRelogin={() => {
-            setProblem("none");
+            setDemoProblem("none");
+            setScreen("login");
+          }}
+          onLogout={async () => {
+            await store.logout();
+            setDemoProblem("none");
             setScreen("login");
           }}
         />
       )}
-      <DemoPanel
-        screen={screen}
-        onScreen={goTo}
-        problem={problem}
-        onProblem={setProblem}
-        loginResult={loginResult}
-        onLoginResult={setLoginResult}
-        failImport={failImport}
-        onFailImport={setFailImport}
-      />
+      {!desktop && (
+        <DemoPanel
+          screen={screen}
+          onScreen={goTo}
+          problem={demoProblem}
+          onProblem={setDemoProblem}
+          loginResult={loginResult}
+          onLoginResult={setLoginResult}
+          failImport={failImport}
+          onFailImport={setFailImport}
+        />
+      )}
     </>
   );
 }

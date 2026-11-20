@@ -120,6 +120,7 @@ export interface SyncRun {
   added: { course: string; path: string }[];
   changed: { course: string; path: string; previous?: string }[];
   problems: { course: string | null; message: string }[];
+  courses?: Record<string, { title: string; status: CourseSyncStatus; added: number; changed: number; problems: string[] }>;
 }
 
 export interface StudiDesktop {

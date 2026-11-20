@@ -1,12 +1,14 @@
 "use client";
 
-// Holen von Dateien im Hintergrund (erster Import oder normaler Sync), hier noch simuliert.
-// Später liefert desktop.ts den echten Zustand (SyncState über onSyncState).
+// Holen von Dateien im Hintergrund (erster Import oder normaler Sync).
+// Im Browser simuliert, in der Mac-App der echte Zustand aus app-store.ts (SyncState über onSyncState).
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AlertTriangle, Check, ChevronDown, ChevronUp, X } from "lucide-react";
 import { Spinner, Swatch, colorOf, nameOf } from "./ui";
 import type { Course, CourseColor } from "@/lib/mock-data";
+import * as store from "@/lib/app-store";
+import { useApp } from "@/lib/app-store";
 
 export type JobKind = "import" | "sync";
 type RowStatus = "waiting" | "running" | "done" | "failed";
@@ -15,7 +17,7 @@ export interface JobRow {
   id: string;
   name: string;
   color: CourseColor;
-  total: number;
+  total: number; // 0 = unbekannt (echter Sync: PFERD kennt die Gesamtzahl erst am Ende)
   count: number;
   status: RowStatus;
 }
@@ -30,7 +32,29 @@ export interface Job {
 const FAIL_ID = "rechnernetze";
 const TICK_MS = 220;
 
+/** Fortschritt: in der Mac-App echt (app-store), im Browser simuliert. */
 export function useJob(onFinish: (job: Job) => void) {
+  const app = useApp();
+  const sim = useSimulatedJob(onFinish);
+  if (app.mode !== "desktop") return sim;
+  const j = app.job;
+  const job: Job | null = j && {
+    kind: j.kind,
+    running: j.running,
+    stopped: j.stopped,
+    rows: j.rows.map((r) => ({ ...r, color: colorOf({ id: r.id }) })),
+  };
+  return {
+    job,
+    // Der erste Import startet schon beim Speichern der Einrichtung (app-store.startImport).
+    start: (kind: JobKind) => void (kind === "sync" && store.syncNow()),
+    stop: () => void store.cancelSync(),
+    dismiss: store.dismissJob,
+    retry: () => void store.syncNow(),
+  };
+}
+
+function useSimulatedJob(onFinish: (job: Job) => void) {
   const [job, setJob] = useState<Job | null>(null);
   const failRef = useRef(false);
   const finishRef = useRef(onFinish);
@@ -116,7 +140,9 @@ export function jobProgress(job: Job) {
   const n = job.rows.length;
   const done = job.rows.filter((r) => r.status === "done" || r.status === "failed").length;
   const cur = job.rows.find((r) => r.status === "running");
-  const frac = n === 0 ? 1 : (done + (cur ? cur.count / cur.total : 0)) / n;
+  // Laufender Kurs ohne bekannte Gesamtzahl zählt halb, damit der Balken trotzdem weiterläuft.
+  const curFrac = cur ? (cur.total > 0 ? cur.count / cur.total : 0.5) : 0;
+  const frac = n === 0 ? 1 : (done + curFrac) / n;
   return { n, done, cur, frac, failed: job.rows.filter((r) => r.status === "failed") };
 }
 
@@ -182,7 +208,11 @@ export function ImportPanel({ job, onRetry, onClose }: { job: Job; onRetry: (id:
             <li key={r.id} className={`flex items-center gap-2 ${r.status === "waiting" ? "text-muted" : ""}`}>
               <Swatch color={r.color} size={8} />
               <span className="min-w-0 flex-1 truncate">{r.name}</span>
-              {r.status === "running" && <span className="tabular-nums text-muted">{r.count} of {r.total}</span>}
+              {r.status === "running" && (
+                <span className="tabular-nums text-muted">
+                  {r.total > 0 ? `${r.count} of ${r.total}` : `${r.count} ${r.count === 1 ? "file" : "files"}`}
+                </span>
+              )}
               {r.status === "waiting" && <span>waiting</span>}
               {r.status === "failed" && (
                 <button onClick={() => onRetry(r.id)} className="rounded font-semibold text-danger hover:underline">
@@ -192,7 +222,7 @@ export function ImportPanel({ job, onRetry, onClose }: { job: Job; onRetry: (id:
             </li>
           ))}
           {waitingRest > 0 && <li className="text-muted">and {waitingRest} more</li>}
-          {finished && failed.length === 0 && <li className="text-muted">Everything is now in ~/Uni.</li>}
+          {finished && failed.length === 0 && <li className="text-muted">Everything is now in {store.appStore.get().targetDir}.</li>}
         </ul>
       )}
       {cur && small && <p className="mt-2 truncate text-[12px] text-muted">now {cur.name}</p>}

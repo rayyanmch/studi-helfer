@@ -250,8 +250,14 @@ handle("studi:logout", logout);
 handle("studi:listCourses", listCourses);
 handle("studi:saveSetup", saveSetup);
 handle("studi:chooseFolder", chooseFolder);
-handle("studi:startSync", () => backend.startSync(packaged()));
-handle("studi:cancelSync", () => backend.cancelSync());
+handle("studi:startSync", () => {
+  if (process.env.STUDI_DEBUG) console.log("[sync] Start angefordert (Oberfläche)", new Date().toISOString());
+  return backend.startSync(packaged());
+});
+handle("studi:cancelSync", () => {
+  if (process.env.STUDI_DEBUG) console.log("[sync] Abbruch angefordert (Oberfläche)", new Date().toISOString());
+  return backend.cancelSync();
+});
 handle("studi:getSyncState", () => backend.readState());
 handle("studi:getRuns", (limit) => backend.readRuns(Math.min(Number(limit) || 20, 200)));
 handle("studi:getFiles", () => backend.listFiles());
@@ -334,6 +340,7 @@ app.whenReady().then(async () => {
   const last = backend.readRuns(1).pop();
   const configured = cfg.username && cfg.targetDir && cfg.courses.some((c) => c.selected);
   if (configured && (!last || Date.now() - last.end * 1000 > 6 * 3600_000)) {
+    if (process.env.STUDI_DEBUG) console.log("[sync] Start beim App-Start");
     backend.startSync(packaged());
   }
 

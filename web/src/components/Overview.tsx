@@ -21,18 +21,9 @@ import { Button, FileIcon, Notice, Spinner, Swatch, colorOf, nameOf, shortOf, to
 import { ImportPanel, jobProgress, useJob, type Job } from "./ImportJob";
 import { applyTheme, getTheme, type Theme } from "./theme";
 import type { Problem } from "./AppShell";
-import {
-  courses,
-  countFiles,
-  countNew,
-  deadlines,
-  digests,
-  LAST_SYNC,
-  TODAY,
-  type Course,
-  type CourseFile,
-  type Deadline,
-} from "@/lib/mock-data";
+import { countFiles, countNew, type Course, type CourseFile, type Deadline } from "@/lib/mock-data";
+import * as store from "@/lib/app-store";
+import { appStore, useApp } from "@/lib/app-store";
 
 const FAIL_ID = "rechnernetze";
 const DAY_MS = 86_400_000;
@@ -48,10 +39,13 @@ function parseDay(iso: string) {
   return Date.UTC(y, m - 1, d);
 }
 
-const todayMs = parseDay(TODAY);
-const daysFromToday = (iso: string) => Math.round((parseDay(iso) - todayMs) / DAY_MS);
+// Daten kommen aus app-store.ts (Browser: Beispieldaten, Mac-App: echte Daten).
+const todayMs = () => parseDay(appStore.get().today);
+const daysFromToday = (iso: string) => Math.round((parseDay(iso) - todayMs()) / DAY_MS);
 const isUrgent = (d: Deadline) => d.kind === "abgabe" && daysFromToday(d.date) <= 3;
-const courseById = (id: string) => courses.find((c) => c.id === id);
+const courseById = (id: string) => appStore.get().courses.find((c) => c.id === id);
+const digestsNow = () => appStore.get().digests;
+const isDesktop = () => appStore.get().mode === "desktop";
 
 export function Overview({
   courseIds,
@@ -62,20 +56,27 @@ export function Overview({
   onEditCourses,
   importRun = 0,
   failImport = false,
+  onLogout,
 }: {
   courseIds: string[];
   problem: Problem;
   onProblem: (p: Problem) => void;
   onRelogin: () => void;
+  onLogout: () => void;
   user: string;
   onEditCourses: () => void;
   importRun?: number; // zählt hoch, wenn ein erster Import starten soll
   failImport?: boolean;
 }) {
-  const list = courses.filter((c) => courseIds.includes(c.id));
+  const app = useApp();
+  const desktop = app.mode === "desktop";
+  const list = app.courses.filter((c) => courseIds.includes(c.id));
   const [view, setView] = useState<View>("week");
-  const [lastSync, setLastSync] = useState(LAST_SYNC);
-  const [done, setDone] = useState<string[]>([]);
+  const [demoLastSync, setLastSync] = useState(app.lastSync);
+  const lastSync = desktop ? app.lastSync : demoLastSync;
+  const [demoDone, setDone] = useState<string[]>([]);
+  const done = desktop ? app.done : demoDone;
+  const failedIds = desktop ? app.failedCourseIds : problem === "courseFailed" ? [FAIL_ID] : [];
   const [query, setQuery] = useState("");
   const [closedRun, setClosedRun] = useState(0); // Import-Lauf, dessen Fenster geschlossen wurde
   const searchRef = useRef<HTMLInputElement>(null);
@@ -84,13 +85,13 @@ export function Overview({
     if (finished.rows.some((r) => r.status === "failed")) return;
     if (problem === "courseFailed" || problem === "offline") onProblem("none");
     const now = new Date();
-    setLastSync(`${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`);
+    setLastSync(`today, ${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`);
   });
 
   // Erster Import: startet, sobald AppShell importRun hochzählt (Übersicht ist sofort benutzbar)
   useEffect(() => {
     if (importRun > 0) {
-      start("import", courses.filter((c) => courseIds.includes(c.id)), failImport);
+      start("import", app.courses.filter((c) => courseIds.includes(c.id)), failImport);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [importRun]);
@@ -114,7 +115,8 @@ export function Overview({
     start("sync", list);
   };
 
-  const toggleDone = (id: string) => setDone((d) => (d.includes(id) ? d.filter((x) => x !== id) : [...d, id]));
+  const toggleDone = (id: string) =>
+    desktop ? void store.toggleDone(id) : setDone((d) => (d.includes(id) ? d.filter((x) => x !== id) : [...d, id]));
   const open = (v: View) => {
     setQuery("");
     setView(v);
@@ -122,14 +124,14 @@ export function Overview({
 
   const course = list.find((c) => c.id === view);
   const newCount = list.reduce((n, c) => n + countNew(c), 0);
-  const mine = deadlines.filter((d) => courseIds.includes(d.courseId));
+  const mine = app.deadlines.filter((d) => courseIds.includes(d.courseId));
   const searching = query.trim().length > 0;
 
   return (
     <div className="flex h-full bg-bg">
       <aside className="flex w-[236px] shrink-0 flex-col border-r border-line bg-sidebar">
         <div className="drag h-[44px] shrink-0" />
-        <ProfileMenu user={user} onEditCourses={onEditCourses} onLogout={onRelogin} />
+        <ProfileMenu user={user} onEditCourses={onEditCourses} onLogout={onLogout} />
         <nav className="scroll flex-1 px-3 pb-3 pt-3" aria-label="Navigation">
           <div className="flex flex-col gap-0.5">
             <NavItem active={!searching && view === "week"} onClick={() => open("week")} icon={<CalendarDays size={15} aria-hidden />}>
@@ -148,14 +150,14 @@ export function Overview({
                 onClick={() => open(c.id)}
                 icon={<Swatch color={colorOf(c)} />}
                 count={countNew(c)}
-                warn={problem === "courseFailed" && c.id === FAIL_ID}
+                warn={failedIds.includes(c.id)}
               >
                 {nameOf(c)}
               </NavItem>
             ))}
           </div>
         </nav>
-        <SyncStatus problem={problem} job={job} lastSync={lastSync} onSync={sync} onStop={stop} />
+        <SyncStatus problem={problem} job={job} lastSync={lastSync} failed={failedIds.length} onSync={sync} onStop={stop} />
       </aside>
 
       <main className="relative flex min-w-0 flex-1 flex-col">
@@ -200,7 +202,14 @@ export function Overview({
 
         <div className="scroll flex-1">
           <div className="mx-auto max-w-[1080px] px-10 pb-12">
-            <Banners problem={problem} onRetry={sync} onRelogin={onRelogin} courseId={course?.id} />
+            <Banners
+              problem={problem}
+              onRetry={sync}
+              onRelogin={onRelogin}
+              courseId={course?.id}
+              failedIds={failedIds}
+              lastSync={lastSync}
+            />
             {searching ? (
               <SearchView query={query.trim()} list={list} deadlines={mine} done={done} onOpen={open} />
             ) : (
@@ -365,12 +374,14 @@ function SyncStatus({
   problem,
   job,
   lastSync,
+  failed,
   onSync,
   onStop,
 }: {
   problem: Problem;
   job: Job | null;
   lastSync: string;
+  failed: number;
   onSync: () => void;
   onStop: () => void;
 }) {
@@ -405,23 +416,23 @@ function SyncStatus({
 
   let icon = <span className="size-2 rounded-full bg-ok" aria-hidden />;
   let label = "Last updated";
-  let text = `today, ${lastSync}`;
+  let text = lastSync;
   if (job?.stopped) {
     icon = <span className="size-2 rounded-full bg-warn" aria-hidden />;
     label = "Update stopped";
-    text = `As of today, ${lastSync}`;
+    text = `As of ${lastSync}`;
   } else if (problem === "offline") {
     icon = <WifiOff size={13} className="text-warn" aria-hidden />;
     label = "Offline";
-    text = `As of today, ${lastSync}`;
+    text = `As of ${lastSync}`;
   } else if (problem === "loginExpired") {
     icon = <LogIn size={13} className="text-warn" aria-hidden />;
     label = "Signed out";
     text = "Please sign in again";
   } else if (problem === "courseFailed") {
     icon = <AlertTriangle size={13} className="text-danger" aria-hidden />;
-    label = "1 course failed";
-    text = `Others: today, ${lastSync}`;
+    label = `${failed || 1} ${failed > 1 ? "courses" : "course"} failed`;
+    text = `Others: ${lastSync}`;
   }
 
   return (
@@ -451,17 +462,21 @@ function Banners({
   onRetry,
   onRelogin,
   courseId,
+  failedIds,
+  lastSync,
 }: {
   problem: Problem;
   onRetry: () => void;
   onRelogin: () => void;
   courseId?: string;
+  failedIds: string[];
+  lastSync: string;
 }) {
   if (problem === "offline")
     return (
       <div className="mb-5">
         <Notice tone="warn" icon={<WifiOff size={16} aria-hidden />} action={<Button onClick={onRetry}>Try again</Button>}>
-          No connection to ILIAS. You are seeing this morning’s files.
+          No connection to ILIAS. You are seeing the files from {lastSync}.
         </Notice>
       </div>
     );
@@ -473,14 +488,17 @@ function Banners({
         </Notice>
       </div>
     );
-  if (problem === "courseFailed" && (!courseId || courseId === FAIL_ID))
+  if (problem === "courseFailed" && failedIds.length > 0 && (!courseId || failedIds.includes(courseId))) {
+    const names = failedIds.map((id) => courseById(id)).filter((c): c is Course => Boolean(c)).map(nameOf);
+    const who = names.length === 0 ? "One course" : names.length === 1 ? names[0] : `${names.length} courses`;
     return (
       <div className="mb-5">
         <Notice tone="danger" icon={<AlertTriangle size={16} aria-hidden />} action={<Button onClick={onRetry}>Try again</Button>}>
-          Computer Networks could not be updated. All other courses are up to date.
+          {who} could not be updated. All other courses are up to date.
         </Notice>
       </div>
     );
+  }
   return null;
 }
 
@@ -501,7 +519,7 @@ function WeekView({
 }) {
   const [range, setRange] = useState<"week" | "month">("week");
   const days = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(todayMs + i * DAY_MS);
+    const d = new Date(todayMs() + i * DAY_MS);
     const iso = d.toISOString().slice(0, 10);
     const items = deadlines.filter((x) => x.date === iso);
     return { iso, num: d.getUTCDate(), wd: d.getUTCDay(), items, wide: items.length > 0, today: i === 0 };
@@ -519,6 +537,7 @@ function WeekView({
   const newFiles = list.flatMap((c) =>
     c.folders.flatMap((f) => f.files.filter((x) => x.isNew || x.changeNote).map((file) => ({ file, course: c }))),
   );
+  const digests = digestsNow();
   const withDigest = list.filter((c) => digests[c.id]);
 
   return (
@@ -628,8 +647,8 @@ function WeekView({
 }
 
 function MonthView({ deadlines, done, onOpen }: { deadlines: Deadline[]; done: string[]; onOpen: (id: string) => void }) {
-  const wdToday = new Date(todayMs).getUTCDay();
-  const start = todayMs - ((wdToday + 6) % 7) * DAY_MS; // Montag dieser Woche
+  const wdToday = new Date(todayMs()).getUTCDay();
+  const start = todayMs() - ((wdToday + 6) % 7) * DAY_MS; // Montag dieser Woche
   const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   const cells = Array.from({ length: 28 }, (_, i) => {
     const d = new Date(start + i * DAY_MS);
@@ -994,6 +1013,7 @@ function CourseView({
   const c = colorOf(course);
   const n = countFiles(course);
   const upcoming = deadlines.filter((d) => daysFromToday(d.date) >= 0).sort((a, b) => a.date.localeCompare(b.date));
+  const digests = digestsNow();
 
   return (
     <>
@@ -1004,10 +1024,11 @@ function CourseView({
             <span className="truncate">{nameOf(course)}</span>
           </h1>
           <p className="mt-1 text-muted">
-            {course.lecturer}, {n} {n === 1 ? "file" : "files"}
+            {course.lecturer ? `${course.lecturer}, ` : ""}
+            {n} {n === 1 ? "file" : "files"}
           </p>
         </div>
-        <Button>Show in Finder</Button>
+        <Button onClick={() => store.revealFile(course.folder)}>Show in Finder</Button>
       </header>
 
       {(digests[course.id] || upcoming.length > 0) && (
@@ -1097,7 +1118,11 @@ function FileRow({
 }) {
   const changed = Boolean(file.changeNote);
   return (
-    <li className="group flex min-h-[46px] items-center gap-3 rounded-[7px] px-2.5 py-1.5 hover:bg-hover focus-within:bg-hover">
+    <li
+      onDoubleClick={() => store.openFile(file.path)}
+      title={isDesktop() ? "Double-click to open" : undefined}
+      className="group flex min-h-[46px] items-center gap-3 rounded-[7px] px-2.5 py-1.5 hover:bg-hover focus-within:bg-hover"
+    >
       {color ? <Swatch color={color} /> : <FileIcon kind={file.kind} />}
       <div className="min-w-0 flex-1">
         <p className="truncate font-medium">
@@ -1110,9 +1135,16 @@ function FileRow({
         )}
       </div>
       <div className="hidden items-center gap-1.5 group-hover:flex group-focus-within:flex">
-        {changed && <Button className="h-7 px-2.5">What changed</Button>}
-        <Button className="h-7 px-2.5">Open</Button>
-        {!compact && <Button className="h-7 px-2.5">Show in Finder</Button>}
+        {/* „What changed“ braucht die KI-Auswertung, in der Mac-App ohne Schlüssel noch nicht verfügbar */}
+        {changed && !isDesktop() && <Button className="h-7 px-2.5">What changed</Button>}
+        <Button className="h-7 px-2.5" onClick={() => store.openFile(file.path)}>
+          Open
+        </Button>
+        {!compact && (
+          <Button className="h-7 px-2.5" onClick={() => store.revealFile(file.path)}>
+            Show in Finder
+          </Button>
+        )}
       </div>
       <span className="w-[64px] shrink-0 text-right text-[12px] text-muted group-hover:hidden group-focus-within:hidden">
         {file.updated}

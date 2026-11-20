@@ -12,6 +12,7 @@ export interface CourseFile {
   updated: string; // fertig formatierter Text, z. B. "today", "Nov 12"
   isNew: boolean; // neu seit dem letzten Sync
   changeNote?: string; // geänderte Datei: was die KI als Unterschied gefunden hat
+  path?: string; // nur in der Mac-App: Pfad auf dem Mac (Öffnen, Im Finder zeigen)
 }
 
 export interface Folder {
@@ -31,6 +32,8 @@ export interface Course {
   color?: CourseColor; // fehlt sie, vergibt die Oberfläche eine nach Reihenfolge
   short?: string; // Kurzname für enge Stellen ("Mathe I"); fehlt er, kürzt die Oberfläche selbst
   semester?: "current" | "past"; // wie IliasCourse.semester in desktop.ts; fehlt es, gilt "current"
+  folder?: string; // nur in der Mac-App: Kursordner auf dem Mac (Im Finder zeigen)
+  note?: string; // Zeile unter dem Namen auf der Einrichtungs-Kachel; fehlt sie: "Lehrende, N files"
 }
 
 /** Frist aus dem ILIAS-Kalender oder von der KI in einem Übungsblatt gefunden. */

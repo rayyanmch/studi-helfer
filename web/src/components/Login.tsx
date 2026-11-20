@@ -4,8 +4,10 @@ import { useRef, useState } from "react";
 import { AlertCircle, Lock, WifiOff } from "lucide-react";
 import { Spinner } from "./ui";
 import type { LoginResult } from "./AppShell";
+import * as store from "@/lib/app-store";
+import { useApp } from "@/lib/app-store";
 
-type Status = "idle" | "loading" | "wrong" | "offline";
+type Status = "idle" | "loading" | "wrong" | "offline" | "error";
 
 // Seite, auf der ILIAS selbst „Passwort vergessen“ anbietet.
 const ILIAS_LOGIN = "https://www.ilias.uni-koeln.de/ilias/login.php";
@@ -14,28 +16,42 @@ const field =
   "h-11 w-full rounded-[10px] bg-bg px-3.5 outline-none placeholder:text-muted focus:shadow-[inset_0_0_0_2px_var(--focus)] disabled:opacity-60";
 
 export function Login({ result, onSuccess }: { result: LoginResult; onSuccess: (user: string) => void }) {
-  const [user, setUser] = useState("");
+  const app = useApp();
+  const [user, setUser] = useState(app.mode === "desktop" ? (app.user ?? "") : "");
   const [pass, setPass] = useState("");
   const [status, setStatus] = useState<Status>("idle");
+  const [errorText, setErrorText] = useState("");
   const timer = useRef<number | undefined>(undefined);
   const passRef = useRef<HTMLInputElement>(null);
 
   const loading = status === "loading";
   const ready = user.trim().length > 0 && pass.length > 0 && !loading;
 
-  const submit = (e: React.FormEvent) => {
+  const wrongPassword = () => {
+    // Falsches Passwort: Feld leeren und direkt wieder hineinspringen
+    setStatus("wrong");
+    setPass("");
+    window.setTimeout(() => passRef.current?.focus(), 0);
+  };
+
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!ready) return;
     setStatus("loading");
+    if (app.mode === "desktop") {
+      // Echte Anmeldung: Passwort geht nur an den Hintergrundteil und landet im Schlüsselbund.
+      const res = await store.login(user.trim(), pass);
+      if (res.ok) return onSuccess(user.trim());
+      if (res.reason === "wrong") return wrongPassword();
+      setErrorText(res.message);
+      setStatus(res.reason === "offline" ? "offline" : "error");
+      return;
+    }
     window.clearTimeout(timer.current);
     timer.current = window.setTimeout(() => {
       if (result === "ok") return onSuccess(user.trim());
-      setStatus(result === "wrong" ? "wrong" : "offline");
-      if (result === "wrong") {
-        // Falsches Passwort: Feld leeren und direkt wieder hineinspringen
-        setPass("");
-        window.setTimeout(() => passRef.current?.focus(), 0);
-      }
+      if (result === "wrong") return wrongPassword();
+      setStatus("offline");
     }, 1100);
   };
 
@@ -78,7 +94,7 @@ export function Login({ result, onSuccess }: { result: LoginResult; onSuccess: (
               placeholder="Password"
               disabled={loading}
               aria-invalid={status === "wrong"}
-              aria-describedby={status === "wrong" || status === "offline" ? "login-fehler" : undefined}
+              aria-describedby={status === "wrong" || status === "offline" || status === "error" ? "login-fehler" : undefined}
               className={`${field} ${status === "wrong" ? "shadow-[inset_0_0_0_2px_var(--danger)]" : ""}`}
             />
 
@@ -90,6 +106,11 @@ export function Login({ result, onSuccess }: { result: LoginResult; onSuccess: (
             {status === "offline" && (
               <p id="login-fehler" role="alert" className="flex items-center gap-1.5 px-1 text-[13px] font-medium text-warn">
                 <WifiOff size={14} aria-hidden /> ILIAS is not responding. Try again in a moment.
+              </p>
+            )}
+            {status === "error" && (
+              <p id="login-fehler" role="alert" className="flex items-start gap-1.5 px-1 text-[13px] font-medium text-danger">
+                <AlertCircle size={14} className="mt-[3px] shrink-0" aria-hidden /> {errorText}
               </p>
             )}
 
