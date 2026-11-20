@@ -17,7 +17,7 @@ import {
   X,
 } from "lucide-react";
 import { Button, Notice, Spinner, Swatch, colorOf, nameOf, shortOf, tone } from "./ui";
-import { CheckButton, FileRow, Highlight } from "./files";
+import { CheckButton, FileRow, Highlight, displayName } from "./files";
 import { CoursesView } from "./CoursesView";
 import { ModuleView } from "./ModuleView";
 import { Settings } from "./Settings";
@@ -896,13 +896,13 @@ function SearchView({
   const q = query.toLowerCase();
   const hit = (s: string) => s.toLowerCase().includes(q);
 
-  const foundCourses = list.filter((c) => hit(nameOf(c)) || (c.short && hit(c.short)));
+  const foundCourses = realCourses(list).filter((c) => hit(nameOf(c)) || (c.short && hit(c.short)) || (c.fullName && hit(c.fullName)));
   const foundDeadlines = deadlines.filter((d) => {
     const c = courseById(d.courseId);
-    return hit(d.title) || (c && hit(nameOf(c)));
+    return hit(d.title) || (c && (hit(nameOf(c)) || (c.fullName ? hit(c.fullName) : false)));
   });
   const foundFiles = list.flatMap((c) =>
-    c.folders.flatMap((f) => f.files.filter((x) => hit(x.name)).map((file) => ({ file, course: c, folder: f.name }))),
+    c.folders.flatMap((f) => f.files.filter((x) => hit(x.name) || hit(displayName(x.name))).map((file) => ({ file, course: c, folder: f.name }))),
   );
   const total = foundCourses.length + foundDeadlines.length + foundFiles.length;
 
@@ -962,7 +962,15 @@ function SearchView({
                         </span>
                         <span className="block truncate text-[12px] text-muted">{nameOf(c)}</span>
                       </span>
-                      <span className="text-[12px] text-muted">{isDone ? "done" : `${LONG[wd]}, ${d.time}`}</span>
+                      <span className="text-[12px] text-muted">
+                        {isDone
+                          ? "done"
+                          : `${
+                              daysFromToday(d.date) >= 0 && daysFromToday(d.date) < 7
+                                ? LONG[wd]
+                                : new Date(parseDay(d.date)).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" })
+                            }, ${d.time}`}
+                      </span>
                     </button>
                   </li>
                 );

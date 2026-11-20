@@ -26,7 +26,9 @@ Alle Ausgaben sind JSON-Zeilen (`{"type":"result",…}` oder `{"type":"error","c
 - **Sync**: Aus `config.json` (schreibt die App) wird `pferd.cfg` erzeugt, ein Crawler pro Kurs. Ordner: `<Zielordner>/<Kurs>/…` wie in ILIAS, ohne versteckte Dateien und HTML-Seiten. `on_conflict = no-delete`: neue Fassungen aus ILIAS werden übernommen, lokal wird nie etwas gelöscht. Vorher sichert `pferd_run.py` die alte Fassung nach `versions/` (klappt das nicht, bleibt die lokale Datei). Videos pro Kurs abschaltbar (Standard aus).
 - **Köln-Korrekturen für PFERD** (`pferd_run.py`): werden zur Laufzeit eingesetzt, nicht in die installierten Dateien geschrieben (ILIAS unter `/ilias`, Link-Auflösung bei `links = ignore`, nie interaktiv nachfragen, alte Fassung sichern).
 - **Fristen** (`deadlines.py`): Abo-Kalender von ILIAS (ICS), Abgaben aus Übungen, Sitzungen, Anmeldeschlüsse; Kurs über die Brotkrumen-Navigation des Objekts. Wird nach jedem Sync mit aktualisiert.
-- **Fristen aus Übungsblättern** (`sheets.py`): per Regeln aus dem PDF-Text, lokal und kostenlos; Fristwort + Datum in einer Zeile, Erscheinungsdaten ignoriert. Cache pro Datei-Hash.
+- **Fristen aus PDFs** (`sheets.py`): alle PDFs der Kurse (außer Lösungen), erste 8 Seiten, per Regeln: Fristwort + Datum in einer Zeile, mehrere Daten pro Zeile, Erscheinungsdaten ignoriert. Titel aus der Textstelle. Cache pro Datei-Hash (`RULES_VERSION`).
+- **Weitere Kalender** (`calendars.py`): iCal-Links aus `config.calendars` (KLIPS, Google, Apple), Serien aufgelöst → `calendar-events.json`. Befehle `calendars`, `calendar-test --url`.
+- **Geschwindigkeit:** PFERD mit 2 parallelen Anfragen, Lernmodul-Seiten übersprungen; Restzeit (`etaSeconds`) in `state.json`.
 - **Täglicher Lauf**: launchd-Job `de.studihelfer.sync` (richtet die App ein) startet `sync --auto`: Zufallsverzögerung, wartet auf Netz, bis zu 3 Versuche, Mitteilung bei neuen Dateien.
 
 Daten liegen in `~/Library/Application Support/Studi-Helfer/`: `config.json`, `pferd.cfg`, `state.json` (laufender Sync), `runs.jsonl` (ein Eintrag pro Lauf), `versions/` (alte Fassungen geänderter Dateien), `logs/`.

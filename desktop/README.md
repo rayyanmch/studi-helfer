@@ -21,6 +21,7 @@ npm run pack   # → dist/Studi-Helfer-<version>-arm64.dmg und dist/mac-arm64/St
 - `main.js`: Fenster (Titelleiste ausgeblendet, 1280×800, min. 1000×700), IPC-Kanäle `studi:*`, nimmt Aufrufe nur von eigenen Seiten an. Sync beim Start, wenn der letzte über 6 h her ist.
 - `preload.js`: die Brücke `window.studi`. Nur hier freigeben, was die Oberfläche wirklich braucht.
 - `lib/backend.js`: startet `services/ilias-sync` (Python), schreibt `config.json`, liest `state.json`/`runs.jsonl`, listet Dateien, richtet den launchd-Job `de.studihelfer.sync` ein.
+- `lib/modules.js`: Module ohne KI (Kurs + Übung + Gruppe), Kurznamen, Art jeder Datei, Zuordnung von Kalender-Terminen. `backend.applyLayout()` richtet die Ordner danach aus.
 - `lib/ui-server.js`: startet im Paket den mitgelieferten Next-Server.
 - `test/`: Testfenster ohne Design.
 

@@ -38,6 +38,17 @@ export function ModuleView({
   const files = course.folders.flatMap((f) => f.files);
   const fresh = files.filter((f) => f.isNew || f.changeNote);
 
+  // Esc führt zurück zur Kursübersicht (außer beim Tippen in einem Feld oder bei offenem Dialog)
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (e.key !== "Escape" || t?.closest("input, textarea, select, [role=dialog]")) return;
+      onBack();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onBack]);
+
   return (
     <>
       <button onClick={onBack} className="-ml-2 mb-3 flex items-center gap-0.5 rounded-md px-2 py-1 text-[13px] font-semibold text-muted hover:bg-hover hover:text-text">
