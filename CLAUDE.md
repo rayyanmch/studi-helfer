@@ -19,7 +19,7 @@ Next.js 16 weicht von älterem Wissen ab: Vor neuem Next-Code die passende Doku 
 
 ## Regeln
 
-- Sprache der Oberfläche: Deutsch. Code-Bezeichner dürfen Englisch sein.
+- Sprache der App: **Englisch** (alle Texte, die Nutzer sehen: Oberfläche, Fehlermeldungen, Mitteilungen, Fristtitel). Notizen, Kommentare und Commit-Nachrichten bleiben Deutsch.
 - Secrets nur in `web/.env.local` (Vorlage: `web/.env.example`). Nie committen, nie in Client-Code.
 - KI-Aufrufe und der Anthropic-Key laufen nur serverseitig (Route Handler / Server Actions, `import "server-only"`). Nutzer brauchen keinen eigenen Key.
 - Uni-Zugangsdaten nur im macOS-Schlüsselbund ablegen. Nie in Dateien, Datenbank, Logs oder an einen Server schicken.
