@@ -80,7 +80,9 @@ export const SheetDeadlines = z.object({
       titel: z.string().describe('Kurz und konkret, z. B. "Abgabe Übungsblatt 7" oder "Testat 2"'),
       datum: z.string().describe("Datum als YYYY-MM-DD"),
       uhrzeit: z.string().nullable().describe("Uhrzeit als HH:MM, falls angegeben, sonst null"),
-      art: z.enum(["abgabe", "termin"]).describe("abgabe = etwas muss bis dann eingereicht werden; termin = Ereignis (Testat, Klausur, Präsentation)"),
+      art: z
+        .enum(["abgabe", "klausur", "termin"])
+        .describe("abgabe = etwas muss bis dann eingereicht werden; klausur = Klausur, Testat, Zwischentest; termin = sonstiges Ereignis (z. B. Präsentation)"),
       beleg: z.string().describe("Die Stelle im Dokument, auf der die Frist beruht, wörtlich und kurz"),
     }),
   ),

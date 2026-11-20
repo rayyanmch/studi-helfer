@@ -16,7 +16,7 @@ from typing import Any, Iterator, Optional
 from .common import DATA_DIR, load_config, read_json, write_json
 from .deadlines import deadline_id
 
-RULES_VERSION = 1  # erhöhen, wenn sich die Regeln ändern → alles wird neu ausgewertet
+RULES_VERSION = 2  # erhöhen, wenn sich die Regeln ändern → alles wird neu ausgewertet
 CACHE = DATA_DIR / "sheet-deadlines-cache.json"
 OUTPUT = DATA_DIR / "sheet-deadlines.json"
 RECENT_DAYS = 28
@@ -32,7 +32,8 @@ SOLUTION = re.compile(r"(lösung|loesung|losung|solution)", re.I)
 DEADLINE_WORDS = re.compile(
     r"\b(\w*abgabe\w*|abzugeben|einzureichen|einreich\w*|hochzuladen|deadline|due( date)?|submission( deadline)?|"
     r"submit( by)?|hand[- ]in|turn in|bearbeitungsfrist|frist)\b", re.I)
-EVENT_WORDS = re.compile(r"\b(testat\w*|präsentation\w*|presentation|vortrag|klausur(termin)?|exam|prüfung)\b", re.I)
+EVENT_WORDS = re.compile(r"\b(testat\w*|präsentation\w*|presentation|vortrag|klausur(termin)?|exam|prüfung|zwischentest)\b", re.I)
+EXAM_WORDS = re.compile(r"\b(testat\w*|klausur\w*|exam|prüfung|zwischentest)\b", re.I)
 IGNORE_LINE = re.compile(r"\b(published|veröffentlicht|ausgabe|ausgegeben|issued|release[d]?|erstellt|stand)\b", re.I)
 
 MONTHS = {
@@ -135,7 +136,7 @@ def extract(text: str, ref: date) -> list[dict[str, Any]]:
         found.append({
             "date": day,
             "time": _find_time(window[end:end + 40]),
-            "kind": "termin" if EVENT_WORDS.search(kw.group(0)) else "abgabe",
+            "kind": ("klausur" if EXAM_WORDS.search(kw.group(0)) else "termin") if EVENT_WORDS.search(kw.group(0)) else "abgabe",
             "evidence": evidence[:200],
         })
     # Doppelte (gleicher Tag, gleiche Art) zusammenfassen, die mit Uhrzeit gewinnt.
@@ -161,7 +162,7 @@ def _pdf_text(path: Path) -> str:
 def _title(file_name: str, kind: str) -> str:
     stem = re.sub(r"[_\-]+", " ", Path(file_name).stem)
     stem = re.sub(r"\s{2,}", " ", stem).strip()
-    return f"Abgabe {stem}" if kind == "abgabe" else stem
+    return {"abgabe": f"Abgabe {stem}", "klausur": f"Klausur/Test {stem}"}.get(kind, stem)
 
 
 def candidates(cfg: dict[str, Any]) -> list[tuple[dict[str, Any], Path]]:

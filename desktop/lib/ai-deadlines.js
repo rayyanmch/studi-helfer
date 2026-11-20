@@ -133,7 +133,7 @@ function createAiDeadlines({ dataDir, readJson, writeJson, listFiles, loadConfig
           title: d.titel,
           date: d.datum,
           time: time ? (d.art === "abgabe" ? `bis ${time}` : time) : "ganztägig",
-          kind: d.art === "termin" ? "termin" : "abgabe",
+          kind: ["termin", "klausur"].includes(d.art) ? d.art : "abgabe",
           category: "ai",
           source: `KI: ${entry.fileName}`,
           start: `${d.datum}T${time ?? "00:00"}:00`,

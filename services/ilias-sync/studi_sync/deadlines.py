@@ -94,6 +94,8 @@ def parse_events(ics: str) -> list[dict[str, Any]]:
 
 
 _SUFFIX = re.compile(r"\s*\(([^()]*)\)\s*$")
+# Prüfungsartige Termine → kind "klausur" (Oberfläche zeigt sie hervorgehoben)
+EXAM = re.compile(r"\b(klausur\w*|prüfung\w*|exam\w*|zwischentest\w*|testat\w*|nachklausur)\b", re.I)
 
 
 def classify(ev: dict[str, Any]) -> Optional[dict[str, Any]]:
@@ -118,7 +120,8 @@ def classify(ev: dict[str, Any]) -> Optional[dict[str, Any]]:
                 "day": start.date(), "time": "ganztägig" if ev["allDay"] else f"bis {start:%H:%M}",
                 "object": f"grp/{obj_id}"}
     if obj_type == "sess":
-        return {"category": "session", "kind": "termin", "title": ev["summary"], "day": start.date(),
+        return {"category": "session", "kind": "klausur" if EXAM.search(ev["summary"]) else "termin",
+                "title": ev["summary"], "day": start.date(),
                 "time": "ganztägig" if ev["allDay"] else f"{start:%H:%M}", "object": f"sess/{obj_id}"}
     return None  # Beginn der Anmeldung, Kursbeginn/-ende, eigene Termine ohne Objekt
 
