@@ -7,6 +7,8 @@ Gemeinsames Gedächtnis für alle KI-Agenten und Menschen im Projekt. Wird über
 
 Wer gerade woran arbeitet (Person, Aufgabe, betroffene Dateien). Eintragen beim Start, löschen wenn fertig.
 
+- Rayyan: Fristen aus dem ILIAS-Kalender (Abgaben, Termine) → `getDeadlines()` in `desktop.ts`. Dateien: `services/ilias-sync/`, `desktop/`, `web/src/lib/desktop.ts`.
+
 
 ## Nachrichten
 
