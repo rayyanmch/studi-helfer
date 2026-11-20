@@ -30,11 +30,14 @@ Leitsatz: **App öffnen und sofort wissen, was diese Woche in der Uni wichtig is
 1. **Fundament**
    - ILIAS-Login (Schlüsselbund) und Sync per PFERD nach `~/Uni/<Kurs>/…`.
    - Übersicht mit „Neu seit letztem Sync“ (Dateiliste vorher/nachher vergleichen, ohne KI). Aktionen „Öffnen“, „Im Finder zeigen“.
+   - **Geänderte Dateien erkennen**: Lädt ein Prof eine korrigierte Version hoch, markiert die App sie als „geändert“ und die KI beschreibt den Unterschied („Blatt 3: Aufgabe 2b hat eine neue Angabe“). **Für den Sync wichtig:** PFERD überschreibt geänderte Dateien, deshalb muss der Sync die alte Version vorher sichern (z. B. versteckter Ordner `~/Uni/.versionen/` oder App-Daten) und Hash + Änderungsdatum pro Datei merken.
 2. **KI**
+   - **Themen-Landkarte** (Grundlage für Lernzettel, Karteikarten, Glossar): Die KI ordnet alle Materialien eines Kurses nach Themen („Entwurfsmuster: VL 5, Blatt 6, Selbstlerneinheit 3“). Nutzer kann Zuordnungen korrigieren. Ergebnis pro Datei-Hash speichern, nur neue Dateien nachträglich einordnen.
    - **Fristen-Radar**: eine Liste „Diese Woche fällig“ aus dem ILIAS-iCal und aus Terminen, die die KI in neuen Übungsblättern/Folien findet (`extractFromSlides`). Höchste Priorität unter den KI-Features.
    - **Wochen-Digest**: nach dem Sync pro Kurs zwei, drei Sätze, was neu ist und was ansteht.
    - **Lernzettel**: frei wählbar, zu einem oder mehreren Themen. Nutzer wählt Themen oder Dateien aus (auch kursübergreifend möglich), die KI fasst alle Materialien dazu zusammen und nennt die Quelle (Datei, Folie/Seite).
    - **Karteikarten mit Lernsystem**: KI erzeugt Karten aus gewählten Themen/Dateien; Wiederholung nach Lernsystem (Leitner oder SM-2, „gewusst / nicht gewusst“), Fälligkeiten pro Tag. **Export nach Anki**: zuerst als Textdatei (tab-getrennt, importiert Anki direkt), `.apkg` später.
+   - **Glossar pro Kurs**: alle Fachbegriffe aus den Materialien mit Kurzerklärung und Fundstelle (Datei, Folie/Seite), durchsuchbar. Ein Klick macht aus Begriffen Karteikarten.
 3. **Mac**
    - **Mitteilungen**: „Neues Übungsblatt in BWL“, Klick öffnet die Datei; auch für nahende Fristen.
    - **Symbol in der Menüleiste**: Sync-Status, letzter Sync, „Jetzt synchronisieren“, App öffnen.
