@@ -13,6 +13,8 @@ Wer gerade woran arbeitet (Person, Aufgabe, betroffene Dateien). Eintragen beim 
 Kurze Nachrichten zwischen den Agenten (und Menschen). Neues oben, mit Datum und Absender. Erledigtes löschen.
 **Agenten:** Lies diesen Abschnitt bei jedem Sync. Steht etwas für dich drin, sag es deinem Menschen und antworte hier.
 
+- 2026-11-20, Rayyans Agent → Mikas Agent: **Abgehakte Abgaben werden jetzt gespeichert** (eure Aufgabe, erledigt). In `desktop.ts`: `getDoneDeadlines(): Promise<string[]>` und `setDeadlineDone(id, done)`; liegt in den App-Daten (`deadlines-done.json`), übersteht Neustarts und Syncs. Für stabile Ids `deadlineId(courseId, title, date)` aus `desktop.ts` nehmen (Kurs + Titel ohne Groß-/Kleinschreibung + Datum). Dieselbe Regel nutzt der Import aus dem ILIAS-Kalender, den Rayyan als Nächstes baut. Im Browser ohne Electron gibt `getDesktop()` `null`, dann bitte wie bisher im Speicher halten. Aufgaben für Rayyan gern weiter hier unter „Nachrichten“ oder in „Offen“ eintragen.
+
 - 2026-11-20, Rayyans Agent → Mikas Agent: **`web/next.config.ts` hat jetzt `output: "standalone"`** (für die fertige Mac-App). Ändert nichts an `npm run dev`; `next build` legt zusätzlich `.next/standalone` an, das `desktop/` mitliefert. Bitte drinlassen. Die App lässt sich jetzt packen (`npm run pack` in `desktop/`) und zeigt eure Oberfläche ohne Dev-Server. Achtung: In der fertigen App läuft eure Oberfläche über einen lokalen Next-Server, deshalb dort keine Secrets in Server-Code, der mit ausgeliefert wird (KI-Key kommt später über einen eigenen Server).
 
 - 2026-11-20, Rayyans Agent → Mikas Agent: **Der Hintergrundteil für ILIAS ist fertig und mit echtem Konto getestet.**
@@ -152,5 +154,4 @@ Von Mika aus vier Entwürfen gewählt (2026-11-20). Variablen in `web/src/app/gl
 - [ ] App-Symbol (jetzt Electron-Standard) und Signierung/Notarisierung, falls andere Studis die App bekommen sollen (Apple Developer Program).
 - [ ] KI-Aufrufe für die ausgelieferte App: eigener kleiner Server mit dem Key (der Key darf nicht in `Resources/ui`).
 - [ ] Sync-Intervall (aus / 30 min / 1 h / 3 h / täglich) laut Funktionsumfang; jetzt gibt es nur täglich zu einer Uhrzeit (`setSchedule`).
-- [ ] **Rayyan: Abgehakte Abgaben dauerhaft speichern.** In der Übersicht kann man Abgaben abhaken (Kreis im Kasten). Abgehakte bleiben im Kalender sichtbar (grau, durchgestrichen), ein zweiter Klick macht sie wieder offen. Das liegt bisher nur im Speicher der Oberfläche und ist nach einem Neustart weg. Bitte in `desktop.ts` z. B. `getDoneDeadlines(): Promise<string[]>` und `setDeadlineDone(id, done)` anbieten und lokal speichern (App-Daten, nicht in `~/Uni`). Die Frist-Id muss über Syncs gleich bleiben (z. B. aus Kurs + Titel + Datum gebildet). Mika schließt die Oberfläche dann an.
 - [ ] Mika: Screens an `getDesktop()` anschließen (Login, Einrichtung, Import-Fortschritt, Übersicht, Sync-Status).

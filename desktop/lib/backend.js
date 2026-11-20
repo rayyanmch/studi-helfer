@@ -315,6 +315,28 @@ async function listFiles() {
   return courses;
 }
 
+// ------------------------------------------------------------------ Abgehakte Abgaben
+
+const DONE_DEADLINES = path.join(DATA_DIR, "deadlines-done.json");
+
+/** Ids der abgehakten Fristen (bleiben über Neustarts und Syncs erhalten). */
+function getDoneDeadlines() {
+  const data = readJson(DONE_DEADLINES, { done: {} });
+  return Object.keys(data.done ?? {});
+}
+
+function setDeadlineDone(id, done) {
+  if (typeof id !== "string" || id.length === 0 || id.length > 300) {
+    return { ok: false, code: "invalid", message: "Ungültige Frist-Id." };
+  }
+  const data = readJson(DONE_DEADLINES, { done: {} });
+  data.done = data.done ?? {};
+  if (done) data.done[id] = Date.now();
+  else delete data.done[id];
+  writeJson(DONE_DEADLINES, data);
+  return { ok: true };
+}
+
 /** Nur Pfade innerhalb des Zielordners dürfen geöffnet werden. */
 function insideTarget(p) {
   const cfg = loadConfig();
@@ -400,6 +422,8 @@ async function scheduleLoaded() {
 }
 
 module.exports = {
+  getDoneDeadlines,
+  setDeadlineDone,
   DATA_DIR,
   DEFAULT_TARGET,
   STATE,

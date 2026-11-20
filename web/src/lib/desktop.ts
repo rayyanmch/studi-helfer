@@ -129,12 +129,25 @@ export interface StudiDesktop {
   setSchedule(schedule: { enabled: boolean; time?: string }): Promise<
     Ok<{ enabled: boolean; time?: string }> | Fail
   >;
+  /** Ids aller abgehakten Fristen. Lokal in den App-Daten gespeichert, übersteht Neustarts und Syncs. */
+  getDoneDeadlines(): Promise<string[]>;
+  /** Frist abhaken (done = true) oder wieder öffnen. Id am besten mit deadlineId() bilden. */
+  setDeadlineDone(id: string, done: boolean): Promise<Ok | Fail>;
 }
 
 declare global {
   interface Window {
     studi?: StudiDesktop;
   }
+}
+
+/**
+ * Stabile Id für eine Frist: bleibt über Syncs gleich, solange Kurs, Titel und Datum gleich bleiben.
+ * Dieselbe Regel nutzt später der Import aus dem ILIAS-Kalender.
+ */
+export function deadlineId(courseId: string, title: string, date: string): string {
+  const norm = (s: string) => s.normalize("NFC").trim().toLowerCase().replace(/\s+/g, " ");
+  return `${courseId}|${norm(title)}|${date}`;
 }
 
 /** Zugriff auf die Mac-App. null im normalen Browser oder beim Server-Rendering. */

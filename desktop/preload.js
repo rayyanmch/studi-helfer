@@ -24,6 +24,8 @@ contextBridge.exposeInMainWorld("studi", {
   openFile: call("studi:openFile"),
   revealFile: call("studi:revealFile"),
   setSchedule: call("studi:setSchedule"),
+  getDoneDeadlines: call("studi:getDoneDeadlines"),
+  setDeadlineDone: call("studi:setDeadlineDone"),
   onSyncState(callback) {
     const listener = (_event, state) => callback(state);
     ipcRenderer.on("studi:syncState", listener);

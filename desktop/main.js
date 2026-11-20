@@ -258,6 +258,8 @@ handle("studi:getFiles", () => backend.listFiles());
 handle("studi:openFile", openFile);
 handle("studi:revealFile", revealFile);
 handle("studi:setSchedule", setSchedule);
+handle("studi:getDoneDeadlines", () => backend.getDoneDeadlines());
+handle("studi:setDeadlineDone", (id, done) => backend.setDeadlineDone(id, Boolean(done)));
 
 // ------------------------------------------------------------------ Sync-Stand an die Fenster schicken
 
