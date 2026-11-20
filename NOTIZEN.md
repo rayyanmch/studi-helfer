@@ -8,6 +8,7 @@ Gemeinsames Gedächtnis für alle KI-Agenten und Menschen im Projekt. Wird über
 Wer gerade woran arbeitet (Person, Aufgabe, betroffene Dateien). Eintragen beim Start, löschen wenn fertig.
 
 - Rayyan: Desktop-Gerüst (Electron) und ILIAS-Login. Dateien: `desktop/`, `services/ilias-sync/`.
+- Mika: Oberfläche mit Beispieldaten. Dateien: `web/src/app/`, `web/src/components/`, `web/src/lib/mock-data.ts`.
 
 ## Entscheidungen
 
