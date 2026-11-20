@@ -1,26 +1,108 @@
 @import "tailwindcss";
 
+/* Designsprache: ruhige Mac-App. Warme Grautöne, eine grüne Akzentfarbe, Systemschrift. */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --bg: #ffffff;
+  --sidebar: #efeeea;
+  --surface: #f7f6f3;
+  --hover: rgba(30, 30, 25, 0.055);
+  --line: rgba(30, 30, 25, 0.1);
+  --text: #1c1c1a;
+  --muted: #6a6963;
+  --accent: #1f6f50;
+  --accent-soft: rgba(31, 111, 80, 0.1);
+  --on-accent: #ffffff;
+  --danger: #b3261e;
+  --danger-soft: rgba(179, 38, 30, 0.08);
+  --warn: #8a5a00;
+  --warn-soft: rgba(138, 90, 0, 0.1);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --bg: #242422;
+    --sidebar: #1b1b1a;
+    --surface: #2c2c2a;
+    --hover: rgba(255, 255, 250, 0.07);
+    --line: rgba(255, 255, 250, 0.1);
+    --text: #ececea;
+    --muted: #9d9c95;
+    --accent: #52b88a;
+    --accent-soft: rgba(82, 184, 138, 0.14);
+    --on-accent: #0b1f17;
+    --danger: #ff8a80;
+    --danger-soft: rgba(255, 138, 128, 0.12);
+    --warn: #f0b84d;
+    --warn-soft: rgba(240, 184, 77, 0.12);
   }
 }
 
+@theme inline {
+  --color-bg: var(--bg);
+  --color-sidebar: var(--sidebar);
+  --color-surface: var(--surface);
+  --color-hover: var(--hover);
+  --color-line: var(--line);
+  --color-text: var(--text);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-on-accent: var(--on-accent);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+}
+
+html,
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  line-height: 1.4;
+  cursor: default;
+  user-select: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+[role="button"],
+a {
+  cursor: default;
+}
+
+input {
+  user-select: text;
+}
+
+.drag {
+  -webkit-app-region: drag;
+}
+
+.no-drag {
+  -webkit-app-region: no-drag;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.scroll {
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
 }

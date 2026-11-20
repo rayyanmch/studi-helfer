@@ -8,7 +8,6 @@ Gemeinsames Gedächtnis für alle KI-Agenten und Menschen im Projekt. Wird über
 Wer gerade woran arbeitet (Person, Aufgabe, betroffene Dateien). Eintragen beim Start, löschen wenn fertig.
 
 - Rayyan: Desktop-Gerüst (Electron) und ILIAS-Login. Dateien: `desktop/`, `services/ilias-sync/`.
-- Mika: Oberfläche mit Beispieldaten. Dateien: `web/src/app/`, `web/src/components/`, `web/src/lib/mock-data.ts`.
 
 ## Entscheidungen
 
@@ -72,7 +71,13 @@ Auch ohne Skills gilt: keine lila Verläufe, kein Glow, kein Verlaufstext, keine
 
 ### Designsprache
 
-Noch offen. Agent von Mika: Hier festhalten, sobald die Richtung steht (Akzentfarbe, Schrift, Abstände, Radien, Icons).
+Festgelegt (2026-11-20), Farben als Variablen in `web/src/app/globals.css`:
+- Akzent: ein ruhiges Grün (`--accent`), sonst warme Grautöne. Hell und Dunkel über `prefers-color-scheme`.
+- Schrift: Systemschrift (SF Pro), 13 px Grundgröße. Überschriften 22 px (Bildschirme) bzw. 15 px (Kopfleiste).
+- Radien: 6 px (Knöpfe, Felder), 8 px (Listen). Linien statt Schatten. Icons: `lucide-react`, 14–16 px.
+- Bausteine: `web/src/components/ui.tsx` (Button, Stage, Notice, FileIcon). Fehler = `Notice` mit Aktion.
+- Alle 5 Bildschirme stehen mit Beispieldaten. Das Demo-Fenster unten rechts (`DemoPanel.tsx`) schaltet Zustände um. Vor der echten App aus `AppShell.tsx` entfernen.
+- Offen: „Öffnen“ und „Im Finder zeigen“ tun noch nichts (kommen mit Electron).
 
 ## Wissen und Stolperfallen
 
