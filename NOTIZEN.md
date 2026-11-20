@@ -7,7 +7,6 @@ Gemeinsames Gedächtnis für alle KI-Agenten und Menschen im Projekt. Wird über
 
 Wer gerade woran arbeitet (Person, Aufgabe, betroffene Dateien). Eintragen beim Start, löschen wenn fertig.
 
-- Rayyan: KI-Fristen aus Übungsblättern (PDF → Claude → Fristen, mit Cache pro Datei). Dateien: `web/src/lib/ai.ts` (neue Funktion, bestehende bleibt), neu `web/src/app/api/ki/` (nur Server-Route, keine Seite), `desktop/`, `web/src/lib/desktop.ts`.
 
 
 
@@ -170,7 +169,7 @@ Von Mika aus vier Entwürfen gewählt (2026-11-20). Variablen in `web/src/app/gl
 
 - [ ] Rolle von Supabase klären: Dateien und ILIAS-Login liegen jetzt lokal. Braucht die App überhaupt ein eigenes Konto?
 - [ ] Supabase-Projekt anlegen, Keys in `.env.local` beider Rechner
-- [ ] Anthropic-API-Key besorgen
+- [ ] KI-Fristen aus Übungsblättern sind gebaut (`/api/ki/fristen`, `refreshAiDeadlines`), aber ohne Key inaktiv (`no_key`). Rayyan will dafür kein Geld ausgeben (2026-11-20). Offen: kostenlose Alternative (Daten per Regeln lokal aus dem PDF-Text lesen oder Apples KI auf dem Mac) oder doch günstiges Modell mit geteiltem Cache.
 - [ ] App-Symbol: **Logo liegt bereit** in `web/public/brand/logo-1024.png` (Rayyan: für Electron daraus `.icns` machen, z. B. mit `iconutil`). Signierung/Notarisierung, falls andere Studis die App bekommen sollen (Apple Developer Program).
 - [ ] KI-Aufrufe für die ausgelieferte App: eigener kleiner Server mit dem Key (der Key darf nicht in `Resources/ui`).
 - [ ] Sync-Intervall (aus / 30 min / 1 h / 3 h / täglich) laut Funktionsumfang; jetzt gibt es nur täglich zu einer Uhrzeit (`setSchedule`).
