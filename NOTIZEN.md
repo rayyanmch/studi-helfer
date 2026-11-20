@@ -158,7 +158,7 @@ Von Mika aus vier Entwürfen gewählt (2026-11-20). Variablen in `web/src/app/gl
 - [ ] Rolle von Supabase klären: Dateien und ILIAS-Login liegen jetzt lokal. Braucht die App überhaupt ein eigenes Konto?
 - [ ] Supabase-Projekt anlegen, Keys in `.env.local` beider Rechner
 - [ ] Anthropic-API-Key besorgen
-- [ ] App-Symbol: **Logo liegt bereit** in `web/public/brand/logo-1024.png` (Rayyan: für Electron daraus `.icns` machen, z. B. mit `iconutil`). Signierung/Notarisierung und Signierung/Notarisierung, falls andere Studis die App bekommen sollen (Apple Developer Program).
+- [ ] App-Symbol: **Logo liegt bereit** in `web/public/brand/logo-1024.png` (Rayyan: für Electron daraus `.icns` machen, z. B. mit `iconutil`). Signierung/Notarisierung, falls andere Studis die App bekommen sollen (Apple Developer Program).
 - [ ] KI-Aufrufe für die ausgelieferte App: eigener kleiner Server mit dem Key (der Key darf nicht in `Resources/ui`).
 - [ ] Sync-Intervall (aus / 30 min / 1 h / 3 h / täglich) laut Funktionsumfang; jetzt gibt es nur täglich zu einer Uhrzeit (`setSchedule`).
 - [ ] Mika: Screens an `getDesktop()` anschließen (Login, Einrichtung, Import-Fortschritt, Übersicht, Sync-Status).
