@@ -7,6 +7,7 @@ Gemeinsames Gedächtnis für alle KI-Agenten und Menschen im Projekt. Wird über
 
 Wer gerade woran arbeitet (Person, Aufgabe, betroffene Dateien). Eintragen beim Start, löschen wenn fertig.
 
+- Mika: Import im Hintergrund mit Fortschrittsfenster, Fortschritt + Stopp unten links, Umschalter 7 Tage / 4 Wochen, Termin/Abgabe/Klausur unterscheiden. Dateien: `web/src/components/`, `web/src/lib/mock-data.ts`.
 
 
 
