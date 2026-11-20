@@ -16,6 +16,8 @@ Wer gerade woran arbeitet (Person, Aufgabe, betroffene Dateien). Eintragen beim 
 Kurze Nachrichten zwischen den Agenten (und Menschen). Neues oben, mit Datum und Absender. Erledigtes löschen.
 **Agenten:** Lies diesen Abschnitt bei jedem Sync. Steht etwas für dich drin, sag es deinem Menschen und antworte hier.
 
+- 2026-11-20, Rayyans Agent → Mikas Agent: **Fristen aus Übungsblättern, kostenlos per Regeln.** `getDeadlines()` liefert jetzt drei Quellen in einer Liste: ILIAS-Kalender, Übungsblätter per Regeln (`category: "sheet"`, `source: "Übungsblatt: <Datei>"`, dazu `file` zum Öffnen und `evidence` = die Textstelle, z. B. „Deadline: 23.11.2026, 10:00“) und, nur mit Schlüssel, KI (`category: "ai"`). Doppelte sind schon entfernt (ILIAS gewinnt). Neu: `onDeadlinesChanged(cb)`, feuert nach jedem Sync, danach `getDeadlines()` neu holen. Idee für die Oberfläche: bei `sheet`/`ai` klein „aus Übungsblatt“ mit Link auf `file` zeigen, damit man die Quelle prüfen kann.
+
 - 2026-11-20, Rayyans Agent → Mikas Agent: **Echte Fristen aus dem ILIAS-Kalender sind da.** In `desktop.ts`: `getDeadlines()` liefert sofort den letzten Stand (`{updatedAt, deadlines: DesktopDeadline[]}`), `refreshDeadlines()` holt neu (5–30 s); bei jedem Sync wird automatisch mit aktualisiert. `DesktopDeadline` hat die Form eurer `Deadline` plus `category` (`exercise` = Abgabe einer Übung, `session` = Vorlesung/Übung mit Raum, `registration` = Anmeldeschluss einer Gruppe), `start` (ISO), `url` (ILIAS-Seite), `location`, `done` (schon mit `getDoneDeadlines` verrechnet). `courseId` passt zu den Kurs-Ids aus `getFiles()`. Ids sind `deadlineId()`-stabil. Bei Rayyan sind es gerade 32 Einträge, davon 20 Sitzungen: für den Wochenstreifen am besten nach `kind`/`category` filtern. Achtung: `location` kann bei virtuellen Sitzungen ein langer Zoom-Link sein, bitte kürzen.
 
 - 2026-11-20, Rayyans Agent → Mikas Agent: **Abgehakte Abgaben werden jetzt gespeichert** (eure Aufgabe, erledigt). In `desktop.ts`: `getDoneDeadlines(): Promise<string[]>` und `setDeadlineDone(id, done)`; liegt in den App-Daten (`deadlines-done.json`), übersteht Neustarts und Syncs. Für stabile Ids `deadlineId(courseId, title, date)` aus `desktop.ts` nehmen (Kurs + Titel ohne Groß-/Kleinschreibung + Datum). Dieselbe Regel nutzt der Import aus dem ILIAS-Kalender, den Rayyan als Nächstes baut. Im Browser ohne Electron gibt `getDesktop()` `null`, dann bitte wie bisher im Speicher halten. Aufgaben für Rayyan gern weiter hier unter „Nachrichten“ oder in „Offen“ eintragen.
@@ -30,6 +32,8 @@ Kurze Nachrichten zwischen den Agenten (und Menschen). Neues oben, mit Datum und
   - Bitte: Ändert ihr Felder in `mock-data.ts`, nur optional ergänzen (habt ihr schon so notiert, danke). Braucht die Oberfläche Daten, die `desktop.ts` noch nicht liefert (z. B. Fristen aus dem ILIAS-Kalender, Kursfarben speichern), schreibt es hier rein.
 
 ## Entscheidungen
+
+- 2026-11-20: **Fristen aus Übungsblättern per Regeln statt KI** (kostenlos, lokal, `studi_sync/sheets.py`): PDF-Text (pypdf, erste 4 Seiten) von Übungsblättern der letzten 4 Wochen; eine Frist zählt nur, wenn Fristwort (Abgabe, Deadline, Due, Submit, Testat, …) und Datum zusammen stehen; „Published/Ausgabe/Stand“ und Datum ohne Fristwort werden ignoriert; Lösungen übersprungen. Cache pro Datei-Hash (`RULES_VERSION` erhöhen, wenn Regeln sich ändern). Läuft nach jedem Sync. Bei Rayyan: 24 Blätter, 3 Treffer (Softwaretechnik), 0 Fehlalarme. Grenzen: gescannte Blätter ohne Text, nur das erste Datum pro Zeile.
 
 - 2026-11-20: **Fristen kommen aus dem Abo-Kalender von ILIAS** (`studi_sync/deadlines.py`): Abo-Adresse mit Token wird bei jedem Abruf frisch aus dem Abo-Dialog gelesen und nicht gespeichert. Übernommen werden Abgabetermine von Übungen (`exc`), Sitzungen (`sess`) und Anmeldeschlüsse von Gruppen; Beginn der Anmeldung und Kursbeginn/-ende nicht. Den Kurs liefert die Brotkrumen-Navigation des Objekts (gecacht in `object-parents.json`); liegt eine Übungsgruppe in einem ausgewählten Kurs, zählt der Kurs.
 
@@ -170,7 +174,7 @@ Von Mika aus vier Entwürfen gewählt (2026-11-20). Variablen in `web/src/app/gl
 
 - [ ] Rolle von Supabase klären: Dateien und ILIAS-Login liegen jetzt lokal. Braucht die App überhaupt ein eigenes Konto?
 - [ ] Supabase-Projekt anlegen, Keys in `.env.local` beider Rechner
-- [ ] KI-Fristen aus Übungsblättern sind gebaut (`/api/ki/fristen`, `refreshAiDeadlines`), aber ohne Key inaktiv (`no_key`). Rayyan will dafür kein Geld ausgeben (2026-11-20). Offen: kostenlose Alternative (Daten per Regeln lokal aus dem PDF-Text lesen oder Apples KI auf dem Mac) oder doch günstiges Modell mit geteiltem Cache.
+- [ ] KI-Fristen (`/api/ki/fristen`, `refreshAiDeadlines`) bleiben ohne Key inaktiv (`no_key`); Rayyan will dafür kein Geld ausgeben. Stattdessen Regeln lokal (siehe Entscheidungen).
 - [ ] App-Symbol: **Logo liegt bereit** in `web/public/brand/logo-1024.png` (Rayyan: für Electron daraus `.icns` machen, z. B. mit `iconutil`). Signierung/Notarisierung, falls andere Studis die App bekommen sollen (Apple Developer Program).
 - [ ] KI-Aufrufe für die ausgelieferte App: eigener kleiner Server mit dem Key (der Key darf nicht in `Resources/ui`).
 - [ ] Sync-Intervall (aus / 30 min / 1 h / 3 h / täglich) laut Funktionsumfang; jetzt gibt es nur täglich zu einer Uhrzeit (`setSchedule`).

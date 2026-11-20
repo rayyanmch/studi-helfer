@@ -5,7 +5,9 @@
     logout --username KENNUNG    Entfernt den Schlüsselbund-Eintrag.
     has-credentials --username K Gibt es einen Schlüsselbund-Eintrag?
     courses [--dump]             Meldet sich an und listet die eigenen Kurse und Gruppen.
-    deadlines                    Fristen/Termine aus dem ILIAS-Kalender holen (→ deadlines.json).
+    deadlines                    Fristen/Termine aus dem ILIAS-Kalender holen (→ deadlines.json),
+                                 danach Übungsblätter per Regeln auswerten (→ sheet-deadlines.json).
+    sheet-deadlines              Nur Übungsblätter per Regeln auswerten (lokal, ohne Netz).
     sync [--auto]                Ein Sync-Lauf (--auto: von launchd, mit Zufallsverzögerung,
                                  Netz-Wartezeit, Wiederholungen und Mitteilungen).
     pferd-run --config DATEI     Intern: PFERD mit Köln-Korrekturen starten.
@@ -81,6 +83,17 @@ def cmd_deadlines(args: argparse.Namespace) -> None:
     if not username:
         raise AppError("not_logged_in", "Noch nicht bei ILIAS angemeldet.")
     result = refresh(login(username, _password_for(username)))
+    from .sheets import refresh as refresh_sheets
+
+    sheets = refresh_sheets()
+    emit({"type": "result", "count": len(result["deadlines"]), "sheetCount": len(sheets["deadlines"]),
+          "updatedAt": result["updatedAt"]})
+
+
+def cmd_sheet_deadlines(args: argparse.Namespace) -> None:
+    from .sheets import refresh
+
+    result = refresh()
     emit({"type": "result", "count": len(result["deadlines"]), "updatedAt": result["updatedAt"]})
 
 
@@ -107,6 +120,7 @@ def main() -> int:
     p.set_defaults(fn=cmd_has_credentials)
     p = sub.add_parser("courses"); p.add_argument("--dump", action="store_true"); p.set_defaults(fn=cmd_courses)
     p = sub.add_parser("deadlines"); p.set_defaults(fn=cmd_deadlines)
+    p = sub.add_parser("sheet-deadlines"); p.set_defaults(fn=cmd_sheet_deadlines)
     p = sub.add_parser("sync"); p.add_argument("--auto", action="store_true"); p.set_defaults(fn=cmd_sync)
     p = sub.add_parser("pferd-run"); p.add_argument("--config", required=True); p.set_defaults(fn=cmd_pferd_run)
     args = parser.parse_args()

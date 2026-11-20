@@ -320,22 +320,30 @@ async function listFiles() {
 
 const DONE_DEADLINES = path.join(DATA_DIR, "deadlines-done.json");
 const DEADLINES = path.join(DATA_DIR, "deadlines.json");
+const SHEET_DEADLINES = path.join(DATA_DIR, "sheet-deadlines.json");
 
 /**
- * Fristen/Termine: ILIAS-Kalender (letzter Stand, sofort verfügbar) plus KI-Fristen aus Übungsblättern,
- * jeweils mit abgehakt ja/nein. Steht dieselbe Abgabe schon im ILIAS-Kalender (gleicher Kurs, gleicher Tag),
- * gewinnt ILIAS.
+ * Fristen/Termine aus drei Quellen, jeweils mit abgehakt ja/nein:
+ *   1. ILIAS-Kalender (deadlines.json)        2. Übungsblätter per Regeln, lokal (sheet-deadlines.json)
+ *   3. Übungsblätter per KI (nur mit Schlüssel)
+ * Doppelte fallen weg: gleiche Id, oder dieselbe Abgabe (gleicher Kurs, gleicher Tag) aus einer früheren Quelle.
  */
 function getDeadlines() {
   const data = readJson(DEADLINES, { updatedAt: null, deadlines: [] });
   const done = new Set(getDoneDeadlines());
-  const ilias = data.deadlines ?? [];
-  const ids = new Set(ilias.map((d) => d.id));
-  const iliasAbgaben = new Set(ilias.filter((d) => d.kind === "abgabe").map((d) => `${d.courseId}|${d.date}`));
-  const ai = aiDeadlines
-    .list()
-    .filter((d) => !ids.has(d.id) && !(d.kind === "abgabe" && iliasAbgaben.has(`${d.courseId}|${d.date}`)));
-  const all = [...ilias, ...ai].sort((a, b) =>
+  const ids = new Set();
+  const abgaben = new Set();
+  const all = [];
+  const sources = [data.deadlines ?? [], readJson(SHEET_DEADLINES, { deadlines: [] }).deadlines ?? [], aiDeadlines.list()];
+  for (const list of sources) {
+    const fresh = list.filter((d) => !ids.has(d.id) && !(d.kind === "abgabe" && abgaben.has(`${d.courseId}|${d.date}`)));
+    for (const d of fresh) {
+      ids.add(d.id);
+      if (d.kind === "abgabe") abgaben.add(`${d.courseId}|${d.date}`);
+      all.push(d);
+    }
+  }
+  all.sort((a, b) =>
     a.date === b.date ? String(a.start).localeCompare(String(b.start)) : a.date.localeCompare(b.date),
   );
   return {

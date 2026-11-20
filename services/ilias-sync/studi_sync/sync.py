@@ -321,6 +321,12 @@ def sync(auto: bool) -> dict[str, Any]:
             log(f"Fristen aus dem ILIAS-Kalender: {n}")
         except Exception as e:  # noqa: BLE001
             log(f"Fristen konnten nicht aktualisiert werden: {type(e).__name__}: {e}")
+        try:
+            from .sheets import refresh as refresh_sheets
+
+            log(f"Fristen aus Übungsblättern (Regeln): {len(refresh_sheets()['deadlines'])}")
+        except Exception as e:  # noqa: BLE001
+            log(f"Übungsblätter konnten nicht ausgewertet werden: {type(e).__name__}: {e}")
 
     ended = time.time()
     record = {

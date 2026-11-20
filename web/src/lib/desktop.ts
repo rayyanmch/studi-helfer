@@ -98,14 +98,15 @@ export interface DesktopCourse extends Omit<Course, "folders"> {
  * Kommen nur für ausgewählte Kurse, ab 14 Tagen in der Vergangenheit.
  */
 export interface DesktopDeadline extends Deadline {
-  // ai = von der KI in einem Übungsblatt gefunden (source "KI: <Datei>", dazu file + evidence)
-  category: "exercise" | "session" | "registration" | "ai";
+  // sheet = per Regeln lokal in einem Übungsblatt gefunden (source "Übungsblatt: <Datei>", dazu file + evidence)
+  // ai = von der KI in einem Übungsblatt gefunden (nur mit Schlüssel; source "KI: <Datei>")
+  category: "exercise" | "session" | "registration" | "sheet" | "ai";
   start: string; // ISO-Zeitpunkt, z. B. "2026-11-23T10:00:00+01:00"
   url: string | null; // ILIAS-Seite (Übung/Sitzung), z. B. für „In ILIAS öffnen“
   location: string | null; // Raum bei Sitzungen
   done: boolean; // abgehakt (setDeadlineDone)
-  file?: string; // nur KI: Pfad des Übungsblatts (für „Öffnen“)
-  evidence?: string; // nur KI: kurze Textstelle, auf der die Frist beruht
+  file?: string; // sheet/ai: Pfad des Übungsblatts (für „Öffnen“)
+  evidence?: string; // sheet/ai: kurze Textstelle, auf der die Frist beruht (z. B. "Deadline: 23.11.2026, 10:00")
 }
 
 export interface SyncRun {
@@ -151,7 +152,7 @@ export interface StudiDesktop {
   >;
   /** Letzter Stand der Fristen (sofort, ohne Netz). Wird bei jedem Sync automatisch aktualisiert. */
   getDeadlines(): Promise<{ updatedAt: number | null; deadlines: DesktopDeadline[] }>;
-  /** Fristen jetzt neu aus ILIAS holen (ca. 5–30 Sekunden). Danach getDeadlines() aufrufen. */
+  /** Fristen jetzt neu holen: ILIAS-Kalender + Übungsblätter per Regeln (ca. 5–30 Sekunden). Danach getDeadlines(). */
   refreshDeadlines(): Promise<Ok<{ count: number }> | Fail>;
   /**
    * Übungsblätter der letzten 4 Wochen, die noch nicht ausgewertet sind, an die KI schicken (je Datei nur einmal).
