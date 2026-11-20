@@ -7,6 +7,7 @@ Gemeinsames Gedächtnis für alle KI-Agenten und Menschen im Projekt. Wird über
 
 Wer gerade woran arbeitet (Person, Aufgabe, betroffene Dateien). Eintragen beim Start, löschen wenn fertig.
 
+- Mika: Einrichtung als Kacheln (K2), 8 Kursfarben, frühere Semester, Videos-Schalter. Dateien: `web/src/components/Setup.tsx`, `ui.tsx`, `globals.css`, `mock-data.ts`.
 
 
 ## Nachrichten
