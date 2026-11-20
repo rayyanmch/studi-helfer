@@ -4,10 +4,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   AlertTriangle,
   CalendarDays,
+  Check,
   ChevronDown,
   Inbox,
   Library,
   LogIn,
+  Mail,
   Monitor,
   Moon,
   RefreshCw,
@@ -20,6 +22,8 @@ import { Button, Notice, Spinner, Swatch, colorOf, nameOf, shortOf, tone } from 
 import { CheckButton, FileRow, Highlight, displayName } from "./files";
 import { CoursesView } from "./CoursesView";
 import { ModuleView } from "./ModuleView";
+import { MailView } from "./MailView";
+import { Accounts } from "./Accounts";
 import { Settings } from "./Settings";
 import { ImportPanel, jobProgress, useJob, useTick, type Job } from "./ImportJob";
 import { applyTheme, getTheme, type Theme } from "./theme";
@@ -27,6 +31,7 @@ import { UpdateMenuItem } from "./UpdateNotice";
 import type { Problem } from "./AppShell";
 import { countFiles, countNew, type Course, type Deadline } from "@/lib/mock-data";
 import * as store from "@/lib/app-store";
+import { initMail, setCalendar, useMail, type GoogleEvent } from "@/lib/mail-data";
 import { appStore, etaLabel, realCourses, useApp, useCommand } from "@/lib/app-store";
 
 const FAIL_ID = "rechnernetze";
@@ -36,7 +41,7 @@ const LONG = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", 
 // Titel ohne „Submit “ vorne, für enge Stellen
 const bare = (t: string) => t.replace(/^Submit /, "");
 
-type View = "week" | "new" | "courses" | string; // string = Modul-Id
+type View = "week" | "new" | "courses" | "mail" | string; // string = Modul-Id
 
 function parseDay(iso: string) {
   const [y, m, d] = iso.split("-").map(Number);
@@ -84,6 +89,12 @@ export function Overview({
   const [closedRun, setClosedRun] = useState(0); // Import-Lauf, dessen Fenster geschlossen wurde
   const searchRef = useRef<HTMLInputElement>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [accountsOpen, setAccountsOpen] = useState(false);
+  const mailState = useMail();
+  useEffect(() => initMail(!desktop), [desktop]); // Beispiel-Postfächer nur in der Browser-Vorschau
+  const mailUnread = mailState.messages.filter(
+    (m) => m.folder === "inbox" && m.unread && mailState.accounts.some((a) => a.id === m.accountId && a.connected),
+  ).length;
 
   const { job, start, stop, dismiss, retry } = useJob((finished) => {
     if (finished.rows.some((r) => r.status === "failed")) return;
@@ -153,7 +164,7 @@ export function Overview({
     <div className="flex h-full bg-bg">
       <aside className="flex w-[236px] shrink-0 flex-col border-r border-line bg-sidebar">
         <div className="drag h-[44px] shrink-0" />
-        <ProfileMenu user={user} onEditCourses={onEditCourses} onLogout={onLogout} onSettings={() => setSettingsOpen(true)} />
+        <ProfileMenu user={user} onEditCourses={onEditCourses} onLogout={onLogout} onSettings={() => setSettingsOpen(true)} onAccounts={() => setAccountsOpen(true)} />
         <nav className="scroll flex-1 px-3 pb-3 pt-3" aria-label="Navigation">
           <div className="flex flex-col gap-0.5">
             <NavItem active={!searching && view === "week"} onClick={() => open("week")} icon={<CalendarDays size={15} aria-hidden />}>
@@ -171,6 +182,9 @@ export function Overview({
             >
               Courses
             </NavItem>
+            <NavItem active={view === "mail"} onClick={() => open("mail")} icon={<Mail size={15} aria-hidden />} count={mailUnread}>
+              Mail
+            </NavItem>
           </div>
         </nav>
         <SyncStatus problem={problem} job={job} lastSync={lastSync} failed={failedIds.length} onSync={sync} onStop={stop} />
@@ -187,6 +201,12 @@ export function Overview({
             }}
           />
         )}
+        {view === "mail" && !searching ? (
+          <div className="min-h-0 flex-1">
+            <MailView onOpenAccounts={() => setAccountsOpen(true)} />
+          </div>
+        ) : (
+          <>
         <header className="drag flex h-[52px] shrink-0 items-center justify-end gap-3 px-6">
           <label className="no-drag flex h-8 w-[260px] items-center gap-2 rounded-lg bg-surface px-2.5 shadow-[inset_0_0_0_1px_var(--line)] focus-within:shadow-[inset_0_0_0_2px_var(--focus)]">
             <Search size={14} className="shrink-0 text-muted" aria-hidden />
@@ -247,7 +267,10 @@ export function Overview({
             )}
           </div>
         </div>
+          </>
+        )}
       </main>
+      {accountsOpen && <Accounts onClose={() => setAccountsOpen(false)} />}
       {settingsOpen && <Settings onClose={() => setSettingsOpen(false)} onEditCourses={onEditCourses} onLogout={onLogout} />}
     </div>
   );
@@ -260,11 +283,13 @@ function ProfileMenu({
   onEditCourses,
   onLogout,
   onSettings,
+  onAccounts,
 }: {
   user: string;
   onEditCourses: () => void;
   onLogout: () => void;
   onSettings: () => void;
+  onAccounts: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const [theme, setThemeState] = useState<Theme>(getTheme);
@@ -321,6 +346,16 @@ function ProfileMenu({
             }}
           >
             Change courses
+          </button>
+          <button
+            role="menuitem"
+            className={item}
+            onClick={() => {
+              setOpen(false);
+              onAccounts();
+            }}
+          >
+            Accounts
           </button>
           <button
             role="menuitem"
@@ -579,12 +614,19 @@ function WeekView({
       return !v;
     });
   const hasClasses = deadlines.some((d) => d.kind === "termin");
-  const visible = showClasses ? deadlines : deadlines.filter((d) => d.kind !== "termin");
+  // Kalender an/aus (Variante B1): ILIAS-Fristen und Google Kalender, Standard beide an
+  const mail = useMail();
+  const googleConnected = mail.accounts.some((a) => a.id === "gmail" && a.connected);
+  const showIlias = mail.calendars.ilias || !googleConnected; // ohne Google gibt es nichts umzuschalten
+  const googleEvents = googleConnected && mail.calendars.google ? mail.events : [];
+  const classesFiltered = showClasses ? deadlines : deadlines.filter((d) => d.kind !== "termin");
+  const visible = showIlias ? classesFiltered : [];
   const days = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(todayMs() + i * DAY_MS);
     const iso = d.toISOString().slice(0, 10);
     const items = visible.filter((x) => x.date === iso);
-    return { iso, num: d.getUTCDate(), wd: d.getUTCDay(), items, wide: items.length > 0, today: i === 0 };
+    const events = googleEvents.filter((x) => x.date === iso);
+    return { iso, num: d.getUTCDate(), wd: d.getUTCDay(), items, events, wide: items.length + events.length > 0, today: i === 0 };
   });
 
   const open = deadlines.filter(
@@ -639,6 +681,18 @@ function WeekView({
         </div>
       </header>
 
+      {googleConnected && (
+        <div className="mt-4 flex flex-wrap items-center gap-2" role="group" aria-label="Calendars">
+          <CalendarChip on={mail.calendars.ilias} onChange={(on) => setCalendar("ilias", on)} dashed={false}>
+            ILIAS deadlines
+          </CalendarChip>
+          <CalendarChip on={mail.calendars.google} onChange={(on) => setCalendar("google", on)} dashed>
+            Google Calendar
+          </CalendarChip>
+          <span className="text-[12px] text-muted">Dashed = from Google Calendar</span>
+        </div>
+      )}
+
       {hasClasses && (
         <label className="mt-4 inline-flex cursor-default items-center gap-2 text-[13px] text-muted">
           <input type="checkbox" checked={showClasses} onChange={toggleClasses} className="accent-[var(--accent)]" />
@@ -646,7 +700,7 @@ function WeekView({
         </label>
       )}
 
-      {range === "month" && <MonthView deadlines={visible} done={done} onOpen={onOpen} />}
+      {range === "month" && <MonthView deadlines={visible} events={googleEvents} done={done} onOpen={onOpen} />}
 
       {/* Tage ohne Termine werden schmal, Tage mit Terminen teilen sich den Platz. */}
       {range === "week" && (
@@ -672,6 +726,9 @@ function WeekView({
                   onToggle={() => onToggle(d.id)}
                   onOpen={() => onOpen(d.courseId)}
                 />
+              ))}
+              {day.events.map((ev) => (
+                <GoogleBlock key={ev.id} ev={ev} />
               ))}
             </div>
           </div>
@@ -717,7 +774,7 @@ function WeekView({
   );
 }
 
-function MonthView({ deadlines, done, onOpen }: { deadlines: Deadline[]; done: string[]; onOpen: (id: string) => void }) {
+function MonthView({ deadlines, events, done, onOpen }: { deadlines: Deadline[]; events: GoogleEvent[]; done: string[]; onOpen: (id: string) => void }) {
   const wdToday = new Date(todayMs()).getUTCDay();
   const start = todayMs() - ((wdToday + 6) % 7) * DAY_MS; // Montag dieser Woche
   const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -733,6 +790,7 @@ function MonthView({ deadlines, done, onOpen }: { deadlines: Deadline[]; done: s
       past: diff < 0,
       today: diff === 0,
       items: deadlines.filter((x) => x.date === iso),
+      events: events.filter((x) => x.date === iso),
     };
   });
 
@@ -782,10 +840,57 @@ function MonthView({ deadlines, done, onOpen }: { deadlines: Deadline[]; done: s
                   </button>
                 );
               })}
+            {!cell.past &&
+              cell.events.slice(0, Math.max(0, 3 - cell.items.length)).map((ev) => (
+                <span
+                  key={ev.id}
+                  title={`${ev.title}, ${ev.time}`}
+                  className="truncate rounded-[5px] px-1.5 py-0.5 text-left text-[11px] font-semibold text-muted shadow-[inset_0_0_0_1.5px_var(--line)] [border-style:dashed]"
+                  style={{ border: "1.5px dashed var(--muted)", boxShadow: "none" }}
+                >
+                  {ev.title}
+                </span>
+              ))}
             {cell.items.length > 3 && <span className="px-1 text-[11px] text-muted">+{cell.items.length - 3} more</span>}
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+// Schalter für einen Kalender (Haken in der Kapsel). „dashed“ zeigt, wie dessen Termine aussehen.
+function CalendarChip({ on, onChange, dashed, children }: { on: boolean; onChange: (on: boolean) => void; dashed: boolean; children: React.ReactNode }) {
+  return (
+    <button
+      onClick={() => onChange(!on)}
+      aria-pressed={on}
+      className={`flex h-8 items-center gap-2 rounded-full pl-2 pr-3.5 font-semibold transition-colors ${on ? "bg-accent text-on-accent" : "bg-surface text-muted shadow-[inset_0_0_0_1.5px_var(--line)] hover:bg-hover"}`}
+    >
+      <span
+        aria-hidden
+        className={`flex size-[18px] items-center justify-center rounded-full ${on ? "bg-white/25" : ""}`}
+        style={on ? undefined : { border: "2px solid var(--line)" }}
+      >
+        {on && <Check size={10} strokeWidth={3.6} />}
+      </span>
+      {children}
+      <span
+        aria-hidden
+        className="ml-0.5 h-3 w-5 rounded-[3px]"
+        style={dashed ? { border: `1.5px dashed ${on ? "currentColor" : "var(--muted)"}`, opacity: on ? 0.8 : 0.6 } : { background: "currentColor", opacity: on ? 0.8 : 0.4 }}
+      />
+    </button>
+  );
+}
+
+// Termin aus dem Google Kalender: gestrichelter Rand, kein Kreis (Termine hakt man nicht ab).
+function GoogleBlock({ ev }: { ev: GoogleEvent }) {
+  return (
+    <div className="rounded-[7px] px-2 py-1.5" style={{ border: "1.5px dashed var(--muted)" }}>
+      <span className="block truncate text-[12px] font-semibold text-muted">{ev.time}</span>
+      <span className="block text-[13px] font-semibold leading-snug">{ev.title}</span>
+      {ev.location && <span className="block truncate text-[12px] text-muted">{ev.location}</span>}
     </div>
   );
 }
