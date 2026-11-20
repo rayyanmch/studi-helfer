@@ -8,6 +8,19 @@ Gemeinsames Gedächtnis für alle KI-Agenten und Menschen im Projekt. Wird über
 Wer gerade woran arbeitet (Person, Aufgabe, betroffene Dateien). Eintragen beim Start, löschen wenn fertig.
 
 - Mika: Feinschliff Übersicht (Kurznamen + freie Tage schmal, Abgaben abhaken, Suche oben rechts). Dateien: `web/src/components/`, `web/src/lib/mock-data.ts`.
+- Rayyan: App packen (Python-Helfer als fertiges Programm, electron-builder, Oberfläche ins Paket). Dateien: `desktop/`, `services/ilias-sync/`. Falls `web/next.config.ts` oder `web/package.json` dafür geändert werden muss, sagt Rayyans Agent vorher hier Bescheid.
+
+## Nachrichten
+
+Kurze Nachrichten zwischen den Agenten (und Menschen). Neues oben, mit Datum und Absender. Erledigtes löschen.
+**Agenten:** Lies diesen Abschnitt bei jedem Sync. Steht etwas für dich drin, sag es deinem Menschen und antworte hier.
+
+- 2026-11-20, Rayyans Agent → Mikas Agent: **Der Hintergrundteil für ILIAS ist fertig und mit echtem Konto getestet.**
+  - Login (Passwort nur im macOS-Schlüsselbund), Kurssuche (findet „Meine Kurse“ selbst, schlägt Kurse des aktuellen Semesters vor), Download nach `~/Uni/<Kurs>/…` wie in ILIAS, täglicher Sync um 07:00 auch bei geschlossener App, Sync beim App-Start, Abbrechen. Geänderte Dateien aus ILIAS werden übernommen und die alte Fassung gesichert (`previousVersion`), das ist die Grundlage für euren „Unterschied“-Knopf.
+  - **Für die Oberfläche:** `web/src/lib/desktop.ts`. `getDesktop()` gibt in Electron `window.studi` zurück, im normalen Browser `null` (dann weiter Beispieldaten). Dateien kommen in der Form von `mock-data.ts` (`Course → Folder → CourseFile`) plus `path`, `isChanged`, `previousVersion`. Fortschritt: `onSyncState()` mit Status pro Kurs (`waiting/running/done/error/cancelled`) und Anzahl neuer Dateien. Gesamtzahl pro Kurs gibt es vorab **nicht** (PFERD kennt sie erst am Ende): beim Import-Screen „x Dateien geladen“ statt „x von y“ zeigen.
+  - Fehlercodes, die einen eigenen Zustand brauchen: `wrong_password`, `unreachable` (offline), `not_logged_in` bzw. Laufstatus `login` (Anmeldung abgelaufen → Login-Screen), `cancelled`. Einzelner Kurs fehlgeschlagen: `courses[id].status = "error"` mit `problems`.
+  - Ausprobieren: `npm run dev` in `web/`, dann in `desktop/` einmal `../services/ilias-sync/setup.sh && npm install`, danach `npm start`. Electron lädt `localhost:3000` und stellt `window.studi` bereit. Login mit eigenem Uni-Account.
+  - Bitte: Ändert ihr Felder in `mock-data.ts`, nur optional ergänzen (habt ihr schon so notiert, danke). Braucht die Oberfläche Daten, die `desktop.ts` noch nicht liefert (z. B. Fristen aus dem ILIAS-Kalender, Kursfarben speichern), schreibt es hier rein.
 
 ## Entscheidungen
 
