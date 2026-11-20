@@ -126,6 +126,8 @@ function saveConfig(cfg) {
 
 /** Gleiche Regel wie folder_name() in services/ilias-sync/studi_sync/sync.py. */
 function folderName(title) {
+  // Ein Semester-Vorsatz wie "[WS26/27] " fällt weg.
+  title = title.replace(/^\s*\[[^\]]{1,20}\]\s*/, "") || title;
   let name = title.replace(/[/:\\\n\r\t]+/g, " - ").replace(/^[ .]+|[ .]+$/g, "");
   name = name.replace(/\s{2,}/g, " ").slice(0, 120);
   return name || "Kurs";
@@ -258,6 +260,7 @@ async function listFiles() {
     .reverse()
     .find((r) => r.status !== "offline");
   const fresh = new Set((last?.added ?? []).map((a) => `${a.course}\u0000${a.path}`));
+  const changed = new Map((last?.changed ?? []).map((c) => [`${c.course}\u0000${c.path}`, c.previous ?? null]));
 
   const courses = [];
   for (const c of cfg.courses.filter((x) => x.selected)) {
@@ -280,6 +283,8 @@ async function listFiles() {
         size: formatSize(f.size),
         updated: formatDate(f.mtime),
         isNew: fresh.has(`${c.id}\u0000${f.rel}`),
+        isChanged: changed.has(`${c.id}\u0000${f.rel}`),
+        previousVersion: changed.get(`${c.id}\u0000${f.rel}`) ?? undefined,
         path: f.full,
         modifiedAt: f.mtime.getTime(),
       });

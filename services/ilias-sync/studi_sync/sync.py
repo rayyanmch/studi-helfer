@@ -34,6 +34,8 @@ STATUS_LINE = re.compile(r"^\s*(Added|Changed|Deleted)\s+(['\"].*['\"])\s*$")
 
 
 def folder_name(title: str) -> str:
+    """Ordnername für einen Kurs. Ein Semester-Vorsatz wie "[WS26/27] " fällt weg."""
+    title = re.sub(r"^\s*\[[^\]]{1,20}\]\s*", "", title) or title
     name = re.sub(r"[/:\\\n\r\t]+", " - ", title).strip(" .")
     return re.sub(r"\s{2,}", " ", name)[:120] or "Kurs"
 
@@ -65,8 +67,9 @@ def write_pferd_config(cfg: dict[str, Any], courses: list[dict[str, Any]]) -> No
             "login_type = local",
             f"client_id = {CLIENT_ID}",
             "auth = auth:ilias",
-            # Eigene Änderungen an Dateien gewinnen immer, und PFERD löscht nie etwas lokal.
-            "on_conflict = local-first",
+            # Geänderte Dateien aus ILIAS übernehmen (alte Fassung sichert pferd_run.py vorher),
+            # lokal nie etwas löschen. local-first würde geänderte Dateien nie aktualisieren.
+            "on_conflict = no-delete",
             "tasks = 1",
             f"videos = {'yes' if c.get('videos') else 'no'}",
             "forums = no",
@@ -116,6 +119,7 @@ class Run:
         self.changed: list[dict[str, str]] = []
         self.deleted: list[dict[str, str]] = []
         self.problems: list[dict[str, Any]] = []
+        self.versions: dict[tuple[str, str], str] = {}  # (Kurs, Pfad) → gesicherte alte Fassung
 
     def state(self, **extra: Any) -> None:
         write_json(STATE, {
@@ -150,7 +154,10 @@ def run_pferd(run: Run, log: Any) -> int:
             continue
         line = ANSI.sub("", raw).rstrip("\n")
         log(line)
-        if m := re.match(r"^Running crawl:(\S+)", line):
+        if m := re.match(r"^STUDI-VERSION\t(.+)\t(.+)$", line):
+            if run.current:
+                run.versions[(run.current, m.group(1))] = m.group(2)
+        elif m := re.match(r"^Running crawl:(\S+)", line):
             run.start_course(m.group(1))
         elif m := re.match(r"^Report for crawl:(\S+)", line):
             in_report, report_crawler = True, m.group(1)
@@ -179,6 +186,9 @@ def run_pferd(run: Run, log: Any) -> int:
     for cid, lists in final.items():
         for kind, target in (("Added", run.added), ("Changed", run.changed), ("Deleted", run.deleted)):
             target.extend({"course": cid, "path": p} for p in lists[kind])
+        for entry in run.changed:
+            if (prev := run.versions.get((entry["course"], entry["path"]))) is not None:
+                entry["previous"] = prev
         if cid in run.courses:
             run.courses[cid]["added"] = len(lists["Added"])
             run.courses[cid]["changed"] = len(lists["Changed"])

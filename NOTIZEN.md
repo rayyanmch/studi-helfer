@@ -11,6 +11,8 @@ Wer gerade woran arbeitet (Person, Aufgabe, betroffene Dateien). Eintragen beim 
 
 ## Entscheidungen
 
+- 2026-11-20: **ILIAS-Infrastruktur steht** (mit echtem Account getestet). Aufbau: Electron (`desktop/`) ↔ Python-Helfer (`services/ilias-sync/studi_sync`, JSON-Zeilen über stdin/stdout) ↔ PFERD. Passwort geht nur per stdin an den Helfer und liegt danach nur im Schlüsselbund („Studi-Helfer ILIAS“). Kurse findet der Helfer selbst über „Meine Kurse und Gruppen“, Vorschlag = aktuelles Semester. Ordner `~/Uni/<Kurs ohne [WS26/27]>/…` wie in ILIAS. Täglich 07:00 per launchd (`de.studihelfer.sync`, läuft auch bei geschlossener App) plus Sync beim App-Start (wenn letzter > 6 h her). App-Daten: `~/Library/Application Support/Studi-Helfer/`.
+- 2026-11-20: **PFERD mit `on_conflict = no-delete`, alte Fassung wird vorher gesichert** (`<App-Daten>/versions/<Kursordner>/<Datei>@<Zeit>`; Pfad steht in `runs.jsonl` unter `changed[].previous` und als `previousVersion` an der Datei). Grundlage für „Geänderte Dateien erkennen“.
 - 2026-11-20: **Design „Wochenstreifen“** (Mika hat aus vier Entwürfen gewählt): Startseite zeigt die nächsten 7 Tage mit Fristen in Kursfarben. Details unter „Designsprache“.
 - 2026-11-20: **Funktionsumfang beschlossen**, siehe Abschnitt „Funktionsumfang“. „Frag deine Folien“ (Chat mit Unterlagen) vorerst zurückgestellt.
 - 2026-11-20: **Aufteilung: Mika macht das Design** (Oberfläche in `web/` mit Beispieldaten), **Rayyan Electron, ILIAS-Login und Sync**. Electron blendet die Titelleiste aus (Fensterknöpfe schweben über der App), Details im Abschnitt „Design“.
@@ -57,7 +59,8 @@ Mika macht das Design. **Agent von Mika: Lies diesen Abschnitt ganz, bevor du UI
 - **Design jetzt einfach im Browser bauen:** `npm run dev` in `web/`, Fenster auf ca. 1280×800. Für Electron muss am UI nichts Besonderes passieren, außer:
   - Titelleiste wird ausgeblendet: oben ca. 52 px hohe Leiste einplanen, links ca. 80 px frei für die Fensterknöpfe. Diese Leiste bekommt `-webkit-app-region: drag` (Buttons darin `no-drag`), damit man das Fenster daran ziehen kann.
   - Wirkt wie eine Mac-App, nicht wie eine Website: Schrift laut „Designsprache“ unten, Hell- und Dunkelmodus über `prefers-color-scheme`, kein Seiten-Scroll des ganzen Fensters (Seitenleiste fest, nur der Inhalt scrollt), Cursor `default` statt Hand-Cursor auf normalen Listeneinträgen.
-- **Nur Beispieldaten**, kein Supabase, keine KI, kein Server-Code. Beispieldaten und ihre Typen in `web/src/lib/mock-data.ts`. Die Typen gleichen wir später mit dem ab, was der Hintergrundteil liefert, deshalb klar und flach halten (Kurs → Ordner → Datei, Sync-Status).
+- **Echte Daten aus der Mac-App:** `web/src/lib/desktop.ts`, `getDesktop()` liefert `window.studi` (nur in Electron, sonst `null` → Beispieldaten). Login, Kurse, Einrichtung, Sync-Fortschritt (`onSyncState`), Dateien in der Form von `mock-data.ts`, Öffnen/Im Finder zeigen. Ausprobieren: `npm run dev` in `web/`, dann `npm start` in `desktop/`.
+- **Sonst nur Beispieldaten**, kein Supabase, keine KI, kein Server-Code. Beispieldaten und ihre Typen in `web/src/lib/mock-data.ts`. Die Typen gleichen wir später mit dem ab, was der Hintergrundteil liefert, deshalb klar und flach halten (Kurs → Ordner → Datei, Sync-Status).
 - **Dateien von Mika:** `web/src/app/` (Seiten, `layout.tsx`, `globals.css`), `web/src/components/`, `web/src/lib/mock-data.ts`. Rayyan arbeitet in `desktop/` und `services/`, also kommt ihr euch nicht in die Quere. `web/src/lib/ai.ts` und `web/src/lib/supabase/` nicht anfassen.
 - `next.config.ts` hat `cacheComponents` an. Vor neuem Next-Code die Doku in `web/node_modules/next/dist/docs/` lesen.
 
@@ -113,7 +116,12 @@ Von Mika aus vier Entwürfen gewählt (2026-11-20). Variablen in `web/src/app/gl
 
 ## Wissen und Stolperfallen
 
-- ILIAS Uni Köln: `base_url = https://www.ilias.uni-koeln.de/ilias`, Login-Seite nutzt `client_id=uk`, deshalb PFERD mit `login_type = local`. Die Config parst, ein echter Login ist noch nicht getestet.
+- ILIAS Uni Köln: `base_url = https://www.ilias.uni-koeln.de/ilias`, `client_id=uk`, PFERD mit `login_type = local`. Echter Login und Kurssuche getestet (2026-11-20). Kurstitel tragen das Semester vorn: `[WS26/27] Softwaretechnik`, `[SoSe26] …`; Gruppen (`grp`) teils ohne Semester.
+- PFERD kann in Köln das Dashboard nicht lesen und braucht drei Korrekturen (Unterpfad `/ilias`, Link-Auflösung, nie nach Passwort fragen). Die setzt `studi_sync/pferd_run.py` zur Laufzeit ein, nicht durch Umschreiben der installierten Dateien.
+- PFERD `on_conflict = local-first` übernimmt geänderte Dateien aus ILIAS **nie** (deshalb war „changed“ in Rayyans altem Sync immer leer).
+- PFERD fragt ohne Schlüsselbund-Eintrag per `getpass` nach dem Passwort und hängt dann ewig (liest `/dev/tty`). Ist gepatcht, beim Testen im Terminal trotzdem dran denken.
+- Electron-Preload stellt `window.studi` bereit: In einem klassischen `<script>` darf es kein globales `const studi` geben (SyntaxError, Skript läuft gar nicht).
+- Im Testfenster bewusst kein `<form>`: Läuft das Skript nicht, würde ein Formular Kennung und Passwort in die Seitenadresse schreiben.
 - Next.js 16: `npx tsc --noEmit` meldet `Cannot find name 'LayoutProps'`, solange `.next/types` fehlt. Diese Typen erzeugt erst `next build`/`next dev`. Kein echter Fehler.
 - `web/AGENTS.md` wird von `next dev` neu geschrieben. Nicht von Hand ändern.
 - Strukturierte KI-Antworten: `client.beta.messages.parse` + `betaZodOutputFormat` (siehe `extractFromSlides` in `web/src/lib/ai.ts`).
@@ -123,4 +131,7 @@ Von Mika aus vier Entwürfen gewählt (2026-11-20). Variablen in `web/src/app/gl
 - [ ] Rolle von Supabase klären: Dateien und ILIAS-Login liegen jetzt lokal. Braucht die App überhaupt ein eigenes Konto?
 - [ ] Supabase-Projekt anlegen, Keys in `.env.local` beider Rechner
 - [ ] Anthropic-API-Key besorgen
-- [ ] PFERD mit echtem Uni-Account gegen ILIAS Köln testen
+- [ ] App packen (Rayyan): Python-Helfer als fertiges Programm (PyInstaller) + electron-builder, damit Studis nichts installieren müssen. `desktop/lib/backend.js` erwartet ihn unter `Resources/studi-sync/studi-sync`.
+- [ ] Next-Oberfläche in Electron: in der Entwicklung lädt Electron `http://localhost:3000`. Fürs fertige Paket noch offen (Next-Server mitliefern oder statischer Export).
+- [ ] Sync-Intervall (aus / 30 min / 1 h / 3 h / täglich) laut Funktionsumfang; jetzt gibt es nur täglich zu einer Uhrzeit (`setSchedule`).
+- [ ] Mika: Screens an `getDesktop()` anschließen (Login, Einrichtung, Import-Fortschritt, Übersicht, Sync-Status).

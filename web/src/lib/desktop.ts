@@ -77,6 +77,8 @@ export interface DesktopStatus {
 export interface DesktopFile extends CourseFile {
   path: string;
   modifiedAt: number;
+  isChanged: boolean; // im letzten Sync durch eine neue Fassung aus ILIAS ersetzt
+  previousVersion?: string; // Pfad zur gesicherten alten Fassung (für den KI-Unterschied)
 }
 export interface DesktopFolder extends Omit<Folder, "files"> {
   files: DesktopFile[]; // name = Pfad im Kurs, z. B. "Vorlesung/Woche 1"; Dateien direkt im Kurs: "Allgemein"
@@ -94,7 +96,7 @@ export interface SyncRun {
   trigger: "manual" | "auto";
   status: SyncRunStatus;
   added: { course: string; path: string }[];
-  changed: { course: string; path: string }[];
+  changed: { course: string; path: string; previous?: string }[];
   problems: { course: string | null; message: string }[];
 }
 

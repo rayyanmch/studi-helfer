@@ -7,13 +7,18 @@ es auch im fertig gepackten Programm, und ein PFERD-Update überschreibt nichts.
 1. ILIAS unter einem Unterpfad (…/ilias): urljoin(base_url, "/login.php") verwirft "/ilias".
 2. links = ignore: Link-Ziele gar nicht erst auflösen, das schlägt in Köln fehl
    ("resolve_link_target failed") und bricht den ganzen Kurs ab.
+3. Nie interaktiv nach Kennung/Passwort fragen.
+4. Alte Version sichern, bevor PFERD eine geänderte Datei überschreibt (on_conflict = no-delete).
 """
 
+import shutil
 import sys
+from datetime import datetime
+from pathlib import PurePath
 from typing import Any
 from urllib.parse import urljoin as _urljoin
 
-from .common import BASE_URL
+from .common import BASE_URL, VERSIONS
 
 _ROOT_RELATIVE = {"/login.php", "/ilias.php?baseClass=ilDashboardGUI&cmd=show"}
 
@@ -56,6 +61,34 @@ def install_patches() -> None:
 
     keyring_mod.agetpass = _no_prompt  # type: ignore[attr-defined]
     keyring_mod.ainput = _no_prompt  # type: ignore[attr-defined]
+
+    # 4. Vor dem Überschreiben die bisherige Datei nach <App-Daten>/versions/<Kursordner>/… kopieren
+    #    (Grundlage für „geändert“ + KI-Unterschied, und eigene Notizen im PDF gehen nicht verloren).
+    #    Klappt das Sichern nicht, bleibt die lokale Datei wie sie ist.
+    import PFERD.output_dir as output_mod
+
+    out_cls = output_mod.OutputDirectory
+    original_lfrf = out_cls._conflict_lfrf
+
+    async def _conflict_lfrf(self: Any, on_conflict: Any, path: PurePath) -> bool:
+        replace = await original_lfrf(self, on_conflict, path)
+        if not replace:
+            return False
+        try:
+            local = self.resolve(path)
+            if local.is_file():
+                rel = PurePath(path)
+                stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+                dest = VERSIONS / self._root.name / rel.parent / f"{rel.stem}@{stamp}{rel.suffix}"
+                dest.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(local, dest)
+                print(f"STUDI-VERSION\t{rel.as_posix()}\t{dest}", flush=True)
+            return True
+        except Exception as e:  # noqa: BLE001
+            print(f"STUDI-VERSION-FAILED\t{path}\t{type(e).__name__}", flush=True)
+            return False
+
+    out_cls._conflict_lfrf = _conflict_lfrf  # type: ignore[method-assign]
 
 
 def run(config_path: str) -> None:

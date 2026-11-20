@@ -39,7 +39,7 @@ h2 { font-size: 15px; margin: 0 0 10px; display: flex; gap: 10px; align-items: c
 h3 { font-size: 13px; margin: 12px 0 4px; }
 pre { margin: 0; white-space: pre-wrap; font: 12px ui-monospace, Menlo, monospace; color: var(--muted); max-height: 220px; overflow: auto; }
 .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
-form { display: flex; gap: 8px; align-items: end; flex-wrap: wrap; }
+.form { display: flex; gap: 8px; align-items: end; flex-wrap: wrap; }
 label { display: inline-flex; gap: 6px; align-items: center; }
 input { font: inherit; padding: 4px 6px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--text); }
 button { font: inherit; padding: 4px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--text); cursor: default; }

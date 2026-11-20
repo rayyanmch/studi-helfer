@@ -14,6 +14,7 @@ RUNS = DATA_DIR / "runs.jsonl"
 STATE = DATA_DIR / "state.json"
 LOGS = DATA_DIR / "logs"
 LOCK = DATA_DIR / ".lock"
+VERSIONS = DATA_DIR / "versions"  # alte Fassungen geänderter Dateien
 
 BASE_URL = "https://www.ilias.uni-koeln.de/ilias"
 CLIENT_ID = "uk"

@@ -1,7 +1,8 @@
 // Schlichtes Testfenster für window.studi. Kein Design – das macht Mika in web/.
 /* global window, document, URLSearchParams */
 
-const studi = window.studi;
+const api = window.studi;
+console.log("[test] Skript geladen, window.studi:", Boolean(api));
 const $ = (id) => document.getElementById(id);
 let courses = [];
 let targetDir = null;
@@ -26,7 +27,7 @@ function el(tag, attrs = {}, ...children) {
 const SEMESTER = { current: "aktuell", past: "alt", unknown: "?" };
 
 async function refreshStatus() {
-  const s = await studi.getStatus();
+  const s = await api.getStatus();
   targetDir = s.targetDir || s.defaultTargetDir;
   $("target").textContent = targetDir;
   $("status").textContent = JSON.stringify(s, null, 2);
@@ -77,7 +78,7 @@ function renderSync(state) {
 }
 
 async function renderFiles() {
-  const list = await studi.getFiles();
+  const list = await api.getFiles();
   const box = $("files");
   if (!list.length) {
     box.textContent = "Noch keine Dateien.";
@@ -94,8 +95,8 @@ async function renderFiles() {
             { class: "file" },
             el("span", { class: f.isNew ? "name new" : "name" }, `${f.isNew ? "● " : ""}${f.name}`),
             el("span", { class: "meta" }, `${f.size} · ${f.updated}`),
-            el("button", { onclick: () => studi.openFile(f.path) }, "Öffnen"),
-            el("button", { onclick: () => studi.revealFile(f.path) }, "Im Finder zeigen"),
+            el("button", { onclick: () => api.openFile(f.path) }, "Öffnen"),
+            el("button", { onclick: () => api.revealFile(f.path) }, "Im Finder zeigen"),
           ),
         ),
       ]),
@@ -103,10 +104,9 @@ async function renderFiles() {
   );
 }
 
-$("login-form").addEventListener("submit", async (e) => {
-  e.preventDefault();
+async function doLogin() {
   msg("login-msg", "Melde an …");
-  const res = await studi.login($("username").value, $("password").value);
+  const res = await api.login($("username").value, $("password").value);
   $("password").value = "";
   if (res.ok) {
     msg("login-msg", `Angemeldet als ${res.username}.`);
@@ -114,10 +114,14 @@ $("login-form").addEventListener("submit", async (e) => {
   } else {
     msg("login-msg", `${res.message} (${res.code})`, true);
   }
+}
+$("login").addEventListener("click", doLogin);
+$("password").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") doLogin();
 });
 
 $("choose").addEventListener("click", async () => {
-  const dir = await studi.chooseFolder();
+  const dir = await api.chooseFolder();
   if (dir) {
     targetDir = dir;
     $("target").textContent = dir;
@@ -126,7 +130,7 @@ $("choose").addEventListener("click", async () => {
 
 $("load-courses").addEventListener("click", async () => {
   msg("setup-msg", "Lade Kurse …");
-  const res = await studi.listCourses();
+  const res = await api.listCourses();
   if (!res.ok) return msg("setup-msg", `${res.message} (${res.code})`, true);
   courses = res.courses;
   renderCourses();
@@ -135,32 +139,32 @@ $("load-courses").addEventListener("click", async () => {
 
 $("save-setup").addEventListener("click", async () => {
   if (!courses.length) return msg("setup-msg", "Erst Kurse laden.", true);
-  const res = await studi.saveSetup({ targetDir, courses });
+  const res = await api.saveSetup({ targetDir, courses });
   msg("setup-msg", res.ok ? "Gespeichert." : res.message, !res.ok);
   await refreshStatus();
 });
 
 $("sync").addEventListener("click", async () => {
-  const res = await studi.startSync();
+  const res = await api.startSync();
   msg("sync-msg", res.ok ? "Sync gestartet." : res.message, !res.ok);
 });
 
 $("sched-save").addEventListener("click", async () => {
-  const res = await studi.setSchedule({ enabled: $("sched-on").checked, time: $("sched-time").value });
+  const res = await api.setSchedule({ enabled: $("sched-on").checked, time: $("sched-time").value });
   msg("sync-msg", res.ok ? (res.enabled ? `Täglich um ${res.time}.` : "Täglicher Sync aus.") : res.message, !res.ok);
 });
 
 $("files-reload").addEventListener("click", renderFiles);
 
 $("logout").addEventListener("click", async () => {
-  await studi.logout();
+  await api.logout();
   courses = [];
   renderCourses();
   await refreshStatus();
 });
 
 let wasRunning = false;
-studi.onSyncState((state) => {
+api.onSyncState((state) => {
   renderSync(state);
   if (wasRunning && !state.running) {
     renderFiles();

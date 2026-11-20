@@ -18,11 +18,12 @@
 
       <section id="login-box">
         <h2>ILIAS-Anmeldung</h2>
-        <form id="login-form">
-          <label>Uni-Kennung <input id="username" autocomplete="username" required /></label>
-          <label>Passwort <input id="password" type="password" autocomplete="current-password" required /></label>
-          <button type="submit">Anmelden</button>
-        </form>
+        <!-- Bewusst kein <form>: ohne Skript könnte ein Formular Kennung und Passwort in die Seitenadresse schreiben. -->
+        <div id="login-form" class="form">
+          <label>Uni-Kennung <input id="username" autocomplete="username" /></label>
+          <label>Passwort <input id="password" type="password" autocomplete="current-password" /></label>
+          <button id="login" type="button">Anmelden</button>
+        </div>
         <p class="hint">Deine Zugangsdaten bleiben im Schlüsselbund deines Macs.</p>
         <p id="login-msg" class="msg"></p>
       </section>

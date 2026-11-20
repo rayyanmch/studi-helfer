@@ -17,6 +17,8 @@ const TEST_MODE = process.argv.includes("--test");
 const TEST_PAGE = path.join(__dirname, "test", "index.html");
 
 app.setName("Studi-Helfer");
+// Chromium-Daten (Cache usw.) in einen Unterordner, damit sie nicht zwischen config.json & Co. liegen.
+app.setPath("userData", path.join(backend.DATA_DIR, "Electron"));
 
 /** @type {Set<BrowserWindow>} */
 const windows = new Set();
@@ -42,6 +44,9 @@ function createWindow() {
   windows.add(win);
   win.on("closed", () => windows.delete(win));
   win.once("ready-to-show", () => win.show());
+  if (process.env.STUDI_DEBUG) {
+    win.webContents.on("console-message", (e) => console.log(`[fenster] ${e.level}: ${e.message}`));
+  }
 
   // Links nach außen im Browser öffnen, nie im App-Fenster.
   win.webContents.setWindowOpenHandler(({ url }) => {
@@ -76,7 +81,10 @@ function allowedUrl(url) {
 function handle(channel, fn) {
   ipcMain.handle(channel, async (event, ...args) => {
     const url = event.senderFrame?.url ?? "";
-    if (!allowedUrl(url)) throw new Error(`Nicht erlaubt: ${url}`);
+    if (!allowedUrl(url)) {
+      console.error(`[ipc] ${channel} abgelehnt von ${url.split("?")[0]}`);
+      throw new Error("Nicht erlaubt");
+    }
     return fn(...args);
   });
 }
