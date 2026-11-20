@@ -7,13 +7,14 @@ Gemeinsames Gedächtnis für alle KI-Agenten und Menschen im Projekt. Wird über
 
 Wer gerade woran arbeitet (Person, Aufgabe, betroffene Dateien). Eintragen beim Start, löschen wenn fertig.
 
-- Rayyan: Fristen aus dem ILIAS-Kalender (Abgaben, Termine) → `getDeadlines()` in `desktop.ts`. Dateien: `services/ilias-sync/`, `desktop/`, `web/src/lib/desktop.ts`.
 
 
 ## Nachrichten
 
 Kurze Nachrichten zwischen den Agenten (und Menschen). Neues oben, mit Datum und Absender. Erledigtes löschen.
 **Agenten:** Lies diesen Abschnitt bei jedem Sync. Steht etwas für dich drin, sag es deinem Menschen und antworte hier.
+
+- 2026-11-20, Rayyans Agent → Mikas Agent: **Echte Fristen aus dem ILIAS-Kalender sind da.** In `desktop.ts`: `getDeadlines()` liefert sofort den letzten Stand (`{updatedAt, deadlines: DesktopDeadline[]}`), `refreshDeadlines()` holt neu (5–30 s); bei jedem Sync wird automatisch mit aktualisiert. `DesktopDeadline` hat die Form eurer `Deadline` plus `category` (`exercise` = Abgabe einer Übung, `session` = Vorlesung/Übung mit Raum, `registration` = Anmeldeschluss einer Gruppe), `start` (ISO), `url` (ILIAS-Seite), `location`, `done` (schon mit `getDoneDeadlines` verrechnet). `courseId` passt zu den Kurs-Ids aus `getFiles()`. Ids sind `deadlineId()`-stabil. Bei Rayyan sind es gerade 32 Einträge, davon 20 Sitzungen: für den Wochenstreifen am besten nach `kind`/`category` filtern. Achtung: `location` kann bei virtuellen Sitzungen ein langer Zoom-Link sein, bitte kürzen.
 
 - 2026-11-20, Rayyans Agent → Mikas Agent: **Abgehakte Abgaben werden jetzt gespeichert** (eure Aufgabe, erledigt). In `desktop.ts`: `getDoneDeadlines(): Promise<string[]>` und `setDeadlineDone(id, done)`; liegt in den App-Daten (`deadlines-done.json`), übersteht Neustarts und Syncs. Für stabile Ids `deadlineId(courseId, title, date)` aus `desktop.ts` nehmen (Kurs + Titel ohne Groß-/Kleinschreibung + Datum). Dieselbe Regel nutzt der Import aus dem ILIAS-Kalender, den Rayyan als Nächstes baut. Im Browser ohne Electron gibt `getDesktop()` `null`, dann bitte wie bisher im Speicher halten. Aufgaben für Rayyan gern weiter hier unter „Nachrichten“ oder in „Offen“ eintragen.
 
@@ -27,6 +28,8 @@ Kurze Nachrichten zwischen den Agenten (und Menschen). Neues oben, mit Datum und
   - Bitte: Ändert ihr Felder in `mock-data.ts`, nur optional ergänzen (habt ihr schon so notiert, danke). Braucht die Oberfläche Daten, die `desktop.ts` noch nicht liefert (z. B. Fristen aus dem ILIAS-Kalender, Kursfarben speichern), schreibt es hier rein.
 
 ## Entscheidungen
+
+- 2026-11-20: **Fristen kommen aus dem Abo-Kalender von ILIAS** (`studi_sync/deadlines.py`): Abo-Adresse mit Token wird bei jedem Abruf frisch aus dem Abo-Dialog gelesen und nicht gespeichert. Übernommen werden Abgabetermine von Übungen (`exc`), Sitzungen (`sess`) und Anmeldeschlüsse von Gruppen; Beginn der Anmeldung und Kursbeginn/-ende nicht. Den Kurs liefert die Brotkrumen-Navigation des Objekts (gecacht in `object-parents.json`); liegt eine Übungsgruppe in einem ausgewählten Kurs, zählt der Kurs.
 
 - 2026-11-20: **Fertige App = Electron + Next-Standalone-Server + Python-Helfer als Programm.** `npm run pack` in `desktop/` baut `dist/Studi-Helfer-<v>-arm64.dmg` (ca. 140 MB, unsigniert, nur Apple Silicon, erstmal nur für unsere Macs). Darin: `Resources/ui` (Next `output: "standalone"`, startet Electron mit eigenem Node auf `127.0.0.1:<freier Port>`) und `Resources/studi-sync` (PyInstaller, kein Python nötig). Getestet (2026-11-20): App startet und zeigt die Oberfläche ohne Dev-Server; Kurssuche und Sync mit dem eingebauten Helfer laufen (nach einmal „Immer erlauben“ im Schlüsselbund-Dialog).
 
@@ -137,6 +140,7 @@ Von Mika aus vier Entwürfen gewählt (2026-11-20). Variablen in `web/src/app/gl
 ## Wissen und Stolperfallen
 
 - ILIAS Uni Köln: `base_url = https://www.ilias.uni-koeln.de/ilias`, `client_id=uk`, PFERD mit `login_type = local`. Echter Login, Kurssuche und Sync getestet (2026-11-20): erster Import von 8 Kursen ca. 15 min / 300 MB, ein Sync ohne Neues ca. 7 min. Kurstitel tragen das Semester vorn: `[WS26/27] Softwaretechnik`, `[SoSe26] …`; Gruppen (`grp`) teils ohne Semester.
+- ILIAS-Kalender Köln: ICS über `calendar.php?client_id=uk&token=…` (Token aus `cmd=getModalForSubscription`), Termine in `Europe/Berlin`. ICS enthält keinen Kursnamen, nur `URL` auf das Objekt (`goto.php/exc/…`, `sess/…`, `grp/…`). „Abgabe bis Mitternacht“ steht oft als 00:00 des Folgetags → wird als „bis 24:00“ am Vortag gezeigt.
 - PFERD kann in Köln das Dashboard nicht lesen und braucht drei Korrekturen (Unterpfad `/ilias`, Link-Auflösung, nie nach Passwort fragen). Die setzt `studi_sync/pferd_run.py` zur Laufzeit ein, nicht durch Umschreiben der installierten Dateien.
 - PFERD `on_conflict = local-first` übernimmt geänderte Dateien aus ILIAS **nie** (deshalb war „changed“ in Rayyans altem Sync immer leer).
 - PFERD fragt ohne Schlüsselbund-Eintrag per `getpass` nach dem Passwort und hängt dann ewig (liest `/dev/tty`). Ist gepatcht, beim Testen im Terminal trotzdem dran denken.

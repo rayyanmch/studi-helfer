@@ -24,6 +24,8 @@ contextBridge.exposeInMainWorld("studi", {
   openFile: call("studi:openFile"),
   revealFile: call("studi:revealFile"),
   setSchedule: call("studi:setSchedule"),
+  getDeadlines: call("studi:getDeadlines"),
+  refreshDeadlines: call("studi:refreshDeadlines"),
   getDoneDeadlines: call("studi:getDoneDeadlines"),
   setDeadlineDone: call("studi:setDeadlineDone"),
   onSyncState(callback) {

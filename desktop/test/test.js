@@ -162,6 +162,38 @@ $("sched-save").addEventListener("click", async () => {
 
 $("files-reload").addEventListener("click", renderFiles);
 
+async function renderDeadlines() {
+  const { updatedAt, deadlines } = await api.getDeadlines();
+  const box = $("deadlines");
+  if (!deadlines.length) {
+    box.textContent = updatedAt ? "Keine Fristen." : "Noch nicht geholt.";
+    return;
+  }
+  box.replaceChildren(
+    ...deadlines.map((d) => {
+      const check = el("input", { type: "checkbox", checked: d.done });
+      check.addEventListener("change", async () => {
+        await api.setDeadlineDone(d.id, check.checked);
+        renderDeadlines();
+      });
+      return el(
+        "div",
+        { class: "file" },
+        check,
+        el("span", { class: d.done ? "name meta" : "name" }, `${d.date} ${d.time} · ${d.title}`),
+        el("span", { class: "meta" }, `${d.kind} · ${d.courseId}${d.location ? " · " + d.location : ""}`),
+      );
+    }),
+  );
+}
+
+$("deadlines-refresh").addEventListener("click", async () => {
+  msg("deadlines-msg", "Hole Fristen …");
+  const res = await api.refreshDeadlines();
+  msg("deadlines-msg", res.ok ? `${res.count} Fristen/Termine.` : res.message, !res.ok);
+  renderDeadlines();
+});
+
 $("logout").addEventListener("click", async () => {
   await api.logout();
   courses = [];
@@ -185,4 +217,4 @@ if (hinweis) {
   $("hinweis").textContent = `${hinweis} Zeige das Testfenster. (Oberfläche starten: npm run dev in web/)`;
 }
 
-refreshStatus().then(renderFiles);
+refreshStatus().then(renderFiles).then(renderDeadlines);

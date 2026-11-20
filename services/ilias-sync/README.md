@@ -13,6 +13,7 @@ Alle Ausgaben sind JSON-Zeilen (`{"type":"result",…}` oder `{"type":"error","c
 ```bash
 .venv/bin/python -m studi_sync login --username KENNUNG   # Passwort über stdin, landet im Schlüsselbund
 .venv/bin/python -m studi_sync courses [--dump]            # eigene Kurse (--dump speichert die HTML-Seiten zur Fehlersuche)
+.venv/bin/python -m studi_sync deadlines                  # Fristen aus dem ILIAS-Kalender → deadlines.json
 .venv/bin/python -m studi_sync sync [--auto]               # ein Sync-Lauf
 .venv/bin/python -m studi_sync logout --username KENNUNG
 ```
@@ -23,6 +24,7 @@ Alle Ausgaben sind JSON-Zeilen (`{"type":"result",…}` oder `{"type":"error","c
 - **Kurse finden**: PFERD kann das Dashboard in Köln nicht lesen. `ilias.py` meldet sich selbst an (wie PFERD) und liest „Meine Kurse und Gruppen“. Das Semester wird aus Titel/Zeitraum erraten (`WiSe 2026/27`, `WS26_27`, `SoSe 2026`, Datumsbereiche); Kurse des aktuellen Semesters werden vorgeschlagen.
 - **Sync**: Aus `config.json` (schreibt die App) wird `pferd.cfg` erzeugt, ein Crawler pro Kurs. Ordner: `<Zielordner>/<Kurs>/…` wie in ILIAS, ohne versteckte Dateien und HTML-Seiten. `on_conflict = no-delete`: neue Fassungen aus ILIAS werden übernommen, lokal wird nie etwas gelöscht. Vorher sichert `pferd_run.py` die alte Fassung nach `versions/` (klappt das nicht, bleibt die lokale Datei). Videos pro Kurs abschaltbar (Standard aus).
 - **Köln-Korrekturen für PFERD** (`pferd_run.py`): werden zur Laufzeit eingesetzt, nicht in die installierten Dateien geschrieben (ILIAS unter `/ilias`, Link-Auflösung bei `links = ignore`, nie interaktiv nachfragen, alte Fassung sichern).
+- **Fristen** (`deadlines.py`): Abo-Kalender von ILIAS (ICS), Abgaben aus Übungen, Sitzungen, Anmeldeschlüsse; Kurs über die Brotkrumen-Navigation des Objekts. Wird nach jedem Sync mit aktualisiert.
 - **Täglicher Lauf**: launchd-Job `de.studihelfer.sync` (richtet die App ein) startet `sync --auto`: Zufallsverzögerung, wartet auf Netz, bis zu 3 Versuche, Mitteilung bei neuen Dateien.
 
 Daten liegen in `~/Library/Application Support/Studi-Helfer/`: `config.json`, `pferd.cfg`, `state.json` (laufender Sync), `runs.jsonl` (ein Eintrag pro Lauf), `versions/` (alte Fassungen geänderter Dateien), `logs/`.

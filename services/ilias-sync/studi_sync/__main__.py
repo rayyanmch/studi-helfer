@@ -5,6 +5,7 @@
     logout --username KENNUNG    Entfernt den Schlüsselbund-Eintrag.
     has-credentials --username K Gibt es einen Schlüsselbund-Eintrag?
     courses [--dump]             Meldet sich an und listet die eigenen Kurse und Gruppen.
+    deadlines                    Fristen/Termine aus dem ILIAS-Kalender holen (→ deadlines.json).
     sync [--auto]                Ein Sync-Lauf (--auto: von launchd, mit Zufallsverzögerung,
                                  Netz-Wartezeit, Wiederholungen und Mitteilungen).
     pferd-run --config DATEI     Intern: PFERD mit Köln-Korrekturen starten.
@@ -72,6 +73,17 @@ def cmd_courses(args: argparse.Namespace) -> None:
     emit({"type": "result", "courses": list_courses(session, dump=args.dump)})
 
 
+def cmd_deadlines(args: argparse.Namespace) -> None:
+    from .deadlines import refresh
+    from .ilias import login
+
+    username = load_config().get("username")
+    if not username:
+        raise AppError("not_logged_in", "Noch nicht bei ILIAS angemeldet.")
+    result = refresh(login(username, _password_for(username)))
+    emit({"type": "result", "count": len(result["deadlines"]), "updatedAt": result["updatedAt"]})
+
+
 def cmd_sync(args: argparse.Namespace) -> None:
     from .sync import sync
 
@@ -94,6 +106,7 @@ def main() -> int:
     p = sub.add_parser("has-credentials"); p.add_argument("--username", required=True)
     p.set_defaults(fn=cmd_has_credentials)
     p = sub.add_parser("courses"); p.add_argument("--dump", action="store_true"); p.set_defaults(fn=cmd_courses)
+    p = sub.add_parser("deadlines"); p.set_defaults(fn=cmd_deadlines)
     p = sub.add_parser("sync"); p.add_argument("--auto", action="store_true"); p.set_defaults(fn=cmd_sync)
     p = sub.add_parser("pferd-run"); p.add_argument("--config", required=True); p.set_defaults(fn=cmd_pferd_run)
     args = parser.parse_args()

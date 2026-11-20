@@ -315,9 +315,20 @@ async function listFiles() {
   return courses;
 }
 
-// ------------------------------------------------------------------ Abgehakte Abgaben
+// ------------------------------------------------------------------ Fristen
 
 const DONE_DEADLINES = path.join(DATA_DIR, "deadlines-done.json");
+const DEADLINES = path.join(DATA_DIR, "deadlines.json");
+
+/** Fristen/Termine aus dem ILIAS-Kalender (letzter Stand, sofort verfügbar) plus abgehakt ja/nein. */
+function getDeadlines() {
+  const data = readJson(DEADLINES, { updatedAt: null, deadlines: [] });
+  const done = new Set(getDoneDeadlines());
+  return {
+    updatedAt: data.updatedAt ? data.updatedAt * 1000 : null,
+    deadlines: (data.deadlines ?? []).map((d) => ({ ...d, done: done.has(d.id) })),
+  };
+}
 
 /** Ids der abgehakten Fristen (bleiben über Neustarts und Syncs erhalten). */
 function getDoneDeadlines() {
@@ -422,6 +433,7 @@ async function scheduleLoaded() {
 }
 
 module.exports = {
+  getDeadlines,
   getDoneDeadlines,
   setDeadlineDone,
   DATA_DIR,

@@ -9,7 +9,7 @@
 //
 // Das Uni-Passwort geht nur an login() und landet im macOS-Schlüsselbund. Nie speichern oder loggen.
 
-import type { Course, CourseFile, Folder } from "./mock-data";
+import type { Course, CourseFile, Deadline, Folder } from "./mock-data";
 
 /** Fehlercodes, die die Oberfläche übersetzen sollte. */
 export type DesktopErrorCode =
@@ -88,6 +88,20 @@ export interface DesktopCourse extends Omit<Course, "folders"> {
   folders: DesktopFolder[]; // lecturer ist leer, total = Anzahl lokaler Dateien
 }
 
+/**
+ * Frist oder Termin aus dem ILIAS-Kalender. Form wie Deadline in mock-data.ts plus Extras.
+ * kind "abgabe" = Abgabetermin einer Übung; "termin" = Sitzung (Vorlesung/Übung mit Ort) oder Anmeldeschluss.
+ * time: "bis 23:55", "bis 24:00", "10:00" oder "ganztägig". date: "2026-11-23" (Berliner Zeit).
+ * Kommen nur für ausgewählte Kurse, ab 14 Tagen in der Vergangenheit.
+ */
+export interface DesktopDeadline extends Deadline {
+  category: "exercise" | "session" | "registration";
+  start: string; // ISO-Zeitpunkt, z. B. "2026-11-23T10:00:00+01:00"
+  url: string | null; // ILIAS-Seite (Übung/Sitzung), z. B. für „In ILIAS öffnen“
+  location: string | null; // Raum bei Sitzungen
+  done: boolean; // abgehakt (setDeadlineDone)
+}
+
 export interface SyncRun {
   id: string;
   start: number;
@@ -129,6 +143,10 @@ export interface StudiDesktop {
   setSchedule(schedule: { enabled: boolean; time?: string }): Promise<
     Ok<{ enabled: boolean; time?: string }> | Fail
   >;
+  /** Letzter Stand der Fristen (sofort, ohne Netz). Wird bei jedem Sync automatisch aktualisiert. */
+  getDeadlines(): Promise<{ updatedAt: number | null; deadlines: DesktopDeadline[] }>;
+  /** Fristen jetzt neu aus ILIAS holen (ca. 5–30 Sekunden). Danach getDeadlines() aufrufen. */
+  refreshDeadlines(): Promise<Ok<{ count: number }> | Fail>;
   /** Ids aller abgehakten Fristen. Lokal in den App-Daten gespeichert, übersteht Neustarts und Syncs. */
   getDoneDeadlines(): Promise<string[]>;
   /** Frist abhaken (done = true) oder wieder öffnen. Id am besten mit deadlineId() bilden. */

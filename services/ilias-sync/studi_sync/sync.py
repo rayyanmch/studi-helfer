@@ -308,6 +308,20 @@ def sync(auto: bool) -> dict[str, Any]:
     else:
         status = "ok"
 
+    # Fristen aus dem ILIAS-Kalender mit aktualisieren. Fehler hier lassen den Sync nicht scheitern.
+    if status in ("ok", "error"):
+        try:
+            import keyring
+
+            from .deadlines import refresh
+            from .ilias import login
+
+            password = keyring.get_password(KEYCHAIN_SERVICE, cfg["username"]) or ""
+            n = len(refresh(login(cfg["username"], password))["deadlines"])
+            log(f"Fristen aus dem ILIAS-Kalender: {n}")
+        except Exception as e:  # noqa: BLE001
+            log(f"Fristen konnten nicht aktualisiert werden: {type(e).__name__}: {e}")
+
     ended = time.time()
     record = {
         "id": str(int(run.started)), "start": run.started, "end": ended,

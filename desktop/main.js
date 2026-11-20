@@ -258,6 +258,13 @@ handle("studi:getFiles", () => backend.listFiles());
 handle("studi:openFile", openFile);
 handle("studi:revealFile", revealFile);
 handle("studi:setSchedule", setSchedule);
+handle("studi:getDeadlines", () => backend.getDeadlines());
+handle("studi:refreshDeadlines", async () => {
+  const res = await backend.runHelper(packaged(), ["deadlines"], { timeoutMs: 180_000 });
+  return res.type === "result"
+    ? { ok: true, count: res.count }
+    : { ok: false, code: res.code, message: res.message };
+});
 handle("studi:getDoneDeadlines", () => backend.getDoneDeadlines());
 handle("studi:setDeadlineDone", (id, done) => backend.setDeadlineDone(id, Boolean(done)));
 
