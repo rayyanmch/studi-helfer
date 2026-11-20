@@ -7,6 +7,7 @@ import { Login } from "./Login";
 import { Setup } from "./Setup";
 import { Overview } from "./Overview";
 import { DemoPanel } from "./DemoPanel";
+import { UpdateNotice } from "./UpdateNotice";
 
 export type Screen = "login" | "setup" | "import" | "overview";
 export type Problem = store.Problem;
@@ -80,6 +81,7 @@ function Shell({ first }: { first: Screen }) {
           }}
         />
       )}
+      {desktop && <UpdateNotice />}
       {!desktop && (
         <DemoPanel
           screen={screen}

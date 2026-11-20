@@ -29,6 +29,17 @@ contextBridge.exposeInMainWorld("studi", {
   getDoneDeadlines: call("studi:getDoneDeadlines"),
   setDeadlineDone: call("studi:setDeadlineDone"),
   refreshAiDeadlines: call("studi:refreshAiDeadlines"),
+  // Update-Knopf (desktop/lib/updater.js, Typen in web/src/lib/updates.ts)
+  updates: {
+    getState: call("studi:getUpdateState"),
+    check: call("studi:checkForUpdate"),
+    install: call("studi:installUpdate"),
+    onState(callback) {
+      const listener = (_event, state) => callback(state);
+      ipcRenderer.on("studi:updateState", listener);
+      return () => ipcRenderer.removeListener("studi:updateState", listener);
+    },
+  },
   onDeadlinesChanged(callback) {
     const listener = () => callback();
     ipcRenderer.on("studi:deadlinesChanged", listener);

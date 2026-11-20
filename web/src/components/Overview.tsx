@@ -20,6 +20,7 @@ import {
 import { Button, FileIcon, Notice, Spinner, Swatch, colorOf, nameOf, shortOf, tone } from "./ui";
 import { ImportPanel, jobProgress, useJob, type Job } from "./ImportJob";
 import { applyTheme, getTheme, type Theme } from "./theme";
+import { UpdateMenuItem } from "./UpdateNotice";
 import type { Problem } from "./AppShell";
 import { countFiles, countNew, type Course, type CourseFile, type Deadline } from "@/lib/mock-data";
 import * as store from "@/lib/app-store";
@@ -317,6 +318,7 @@ function ProfileMenu({ user, onEditCourses, onLogout }: { user: string; onEditCo
               </button>
             ))}
           </div>
+          <UpdateMenuItem className={item} onDone={() => setOpen(false)} />
           <div className="my-1 h-px bg-line" />
           <button
             role="menuitem"

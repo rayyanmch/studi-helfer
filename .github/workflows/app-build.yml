@@ -1,0 +1,89 @@
+# Baut bei jedem Push auf main die Mac-App und legt sie ins Release „latest“.
+# Der Update-Knopf in der App (desktop/lib/updater.js) holt sie von dort.
+# Erstinstallation: https://github.com/rayyanmch/studi-helfer/releases/tag/latest → Studi-Helfer-arm64.dmg
+name: Mac-App bauen
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "**/*.md"
+  workflow_dispatch:
+
+# Immer nur ein Build; kommt währenddessen ein neuer Push, wird der danach gebaut (ältere Wartende entfallen).
+concurrency:
+  group: app-build
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-15 # Apple Silicon
+    timeout-minutes: 40
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: "false" # unsigniert
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            web/package-lock.json
+            desktop/package-lock.json
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Python-Helfer einrichten
+        run: services/ilias-sync/setup.sh
+
+      - name: Pakete installieren
+        run: |
+          (cd web && npm ci)
+          (cd desktop && npm ci)
+
+      - name: App bauen
+        run: cd desktop && npm run pack
+
+      - name: Dateien fürs Release
+        run: |
+          set -euo pipefail
+          cd desktop/dist
+          ditto -c -k --sequesterRsrc --keepParent mac-arm64/Studi-Helfer.app Studi-Helfer-arm64.zip
+          cp Studi-Helfer-*-arm64.dmg Studi-Helfer-arm64.dmg
+          node -e '
+            const fs = require("fs");
+            const { execFileSync } = require("child_process");
+            const git = (...a) => execFileSync("git", a, { encoding: "utf8" }).trim();
+            fs.writeFileSync("latest.json", JSON.stringify({
+              sha: process.env.GITHUB_SHA,
+              committedAt: git("log", "-1", "--format=%cI"),
+              message: git("log", "-1", "--format=%s"),
+              zip: "Studi-Helfer-arm64.zip",
+              size: fs.statSync("Studi-Helfer-arm64.zip").size,
+              builtAt: new Date().toISOString(),
+            }, null, 2));
+          '
+          cat latest.json
+
+      - name: Release „latest“ aktualisieren
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          cd desktop/dist
+          gh release view latest >/dev/null 2>&1 || gh release create latest --prerelease --target "$GITHUB_SHA" \
+            --title "Neueste Testversion" --notes "Wird bei jedem Push auf main neu gebaut."
+          # Erst die App, dann latest.json: So zeigt latest.json nie auf eine Datei, die es noch nicht gibt.
+          gh release upload latest Studi-Helfer-arm64.zip Studi-Helfer-arm64.dmg --clobber
+          gh release upload latest latest.json --clobber
+          gh release edit latest --notes "Stand: $(git log -1 --format='%h %s') ($(git log -1 --format=%cI))
+
+          Erstinstallation: Studi-Helfer-arm64.dmg laden, App in „Programme“ ziehen, beim ersten Öffnen Rechtsklick → Öffnen.
+          Danach aktualisiert sich die App über „Check for updates“ im Menü oben links."

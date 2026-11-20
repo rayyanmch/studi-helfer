@@ -13,6 +13,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const backend = require("./lib/backend");
 const { startBundledUi } = require("./lib/ui-server");
+const updater = require("./lib/updater");
 
 let uiUrl = process.env.STUDI_UI_URL || "http://localhost:3000";
 let uiServer = null;
@@ -274,6 +275,8 @@ handle("studi:refreshDeadlines", async () => {
 handle("studi:refreshAiDeadlines", () => runAiDeadlines());
 handle("studi:getDoneDeadlines", () => backend.getDoneDeadlines());
 handle("studi:setDeadlineDone", (id, done) => backend.setDeadlineDone(id, Boolean(done)));
+// Update-Knopf: neueste Fassung von GitHub (lib/updater.js)
+updater.register(handle, () => windows);
 
 // ------------------------------------------------------------------ Sync-Stand an die Fenster schicken
 
