@@ -27,6 +27,7 @@ import { ModuleView } from "./ModuleView";
 import { openEvent, openNewEvent } from "./EventDialog";
 import { MensaView } from "./MensaView";
 import { Welcome } from "./Welcome";
+import { MensaToday } from "./MensaToday";
 import { matches, searchTerms } from "@/lib/search";
 import { MailView } from "./MailView";
 import { Accounts } from "./Accounts";
@@ -676,7 +677,7 @@ function WeekView({
                   : open.length === 0
                   ? "All done. No open deadlines in the next 7 days."
                   : `${open.length} open ${open.length === 1 ? "deadline" : "deadlines"} in ${kurse} ${kurse === 1 ? "course" : "courses"}.`}
-                {first && ` Next up: ${bare(first.title)} on ${LONG[new Date(parseDay(first.date)).getUTCDay()]}.`}
+                {first && ` Next up: ${bare(first.title)} ${daysFromToday(first.date) === 0 ? "today" : daysFromToday(first.date) === 1 ? "tomorrow" : `on ${LONG[new Date(parseDay(first.date)).getUTCDay()]}`}.`}
                 {nextExam && ` Next exam: ${shortOf(courseById(nextExam.courseId)!)} ${inDays(daysFromToday(nextExam.date))}.`}
               </>
             )}
@@ -763,6 +764,8 @@ function WeekView({
           Settings, or use “Add event” above.
         </p>
       )}
+
+      {range === "week" && <MensaToday onOpen={() => onOpen("mensa")} />}
 
       <div className="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-2">
         <section aria-labelledby="neu-titel">
