@@ -73,6 +73,8 @@ import {
   setWeekReviewed,
   hiddenWeeksOf,
   minutesFor,
+  quickSheet,
+  sheetFor,
 } from "@/lib/study";
 import { type Week, ROLE_LABEL, lectureWeek, semesterStart, weekLabel, weeksOf } from "@/lib/weeks";
 
@@ -313,6 +315,8 @@ function Home({
 
       {!anyCards && <HowItWorks />}
 
+      {anyCards && <ThisWeekSheets courses={courses} onError={onError} />}
+
       <CatchUp courses={courses} onDeck={onDeck} />
 
       {/* Karteikästen */}
@@ -357,6 +361,65 @@ function Home({
         something looks off.
       </p>
     </>
+  );
+}
+
+/** „This week on one page“: je Kurs ein Klick für den Einseiter der aktuellen Woche (oder öffnen, wenn es ihn schon gibt). */
+function ThisWeekSheets({ courses, onError }: { courses: Course[]; onError: (m: string | null) => void }) {
+  return (
+    <section aria-label="This week on one page" className="rounded-[14px] bg-surface p-4">
+      <div className="mb-2 flex items-baseline gap-2">
+        <h2 className="flex-1 text-[15px] font-bold">This week on one page</h2>
+        <span className="text-[12px] text-muted">The exam-relevant essentials of each course, as a PDF</span>
+      </div>
+      <ul className="flex flex-col">
+        {courses.map((c) => (
+          <QuickWeekRow key={c.id} course={c} onError={onError} />
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function QuickWeekRow({ course, onError }: { course: Course; onError: (m: string | null) => void }) {
+  const study = useStudy();
+  const weeks = useWeeks(course);
+  const week = weeks.find((w) => w.current && w.kind === "week");
+  const mathMode = useMathMode(course, studyFiles(course).map((f) => study.files[fileKey(f)]));
+  if (!week) return null;
+  const existing = sheetFor(study.sheets, course.id, week.key);
+  const color = colorOf(course);
+  return (
+    <li className="flex items-center gap-3 border-b border-line-soft py-2 last:border-0">
+      <Swatch color={color} size={9} />
+      <span className="min-w-0 flex-1 truncate text-[13px]">
+        <strong className="font-semibold">{course.name}</strong>
+        <span className="text-muted"> · Week {week.n}{week.title ? ` · ${week.title}` : ""}</span>
+      </span>
+      {existing ? (
+        <Button
+          className="h-8"
+          onClick={async () => {
+            const msg = await openSheet(existing.id);
+            if (msg) onError(msg);
+          }}
+        >
+          <FileText size={13} aria-hidden /> Open one-pager
+        </Button>
+      ) : (
+        <Button
+          className="h-8"
+          disabled={study.available === false || study.sheetRun.running}
+          onClick={async () => {
+            onError(null);
+            const res = await quickSheet(course, [week], { kind: "week", math: mathMode.math, subject: subjectOf(course, mathMode.math) });
+            if (res.error) onError(res.error);
+          }}
+        >
+          <NotebookPen size={13} aria-hidden /> Make one-pager
+        </Button>
+      )}
+    </li>
   );
 }
 
@@ -642,6 +705,14 @@ function CourseDeck({
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <Button
+            className="h-9 px-3.5"
+            disabled={study.available === false || !docs.length}
+            onClick={() => onNewSheet(course.id, weeks.filter((w) => w.current).map((w) => w.key))}
+            title="Make a study sheet (PDF) from the weeks you choose"
+          >
+            <NotebookPen size={14} aria-hidden /> Study sheet
+          </Button>
           <Button variant="primary" className="h-9 px-4" disabled={!todays.length} onClick={() => onStart(todays, { practice: false, size: 20, title: `${course.name} · today` })}>
             {todays.length ? `Learn today · ${todays.length}` : deckCards.length ? "All done for today" : "Learn today"}
           </Button>
@@ -705,6 +776,8 @@ function CourseDeck({
           <CardList cards={deckCards} colorOf={() => color} />
         </section>
       )}
+
+      <CourseSheets course={course} weeks={visibleWeeks} math={mathMode.math} onError={onError} />
 
       <div className="flex flex-wrap items-center gap-2">
         <Segmented
@@ -824,6 +897,7 @@ function WeekCard({
             <span className="mt-0.5 block text-right text-[11px] text-muted">{pct}% learned</span>
           </span>
         )}
+        <WeekSheetButton course={course} week={week} />
         {act.length > 0 ? (
           <Button className="h-8" onClick={() => (todays.length ? onLearn(todays, false) : onLearn(act, true))} title={todays.length ? "Today’s cards of this week" : "Nothing due, practice anyway"}>
             {todays.length ? `Learn · ${todays.length}` : "Practice"}
@@ -837,7 +911,7 @@ function WeekCard({
           label={`More for ${weekLabel(week, false)}`}
           items={[
             { label: "Practice all cards of this week", disabled: !act.length, onClick: () => onLearn(act, true) },
-            { label: "Study sheet for this week…", disabled: study.available === false || !docs.length, onClick: onSheet },
+            { label: "Custom study sheet for this week…", hint: "Choose parts, length and style", disabled: study.available === false || !docs.length, onClick: onSheet },
             { label: missing.length ? `Prepare ${missing.length} missing ${missing.length === 1 ? "file" : "files"}` : "All files prepared", disabled: !missing.length || study.job.running, onClick: () => onSummarize(missing) },
             "sep",
             hidden
@@ -865,6 +939,76 @@ function WeekCard({
         </ul>
       )}
     </article>
+  );
+}
+
+/** Knopf an jeder Woche: Einseiter mit einem Klick erstellen bzw. öffnen. */
+function WeekSheetButton({ course, week }: { course: Course; week: Week }) {
+  const study = useStudy();
+  const mathMode = useMathMode(course, studyFiles(course).map((f) => study.files[fileKey(f)]));
+  const existing = sheetFor(study.sheets, course.id, week.key);
+  const docs = week.files.filter((x) => STUDY_FILE.test(x.file.name) && isStudyDoc(x.type));
+  if (week.kind !== "week" || !docs.length) return null;
+  return existing ? (
+    <Button className="h-8" variant="plain" onClick={() => void openSheet(existing.id)} title={`Open “${existing.title}”`}>
+      <FileText size={13} aria-hidden /> Sheet
+    </Button>
+  ) : (
+    <Button
+      className="h-8"
+      variant="plain"
+      disabled={study.available === false || study.sheetRun.running}
+      onClick={() => void quickSheet(course, [week], { kind: "week", math: mathMode.math, subject: subjectOf(course, mathMode.math) })}
+      title="Make a one-page study sheet for this week (PDF)"
+    >
+      <NotebookPen size={13} aria-hidden /> One-pager
+    </Button>
+  );
+}
+
+/** Lernzettel dieses Kurses auf einen Blick, dazu der Klausur-Spickzettel (ganzer Kurs, 2–3 Seiten) mit einem Klick. */
+function CourseSheets({ course, weeks, math, onError }: { course: Course; weeks: Week[]; math: boolean; onError: (m: string | null) => void }) {
+  const study = useStudy();
+  const color = colorOf(course);
+  const sheets = study.sheets.filter((s) => s.moduleId === course.id);
+  const exam = sheetFor(study.sheets, course.id, null);
+  const cur = weeks.find((w) => w.current)?.n ?? 99;
+  const examWeeks = weeks.filter((w) => w.kind === "week" && (w.n ?? 0) <= cur);
+  const open = async (id: string) => {
+    const msg = await openSheet(id);
+    if (msg) onError(msg);
+  };
+  return (
+    <section aria-label="Study sheets of this course" className="flex flex-wrap items-center gap-2">
+      {exam ? (
+        <button onClick={() => void open(exam.id)} className="inline-flex h-9 items-center gap-2 rounded-[10px] px-3 text-[13px] font-semibold" style={{ background: tone(color), color: "var(--on-solid)" }}>
+          <GraduationCap size={14} aria-hidden /> Exam cheat sheet
+        </button>
+      ) : (
+        <button
+          disabled={study.available === false || study.sheetRun.running || !examWeeks.length}
+          onClick={async () => {
+            onError(null);
+            const res = await quickSheet(course, examWeeks, { kind: "exam", math, subject: subjectOf(course, math) });
+            if (res.error) onError(res.error);
+          }}
+          title="The most exam-relevant points of all weeks so far, on 2–3 pages"
+          className="inline-flex h-9 items-center gap-2 rounded-[10px] px-3 text-[13px] font-semibold disabled:opacity-40"
+          style={{ background: tone(color, "soft"), color: tone(color, "ink"), boxShadow: `inset 0 0 0 1px ${tone(color)}` }}
+        >
+          <GraduationCap size={14} aria-hidden /> Make exam cheat sheet
+        </button>
+      )}
+      {sheets
+        .filter((s) => s.id !== exam?.id)
+        .slice(0, 6)
+        .map((s) => (
+          <button key={s.id} onClick={() => void open(s.id)} title={s.title} className="inline-flex h-9 max-w-[260px] items-center gap-1.5 rounded-[10px] bg-surface px-3 text-[13px] hover:bg-hover">
+            <FileText size={13} className="shrink-0 text-muted" aria-hidden />
+            <span className="truncate">{s.title.replace(/^(Woche|Week) /, "W").replace(/:\s*/, " · ")}</span>
+          </button>
+        ))}
+    </section>
   );
 }
 
@@ -1155,7 +1299,7 @@ function Sheets({ courses, onNew, onError }: { courses: Course[]; onNew: () => v
         <button onClick={onNew} disabled={study.available === false} className="w-full rounded-[12px] border border-dashed border-line px-5 py-6 text-left hover:bg-hover">
           <span className="block font-semibold">Make your own study guide as a PDF</span>
           <span className="mt-1 block text-[13px] text-muted">
-            Pick lectures and choose what goes in: summaries, explanations, analogies, examples, review questions and more. Saved in your Uni folder.
+            One page per week with what matters for the exam, or a 2–3 page cheat sheet for the whole course. Saved in your Uni folder.
           </span>
         </button>
       ) : (
@@ -1218,17 +1362,17 @@ function Sheets({ courses, onNew, onError }: { courses: Course[]; onNew: () => v
   );
 }
 
-const PREFS_KEY = "studi.sheetPrefs";
+const PREFS_KEY = "studi.sheetPrefs2"; // neue Längen (Einseiter als Standard)
 
 function loadPrefs(): { include: Include; includeMath: Include; length: SheetLength } {
-  const fallback = { include: PRESETS[0].include, includeMath: MATH_PRESETS[1].include, length: "normal" as SheetLength };
+  const fallback = { include: PRESETS[0].include, includeMath: MATH_PRESETS[1].include, length: "short" as SheetLength };
   try {
     const raw = JSON.parse(localStorage.getItem(PREFS_KEY) ?? "null");
     if (raw && typeof raw === "object" && raw.include)
       return {
         include: { ...fallback.include, ...raw.include, summary: true },
         includeMath: { ...fallback.includeMath, ...(raw.includeMath ?? {}), summary: true },
-        length: raw.length ?? "normal",
+        length: raw.length ?? "short",
       };
   } catch {
     // Browser-Speicher nicht verfügbar
@@ -1409,9 +1553,9 @@ function NewSheet({
           value={length}
           onChange={(v) => setLength(v as SheetLength)}
           options={[
-            { value: "short", label: "Short · 2–3 pages" },
-            { value: "normal", label: "Normal · 4–7 pages" },
-            { value: "detailed", label: "Detailed · 8+ pages" },
+            { value: "short", label: "One page" },
+            { value: "normal", label: "Compact · 2–3 pages" },
+            { value: "detailed", label: "Detailed · 6+ pages" },
           ]}
         />
         <input
@@ -1424,7 +1568,7 @@ function NewSheet({
 
       <div className="sticky bottom-0 -mx-2 flex items-center gap-3 rounded-[12px] bg-bg/90 px-2 py-3 backdrop-blur">
         <span className="flex-1 text-[12px] text-muted">
-          Takes 1–3 minutes. You can keep using the app; the PDF opens by itself and is saved in your Uni folder under “Study sheets”.
+          {length === "short" ? "One page, only what matters for the exam. About 1 minute." : length === "normal" ? "2–3 pages. About 1–2 minutes." : "Everything in detail. 3–5 minutes."} The PDF opens by itself.
         </span>
         <Button variant="plain" onClick={onBack}>
           Cancel

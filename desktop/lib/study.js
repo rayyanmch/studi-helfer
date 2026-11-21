@@ -562,13 +562,14 @@ function createStudy({ packaged, broadcast, ...deps }) {
     return parts.length ? { ok: true, input: parts.join("\n\n") } : fail("ai_error", "These files couldn't be read.");
   }
 
-  async function createSheet({ moduleId, moduleName, paths, focus, include, length, accent, context, math, subject }) {
+  async function createSheet({ moduleId, moduleName, paths, focus, include, length, accent, context, math, subject, weeks, kind }) {
     math = Boolean(math);
     subject = ["business", "math", "cs", "law", "science", "humanities"].includes(subject) ? subject : math ? "math" : "business";
     if (sheetRunning) return fail("busy", "A study sheet is already being written.");
     const files = [...new Set((Array.isArray(paths) ? paths : []).filter(allowedPath))].slice(0, 30);
     if (!files.length) return fail("invalid", "Choose at least one file.");
     const inc = sheetLib.cleanInclude(include, math);
+    if (length === "short") inc.figures = false;
     const len = ["short", "normal", "detailed"].includes(length) ? length : "normal";
     const focusText = typeof focus === "string" && focus.trim() ? focus.trim().slice(0, 300) : null;
     sheetProgress = { startedAt: Date.now(), step: "reading" };
@@ -594,6 +595,7 @@ function createStudy({ packaged, broadcast, ...deps }) {
       });
       if (!res.ok) return res;
       sheetProgress.step = "pdf";
+      res.data = sheetLib.trim(res.data, len); // Längen hart einhalten (Einseiter bleibt eine Seite)
       const sheet = {
         id: crypto.randomUUID(),
         moduleId: String(moduleId || ""),
@@ -603,6 +605,8 @@ function createStudy({ packaged, broadcast, ...deps }) {
         context: typeof context === "string" ? context.slice(0, 120) : null,
         math,
         subject,
+        weeks: Array.isArray(weeks) ? weeks.map(String).slice(0, 30) : [],
+        kind: kind === "exam" ? "exam" : "week",
         include: inc,
         length: len,
         files: files.map((p) => ({ path: p, name: path.basename(p) })),

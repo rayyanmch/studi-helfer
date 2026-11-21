@@ -56,11 +56,42 @@ const MATH_RULES = [
   "The material is extracted PDF text, so symbols like overlines, hats or arrows may be missing. Silently write the correct notation; never mention the PDF, the extraction or missing symbols.",
 ].join(" ");
 
+// Längen: Studis wollen lernen, nicht lesen. „short“ = ein A4-Spickzettel (zweispaltig), „normal“ = 2–3 Seiten.
 const LENGTHS = {
-  short: "Keep it compact: about 2–3 pages in total, only the essentials.",
-  normal: "About 4–7 pages in total.",
-  detailed: "Be thorough: cover every important point of the material, 8–14 pages are fine.",
+  short:
+    "ONE PAGE ONLY (a cheat sheet, about 350–450 words in total): 2–3 parts, each with the 2–4 most exam-relevant facts. Telegraph style, no full paragraphs, no introductions.",
+  normal: "COMPACT: about 2–3 pages (roughly 900–1200 words in total), 3–4 parts. Short sentences, no filler.",
+  detailed: "DETAILED: cover every important point of the material; 6–12 pages are fine.",
 };
+
+/** Prüfungsfokus: gilt für alle Längen, damit auch „Detailed“ nicht ausufert. */
+const EXAM_FOCUS = [
+  "EXAM FOCUS: this sheet is for learning for the exam, not for reading.",
+  "Prioritize what the exam will ask: task types from the exercise sheets and old exams, definitions, formulas, models and lists the lecturer marks as important, typical traps.",
+  "Leave out: course organisation, history, motivation slides, long examples, anything repeated in another section.",
+  "Each point is one line where possible (max ~25 words). Prefer a table, list or diagram over a paragraph.",
+].join(" ");
+
+/** Harte Grenzen je Länge, falls die KI mehr liefert (Anzahl pro Abschnitt, Teile). */
+const CAPS = {
+  short: { parts: 3, each: 2, terms: 4, formulas: 3, definitions: 2, theorems: 1, methods: 1, examples: 1, intuition: 1, practice: 1, mistakes: 1, misconceptions: 2, steps: 4, rows: 5, visuals: 1, callouts: 1, bigPicture: 3 },
+  normal: { parts: 4, each: 3, terms: 6, formulas: 8, definitions: 5, theorems: 3, steps: 6, rows: 7, visuals: 2, callouts: 2, bigPicture: 4 },
+};
+
+function trim(data, length) {
+  const c = CAPS[length];
+  if (!c) return data;
+  const cap = (a, n) => (Array.isArray(a) ? a.slice(0, n) : a);
+  const parts = (data.parts || []).slice(0, c.parts).map((p) => {
+    const out = { ...p };
+    for (const k of Object.keys(out)) if (Array.isArray(out[k]) && k !== "sources") out[k] = cap(out[k], c[k] ?? c.each);
+    if (out.tables) out.tables = out.tables.map((t) => ({ ...t, rows: cap(t.rows, c.rows) }));
+    if (out.methods) out.methods = out.methods.map((m) => ({ ...m, steps: cap(m.steps, c.steps) }));
+    if (out.examples) out.examples = out.examples.map((e) => (typeof e === "object" && e ? { ...e, steps: cap(e.steps, c.steps) } : e));
+    return out;
+  });
+  return { ...data, parts, bigPicture: cap(data.bigPicture, c.bigPicture) };
+}
 
 const lead = { type: "object", properties: { lead: { type: "string" }, text: { type: "string" } }, required: ["lead", "text"], additionalProperties: false };
 const qa = { type: "object", properties: { q: { type: "string" }, a: { type: "string" } }, required: ["q", "a"], additionalProperties: false };
@@ -155,7 +186,8 @@ function mathPrompt({ moduleName, count, include, length, focus, context, candid
     `Course: ${moduleName || "unknown"}. Write a study guide for a math course from these ${count} file(s), marked F1…F${count}.`,
     context ? `The files belong to: ${context}. Start the title with it, e.g. "Woche 3–4: …" (in the language of the material).` : "",
     MATH_RULES,
-    "Structure it into 2–6 parts by topic, like a good tutor. Each part contains:",
+    EXAM_FOCUS,
+    "Structure it into parts by topic, like a good tutor. Each part contains:",
     ...on.map(([k, d]) => `- ${k}: ${d}`),
     include.practice ? (include.answers ? "- In practice, 'a' is the full solution." : "- In practice, leave 'a' empty.") : "",
     off.length ? `Leave these arrays empty in every part: ${off.join(", ")}.` : "",
@@ -175,11 +207,12 @@ function prompt({ moduleName, count, include, length, focus, context, subject, c
   return [
     `Course: ${moduleName || "unknown"}. Write a study guide ("Lernhilfe") from these ${count} file(s), marked F1…F${count}.`,
     context ? `The files belong to: ${context}. Start the title with it, e.g. "Woche 3–4: …" (in the language of the material).` : "",
-    "Structure it into 3–7 parts by topic (not by file), like a good tutor would. Each part contains:",
+    "Structure it into parts by topic (not by file), like a good tutor would. Each part contains:",
     ...on.filter(([k]) => k !== "bigPicture").map(([k, d]) => `- ${k}: ${d}`),
     include.questions && include.answers ? "- In questions, fill 'a' with a short model answer." : include.questions ? "- In questions, leave 'a' empty." : "",
     off.length ? `Leave these arrays empty in every part: ${off.join(", ")}.` : "",
     include.bigPicture ? `- bigPicture: ${SECTIONS.bigPicture}` : "Leave bigPicture empty.",
+    EXAM_FOCUS,
     "Use **bold** for key words inside texts. Tables only where they really help.",
     include.visuals ? V.visualPrompt({ subject, figures: include.figures, candidates }) : "Leave visuals empty in every part. CALLOUTS: 1–2 per part ('remember' for the key takeaway, 'warning' for traps, 'tip' only for exam tips from the material).",
     "sources: the file numbers and pages a part is based on.",
@@ -421,7 +454,7 @@ function sheetHtml(sheet, { moduleName, accent = "#22325c" }) {
   const date = new Date(sheet.createdAt).toLocaleDateString(sheet.language === "en" ? "en-US" : "de-DE", { day: "numeric", month: "long", year: "numeric" });
 
   return `<!doctype html><html lang="${sheet.language || "de"}"><head><meta charset="utf-8"><title>${esc(sheet.title)}</title><style>
-  @page { size: A4; margin: 18mm 17mm 18mm 17mm; }
+  @page { size: A4; margin: ${sheet.length === "short" ? "10mm 11mm 11mm 11mm" : sheet.length === "normal" ? "14mm 15mm 15mm 15mm" : "18mm 17mm 18mm 17mm"}; }
   * { box-sizing: border-box; }
   body { font: 10.5pt/1.55 -apple-system, "Helvetica Neue", Helvetica, Arial, sans-serif; color: #1d1d1f; margin: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .meta { font-size: 8.5pt; color: #6b7280; margin-bottom: 10px; display: flex; justify-content: space-between; }
@@ -445,6 +478,29 @@ function sheetHtml(sheet, { moduleName, accent = "#22325c" }) {
   .answer { margin-top: 3px; color: #374151; font-size: 9.5pt; } .answer span { font-weight: 650; color: #3a5ba0; }
   .sources { font-size: 8.5pt; color: #6b7280; margin-top: 8px; }
   .part { break-inside: auto; }
+  /* Kompakt (2–3 Seiten) */
+  body.normal { font-size: 9.8pt; line-height: 1.45; }
+  body.normal h1 { font-size: 18pt; } body.normal h2 { font-size: 12.5pt; margin-top: 14px; } body.normal h3 { font-size: 10.5pt; margin: 9px 0 4px; }
+  /* Einseiter: zweispaltiger Spickzettel */
+  body.short { font-size: 8.4pt; line-height: 1.32; }
+  body.short .meta { margin-bottom: 4px; font-size: 7.5pt; }
+  body.short h1 { font-size: 14pt; margin: 0 0 4px; padding-bottom: 4px; border-bottom-width: 1.5px; }
+  body.short .intro { font-size: 8.4pt; margin-bottom: 4px; }
+  body.short .cols { column-count: 2; column-gap: 6mm; column-rule: 1px solid #e3e7ee; }
+  body.short h2 { font-size: 10pt; margin: 6px 0 3px; padding-bottom: 2px; break-after: avoid; }
+  body.short h3 { font-size: 8.6pt; margin: 4px 0 2px; }
+  body.short p, body.short li { margin: 0 0 3px; } body.short ul, body.short ol { padding-left: 14px; margin-bottom: 4px; }
+  body.short table { font-size: 7.8pt; margin: 2px 0 5px; } body.short th, body.short td { padding: 2px 4px; }
+  body.short .box, body.short .callout { padding: 3px 7px; margin: 3px 0 5px; }
+  body.short figure.visual { margin: 3px 0 6px; } body.short figure.visual > svg, body.short figure.visual pre.mermaid > svg { max-height: 62mm; }
+  body.short .chain .step { font-size: 7.6pt; padding: 2px 6px; } body.short figcaption { font-size: 7.4pt; }
+  body.short .sources { font-size: 7pt; margin-top: 2px; }
+  body.short .part { break-inside: auto; }
+  body.short .box-h, body.short .callout .c-h { font-size: 7.6pt; margin-bottom: 1px; }
+  body.short .katex { font-size: 1em; } body.short .katex-display { margin: 2px 0; }
+  body.short table.formulas td { padding: 2px 4px; } body.short td.f-name { width: 24%; } body.short td.f-formula { width: 44%; }
+  body.short ol.steps li { margin: 1px 0; }
+  body.short .box, body.short .callout, body.short figure.visual, body.short table, body.short .example, body.short .method { break-inside: avoid-column; }
   .box { border-left: 3px solid ${accent}; background: #f4f6fa; border-radius: 3px; padding: 7px 11px; margin: 0 0 8px; break-inside: avoid; }
   .box.thm { border-left-color: #3a5ba0; background: #eef3fb; }
   .box-h { font-weight: 650; color: ${accent}; font-size: 9.5pt; margin-bottom: 2px; }
@@ -456,13 +512,15 @@ function sheetHtml(sheet, { moduleName, accent = "#22325c" }) {
   .wrong { font-weight: 650; color: #b3261e; } .right { font-weight: 650; color: #2f7a46; }
   .katex { font-size: 1.04em; } .katex-display { margin: 6px 0; }
   ${V.VISUAL_CSS}
-</style>${sheet.math ? `<link rel="stylesheet" href="${pathToFileURL(require.resolve("katex/dist/katex.min.css")).href}">` : ""}</head><body>
+</style>${sheet.math ? `<link rel="stylesheet" href="${pathToFileURL(require.resolve("katex/dist/katex.min.css")).href}">` : ""}</head><body class="${sheet.length || ""}">
   <div class="meta"><span>${esc(moduleName || "")}</span><span>${esc(date)} · ${L.made}</span></div>
-  ${parts.length > 1 ? `<nav class="toc"><p>${L.contents}</p><ol>${parts.map((p, i) => `<li><a href="#p${i}">${rich(p.title)}</a></li>`).join("")}${big ? `<li><a href="#big">${L.bigPicture}</a></li>` : ""}</ol></nav>` : ""}
+  ${parts.length > 3 && sheet.length !== "short" ? `<nav class="toc"><p>${L.contents}</p><ol>${parts.map((p, i) => `<li><a href="#p${i}">${rich(p.title)}</a></li>`).join("")}${big ? `<li><a href="#big">${L.bigPicture}</a></li>` : ""}</ol></nav>` : ""}
   <h1>${rich(sheet.title)}</h1>
   <p class="intro">${rich(sheet.intro)}</p>
+  <div class="cols">
   ${parts.map(partHtml).join("")}
   ${big}
+  </div>
   ${needsScript(sheet) ? V.pageScript() : ""}
 </body></html>`;
 }
@@ -522,4 +580,4 @@ async function renderPdf(BrowserWindow, sheet, { moduleName, accent, outFile }) 
   }
 }
 
-module.exports = { SUBJECT_LABELS: V.SUBJECT_LABELS, SECTIONS, SCHEMA, MATH_SECTIONS, MATH_SCHEMA, MATH_RULES, cleanInclude, prompt, mathPrompt, sheetHtml, renderPdf, upgrade, richMath };
+module.exports = { trim, SUBJECT_LABELS: V.SUBJECT_LABELS, SECTIONS, SCHEMA, MATH_SECTIONS, MATH_SCHEMA, MATH_RULES, cleanInclude, prompt, mathPrompt, sheetHtml, renderPdf, upgrade, richMath };

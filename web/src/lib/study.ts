@@ -113,6 +113,8 @@ export interface Sheet {
   parts?: { title: string }[];
   sections?: { heading: string }[]; // ältere Lernzettel
   math?: boolean;
+  weeks?: string[]; // Wochen-Keys, aus denen der Lernzettel gemacht ist
+  kind?: "week" | "exam"; // exam = Klausur-Spickzettel für den ganzen Kurs
 }
 
 export interface StudyJob {
@@ -165,6 +167,8 @@ export interface StudyApi {
     context?: string;
     math?: boolean;
     subject?: string;
+    weeks?: string[];
+    kind?: "week" | "exam";
   }): Promise<Ok<{ sheet: Sheet }> | Fail>;
   openSheet(id: string, reveal?: boolean): Promise<Ok<{ path: string }> | Fail>;
   deleteSheet(id: string): Promise<Ok>;
@@ -476,6 +480,8 @@ export async function createSheet(opts: {
   context?: string;
   math?: boolean;
   subject?: string;
+  weeks?: string[];
+  kind?: "week" | "exam";
 }): Promise<{ sheet?: Sheet; error?: string }> {
   const a = api();
   if (!a) return { error: "Study sheets work in the Mac app." };
@@ -490,6 +496,43 @@ export async function createSheet(opts: {
   if (!res.ok) return { error: res.message };
   set({ sheets: [res.sheet, ...state.sheets] });
   return { sheet: res.sheet };
+}
+
+/** Bausteine für Ein-Klick-Lernzettel: das Prüfungsrelevante, kompakt. */
+export const QUICK_INCLUDE: Include = on("terms", "tables", "misconceptions", "questions", "visuals");
+export const QUICK_INCLUDE_MATH: Include = onMath("definitions", "formulas", "methods", "examples", "mistakes", "visuals");
+
+/**
+ * Lernzettel ohne Baukasten: eine Woche auf einer Seite („One-pager“) oder der ganze Kurs als Klausur-Spickzettel
+ * (2–3 Seiten). Nimmt Vorlesungen, Texte und Übungsblätter der Wochen, Stil nach Fachrichtung.
+ */
+export async function quickSheet(course: Course, weeks: Week[], opts: { kind: "week" | "exam"; math: boolean; subject: string }) {
+  const paths = weeks
+    .flatMap((w) => w.files)
+    .filter((x) => STUDY_FILE.test(x.file.name) && isStudyDoc(x.type) && !state.unreadable[fileKey(x.file)])
+    .map((x) => fileKey(x.file));
+  if (!paths.length) return { error: "No readable files in this week yet." };
+  const exam = opts.kind === "exam";
+  const context = exam
+    ? `the whole course so far (${weeksText(weeks)}). Make it an exam cheat sheet: only what is most likely to be asked`
+    : weeks.map((w) => (w.kind === "week" ? `Week ${w.n}${w.title ? ` (${w.title})` : ""}` : weekLabel(w))).join(", ");
+  return createSheet({
+    moduleId: course.id,
+    moduleName: course.name,
+    paths,
+    include: opts.math ? QUICK_INCLUDE_MATH : QUICK_INCLUDE,
+    length: exam ? "normal" : "short",
+    context,
+    math: opts.math,
+    subject: opts.subject,
+    weeks: weeks.map((w) => w.key),
+    kind: opts.kind,
+  });
+}
+
+/** Vorhandener Lernzettel für diese Woche (zuletzt erstellt) bzw. der Klausur-Spickzettel eines Kurses. */
+export function sheetFor(sheets: Sheet[], courseId: string, weekKey: string | null) {
+  return sheets.find((s) => s.moduleId === courseId && (weekKey ? s.kind !== "exam" && s.weeks?.length === 1 && s.weeks[0] === weekKey : s.kind === "exam"));
 }
 
 export async function openSheet(id: string, reveal = false): Promise<string | null> {
