@@ -26,7 +26,7 @@ import {
   WifiOff,
   X,
 } from "lucide-react";
-import { Button, Notice, Spinner, Swatch, colorOf, examLabel, examPart, inDays, nameOf, shortOf, tone } from "./ui";
+import { Button, Notice, Spinner, Swatch, colorOf, examLabel, examPart, nameOf, shortOf, tone } from "./ui";
 import { CheckButton, FileRow, Highlight, displayName } from "./files";
 import { CoursesView } from "./CoursesView";
 import { ModuleView } from "./ModuleView";
@@ -39,9 +39,9 @@ import { MailBadge, cancelledStyle } from "./MailBadge";
 import { useEventMails, type EventMail } from "@/lib/event-mail";
 import type { WeatherDay } from "@/lib/weather";
 import { Welcome } from "./Welcome";
-import { TodayView, DayWeather, useWeatherDays } from "./TodayView";
+import { TodayView, TodayWidgets, DayWeather, useWeatherDays } from "./TodayView";
 import { matches, searchTerms } from "@/lib/search";
-import { REMIND_DAYS, useExamRegistered } from "@/lib/exam-reg";
+
 import { MailView } from "./MailView";
 import { VpnDialogHost, VpnLine, openVpnDialog } from "./VpnPanel";
 import { GoogleEventHost, openGoogleEvent } from "./GoogleEventDialog";
@@ -353,7 +353,11 @@ export function Overview({
               <>
                 {view === "week" && <Welcome onMensa={() => open("mensa")} />}
                 {view === "week" && <TodayView deadlines={mine} done={done} onOpen={open} />}
-                {view === "week" && <WeekView list={list} deadlines={mine} done={done} onToggle={toggleDone} onOpen={open} />}
+                {view === "week" && (
+                  <WeekView list={list} deadlines={mine} done={done} onToggle={toggleDone} onOpen={open}>
+                    <TodayWidgets onOpen={open} />
+                  </WeekView>
+                )}
                 {view === "calendar" && <CalendarView deadlines={mine} done={done} onToggle={toggleDone} onOpenCourse={open} />}
                 {view === "places" && <PlacesView />}
                 {view === "new" && <NewView list={list} onOpen={open} />}
@@ -793,12 +797,14 @@ function WeekView({
   done,
   onToggle,
   onOpen,
+  children,
 }: {
   list: Course[];
   deadlines: Deadline[];
   done: string[];
   onToggle: (id: string) => void;
   onOpen: (id: string) => void;
+  children?: React.ReactNode; // unter dem Streifen (Startseite: neue Mails, Überblick)
 }) {
   // Kalender-Schalter (ILIAS / Google) stellt man im Kalender-Tab ein; hier gelten sie nur
   // Kalender an/aus (Variante B1): ILIAS-Fristen und Google Kalender, Standard beide an
@@ -826,18 +832,7 @@ function WeekView({
     return { iso, num: d.getUTCDate(), wd: d.getUTCDay(), items, events, rows, wide: entries.length > 0, today: i === 0, wx: wx.get(iso) };
   });
 
-  const open = deadlines.filter(
-    (d) => d.kind === "abgabe" && !done.includes(d.id) && daysFromToday(d.date) >= 0 && daysFromToday(d.date) < 4,
-  );
-  const first = [...open].sort((a, b) => a.date.localeCompare(b.date))[0];
-  const kurse = new Set(open.map((d) => d.courseId)).size;
-  // Klausur-Countdown auf der Startseite: nächste Klausur in allen Kursen
-  const nextExam = deadlines
-    .filter((d) => d.kind === "klausur" && daysFromToday(d.date) >= 0 && courseById(d.courseId))
-    .sort((a, b) => a.date.localeCompare(b.date))[0];
-  // Erinnerung an die Prüfungsanmeldung in KLIPS (Details und „I’m registered“ im Termin-Dialog)
-  const registered = useExamRegistered();
-  const askRegistered = nextExam && !registered.includes(nextExam.id) && daysFromToday(nextExam.date) <= REMIND_DAYS;
+  const importing = deadlines.length === 0 && appStore.get().job?.kind === "import";
 
   const newFiles = list.flatMap((c) =>
     c.folders.flatMap((f) => f.files.filter((x) => x.isNew || x.changeNote).map((file) => ({ file, course: c }))),
@@ -847,48 +842,21 @@ function WeekView({
 
   return (
     <>
-      <header className="mt-9 flex flex-wrap items-end gap-4">
-        <div className="min-w-0 flex-1">
-          <h2 className="text-[20px] font-bold leading-tight tracking-[-0.01em]">Next 4 days</h2>
-          <p className="mt-1 text-[13px] text-muted">
-            {
-              <>
-                {open.length === 0 && deadlines.length === 0 && appStore.get().job?.kind === "import"
-                  ? "Your deadlines are on their way…"
-                  : open.length === 0
-                  ? "All done. No open deadlines in the next 4 days."
-                  : `${open.length} open ${open.length === 1 ? "deadline" : "deadlines"} in ${kurse} ${kurse === 1 ? "course" : "courses"}.`}
-                {first && ` Next up: ${first.kind === "klausur" ? examLabel(first.title, courseById(first.courseId) ?? { name: "" }) : bare(first.title)} ${daysFromToday(first.date) === 0 ? "today" : daysFromToday(first.date) === 1 ? "tomorrow" : `on ${LONG[new Date(parseDay(first.date)).getUTCDay()]}`}.`}
-                {nextExam && ` Next exam: ${nameOf(courseById(nextExam.courseId)!)} ${inDays(daysFromToday(nextExam.date))}.`}
-                {askRegistered && (
-                  <>
-                    {" "}
-                    <button
-                      onClick={() => openEvent(nextExam, { onOpenCourse: () => onOpen(nextExam.courseId) })}
-                      className="rounded font-semibold text-[var(--focus)] hover:underline"
-                    >
-                      Registered in KLIPS?
-                    </button>
-                  </>
-                )}
-              </>
-            }
-          </p>
-        </div>
-        <div className="flex items-center gap-1">
-          <Button variant="plain" onClick={() => openNewEvent()}>
-            <CalendarPlus size={14} aria-hidden /> Add event
-          </Button>
-          <Button onClick={() => onOpen("calendar")}>
-            <CalendarDays size={14} aria-hidden /> Open calendar
-          </Button>
-        </div>
+      {/* Nächste Abgabe, Klausur und KLIPS-Erinnerung stehen schon im Satz oben (TodayView) */}
+      <header className="mt-8 flex flex-wrap items-center gap-3">
+        <h2 className="flex-1 text-[17px] font-bold">Next 4 days</h2>
+        <Button variant="plain" onClick={() => openNewEvent()}>
+          <CalendarPlus size={14} aria-hidden /> Add event
+        </Button>
+        <Button onClick={() => onOpen("calendar")}>
+          <CalendarDays size={14} aria-hidden /> Open calendar
+        </Button>
       </header>
-
+      {importing && <p className="mt-1 text-[13px] text-muted">Your deadlines are on their way…</p>}
 
       {/* Tage ohne Termine werden schmal, Tage mit Terminen teilen sich den Platz. */}
       <div
-        className="mt-6 grid gap-1.5 transition-[grid-template-columns] duration-300 ease-out"
+        className="mt-3 grid gap-1.5 transition-[grid-template-columns] duration-300 ease-out"
         style={{ gridTemplateColumns: days.map((d) => (d.wide ? "minmax(0, 1fr)" : "44px")).join(" ") }}
         role="list"
         aria-label="The next 4 days"
@@ -929,7 +897,9 @@ function WeekView({
         </p>
       )}
 
-      <div className="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-2">
+      {children}
+
+      <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
         <section aria-labelledby="neu-titel">
           <h2 id="neu-titel" className="mb-2.5 text-[17px] font-bold">
             New in your courses
