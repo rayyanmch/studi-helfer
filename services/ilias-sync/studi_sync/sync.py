@@ -17,7 +17,7 @@ import signal
 import socket
 import subprocess
 import time
-from datetime import datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any, Optional
 
@@ -144,6 +144,56 @@ def app_running() -> bool:
         return True
     except (OSError, ValueError):
         return False
+
+
+def _read(path: Path, default: Any) -> Any:
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return default
+
+
+def deadline_digest(now: Optional[datetime] = None) -> Optional[str]:
+    """Morgens bei geschlossener App: offene Abgaben von heute und morgen als ein Satz.
+    Läuft die App, erinnert sie selbst (desktop/lib/reminders.js). Schon Gemeldetes steht in
+    reminders-sent.json (dieselbe Datei wie in der App), damit es bei kurzen Intervallen nicht wiederkommt."""
+    now = now or datetime.now()
+    if not 6 <= now.hour < 21:
+        return None
+    today = now.date()
+    days = {today.isoformat(): "today", (today + timedelta(days=1)).isoformat(): "tomorrow"}
+    done = set((_read(DATA_DIR / "deadlines-done.json", {}).get("done") or {}).keys())
+    hidden = set(_read(DATA_DIR / "custom-events.json", {}).get("hidden") or [])
+    sent_file = DATA_DIR / "reminders-sent.json"
+    sent = _read(sent_file, [])
+    sent = sent if isinstance(sent, list) else []
+    items: list[dict[str, Any]] = []
+    seen: set[tuple[str, str]] = set()
+    for name in ("deadlines.json", "sheet-deadlines.json"):  # ILIAS zuerst, Übungsblätter nur ohne ILIAS-Abgabe am selben Tag
+        for d in _read(DATA_DIR / name, {}).get("deadlines") or []:
+            if not isinstance(d, dict) or d.get("kind") != "abgabe" or d.get("date") not in days:
+                continue
+            did = str(d.get("id", ""))
+            if not did:
+                continue
+            key = (did.split("|")[0], str(d.get("date")))
+            if name == "sheet-deadlines.json" and key in seen:
+                continue
+            seen.add(key)  # auch erledigte/schon gemeldete, sonst rutscht die Übungsblatt-Kopie nach
+            if did in done or did in hidden or f"{did}|morning|{today}" in sent:
+                continue
+            items.append(d)
+    if not items:
+        return None
+    sent_file.write_text(json.dumps((sent + [f"{d['id']}|morning|{today}" for d in items])[-500:]), encoding="utf-8")
+    items.sort(key=lambda d: (d["date"], str(d.get("time", ""))))
+    if len(items) == 1:
+        d = items[0]
+        when = f", {d['time']}" if str(d.get("time", "")).startswith("by ") else ""
+        return f"Due {days[d['date']]}: {d.get('title', 'a deadline')}{when}"
+    names = ", ".join(str(d.get("title", "")) for d in items[:3]) + (" …" if len(items) > 3 else "")
+    span = "today" if all(days[d["date"]] == "today" for d in items) else "today and tomorrow" if any(days[d["date"]] == "today" for d in items) else "tomorrow"
+    return f"{len(items)} deadlines {span}: {names}"
 
 
 class Run:
@@ -464,6 +514,12 @@ def sync(auto: bool) -> dict[str, Any]:
             notify("Couldn't check for new files. Open Studi-Helfer for details.")
         elif n:
             notify(f"{n} new file{'s' if n != 1 else ''} from ILIAS")
+        try:
+            digest = deadline_digest()
+            if digest:
+                notify(digest)
+        except Exception as e:  # noqa: BLE001 – Erinnerung darf den Lauf nie stören
+            log(f"Fristen-Erinnerung fehlgeschlagen: {type(e).__name__}: {e}")
 
     for old in LOGS.glob("20*.log"):
         if time.time() - old.stat().st_mtime > 30 * 86400:
