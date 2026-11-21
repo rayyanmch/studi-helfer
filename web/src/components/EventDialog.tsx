@@ -6,7 +6,7 @@
 // openNewEvent({ date, start, moduleId }).
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { CalendarDays, Clock, EyeOff, MapPin, Pencil, Repeat, Trash2, X } from "lucide-react";
+import { CalendarDays, Check, Clock, EyeOff, MapPin, Pencil, Repeat, RotateCcw, Trash2, X } from "lucide-react";
 import { Button, Swatch, colorOf, nameOf, tone } from "./ui";
 import * as store from "@/lib/app-store";
 import { COURSE_COLORS, realCourses, useApp } from "@/lib/app-store";
@@ -152,6 +152,9 @@ function Details({ deadline: d, onOpenCourse }: { deadline: Deadline; onOpenCour
   const color = d.color ?? (course ? colorOf(course) : "indigo");
   const where = d.location ?? (d.source && !d.source.startsWith("Found in ") ? d.source : undefined);
   const from = d.source?.startsWith("Found in ") ? d.source : undefined;
+  // Abgaben direkt hier abhaken (sonst nur über den kleinen Kreis im Wochenstreifen)
+  const canDone = d.kind === "abgabe" && app.mode === "desktop";
+  const isDone = app.done.includes(d.id);
   return (
     <>
       <Header title={KIND_LABEL[d.kind]} />
@@ -180,8 +183,13 @@ function Details({ deadline: d, onOpenCourse }: { deadline: Deadline; onOpenCour
           </p>
         </div>
         <div className="mt-4 flex flex-wrap items-center gap-2">
+          {canDone && (
+            <Button variant={isDone ? "secondary" : "primary"} onClick={() => void store.toggleDone(d.id)} aria-pressed={isDone}>
+              {isDone ? <RotateCcw size={13} aria-hidden /> : <Check size={13} aria-hidden />} {isDone ? "Mark as not done" : "Mark as done"}
+            </Button>
+          )}
           <Button
-            variant="primary"
+            variant={canDone ? "secondary" : "primary"}
             onClick={() => setDialog({ mode: "edit", draft: fromDeadline(d), isNew: true, replaces: d.seriesId ?? d.id })}
           >
             <Pencil size={13} aria-hidden /> Edit
