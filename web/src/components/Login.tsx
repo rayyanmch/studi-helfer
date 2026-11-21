@@ -74,6 +74,9 @@ export function Login({ result, onSuccess }: { result: LoginResult; onSuccess: (
               value={user}
               onChange={(e) => setUser(e.target.value)}
               autoComplete="username"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
               placeholder="University ID, e.g. mmuster1"
               disabled={loading}
               className={field}
