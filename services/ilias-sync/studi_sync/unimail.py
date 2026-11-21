@@ -42,13 +42,25 @@ GUESS = {
 FLAGS = {"sent": "\\Sent", "drafts": "\\Drafts", "archive": "\\Archive", "trash": "\\Trash"}
 
 
+def _tls() -> ssl.SSLContext:
+    """TLS mit den Zertifikaten von certifi. In der gepackten App findet Python die Zertifikate des Macs nicht von selbst."""
+    try:
+        import certifi
+
+        return ssl.create_default_context(cafile=certifi.where())
+    except Exception:  # noqa: BLE001 – ohne certifi gelten die Zertifikate des Systems
+        return ssl.create_default_context()
+
+
 def address(username: str) -> str:
     return f"{username}@{DOMAIN}"
 
 
 def _connect(username: str, password: str) -> imaplib.IMAP4_SSL:
     try:
-        imap = imaplib.IMAP4_SSL(IMAP_HOST, 993, ssl_context=ssl.create_default_context(), timeout=30)
+        imap = imaplib.IMAP4_SSL(IMAP_HOST, 993, ssl_context=_tls(), timeout=30)
+    except ssl.SSLError:
+        raise AppError("failed", "The university mail server's certificate could not be verified.") from None
     except OSError:
         raise AppError("offline", "Could not reach the university mail server.") from None
     try:
@@ -334,7 +346,7 @@ def send(username: str, password: str, mail: dict[str, Any]) -> dict[str, Any]:
     msg.set_content(str(mail.get("body") or ""))
     try:
         with smtplib.SMTP(SMTP_HOST, 587, timeout=30) as smtp:
-            smtp.starttls(context=ssl.create_default_context())
+            smtp.starttls(context=_tls())
             smtp.login(username, password)
             smtp.send_message(msg)
     except smtplib.SMTPAuthenticationError:
