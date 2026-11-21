@@ -62,6 +62,7 @@ const LENGTHS = {
     "ONE PAGE ONLY (a cheat sheet, about 350–450 words in total): 2–3 parts, each with the 2–4 most exam-relevant facts. Telegraph style, no full paragraphs, no introductions.",
   normal: "COMPACT: about 2–3 pages (roughly 900–1200 words in total), 3–4 parts. Short sentences, no filler.",
   detailed: "DETAILED: cover every important point of the material; 6–12 pages are fine.",
+  exam: "EXAM CHEAT SHEET, MAX 2 PAGES in two dense columns (about 700–900 words in total): 4–6 parts, one per main topic of the course, each with only the 2–3 facts, formulas or models most likely to be asked. Telegraph style.",
 };
 
 /** Prüfungsfokus: gilt für alle Längen, damit auch „Detailed“ nicht ausufert. */
@@ -74,8 +75,9 @@ const EXAM_FOCUS = [
 
 /** Harte Grenzen je Länge, falls die KI mehr liefert (Anzahl pro Abschnitt, Teile). */
 const CAPS = {
-  short: { parts: 3, each: 2, terms: 4, formulas: 3, definitions: 2, theorems: 1, methods: 1, examples: 1, intuition: 1, practice: 1, mistakes: 1, misconceptions: 2, steps: 4, rows: 5, visuals: 1, callouts: 1, bigPicture: 3 },
-  normal: { parts: 4, each: 3, terms: 6, formulas: 8, definitions: 5, theorems: 3, steps: 6, rows: 7, visuals: 2, callouts: 2, bigPicture: 4 },
+  short: { parts: 3, each: 2, terms: 3, formulas: 3, definitions: 2, theorems: 1, methods: 1, examples: 1, intuition: 1, practice: 1, mistakes: 1, misconceptions: 1, questions: 2, steps: 4, rows: 5, visuals: 1, visualsTotal: 2, callouts: 1, bigPicture: 2 },
+  exam: { parts: 6, each: 2, terms: 3, formulas: 3, definitions: 2, theorems: 1, methods: 1, examples: 1, intuition: 1, practice: 0, mistakes: 1, misconceptions: 1, questions: 1, steps: 3, rows: 4, visuals: 1, visualsTotal: 2, callouts: 1, bigPicture: 0 },
+  normal: { parts: 4, each: 3, summary: 3, terms: 5, formulas: 6, definitions: 3, theorems: 2, intuition: 1, beginner: 1, analogies: 1, examples: 2, methods: 2, tasks: 2, practice: 2, mistakes: 2, misconceptions: 2, proofs: 1, questions: 2, tables: 1, steps: 6, rows: 6, visuals: 1, visualsTotal: 3, callouts: 1, bigPicture: 4 },
 };
 
 function trim(data, length) {
@@ -90,6 +92,15 @@ function trim(data, length) {
     if (out.examples) out.examples = out.examples.map((e) => (typeof e === "object" && e ? { ...e, steps: cap(e.steps, c.steps) } : e));
     return out;
   });
+  // Abbildungen insgesamt begrenzen (drei UML-Diagramme sprengen sonst die eine Seite)
+  if (c.visualsTotal != null) {
+    let left = c.visualsTotal;
+    for (const p of parts) {
+      if (!Array.isArray(p.visuals)) continue;
+      p.visuals = p.visuals.slice(0, Math.max(0, left));
+      left -= p.visuals.length;
+    }
+  }
   return { ...data, parts, bigPicture: cap(data.bigPicture, c.bigPicture) };
 }
 
@@ -339,12 +350,20 @@ function richMath(s) {
 }
 
 function sheetHtml(sheet, { moduleName, accent = "#22325c" }) {
-  const L = LABELS[sheet.language] || LABELS.de;
+  const dense = sheet.length === "short" || sheet.length === "exam";
+  // Spickzettel: Überschriften kurz oder weg (der Inhalt spricht für sich)
+  const DENSE = {
+    de: { summary: "", tables: "", terms: "Begriffe", misconceptions: "Fallen", questions: "Fragen", beginner: "Einfach erklärt", examples: "Beispiele", mnemonics: "Eselsbrücken" },
+    en: { summary: "", tables: "", terms: "Terms", misconceptions: "Traps", questions: "Questions", beginner: "Simply put", examples: "Examples", mnemonics: "Memory hooks" },
+  };
+  // Kompakt (2–3 Seiten) bekommt dieselben kurzen Überschriften wie der Spickzettel
+  const brief = dense || sheet.length === "normal";
+  const L = { ...(LABELS[sheet.language] || LABELS.de), ...(brief ? DENSE[sheet.language] || DENSE.de : {}) };
   const M = MATH_LABELS[sheet.language] || MATH_LABELS.de;
   const rich = sheet.math ? richMath : richPlain;
   const fileName = (i) => sheet.files[i - 1]?.name.replace(/\.[a-z0-9]+$/i, "") ?? null;
   const parts = sheet.parts || [];
-  const h3 = (key, body) => (body ? `<h3>${L[key]}</h3>${body}` : "");
+  const h3 = (key, body) => (body ? `${L[key] ? `<h3>${L[key]}</h3>` : ""}${body}` : "");
   // „Definition über R².“ → „Definition über R²:“ (Satzzeichen am Ende vereinheitlichen, Fragen bleiben Fragen)
   const leadText = (l) => {
     const t = String(l ?? "").replace(/\*\*/g, "").trim().replace(/[.:;,]+$/, "");
@@ -383,7 +402,12 @@ function sheetHtml(sheet, { moduleName, accent = "#22325c" }) {
 
   // Mathe: Kästen für Definitionen und Sätze, Formeltabelle, Rezepte und Rechenwege
   const mathPartHtml = (p, i) => {
-    const h = (key, body) => (body ? `<h3>${M[key]}</h3>${body}` : "");
+    const MD = brief ? { summary: "", formulas: sheet.language === "en" ? "Formulas" : "Formeln", definitions: "", theorems: "" } : {};
+    const h = (key, body) => {
+      if (!body) return "";
+      const label = key in MD ? MD[key] : M[key];
+      return `${label ? `<h3>${label}</h3>` : ""}${body}`;
+    };
     const steps = (list) => (list?.length ? `<ol class="steps">${list.map((x) => `<li>${rich(x)}</li>`).join("")}</ol>` : "");
     return `<section class="part" id="p${i}">
       <h2>${rich(p.title)}</h2>
@@ -442,7 +466,7 @@ function sheetHtml(sheet, { moduleName, accent = "#22325c" }) {
       ${h3("tables", tables)}
       ${h3("terms", terms)}
       ${h3("mnemonics", bullets(p.mnemonics))}
-      ${h3("misconceptions", numbered(p.misconceptions, (m) => `<strong>„${rich(m.myth)}“</strong> ${rich(m.truth)}`))}
+      ${h3("misconceptions", numbered(p.misconceptions, (m) => `<strong>${sheet.language === "en" ? `“${rich(m.myth)}”` : `„${rich(m.myth)}“`}</strong> ${rich(m.truth)}`))}
       ${h3("anecdotes", bullets(p.anecdotes))}
       ${codeOf(p)}
       ${h3("questions", questions)}
@@ -454,7 +478,7 @@ function sheetHtml(sheet, { moduleName, accent = "#22325c" }) {
   const date = new Date(sheet.createdAt).toLocaleDateString(sheet.language === "en" ? "en-US" : "de-DE", { day: "numeric", month: "long", year: "numeric" });
 
   return `<!doctype html><html lang="${sheet.language || "de"}"><head><meta charset="utf-8"><title>${esc(sheet.title)}</title><style>
-  @page { size: A4; margin: ${sheet.length === "short" ? "10mm 11mm 11mm 11mm" : sheet.length === "normal" ? "14mm 15mm 15mm 15mm" : "18mm 17mm 18mm 17mm"}; }
+  @page { size: A4; margin: ${sheet.length === "short" || sheet.length === "exam" ? "10mm 11mm 11mm 11mm" : sheet.length === "normal" ? "14mm 15mm 15mm 15mm" : "18mm 17mm 18mm 17mm"}; }
   * { box-sizing: border-box; }
   body { font: 10.5pt/1.55 -apple-system, "Helvetica Neue", Helvetica, Arial, sans-serif; color: #1d1d1f; margin: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .meta { font-size: 8.5pt; color: #6b7280; margin-bottom: 10px; display: flex; justify-content: space-between; }
@@ -473,14 +497,22 @@ function sheetHtml(sheet, { moduleName, accent = "#22325c" }) {
   .caption { margin: 8px 0 4px; break-after: avoid; }
   .tbl { break-inside: avoid; }
   li, dt, dd, p { orphans: 2; widows: 2; }
-  dl { margin: 0 0 8px; display: grid; grid-template-columns: max-content 1fr; gap: 3px 14px; }
+  dl { margin: 0 0 8px; display: grid; grid-template-columns: minmax(0, max-content) minmax(55%, 1fr); gap: 3px 14px; }
   dt { font-weight: 650; } dd { margin: 0; }
   .answer { margin-top: 3px; color: #374151; font-size: 9.5pt; } .answer span { font-weight: 650; color: #3a5ba0; }
   .sources { font-size: 8.5pt; color: #6b7280; margin-top: 8px; }
   .part { break-inside: auto; }
   /* Kompakt (2–3 Seiten) */
-  body.normal { font-size: 9.8pt; line-height: 1.45; }
-  body.normal h1 { font-size: 18pt; } body.normal h2 { font-size: 12.5pt; margin-top: 14px; } body.normal h3 { font-size: 10.5pt; margin: 9px 0 4px; }
+  body.normal { font-size: 9pt; line-height: 1.38; }
+  body.normal h1 { font-size: 16pt; margin-bottom: 6px; } body.normal .intro { margin-bottom: 8px; }
+  body.normal .cols { column-count: 2; column-gap: 7mm; column-rule: 1px solid #e3e7ee; }
+  body.normal h2 { font-size: 11pt; margin: 10px 0 4px; break-after: avoid; } body.normal h3 { font-size: 9.4pt; margin: 6px 0 3px; }
+  body.normal p, body.normal li { margin: 0 0 4px; } body.normal ul, body.normal ol { padding-left: 16px; }
+  body.normal table { font-size: 8.4pt; } body.normal th, body.normal td { padding: 3px 5px; }
+  body.normal .box, body.normal .callout { padding: 5px 9px; margin: 4px 0 7px; }
+  body.normal figure.visual > svg, body.normal figure.visual pre.mermaid > svg { max-height: 62mm; }
+  body.normal .part { break-inside: auto; }
+  body.normal .box, body.normal .callout, body.normal figure.visual, body.normal table, body.normal .example, body.normal .method { break-inside: avoid-column; }
   /* Einseiter: zweispaltiger Spickzettel */
   body.short { font-size: 8.4pt; line-height: 1.32; }
   body.short .meta { margin-bottom: 4px; font-size: 7.5pt; }
@@ -492,7 +524,7 @@ function sheetHtml(sheet, { moduleName, accent = "#22325c" }) {
   body.short p, body.short li { margin: 0 0 3px; } body.short ul, body.short ol { padding-left: 14px; margin-bottom: 4px; }
   body.short table { font-size: 7.8pt; margin: 2px 0 5px; } body.short th, body.short td { padding: 2px 4px; }
   body.short .box, body.short .callout { padding: 3px 7px; margin: 3px 0 5px; }
-  body.short figure.visual { margin: 3px 0 6px; } body.short figure.visual > svg, body.short figure.visual pre.mermaid > svg { max-height: 62mm; }
+  body.short figure.visual { margin: 3px 0 6px; } body.short figure.visual > svg, body.short figure.visual pre.mermaid > svg { max-height: 50mm; }
   body.short .chain .step { font-size: 7.6pt; padding: 2px 6px; } body.short figcaption { font-size: 7.4pt; }
   body.short .sources { font-size: 7pt; margin-top: 2px; }
   body.short .part { break-inside: auto; }
@@ -512,9 +544,9 @@ function sheetHtml(sheet, { moduleName, accent = "#22325c" }) {
   .wrong { font-weight: 650; color: #b3261e; } .right { font-weight: 650; color: #2f7a46; }
   .katex { font-size: 1.04em; } .katex-display { margin: 6px 0; }
   ${V.VISUAL_CSS}
-</style>${sheet.math ? `<link rel="stylesheet" href="${pathToFileURL(require.resolve("katex/dist/katex.min.css")).href}">` : ""}</head><body class="${sheet.length || ""}">
+</style>${sheet.math ? `<link rel="stylesheet" href="${pathToFileURL(require.resolve("katex/dist/katex.min.css")).href}">` : ""}</head><body class="${sheet.length === "exam" ? "short exam" : sheet.length || ""}">
   <div class="meta"><span>${esc(moduleName || "")}</span><span>${esc(date)} · ${L.made}</span></div>
-  ${parts.length > 3 && sheet.length !== "short" ? `<nav class="toc"><p>${L.contents}</p><ol>${parts.map((p, i) => `<li><a href="#p${i}">${rich(p.title)}</a></li>`).join("")}${big ? `<li><a href="#big">${L.bigPicture}</a></li>` : ""}</ol></nav>` : ""}
+  ${parts.length > 3 && !brief ? `<nav class="toc"><p>${L.contents}</p><ol>${parts.map((p, i) => `<li><a href="#p${i}">${rich(p.title)}</a></li>`).join("")}${big ? `<li><a href="#big">${L.bigPicture}</a></li>` : ""}</ol></nav>` : ""}
   <h1>${rich(sheet.title)}</h1>
   <p class="intro">${rich(sheet.intro)}</p>
   <div class="cols">
@@ -548,7 +580,9 @@ function upgrade(sheet) {
 }
 
 /** HTML → PDF mit einem unsichtbaren Fenster. */
-async function renderPdf(BrowserWindow, sheet, { moduleName, accent, outFile }) {
+async function renderPdf(BrowserWindow, input, { moduleName, accent, outFile }) {
+  // Längen auch bei älteren Lernzetteln einhalten (neu erstellte sind schon gekürzt, trim ändert dann nichts)
+  const sheet = input.parts && CAPS[input.length] ? { ...input, ...trim(input, input.length) } : input;
   const html = sheetHtml(upgrade(sheet), { moduleName, accent }).replace(/<p><strong><\/strong> /g, "<p>");
   const tmp = path.join(os.tmpdir(), `studi-sheet-${sheet.id}.html`);
   fs.writeFileSync(tmp, html);

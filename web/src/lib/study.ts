@@ -77,7 +77,7 @@ export const MATH_SECTIONS = [
 
 export type SectionKey = (typeof SHEET_SECTIONS)[number]["key"] | (typeof MATH_SECTIONS)[number]["key"];
 export type Include = Partial<Record<SectionKey, boolean>>;
-export type SheetLength = "short" | "normal" | "detailed";
+export type SheetLength = "short" | "normal" | "detailed" | "exam";
 
 const on = (...keys: SectionKey[]): Include =>
   Object.fromEntries(SHEET_SECTIONS.map((s) => [s.key, s.key === "summary" || keys.includes(s.key)])) as Include;
@@ -521,7 +521,7 @@ export async function quickSheet(course: Course, weeks: Week[], opts: { kind: "w
     moduleName: course.name,
     paths,
     include: opts.math ? QUICK_INCLUDE_MATH : QUICK_INCLUDE,
-    length: exam ? "normal" : "short",
+    length: exam ? "exam" : "short",
     context,
     math: opts.math,
     subject: opts.subject,

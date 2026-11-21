@@ -513,7 +513,9 @@ function createStudy({ packaged, broadcast, ...deps }) {
     const cfg = backend.loadConfig();
     const dir = cfg.targetDir ? path.join(cfg.targetDir, "Study sheets") : path.join(DIR, "pdf");
     const clean = (x) => String(x || "").replace(/\s*:\s*/g, " – ").replace(/[/\\*?"<>|\n\r]/g, "-").replace(/\s+/g, " ").trim();
-    const base = clean(`${moduleName ? `${moduleName} – ` : ""}${sheet.title}`).slice(0, 120) || "Study sheet";
+    // Einseiter und Klausur-Spickzettel im Namen kenntlich machen (sonst „… (2).pdf“ neben dem langen Lernzettel derselben Woche)
+    const tag = /spickzettel|cheat ?sheet|one-?pager|einseiter/i.test(sheet.title || "") ? "" : sheet.kind === "exam" ? " – Exam cheat sheet" : sheet.length === "short" ? " – One-pager" : "";
+    const base = clean(`${moduleName ? `${moduleName} – ` : ""}${sheet.title}${tag}`).slice(0, 120) || "Study sheet";
     let file = path.join(dir, `${base}.pdf`);
     for (let n = 2; fs.existsSync(file) && n < 100; n++) file = path.join(dir, `${base} (${n}).pdf`);
     return file;
@@ -569,8 +571,8 @@ function createStudy({ packaged, broadcast, ...deps }) {
     const files = [...new Set((Array.isArray(paths) ? paths : []).filter(allowedPath))].slice(0, 30);
     if (!files.length) return fail("invalid", "Choose at least one file.");
     const inc = sheetLib.cleanInclude(include, math);
-    if (length === "short") inc.figures = false;
-    const len = ["short", "normal", "detailed"].includes(length) ? length : "normal";
+    if (length === "short" || length === "exam") inc.figures = false;
+    const len = ["short", "normal", "detailed", "exam"].includes(length) ? length : "normal";
     const focusText = typeof focus === "string" && focus.trim() ? focus.trim().slice(0, 300) : null;
     sheetProgress = { startedAt: Date.now(), step: "reading" };
     sheetRunning = (async () => {
