@@ -25,7 +25,10 @@ import {
   studyFiles,
   suspendCard,
   useStudy,
+  useWeeks,
+  STUDY_FILE,
 } from "@/lib/study";
+import { weekLabel } from "@/lib/weeks";
 
 // --- Reiter „Study“ auf der Kursseite ------------------------------------------------
 
@@ -44,7 +47,7 @@ export function StudyPanel({ course }: { course: Course }) {
 
   const cards = cardsOf(paths, study, course.id);
   const due = todaysSet(cards, study.today, study.stats).all;
-  const missing = files.filter((f) => !study.files[fileKey(f)]);
+  const missing = files.filter((f) => !study.files[fileKey(f)] && !study.unreadable[fileKey(f)]);
 
   const startAnalyze = async (list: CourseFile[]) => {
     setError(null);
@@ -91,29 +94,51 @@ export function StudyPanel({ course }: { course: Course }) {
         <p className="mb-2 text-[13px] text-muted">
           Written by Claude from your files{app.mode === "desktop" ? " on this Mac" : " (sample data in the browser)"}. Check the page in the file when something looks off.
         </p>
-        <SummaryList files={files} color={color} onSummarize={(f) => void startAnalyze([f])} />
+        <SummaryList course={course} color={color} onSummarize={(f) => void startAnalyze([f])} />
       </section>
     </div>
   );
 }
 
-export function SummaryList({ files, color, onSummarize }: { files: CourseFile[]; color: CourseColor; onSummarize: (f: CourseFile) => void }) {
+/** Zusammenfassungen eines Moduls, nach Themenwochen gruppiert (neueste Woche oben). */
+export function SummaryList({ course, color, onSummarize }: { course: Course; color: CourseColor; onSummarize: (f: CourseFile) => void }) {
   const study = useStudy();
-  if (files.length === 0) return <p className="rounded-[10px] bg-surface px-4 py-5 text-muted">No PDFs in this course yet.</p>;
+  const weeks = useWeeks(course);
+  const groups = weeks
+    .map((w) => ({ w, files: w.files.map((x) => x.file).filter((f) => STUDY_FILE.test(f.name)) }))
+    .filter((g) => g.files.length);
+  if (groups.length === 0) return <p className="rounded-[10px] bg-surface px-4 py-5 text-muted">No PDFs in this course yet.</p>;
+  const ordered = [...groups.filter((g) => g.w.kind === "week").reverse(), ...groups.filter((g) => g.w.kind !== "week")];
   return (
-    <ul className="rounded-[10px] bg-surface px-1.5 py-1">
-      {files.map((f) => (
-        <SummaryRow
-          key={f.id}
-          file={f}
-          analysis={study.files[fileKey(f)] ?? null}
-          color={color}
-          busy={study.job.current.includes(f.name)}
-          onSummarize={() => onSummarize(f)}
-          disabled={study.available === false}
-        />
+    <div className="flex flex-col gap-4">
+      {ordered.map(({ w, files }) => (
+        <div key={w.key}>
+          <h3 className="mb-1.5 flex items-baseline gap-2 text-[13px] font-bold">
+            {weekLabel(w)}
+            {w.current && (
+              <span className="rounded-full px-1.5 text-[11px] font-semibold" style={{ background: tone(color, "soft"), color: tone(color, "ink") }}>
+                this week
+              </span>
+            )}
+            {w.range && <span className="text-[12px] font-normal text-muted">{w.range}</span>}
+          </h3>
+          <ul className="rounded-[10px] bg-surface px-1.5 py-1">
+            {files.map((f) => (
+              <SummaryRow
+                key={f.id}
+                file={f}
+                analysis={study.files[fileKey(f)] ?? null}
+                unreadable={Boolean(study.unreadable[fileKey(f)])}
+                color={color}
+                busy={study.job.current.includes(f.name)}
+                onSummarize={() => onSummarize(f)}
+                disabled={study.available === false}
+              />
+            ))}
+          </ul>
+        </div>
       ))}
-    </ul>
+    </div>
   );
 }
 
@@ -217,7 +242,7 @@ export function Review({
   const [result, setResult] = useState({ knew: 0, again: 0 });
   const card = cards[i];
   const finished = i >= cards.length;
-  const color = card ? colorOfCard(card) : colorOfCard(cards[0]);
+  const color: CourseColor = card ? colorOfCard(card) : cards[0] ? colorOfCard(cards[0]) : "blue";
 
   const next = () => {
     setShown(false);
@@ -350,6 +375,7 @@ export function Kbd({ children }: { children: React.ReactNode }) {
 export function SummaryRow({
   file,
   analysis,
+  unreadable,
   color,
   busy,
   onSummarize,
@@ -357,6 +383,7 @@ export function SummaryRow({
 }: {
   file: CourseFile;
   analysis: Analysis | null;
+  unreadable?: boolean;
   color: CourseColor;
   busy: boolean;
   onSummarize: () => void;
@@ -388,6 +415,10 @@ export function SummaryRow({
             Summary · {ids.length} cards{learned ? ` · ${learned} learned` : ""}
             {open ? <ChevronDown size={13} aria-hidden /> : <ChevronRight size={13} aria-hidden />}
           </button>
+        ) : unreadable ? (
+          <span className="text-[12px] text-muted" title="This file has no text (handwritten notes or scanned pages). Claude can’t read it yet.">
+            Handwritten or scanned
+          </span>
         ) : (
           <Button variant="plain" className="h-7 text-[12px]" onClick={onSummarize} disabled={disabled}>
             Summarize

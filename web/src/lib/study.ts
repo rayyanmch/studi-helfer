@@ -4,9 +4,11 @@
 // In der Mac-App kommen die Daten aus desktop/lib/study.js (KI: lokales Claude Code, nur Demo).
 // Im Browser gibt es kleine Beispieldaten, damit man am Aussehen arbeiten kann.
 
-import { useSyncExternalStore } from "react";
+import { useEffect, useMemo, useSyncExternalStore } from "react";
+import { useApp } from "./app-store";
 import { getDesktop, type Fail, type Ok } from "./desktop";
 import type { Course } from "./mock-data";
+import { type Week, weekLabel, weeksOf } from "./weeks";
 
 export interface Analysis {
   id: string; // erste 16 Zeichen des Datei-Hashes
@@ -102,7 +104,10 @@ export interface StudyApi {
     state: StudyJob;
     stats: StudyStats;
     sheet: SheetRun;
+    unreadable: Record<string, boolean>;
+    weekTitles: Record<string, Record<string, string>>;
   }>;
+  weekTitles(moduleId: string, moduleName: string, weeks: { key: string; title: string; hints: string[] }[]): Promise<Ok<{ titles: Record<string, string> }> | Fail>;
   analyze(paths: string[], moduleName: string): Promise<Ok | Fail>;
   cancel(): Promise<Ok>;
   review(cardId: string, knew: boolean, practice?: boolean): Promise<Ok<{ card: CardState; stats: StudyStats }> | Fail>;
@@ -117,6 +122,7 @@ export interface StudyApi {
     include: Include;
     length: SheetLength;
     accent?: string;
+    context?: string;
   }): Promise<Ok<{ sheet: Sheet }> | Fail>;
   openSheet(id: string, reveal?: boolean): Promise<Ok<{ path: string }> | Fail>;
   deleteSheet(id: string): Promise<Ok>;
@@ -154,6 +160,8 @@ interface StudyState {
   stats: StudyStats;
   sheetRun: SheetRun;
   target: StudyTarget | null; // Sprungziel aus der Kursseite
+  unreadable: Record<string, boolean>; // Dateien ohne Text (Handschrift, Scans)
+  weekTitles: Record<string, Record<string, string>>; // Modul → Wochen-Key → KI-Titel
 }
 
 export type StudyTarget = { screen: "deck"; moduleId: string } | { screen: "new-sheet"; moduleId?: string };
@@ -175,6 +183,8 @@ let state: StudyState = {
   stats: { today: 0, streak: 0, newToday: 0 },
   sheetRun: { running: false },
   target: null,
+  unreadable: {},
+  weekTitles: {},
 };
 const listeners = new Set<() => void>();
 function set(patch: Partial<StudyState>) {
@@ -243,6 +253,8 @@ export async function loadStudy(paths: string[]) {
     stats: data.stats,
     sheets,
     sheetRun: state.sheetRun.running ? state.sheetRun : data.sheet,
+    unreadable: { ...state.unreadable, ...data.unreadable },
+    weekTitles: { ...data.weekTitles, ...state.weekTitles },
   });
 }
 
@@ -250,7 +262,13 @@ async function refresh() {
   const a = api();
   if (!a || !lastPaths.length) return;
   const data = await a.get(lastPaths);
-  set({ files: { ...state.files, ...data.files }, cards: { ...state.cards, ...data.cards }, today: data.today, stats: data.stats });
+  set({
+    files: { ...state.files, ...data.files },
+    cards: { ...state.cards, ...data.cards },
+    today: data.today,
+    stats: data.stats,
+    unreadable: { ...state.unreadable, ...data.unreadable },
+  });
 }
 
 // ------------------------------------------------------------------ Navigation (Kursseite → Study-Tab)
@@ -332,6 +350,7 @@ export async function createSheet(opts: {
   include: Include;
   length: SheetLength;
   accent?: string;
+  context?: string;
 }): Promise<{ sheet?: Sheet; error?: string }> {
   const a = api();
   if (!a) return { error: "Study sheets work in the Mac app." };
@@ -447,6 +466,55 @@ export function interleave(cards: Card[], seed = 1, shuffle = true): Card[] {
   const lists = [...groups.values()];
   while (lists.some((l) => l.length)) for (const l of lists) if (l.length) out.push(l.shift()!);
   return out;
+}
+
+// ------------------------------------------------------------------ Themenwochen
+
+const askedTitles = new Map<string, string>(); // Modul → Signatur der zuletzt gefragten Stichwörter
+
+/** Wochen eines Moduls (Regeln aus weeks.ts, Themen aus den Zusammenfassungen, Titel ggf. von Haiku). */
+export function useWeeks(course: Course | null): Week[] {
+  const app = useApp();
+  const s = useStudy();
+  const ai = course ? s.weekTitles[course.id] : undefined;
+  const weeks = useMemo(
+    () =>
+      course
+        ? weeksOf(course, {
+            today: app.today || localToday(),
+            topicsOf: (f) => s.files[fileKey(f)]?.topics ?? [],
+            aiTitles: ai,
+          })
+        : [],
+    [course, app.today, s.files, ai],
+  );
+  // Titel, die nur aus Dateinamen stammen, einmal von Haiku glätten lassen (nur Mac-App, zwischengespeichert)
+  const ask = weeks.filter((w) => w.kind === "week" && w.titleFrom !== "ilias" && w.hints.length);
+  const sig = ask.map((w) => `${w.key}:${w.hints.join("|")}`).join("\n");
+  useEffect(() => {
+    if (!course || !sig || s.available !== true || askedTitles.get(course.id) === sig) return;
+    const a = api();
+    if (!a) return;
+    askedTitles.set(course.id, sig);
+    const list = sig.split("\n").map((line) => {
+      const [key, hints] = [line.slice(0, line.indexOf(":")), line.slice(line.indexOf(":") + 1)];
+      return { key, title: "", hints: hints.split("|").filter(Boolean) };
+    });
+    void a.weekTitles(course.id, course.name, list).then((res) => {
+      if (res.ok && Object.keys(res.titles).length) set({ weekTitles: { ...state.weekTitles, [course.id]: res.titles } });
+    });
+  }, [course, sig, s.available]);
+  return weeks;
+}
+
+/** „Week 3–4“ / „Week 2, 5“ für eine Auswahl von Wochen (Titel des Lernzettels, Abfrage). */
+export function weeksText(weeks: Week[]): string {
+  const ns = weeks.filter((w) => w.kind === "week").map((w) => w.n ?? 0).sort((a, b) => a - b);
+  const extra = weeks.filter((w) => w.kind !== "week").map((w) => weekLabel(w));
+  if (!ns.length) return extra.join(", ");
+  const contiguous = ns.every((n, i) => i === 0 || n === ns[i - 1] + 1);
+  const base = ns.length === 1 ? `Week ${ns[0]}` : contiguous ? `Week ${ns[0]}–${ns[ns.length - 1]}` : `Week ${ns.join(", ")}`;
+  return [base, ...extra].join(", ");
 }
 
 // ------------------------------------------------------------------ Beispieldaten (nur Browser)

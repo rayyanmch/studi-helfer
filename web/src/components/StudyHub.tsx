@@ -52,7 +52,11 @@ import {
   takeTarget,
   todaysSet,
   useStudy,
+  useWeeks,
+  weeksText,
+  STUDY_FILE,
 } from "@/lib/study";
+import { type Week, ROLE_LABEL, weekLabel } from "@/lib/weeks";
 
 /** Module dieses Semesters mit lernbaren Dateien. */
 function useStudyCourses() {
@@ -291,7 +295,7 @@ function Home({
       <section aria-label="Card boxes">
         <div className="mb-2 flex items-baseline gap-2">
           <h2 className="flex-1 text-[17px] font-bold">Card boxes</h2>
-          <span className="text-[12px] text-muted">Click a box to choose lectures or topics</span>
+          <span className="text-[12px] text-muted">Open a box to learn single weeks</span>
         </div>
         <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
           <li>
@@ -439,6 +443,7 @@ function Deck({
   const color: CourseColor = course ? colorOf(course) : "blue";
   const deckCards = all ? cards : cards.filter((c) => c.moduleId === moduleId);
   const files = course ? studyFiles(course) : [];
+  const weeks = useWeeks(course);
 
   // Auswahl: alle Module/Dateien oder nur bestimmte
   const [scope, setScope] = useState<"everything" | "choose">("everything");
@@ -455,7 +460,7 @@ function Deck({
   const todays = todaysSet(inScope, study.today, study.stats).all;
   const pool = mode === "due" ? todays : inScope.filter(active);
   const exam = course ? examIn(course.id, app.deadlines, app.today) : null;
-  const missing = files.filter((f) => !study.files[fileKey(f)]);
+  const missing = files.filter((f) => !study.files[fileKey(f)] && !study.unreadable[fileKey(f)]);
 
   const summarize = async (list: CourseFile[]) => {
     onError(null);
@@ -536,7 +541,7 @@ function Deck({
                 onChange={(v) => setScope(v as typeof scope)}
                 options={[
                   { value: "everything", label: all ? "All courses" : "The whole course" },
-                  { value: "choose", label: all ? "Choose courses" : "Choose lectures" },
+                  { value: "choose", label: all ? "Choose courses" : "Choose weeks" },
                 ]}
               />
               {scope === "choose" &&
@@ -559,7 +564,7 @@ function Deck({
                     })}
                   </div>
                 ) : (
-                  course && <LecturePicker course={course} cards={deckCards} picked={pickedFiles} onChange={setPickedFiles} />
+                  course && <WeekPicker course={course} weeks={weeks} cards={deckCards} picked={pickedFiles} onChange={setPickedFiles} mode="cards" />
                 ))}
             </div>
 
@@ -604,7 +609,9 @@ function Deck({
                   onStart(pool, {
                     practice: mode === "practice",
                     size,
-                    title: `${course?.name ?? "All courses"}${scope === "choose" ? " · your choice" : ""}${mode === "practice" ? " · practice" : ""}`,
+                    title: `${course?.name ?? "All courses"}${
+                      scope === "choose" ? ` · ${all ? "your choice" : weeksText(weeks.filter((w) => w.files.some((x) => pickedFiles.includes(fileKey(x.file)))))}` : ""
+                    }${mode === "practice" ? " · practice" : ""}`,
                     mixed: all,
                   })
                 }
@@ -648,93 +655,153 @@ function Deck({
               </Button>
             )}
           </div>
-          <SummaryList files={files} color={color} onSummarize={(f) => void summarize([f])} />
+          <SummaryList course={course} color={color} onSummarize={(f) => void summarize([f])} />
         </section>
       )}
     </>
   );
 }
 
-/** Vorlesungen/Dateien auswählen, gruppiert nach Art; Themen-Chips wählen passende Dateien mit aus. */
-function LecturePicker({ course, cards, picked, onChange }: { course: Course; cards: Card[]; picked: string[]; onChange: (p: string[]) => void }) {
+/**
+ * Wochen (und darin einzelne Dateien) auswählen. mode "cards": nur Dateien mit Karten; "sheet": alle lesbaren Dateien.
+ * Schnellwahl: diese Woche, letzte 2 Wochen, bis jetzt.
+ */
+export function WeekPicker({
+  course,
+  weeks,
+  picked,
+  onChange,
+  mode,
+  cards = [],
+}: {
+  course: Course;
+  weeks: Week[];
+  picked: string[];
+  onChange: (p: string[]) => void;
+  mode: "cards" | "sheet";
+  cards?: Card[];
+}) {
   const study = useStudy();
   const color = colorOf(course);
-  const groups = course.folders
-    .map((f) => ({ ...f, files: f.files.filter((x) => study.files[fileKey(x)]) }))
-    .filter((f) => f.files.length);
-  const topics = new Map<string, string[]>();
-  for (const g of groups)
-    for (const f of g.files)
-      for (const t of study.files[fileKey(f)]?.topics ?? []) topics.set(t, [...(topics.get(t) ?? []), fileKey(f)]);
-  const [allTopics, setAllTopics] = useState(false);
-  const topicList = [...topics.entries()];
-  const topTopics = allTopics ? topicList : topicList.slice(0, 8);
-  const toggle = (keys: string[], on: boolean) => onChange(on ? [...new Set([...picked, ...keys])] : picked.filter((k) => !keys.includes(k)));
-  const countFor = (k: string) => {
-    const list = cards.filter((c) => c.path === k);
+  const [open, setOpen] = useState<string[]>([]);
+  const eligible = (f: CourseFile) => STUDY_FILE.test(f.name) && (mode === "cards" ? Boolean(study.files[fileKey(f)]) : !study.unreadable[fileKey(f)]);
+  const shown = weeks.map((w) => ({ w, files: w.files.map((x) => x.file).filter(eligible) })).filter((x) => x.files.length);
+  const current = weeks.find((w) => w.current && w.kind === "week")?.n ?? null;
+  const keysOf = (files: CourseFile[]) => files.map(fileKey);
+  const set = (keys: string[], on: boolean) => onChange(on ? [...new Set([...picked, ...keys])] : picked.filter((k) => !keys.includes(k)));
+  const quick = (pred: (w: Week) => boolean) => onChange(shown.filter((x) => pred(x.w)).flatMap((x) => keysOf(x.files)));
+  const count = (files: CourseFile[]) => {
+    const keys = new Set(keysOf(files));
+    const list = cards.filter((c) => keys.has(c.path));
     return { total: list.filter(active).length, due: list.filter((c) => isDue(c, study.today)).length };
   };
 
-  if (!groups.length) return <p className="mt-3 text-[13px] text-muted">Summarize some files first, then you can pick them here.</p>;
+  if (!shown.length)
+    return (
+      <p className="mt-3 text-[13px] text-muted">
+        {mode === "cards" ? "Summarize some files first, then you can pick their weeks here." : "No readable PDFs in this course yet."}
+      </p>
+    );
 
   return (
     <div className="mt-3">
-      {topTopics.length > 0 && (
-        <div className="mb-3">
-          <p className="mb-1.5 text-[12px] font-semibold text-muted">By topic</p>
-          <div className="flex flex-wrap gap-1.5">
-            {topTopics.map(([t, ps]) => {
-              const onIt = ps.every((p) => picked.includes(p));
-              return (
-                <ToggleChip key={t} on={onIt} color={color} onClick={() => toggle(ps, !onIt)} small>
-                  {t}
-                </ToggleChip>
-              );
-            })}
-            {topicList.length > 8 && (
-              <button onClick={() => setAllTopics(!allTopics)} className="h-7 rounded-full px-2.5 text-[12px] font-semibold text-muted hover:text-text">
-                {allTopics ? "Fewer" : `${topicList.length - 8} more`}
-              </button>
-            )}
-          </div>
-        </div>
-      )}
-      <div className="max-h-[300px] overflow-y-auto rounded-[10px] bg-sunken/60 p-2">
-        {groups.map((g) => {
-          const keys = g.files.map(fileKey);
-          const allOn = keys.every((k) => picked.includes(k));
+      <div className="mb-2 flex flex-wrap gap-1.5">
+        {current != null && (
+          <QuickChip onClick={() => quick((w) => w.n === current)}>This week</QuickChip>
+        )}
+        {current != null && current > 1 && <QuickChip onClick={() => quick((w) => w.n != null && w.n >= current - 1 && w.n <= current)}>Last 2 weeks</QuickChip>}
+        <QuickChip onClick={() => quick((w) => w.kind === "week" && (current == null || (w.n ?? 0) <= current))}>Everything so far</QuickChip>
+        {picked.length > 0 && <QuickChip onClick={() => onChange([])}>Clear</QuickChip>}
+      </div>
+      <ul className="max-h-[340px] overflow-y-auto rounded-[10px] bg-sunken/60 p-1.5">
+        {shown.map(({ w, files }) => {
+          const keys = keysOf(files);
+          const n = keys.filter((k) => picked.includes(k)).length;
+          const all = n === keys.length;
+          const isOpen = open.includes(w.key);
+          const c = count(files);
           return (
-            <div key={g.id} className="mb-2 last:mb-0">
-              <button onClick={() => toggle(keys, !allOn)} className="mb-0.5 rounded px-1.5 text-[12px] font-semibold text-muted hover:text-text">
-                {g.name} · {allOn ? "none" : "all"}
-              </button>
-              <ul>
-                {g.files.map((f) => {
-                  const k = fileKey(f);
-                  const onIt = picked.includes(k);
-                  const n = countFor(k);
-                  return (
-                    <li key={f.id}>
-                      <label className="flex cursor-default items-center gap-2.5 rounded-md px-1.5 py-1 hover:bg-hover">
-                        <input type="checkbox" checked={onIt} onChange={() => toggle([k], !onIt)} className="size-3.5" style={{ accentColor: tone(color) }} />
-                        <span className="min-w-0 flex-1 truncate text-[13px]">
-                          {displayName(f.name)}
-                          {study.files[k]?.topics?.[0] && <span className="text-muted"> · {study.files[k]?.topics.slice(0, 2).join(", ")}</span>}
-                        </span>
-                        <span className="shrink-0 text-[12px] tabular-nums text-muted">
-                          {n.total} cards{n.due ? ` · ${n.due} due` : ""}
-                        </span>
-                      </label>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
+            <li key={w.key} className="rounded-[8px]">
+              <div className="flex items-center gap-2.5 rounded-[8px] px-2 py-1.5 hover:bg-hover">
+                <TriCheck checked={all} mixed={n > 0 && !all} color={color} onChange={() => set(keys, !all)} label={weekLabel(w)} />
+                <button onClick={() => set(keys, !all)} className="min-w-0 flex-1 text-left">
+                  <span className="flex items-center gap-2">
+                    <span className="truncate text-[13px] font-semibold">{weekLabel(w)}</span>
+                    {w.current && (
+                      <span className="shrink-0 rounded-full px-1.5 text-[11px] font-semibold" style={{ background: tone(color, "soft"), color: tone(color, "ink") }}>
+                        this week
+                      </span>
+                    )}
+                  </span>
+                  <span className="block truncate text-[12px] text-muted">
+                    {[w.range, `${files.length} ${files.length === 1 ? "file" : "files"}`, mode === "cards" ? `${c.total} cards${c.due ? ` · ${c.due} due` : ""}` : null]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </span>
+                </button>
+                <button
+                  onClick={() => setOpen((o) => (isOpen ? o.filter((x) => x !== w.key) : [...o, w.key]))}
+                  aria-expanded={isOpen}
+                  aria-label={isOpen ? "Hide files" : "Show files"}
+                  className="shrink-0 rounded px-1.5 py-0.5 text-[12px] font-medium text-muted hover:text-text"
+                >
+                  {n > 0 && !all ? `${n} of ${keys.length}` : isOpen ? "Hide" : "Files"}
+                </button>
+              </div>
+              {isOpen && (
+                <ul className="mb-1 ml-8 border-l border-line pl-2">
+                  {w.files
+                    .filter((x) => eligible(x.file))
+                    .map((x) => {
+                      const k = fileKey(x.file);
+                      const on = picked.includes(k);
+                      return (
+                        <li key={x.file.id}>
+                          <label className="flex cursor-default items-center gap-2.5 rounded-md px-1.5 py-1 hover:bg-hover">
+                            <input type="checkbox" checked={on} onChange={() => set([k], !on)} className="size-3.5" style={{ accentColor: tone(color) }} />
+                            <span className="w-[66px] shrink-0 text-[11px] font-semibold uppercase tracking-normal text-muted">{ROLE_LABEL[x.role]}</span>
+                            <span className="min-w-0 flex-1 truncate text-[13px]">{displayName(x.file.name)}</span>
+                          </label>
+                        </li>
+                      );
+                    })}
+                </ul>
+              )}
+            </li>
           );
         })}
-      </div>
-      <p className="mt-1.5 text-[12px] text-muted">{picked.length ? `${picked.length} chosen` : "Nothing chosen yet"}</p>
+      </ul>
+      <p className="mt-1.5 text-[12px] text-muted">
+        {picked.length
+          ? `${picked.length} ${picked.length === 1 ? "file" : "files"} from ${weeksText(shown.filter((x) => keysOf(x.files).some((k) => picked.includes(k))).map((x) => x.w))}`
+          : "Tick whole weeks, or open a week to pick single files."}
+      </p>
     </div>
+  );
+}
+
+function QuickChip({ onClick, children }: { onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button onClick={onClick} className="h-7 rounded-full bg-sunken px-3 text-[12px] font-semibold hover:bg-hover">
+      {children}
+    </button>
+  );
+}
+
+/** Kästchen mit drittem Zustand (ein Teil der Woche gewählt). */
+function TriCheck({ checked, mixed, color, onChange, label }: { checked: boolean; mixed: boolean; color: CourseColor; onChange: () => void; label: string }) {
+  return (
+    <input
+      type="checkbox"
+      checked={checked}
+      ref={(el) => {
+        if (el) el.indeterminate = mixed;
+      }}
+      onChange={onChange}
+      aria-label={label}
+      className="size-4 shrink-0"
+      style={{ accentColor: tone(color) }}
+    />
   );
 }
 
@@ -916,7 +983,8 @@ function NewSheet({
   const [length, setLength] = useState<SheetLength>(prefs.length);
   const [focus, setFocus] = useState("");
 
-  const groups = course ? course.folders.map((f) => ({ ...f, files: f.files.filter((x) => /\.(pdf|txt|md|tex)$/i.test(x.name)) })).filter((f) => f.files.length) : [];
+  const weeks = useWeeks(course);
+  const chosenWeeks = weeks.filter((w) => w.files.some((x) => picked.includes(fileKey(x.file))));
   const preset = PRESETS.find((p) => SHEET_SECTIONS.every((s) => p.include[s.key] === include[s.key]))?.id ?? null;
   const set = (k: keyof Include, v: boolean) =>
     setInclude((cur) => {
@@ -934,13 +1002,16 @@ function NewSheet({
       // egal
     }
     onError(null);
-    void createSheet({ moduleId: course.id, moduleName: course.name, paths: picked, focus: focus.trim() || undefined, include, length }).then((res) => {
+    const context = chosenWeeks
+      .map((w) => (w.kind === "week" ? `Week ${w.n}${w.title ? ` (${w.title})` : ""}` : weekLabel(w)))
+      .join(", ");
+    void createSheet({ moduleId: course.id, moduleName: course.name, paths: picked, focus: focus.trim() || undefined, include, length, context }).then((res) => {
       if (res.error) onError(res.error);
     });
     onStarted();
   };
 
-  const sizeHint = picked.length > 8 ? "Many files: Claude uses the saved summaries for some of them." : null;
+  const sizeHint = picked.length > 10 ? "That’s a lot. Claude uses the saved summaries for some files, so the sheet stays readable." : null;
 
   return (
     <>
@@ -970,50 +1041,8 @@ function NewSheet({
         </div>
       </Step>
 
-      <Step n={2} title="Which lectures or files?">
-        {course && groups.length > 0 ? (
-          <div className="max-h-[320px] overflow-y-auto rounded-[10px] bg-sunken/60 p-2">
-            {groups.map((g) => {
-              const keys = g.files.map(fileKey);
-              const allOn = keys.every((k) => picked.includes(k));
-              return (
-                <div key={g.id} className="mb-2 last:mb-0">
-                  <button
-                    onClick={() => setPicked((p) => (allOn ? p.filter((k) => !keys.includes(k)) : [...new Set([...p, ...keys])]))}
-                    className="mb-0.5 rounded px-1.5 text-[12px] font-semibold text-muted hover:text-text"
-                  >
-                    {g.name} · {allOn ? "none" : "all"}
-                  </button>
-                  <ul>
-                    {g.files.map((f) => {
-                      const k = fileKey(f);
-                      const onIt = picked.includes(k);
-                      const a = study.files[k];
-                      return (
-                        <li key={f.id}>
-                          <label className="flex cursor-default items-center gap-2.5 rounded-md px-1.5 py-1 hover:bg-hover">
-                            <input
-                              type="checkbox"
-                              checked={onIt}
-                              onChange={() => setPicked((p) => (onIt ? p.filter((x) => x !== k) : [...p, k]))}
-                              className="size-3.5"
-                              style={{ accentColor: tone(color) }}
-                            />
-                            <span className="min-w-0 flex-1 truncate text-[13px]">{displayName(f.name)}</span>
-                            {a?.topics?.[0] && <span className="hidden shrink-0 truncate text-[12px] text-muted sm:block">{a.topics.slice(0, 2).join(", ")}</span>}
-                          </label>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          <p className="text-[13px] text-muted">No PDFs in this course yet.</p>
-        )}
-        <p className="mt-1.5 text-[12px] text-muted">{picked.length ? `${picked.length} chosen` : "Pick one or more. Two or three lectures make a good sheet."}</p>
+      <Step n={2} title="Which weeks?">
+        {course ? <WeekPicker course={course} weeks={weeks} picked={picked} onChange={setPicked} mode="sheet" /> : null}
         {sizeHint && <p className="mt-1 text-[12px] text-muted">{sizeHint}</p>}
       </Step>
 

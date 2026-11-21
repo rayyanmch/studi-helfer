@@ -78,11 +78,12 @@ function cleanInclude(include) {
   return out;
 }
 
-function prompt({ moduleName, count, include, length, focus }) {
+function prompt({ moduleName, count, include, length, focus, context }) {
   const on = Object.entries(SECTIONS).filter(([k]) => include[k] && k !== "answers");
   const off = Object.keys(SECTIONS).filter((k) => !include[k] && k !== "answers" && k !== "bigPicture");
   return [
     `Course: ${moduleName || "unknown"}. Write a study guide ("Lernhilfe") from these ${count} file(s), marked F1…F${count}.`,
+    context ? `The files belong to: ${context}. Start the title with it, e.g. "Woche 3–4: …" (in the language of the material).` : "",
     "Structure it into 3–7 parts by topic (not by file), like a good tutor would. Each part contains:",
     ...on.filter(([k]) => k !== "bigPicture").map(([k, d]) => `- ${k}: ${d}`),
     include.questions && include.answers ? "- In questions, fill 'a' with a short model answer." : include.questions ? "- In questions, leave 'a' empty." : "",
@@ -154,7 +155,12 @@ function sheetHtml(sheet, { moduleName, accent = "#22325c" }) {
   const fileName = (i) => sheet.files[i - 1]?.name.replace(/\.[a-z0-9]+$/i, "") ?? null;
   const parts = sheet.parts || [];
   const h3 = (key, body) => (body ? `<h3>${L[key]}</h3>${body}` : "");
-  const leads = (list) => (list?.length ? list.map((x) => `<p><strong>${rich(x.lead)}${/[:?!.]$/.test(x.lead) ? "" : ":"}</strong> ${rich(x.text)}</p>`).join("") : "");
+  // „Definition über R².“ → „Definition über R²:“ (Satzzeichen am Ende vereinheitlichen, Fragen bleiben Fragen)
+  const leadText = (l) => {
+    const t = String(l ?? "").replace(/\*\*/g, "").trim().replace(/[.:;,]+$/, "");
+    return t && !/[?!]$/.test(t) ? `${t}:` : t;
+  };
+  const leads = (list) => (list?.length ? list.map((x) => `<p><strong>${rich(leadText(x.lead))}</strong> ${rich(x.text)}</p>`).join("") : "");
   const bullets = (list, f = rich) => (list?.length ? `<ul>${list.map((x) => `<li>${f(x)}</li>`).join("")}</ul>` : "");
   const numbered = (list, f) => (list?.length ? `<ol>${list.map((x) => `<li>${f(x)}</li>`).join("")}</ol>` : "");
 
@@ -179,7 +185,7 @@ function sheetHtml(sheet, { moduleName, accent = "#22325c" }) {
       <h2>${rich(p.title)}</h2>
       ${h3("summary", leads(p.summary))}
       ${h3("beginner", numbered(p.beginner, (x) => `<strong>${rich(x.q)}</strong> ${rich(x.a)}`))}
-      ${h3("analogies", bullets(p.analogies, (x) => `<strong>${rich(x.lead)}:</strong> ${rich(x.text)}`))}
+      ${h3("analogies", bullets(p.analogies, (x) => `<strong>${rich(leadText(x.lead))}</strong> ${rich(x.text)}`))}
       ${h3("examples", numbered(p.examples, rich))}
       ${h3("tables", tables)}
       ${h3("terms", terms)}
@@ -191,7 +197,7 @@ function sheetHtml(sheet, { moduleName, accent = "#22325c" }) {
     </section>`;
   };
 
-  const big = sheet.bigPicture?.length ? `<section class="part" id="big"><h2>${L.bigPicture}</h2>${numbered(sheet.bigPicture, (x) => `<strong>${rich(x.lead)}:</strong> ${rich(x.text)}`)}</section>` : "";
+  const big = sheet.bigPicture?.length ? `<section class="part" id="big"><h2>${L.bigPicture}</h2>${numbered(sheet.bigPicture, (x) => `<strong>${rich(leadText(x.lead))}</strong> ${rich(x.text)}`)}</section>` : "";
   const date = new Date(sheet.createdAt).toLocaleDateString(sheet.language === "en" ? "en-US" : "de-DE", { day: "numeric", month: "long", year: "numeric" });
 
   return `<!doctype html><html lang="${sheet.language || "de"}"><head><meta charset="utf-8"><title>${esc(sheet.title)}</title><style>
@@ -248,7 +254,7 @@ function upgrade(sheet) {
 
 /** HTML → PDF mit einem unsichtbaren Fenster. */
 async function renderPdf(BrowserWindow, sheet, { moduleName, accent, outFile }) {
-  const html = sheetHtml(upgrade(sheet), { moduleName, accent }).replace(/<p><strong>:<\/strong> /g, "<p>");
+  const html = sheetHtml(upgrade(sheet), { moduleName, accent }).replace(/<p><strong><\/strong> /g, "<p>");
   const tmp = path.join(os.tmpdir(), `studi-sheet-${sheet.id}.html`);
   fs.writeFileSync(tmp, html);
   const win = new BrowserWindow({ show: false, width: 900, height: 1200, webPreferences: { javascript: false, sandbox: true } });

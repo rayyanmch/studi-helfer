@@ -21,7 +21,10 @@ const ANALYSES = path.join(DIR, "analyses.json"); // { [hash]: Analysis }
 const HASHES = path.join(DIR, "hashes.json"); // { [path]: { size, mtime, hash } }
 const SHEETS = path.join(DIR, "sheets.json"); // { sheets: Sheet[] }
 const CARDS = path.join(DIR, "cards.json"); // { [cardId]: { box, due, reviews, suspended? } }
-const LOG = path.join(DIR, "log.json"); // { days: { "YYYY-MM-DD": Anzahl Abfragen } }
+const UNREADABLE = path.join(DIR, "unreadable.json"); // { [hash]: { name, at } } Dateien ohne Text (Scans, Handschrift)
+const LOG = path.join(DIR, "log.json");
+const WEEK_TITLES = path.join(DIR, "week-titles.json"); // { [moduleId]: { sig, titles: { [weekKey]: Titel } } }
+const TITLE_MODEL = process.env.STUDI_TITLE_MODEL || "haiku"; // kleine Aufgabe → kleines Modell // { days: { "YYYY-MM-DD": Anzahl Abfragen } }
 
 const MODEL = process.env.STUDI_STUDY_MODEL || "sonnet";
 const PARALLEL = 2; // gleichzeitige Auswertungen (Abo-Limits schonen)
@@ -56,6 +59,16 @@ function today(offsetDays = 0) {
 
 function allowedPath(p) {
   return typeof p === "string" && SUPPORTED.test(p) && backend.insideTarget(p) && fs.existsSync(p);
+}
+
+/** Wie hashOf, liest aber asynchron (blockiert das Fenster nicht, wenn beim ersten Start viele PDFs neu sind). */
+async function hashOfAsync(p, hashes) {
+  const st = await fs.promises.stat(p);
+  const known = hashes[p];
+  if (known && known.size === st.size && known.mtime === st.mtimeMs) return known.hash;
+  const hash = crypto.createHash("sha256").update(await fs.promises.readFile(p)).digest("hex");
+  hashes[p] = { size: st.size, mtime: st.mtimeMs, hash };
+  return hash;
 }
 
 /** Inhalts-Hash, zwischengespeichert nach Größe + Änderungszeit. */
@@ -119,14 +132,14 @@ const running = new Set(); // laufende claude-Prozesse (für Abbrechen)
  * Ein Aufruf mit festem Antwortformat. Liefert { ok: true, data } oder Fail.
  * Ohne Werkzeuge, ohne Projekt-Einstellungen/Hooks (--safe-mode), in einem leeren Ordner.
  */
-async function askClaude({ system, prompt, input, schema, timeoutMs = 240_000 }) {
+async function askClaude({ system, prompt, input, schema, timeoutMs = 240_000, model = MODEL }) {
   const bin = await findClaude();
   if (!bin) return fail("no_ai", "Claude Code isn't installed on this Mac. Study tools need it for now.");
   const cwd = path.join(os.tmpdir(), "studi-helfer-claude");
   fs.mkdirSync(cwd, { recursive: true });
   const args = [
     "-p", prompt,
-    "--model", MODEL,
+    "--model", model,
     "--safe-mode",
     "--tools", "",
     "--no-session-persistence",
@@ -244,8 +257,16 @@ function createStudy({ packaged, broadcast, ...deps }) {
     const hash = hashOf(p, hashes);
     writeJson(HASHES, hashes);
     if (readJson(ANALYSES, {})[hash]) return { ok: true, cached: true };
+    if (readJson(UNREADABLE, {})[hash]) return fail("no_text", "This file is handwritten or scanned, so it can't be read yet.");
     const text = await fileText(packaged(), p, FILE_CHARS);
-    if (!text.ok) return text;
+    if (!text.ok) {
+      if (text.code === "no_text") {
+        const bad = readJson(UNREADABLE, {});
+        bad[hash] = { name: path.basename(p), at: Date.now() };
+        writeJson(UNREADABLE, bad);
+      }
+      return text;
+    }
     const name = path.basename(p);
     const res = await askClaude({
       system: SYSTEM,
@@ -296,7 +317,7 @@ function createStudy({ packaged, broadcast, ...deps }) {
         job.current = job.current.filter((c) => c !== p);
         job.done += 1;
         if (res.ok && !res.cached) job.durations.push((Date.now() - t0) / 1000);
-        if (!res.ok && res.code !== "cancelled") job.failed.push({ path: p, name: path.basename(p), message: res.message });
+        if (!res.ok && res.code !== "cancelled" && res.code !== "no_text") job.failed.push({ path: p, name: path.basename(p), message: res.message });
         // Limit erreicht oder Claude fehlt: Rest nicht sinnlos weiterprobieren
         if (!res.ok && (res.code === "rate_limited" || res.code === "no_ai")) job.cancel = true;
         push();
@@ -318,19 +339,27 @@ function createStudy({ packaged, broadcast, ...deps }) {
   }
 
   /** Gespeicherte Auswertungen und Karteikarten-Stand für die angegebenen Dateien. */
-  function get(paths) {
+  async function get(paths) {
     const hashes = readJson(HASHES, {});
     const analyses = readJson(ANALYSES, {});
     const cards = readJson(CARDS, {});
+    const bad = readJson(UNREADABLE, {});
+    const unreadable = {};
     const files = {};
     let dirty = false;
     for (const p of Array.isArray(paths) ? paths : []) {
       if (!allowedPath(p)) continue;
       const before = hashes[p]?.hash;
-      const hash = hashOf(p, hashes);
+      let hash;
+      try {
+        hash = await hashOfAsync(p, hashes);
+      } catch {
+        continue; // Datei gerade verschwunden
+      }
       if (before !== hash) dirty = true;
       const a = analyses[hash];
       files[p] = a ? { ...a, id: hash.slice(0, 16) } : null;
+      if (!a && bad[hash]) unreadable[p] = true;
     }
     if (dirty) writeJson(HASHES, hashes);
     const progress = {};
@@ -341,7 +370,7 @@ function createStudy({ packaged, broadcast, ...deps }) {
         if (cards[id]) progress[id] = cards[id];
       });
     }
-    return { files, cards: progress, today: today(), state: jobState(), stats: stats(), sheet: sheetState() };
+    return { files, cards: progress, unreadable, today: today(), state: jobState(), stats: stats(), sheet: sheetState(), weekTitles: cachedWeekTitles() };
   }
 
   // ---------------------------------------------------------------- Karteikarten
@@ -415,7 +444,7 @@ function createStudy({ packaged, broadcast, ...deps }) {
   function pdfPathFor(sheet, moduleName) {
     const cfg = backend.loadConfig();
     const dir = cfg.targetDir ? path.join(cfg.targetDir, "Study sheets") : path.join(DIR, "pdf");
-    const clean = (x) => String(x || "").replace(/[/\\:*?"<>|\n\r]/g, "-").replace(/\s+/g, " ").trim();
+    const clean = (x) => String(x || "").replace(/\s*:\s*/g, " – ").replace(/[/\\*?"<>|\n\r]/g, "-").replace(/\s+/g, " ").trim();
     const base = clean(`${moduleName ? `${moduleName} – ` : ""}${sheet.title}`).slice(0, 120) || "Study sheet";
     let file = path.join(dir, `${base}.pdf`);
     for (let n = 2; fs.existsSync(file) && n < 100; n++) file = path.join(dir, `${base} (${n}).pdf`);
@@ -455,7 +484,7 @@ function createStudy({ packaged, broadcast, ...deps }) {
     return parts.length ? { ok: true, input: parts.join("\n\n") } : fail("ai_error", "These files couldn't be read.");
   }
 
-  async function createSheet({ moduleId, moduleName, paths, focus, include, length, accent }) {
+  async function createSheet({ moduleId, moduleName, paths, focus, include, length, accent, context }) {
     if (sheetRunning) return fail("busy", "A study sheet is already being written.");
     const files = [...new Set((Array.isArray(paths) ? paths : []).filter(allowedPath))].slice(0, 30);
     if (!files.length) return fail("invalid", "Choose at least one file.");
@@ -469,7 +498,7 @@ function createStudy({ packaged, broadcast, ...deps }) {
       sheetProgress.step = "writing";
       const res = await askClaude({
         system: SYSTEM,
-        prompt: sheetLib.prompt({ moduleName, count: files.length, include: inc, length: len, focus: focusText }),
+        prompt: sheetLib.prompt({ moduleName, count: files.length, include: inc, length: len, focus: focusText, context: typeof context === "string" ? context.slice(0, 400) : "" }),
         input: src.input,
         schema: sheetLib.SCHEMA,
         timeoutMs: 600_000,
@@ -482,6 +511,7 @@ function createStudy({ packaged, broadcast, ...deps }) {
         moduleName: String(moduleName || ""),
         createdAt: Date.now(),
         focus: focusText,
+        context: typeof context === "string" ? context.slice(0, 120) : null,
         include: inc,
         length: len,
         files: files.map((p) => ({ path: p, name: path.basename(p) })),
@@ -545,6 +575,64 @@ function createStudy({ packaged, broadcast, ...deps }) {
     return { ok: true };
   }
 
+  // ---------------------------------------------------------------- Wochentitel (wenig KI)
+
+  const titleRuns = new Map();
+
+  /**
+   * Kurze Titel für Themenwochen, deren Titel die Regeln nur aus Dateinamen zusammensetzen konnten
+   * (web/src/lib/weeks.ts). Ein Aufruf pro Modul mit Haiku, Ergebnis zwischengespeichert, solange sich die Stichwörter nicht ändern.
+   */
+  async function weekTitles(moduleId, moduleName, weeks) {
+    const list = (Array.isArray(weeks) ? weeks : [])
+      .filter((w) => w && typeof w.key === "string" && /^w\d{1,2}$/.test(w.key))
+      .map((w) => ({ key: w.key, title: String(w.title || "").slice(0, 120), hints: (Array.isArray(w.hints) ? w.hints : []).map((h) => String(h).slice(0, 120)).slice(0, 8) }))
+      .filter((w) => w.hints.length || w.title);
+    if (!list.length) return { ok: true, titles: {} };
+    const sig = crypto.createHash("sha1").update(JSON.stringify(list.map((w) => [w.key, w.hints]))).digest("hex");
+    const store = readJson(WEEK_TITLES, {});
+    if (store[moduleId]?.sig === sig) return { ok: true, titles: store[moduleId].titles };
+    if (titleRuns.has(moduleId)) return titleRuns.get(moduleId);
+    const run = (async () => {
+      const res = await askClaude({
+        model: TITLE_MODEL,
+        system: "You name the weeks of a university course. Answer only with the requested JSON.",
+        prompt: [
+          `Course: ${moduleName || "unknown"}.`,
+          "For each week give a short title of 2–5 words, like a lecturer would write it in ILIAS (e.g. 'Komplexe Zahlen', 'Requirements Engineering', 'Absatzmärkte gestalten').",
+          "Use the language of the hints. Use only what the hints say, don't invent topics. Turn file-name fragments into proper words ('Aussagen Mengen' → 'Aussagen und Mengen', 'SE Nutshell' → 'Software Engineering in a Nutshell'). If a week has two topics, join them with ' & '.",
+        ].join(" "),
+        input: JSON.stringify(list),
+        schema: {
+          type: "object",
+          properties: { titles: { type: "array", items: { type: "object", properties: { key: { type: "string" }, title: { type: "string" } }, required: ["key", "title"], additionalProperties: false } } },
+          required: ["titles"],
+          additionalProperties: false,
+        },
+        timeoutMs: 90_000,
+      });
+      if (!res.ok) return res;
+      const titles = {};
+      for (const t of res.data.titles || []) if (list.some((w) => w.key === t.key) && t.title) titles[t.key] = String(t.title).slice(0, 60);
+      const next = readJson(WEEK_TITLES, {});
+      next[moduleId] = { sig, titles, at: Date.now() };
+      writeJson(WEEK_TITLES, next);
+      return { ok: true, titles };
+    })();
+    titleRuns.set(moduleId, run);
+    try {
+      return await run;
+    } finally {
+      titleRuns.delete(moduleId);
+    }
+  }
+
+  /** Gespeicherte Wochentitel aller Module (sofort, ohne KI). */
+  function cachedWeekTitles() {
+    const store = readJson(WEEK_TITLES, {});
+    return Object.fromEntries(Object.entries(store).map(([k, v]) => [k, v.titles || {}]));
+  }
+
   function sheetState() {
     return sheetProgress ? { running: true, ...sheetProgress } : { running: false };
   }
@@ -554,7 +642,7 @@ function createStudy({ packaged, broadcast, ...deps }) {
     return { available: Boolean(bin), provider: "claude-code", model: MODEL };
   }
 
-  return { status, analyze, cancel, get, review, suspend, stats, resetCards, listSheets, createSheet, openSheet, deleteSheet, sheetState, jobState };
+  return { status, analyze, cancel, get, review, suspend, stats, resetCards, listSheets, createSheet, openSheet, deleteSheet, sheetState, jobState, weekTitles, cachedWeekTitles };
 }
 
 // ------------------------------------------------------------------ Anki-Export
@@ -595,6 +683,7 @@ function register(handle, { packaged, windows, dialog, BrowserWindow, shell }) {
   handle("studi:study:deleteSheet", (id) => study.deleteSheet(String(id)));
   handle("studi:study:openSheet", (id, reveal) => study.openSheet(String(id), Boolean(reveal)));
   handle("studi:study:sheetState", () => study.sheetState());
+  handle("studi:study:weekTitles", (moduleId, moduleName, weeks) => study.weekTitles(String(moduleId || ""), String(moduleName || ""), weeks));
   handle("studi:study:exportAnki", async (name, cards) => {
     const safe = String(name || "Flashcards").replace(/[/\\:*?"<>|]/g, "-").slice(0, 80);
     const win = [...windows()][0];

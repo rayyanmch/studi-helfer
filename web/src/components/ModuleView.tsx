@@ -11,6 +11,8 @@ import { CheckButton, DocTile, FileRow, FolderBadge, displayName } from "./files
 import { linkSolutions } from "@/lib/solutions";
 import { openEvent, openNewEvent } from "./EventDialog";
 import { StudyPanel } from "./StudyView";
+import { useWeeks } from "@/lib/study";
+import { type Role, type Week, weekLabel } from "@/lib/weeks";
 import type { ClassSlot, Course, CourseColor, CourseFile, Deadline } from "@/lib/mock-data";
 import * as store from "@/lib/app-store";
 import { COURSE_COLORS, useApp } from "@/lib/app-store";
@@ -462,6 +464,21 @@ function Files({ course, files, freshIds }: { course: Course; files: CourseFile[
   const [filter, setFilter] = useState<string>("all");
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<Sort>("newest"); // Neues zuerst (Rayyan)
+  const [group, setGroupState] = useState<"week" | "type">(() => {
+    try {
+      return localStorage.getItem("studi.filesGroup") === "type" ? "type" : "week";
+    } catch {
+      return "week";
+    }
+  });
+  const setGroup = (g: "week" | "type") => {
+    setGroupState(g);
+    try {
+      localStorage.setItem("studi.filesGroup", g);
+    } catch {
+      // egal
+    }
+  };
   const [closed, setClosed] = useState<string[]>([]);
   const q = query.trim().toLowerCase();
 
@@ -501,7 +518,20 @@ function Files({ course, files, freshIds }: { course: Course; files: CourseFile[
   return (
     <section className="mt-8" aria-label="Files">
       <div className="flex flex-wrap items-center gap-2">
-        <div role="group" aria-label="Show files" className="flex min-w-0 flex-1 flex-wrap gap-1.5">
+        <div role="radiogroup" aria-label="Group files" className="inline-flex gap-1 rounded-[10px] bg-sunken p-1">
+          {(["week", "type"] as const).map((g) => (
+            <button
+              key={g}
+              role="radio"
+              aria-checked={group === g}
+              onClick={() => setGroup(g)}
+              className={`h-7 rounded-[7px] px-3 text-[13px] font-medium transition-colors ${group === g ? "bg-surface shadow-[0_1px_2px_rgba(0,0,0,0.08)]" : "text-muted hover:text-text"}`}
+            >
+              {g === "week" ? "By week" : "By type"}
+            </button>
+          ))}
+        </div>
+        <div role="group" aria-label="Show files" className={`min-w-0 flex-1 flex-wrap gap-1.5 ${group === "type" ? "flex" : "hidden"}`}>
           <Chip color={color} active={filter === "all"} onClick={() => setFilter("all")}>
             All <span className="opacity-70">{files.length}</span>
           </Chip>
@@ -528,7 +558,9 @@ function Files({ course, files, freshIds }: { course: Course; files: CourseFile[
             </button>
           )}
         </label>
+        {group === "week" && <span className="flex-1" />}
         <select
+          hidden={group === "week"}
           value={sort}
           onChange={(e) => setSort(e.target.value as Sort)}
           aria-label="Sort files"
@@ -563,7 +595,8 @@ function Files({ course, files, freshIds }: { course: Course; files: CourseFile[
               </button>
             </div>
           )}
-          {filter === "all" && recent.length > 0 && (
+          {group === "week" && <WeekFiles course={course} links={links} />}
+          {group === "type" && filter === "all" && recent.length > 0 && (
             <section>
               <h3 className="mb-2 text-[15px] font-bold">Recently added</h3>
               <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3">
@@ -573,7 +606,7 @@ function Files({ course, files, freshIds }: { course: Course; files: CourseFile[
               </ul>
             </section>
           )}
-          {folders.map((f) => {
+          {group === "type" && folders.map((f) => {
             const isOpen = !closed.includes(f.id);
             return (
               <section key={f.id}>
@@ -607,6 +640,79 @@ function Files({ course, files, freshIds }: { course: Course; files: CourseFile[
       )}
     </section>
   );
+}
+
+// Dateien nach Themenwochen (lib/weeks.ts): neueste Woche oben, diese und letzte Woche offen.
+const BUCKETS: [string, Role[]][] = [
+  ["Lectures", ["lecture"]],
+  ["Exercises & solutions", ["exercise", "solution"]],
+  ["Reading & self-study", ["reading", "selfstudy"]],
+  ["Videos & more", ["recording", "other", "info", "exam"]],
+];
+
+function WeekFiles({ course, links }: { course: Course; links: ReturnType<typeof linkSolutions> }) {
+  const color = colorOf(course);
+  const weeks = useWeeks(course);
+  const ordered: Week[] = [...weeks.filter((w) => w.kind === "week").reverse(), ...weeks.filter((w) => w.kind !== "week")];
+  const cur = Math.max(0, ordered.findIndex((w) => w.current));
+  const [toggled, setToggled] = useState<string[]>([]);
+  const defaultOpen = (w: Week, i: number) => w.kind === "week" && i <= cur + 1;
+  const isOpen = (w: Week, i: number) => defaultOpen(w, i) !== toggled.includes(w.key);
+  const toggle = (k: string) => setToggled((t) => (t.includes(k) ? t.filter((x) => x !== k) : [...t, k]));
+
+  return (
+    <div className="flex flex-col gap-3">
+      {ordered.map((w, i) => {
+        const open = isOpen(w, i);
+        return (
+          <section key={w.key} className="rounded-[12px] bg-surface" style={w.current ? { boxShadow: `inset 3px 0 0 ${tone(color)}` } : undefined}>
+            <button onClick={() => toggle(w.key)} aria-expanded={open} className="flex w-full items-center gap-3 px-4 py-3 text-left">
+              <span className="min-w-0 flex-1">
+                <span className="flex flex-wrap items-baseline gap-x-2">
+                  <span className="text-[15px] font-bold">{w.kind === "week" ? `Week ${w.n}` : weekLabel(w)}</span>
+                  {w.kind === "week" && w.title && <span className="min-w-0 truncate text-[15px] font-semibold" style={{ color: tone(color, "ink") }}>{w.title}</span>}
+                  {w.current && (
+                    <span className="rounded-full px-2 py-px text-[11px] font-bold" style={{ background: tone(color), color: "var(--on-solid)" }}>
+                      This week
+                    </span>
+                  )}
+                </span>
+                <span className="block text-[12px] text-muted">
+                  {[w.range, `${w.files.length} ${w.files.length === 1 ? "file" : "files"}`, summaryOf(w)].filter(Boolean).join(" · ")}
+                </span>
+              </span>
+              {open ? <ChevronDown size={16} className="shrink-0 text-muted" aria-hidden /> : <ChevronRight size={16} className="shrink-0 text-muted" aria-hidden />}
+            </button>
+            {open && (
+              <div className="flex flex-col gap-2 px-2.5 pb-3">
+                {BUCKETS.map(([label, roles]) => {
+                  const list = w.files.filter((x) => roles.includes(x.role));
+                  if (!list.length) return null;
+                  return (
+                    <div key={label}>
+                      {w.kind === "week" && <p className="px-2 pb-0.5 pt-1 text-[12px] font-semibold text-muted">{label}</p>}
+                      <ul>
+                        {list.map((x) => (
+                          <FileRow key={x.file.id} file={x.file} color={color} solutions={links.solutionsOf.get(x.file.id)} sheet={links.sheetOf.get(x.file.id)} />
+                        ))}
+                      </ul>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+        );
+      })}
+    </div>
+  );
+}
+
+/** „Lecture, exercise, solution“ als kurze Übersicht im Kopf einer Woche. */
+function summaryOf(w: Week) {
+  const has = (r: Role) => w.files.some((x) => x.role === r);
+  const parts = [has("lecture") && "lecture", has("exercise") && "exercise", has("solution") && "solution", (has("reading") || has("selfstudy")) && "reading"].filter(Boolean);
+  return parts.length ? parts.join(", ") : null;
 }
 
 function Chip({ active, color, onClick, children }: { active: boolean; color: CourseColor; onClick: () => void; children: React.ReactNode }) {
