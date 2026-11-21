@@ -655,7 +655,12 @@ function WeekView({
     const iso = d.toISOString().slice(0, 10);
     const items = visible.filter((x) => x.date === iso);
     const events = googleEvents.filter((x) => x.date === iso);
-    return { iso, num: d.getUTCDate(), wd: d.getUTCDay(), items, events, wide: items.length + events.length > 0, today: i === 0 };
+    // ILIAS und Google stehen in einer Reihenfolge nach Uhrzeit (ILIAS bei gleicher Zeit zuerst)
+    const entries = [
+      ...items.map((d) => ({ key: d.id, at: startMinutes(d.time), d, ev: null as GoogleEvent | null })),
+      ...events.map((ev) => ({ key: `g-${ev.id}`, at: startMinutes(ev.time), d: null as Deadline | null, ev })),
+    ].sort((a, b) => a.at - b.at);
+    return { iso, num: d.getUTCDate(), wd: d.getUTCDay(), items, events, entries, wide: entries.length > 0, today: i === 0 };
   });
 
   const open = deadlines.filter(
@@ -758,18 +763,19 @@ function WeekView({
                 day.today && day.wide ? "shadow-[inset_0_0_0_2px_var(--accent)]" : ""
               }`}
             >
-              {day.items.map((d) => (
-                <DeadlineBlock
-                  key={d.id}
-                  d={d}
-                  done={done.includes(d.id)}
-                  onToggle={() => onToggle(d.id)}
-                  onOpen={() => openEvent(d, { onOpenCourse: () => onOpen(d.courseId) })}
-                />
-              ))}
-              {day.events.map((ev) => (
-                <GoogleBlock key={ev.id} ev={ev} />
-              ))}
+              {day.entries.map((e) =>
+                e.d ? (
+                  <DeadlineBlock
+                    key={e.key}
+                    d={e.d}
+                    done={done.includes(e.d.id)}
+                    onToggle={() => onToggle(e.d!.id)}
+                    onOpen={() => openEvent(e.d!, { onOpenCourse: () => onOpen(e.d!.courseId) })}
+                  />
+                ) : (
+                  <GoogleBlock key={e.key} ev={e.ev!} />
+                ),
+              )}
             </div>
           </div>
         ))}
@@ -842,8 +848,10 @@ function MonthView({ deadlines, events, done, onOpen }: { deadlines: Deadline[];
       weekend: i % 7 >= 5,
       past: diff < 0,
       today: diff === 0,
-      items: deadlines.filter((x) => x.date === iso),
-      events: events.filter((x) => x.date === iso),
+      entries: [
+        ...deadlines.filter((x) => x.date === iso && courseById(x.courseId)).map((d) => ({ key: d.id, at: startMinutes(d.time), d, ev: null as GoogleEvent | null })),
+        ...events.filter((x) => x.date === iso).map((ev) => ({ key: `g-${ev.id}`, at: startMinutes(ev.time), d: null as Deadline | null, ev })),
+      ].sort((a, b) => a.at - b.at),
     };
   });
 
@@ -868,19 +876,30 @@ function MonthView({ deadlines, events, done, onOpen }: { deadlines: Deadline[];
               {cell.month && <span className="ml-1 font-normal text-muted">{cell.month}</span>}
             </span>
             {!cell.past &&
-              cell.items.slice(0, 3).map((d) => {
-                const course = courseById(d.courseId);
-                if (!course) return null;
+              cell.entries.slice(0, 3).map((e) => {
+                if (e.ev) {
+                  return (
+                    <span
+                      key={e.key}
+                      title={`${e.ev.title}, ${e.ev.time}`}
+                      className="truncate rounded-[5px] px-1.5 py-0.5 text-left text-[11px] font-semibold text-muted"
+                      style={{ border: "1.5px dashed var(--muted)" }}
+                    >
+                      {abbrTitle(e.ev.title)}
+                    </span>
+                  );
+                }
+                const d = e.d!;
+                const course = courseById(d.courseId)!;
                 const c = d.color ?? colorOf(course);
                 const isDone = d.kind === "abgabe" && done.includes(d.id);
                 const exam = d.kind === "klausur";
                 const plain = bare(d.title);
                 // „Lecture“, „Exercise · Group 3“ … sagen allein nicht, welcher Kurs: Kurzname davor (nicht nur Farbe)
-                const label =
-                  exam ? examLabel(d.title, course) : /^(lecture|exercise|tutorial|seminar|lab|class)\b/i.test(plain) ? `${shortOf(course)} ${plain}` : plain;
+                const label = exam ? examLabel(d.title, course) : /^(lecture|exercise|tutorial|seminar|lab|class)\b/i.test(plain) ? `${shortOf(course)} ${plain}` : plain;
                 return (
                   <button
-                    key={d.id}
+                    key={e.key}
                     onClick={() => openEvent(d, { onOpenCourse: () => onOpen(d.courseId) })}
                     title={`${d.title}, ${nameOf(course)}, ${d.time}`}
                     aria-label={`${d.title}, ${nameOf(course)}, ${d.time}`}
@@ -893,22 +912,11 @@ function MonthView({ deadlines, events, done, onOpen }: { deadlines: Deadline[];
                           : { background: tone(c, "soft"), color: tone(c, "ink") }
                     }
                   >
-                    {label}
+                    {abbrTitle(label, 18)}
                   </button>
                 );
               })}
-            {!cell.past &&
-              cell.events.slice(0, Math.max(0, 3 - cell.items.length)).map((ev) => (
-                <span
-                  key={ev.id}
-                  title={`${ev.title}, ${ev.time}`}
-                  className="truncate rounded-[5px] px-1.5 py-0.5 text-left text-[11px] font-semibold text-muted shadow-[inset_0_0_0_1.5px_var(--line)] [border-style:dashed]"
-                  style={{ border: "1.5px dashed var(--muted)", boxShadow: "none" }}
-                >
-                  {ev.title}
-                </span>
-              ))}
-            {cell.items.length > 3 && <span className="px-1 text-[11px] text-muted">+{cell.items.length - 3} more</span>}
+            {!cell.past && cell.entries.length > 3 && <span className="px-1 text-[11px] text-muted">+{cell.entries.length - 3} more</span>}
           </div>
         ))}
       </div>
@@ -939,6 +947,32 @@ function CalendarChip({ on, onChange, dashed, children }: { on: boolean; onChang
       />
     </button>
   );
+}
+
+/** Beginn in Minuten für die Reihenfolge am Tag: „10:00 to 11:30“ → 600, „by 23:55“ → 1435, ganztägig → -1. */
+function startMinutes(time: string): number {
+  const m = /(\d{1,2}):(\d{2})/.exec(time);
+  return m ? +m[1] * 60 + +m[2] : -1;
+}
+
+/** Kürzel für die enge Monatsansicht: „Mathe Vorlesung“ → „Mathe VL“, zu lange Titel werden gekürzt. */
+const ABBREVIATIONS: [RegExp, string][] = [
+  [/\bvorlesung(en)?\b/gi, "VL"],
+  [/\blecture\b/gi, "Lec"],
+  [/\b(ü|ue|u)bung(en)?\b/gi, "Ü"],
+  [/\bexercises?\b/gi, "Ex"],
+  [/\btutorium\b/gi, "Tut"],
+  [/\btutorial\b/gi, "Tut"],
+  [/\bseminar\b/gi, "Sem"],
+  [/\bklausur\b/gi, "Exam"],
+  [/\bpraktikum\b/gi, "Prak"],
+  [/\bsprechstunde\b/gi, "Office h."],
+];
+function abbrTitle(title: string, max = 17): string {
+  let t = title;
+  for (const [re, short] of ABBREVIATIONS) t = t.replace(re, short);
+  t = t.replace(/\s+/g, " ").trim();
+  return t.length > max ? `${t.slice(0, max - 1).trimEnd()}…` : t;
 }
 
 // Termin aus dem Google Kalender: gestrichelter Rand, kein Kreis (Termine hakt man nicht ab).

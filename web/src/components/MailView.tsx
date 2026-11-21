@@ -64,6 +64,99 @@ export function AccountChip({ id, size = 18 }: { id: MailAccountId; size?: numbe
   );
 }
 
+// Breite der Spalten (zum Ziehen); gemerkt pro Mac
+interface Panes {
+  side: number;
+  list: number;
+}
+const DEFAULT_PANES: Panes = { side: 232, list: 360 };
+const SIDE_RANGE: [number, number] = [190, 320];
+const LIST_RANGE: [number, number] = [270, 560];
+const PANES_KEY = "studi.mailPanes";
+const clampTo = (v: number, [lo, hi]: [number, number]) => Math.min(hi, Math.max(lo, Math.round(v)));
+
+function loadPanes(): Panes {
+  try {
+    const p = JSON.parse(window.localStorage.getItem(PANES_KEY) ?? "null") as Partial<Panes> | null;
+    if (p) return { side: clampTo(Number(p.side) || DEFAULT_PANES.side, SIDE_RANGE), list: clampTo(Number(p.list) || DEFAULT_PANES.list, LIST_RANGE) };
+  } catch {
+    // egal
+  }
+  return DEFAULT_PANES;
+}
+
+function savePanes(p: Panes) {
+  try {
+    window.localStorage.setItem(PANES_KEY, JSON.stringify(p));
+  } catch {
+    // ohne Speicher gilt die Breite nur bis zum Neustart
+  }
+}
+
+/** Griff zwischen zwei Spalten: ziehen, mit Pfeiltasten verstellen oder doppelklicken (zurücksetzen). */
+function Splitter({
+  label,
+  value,
+  range,
+  onChange,
+  onCommit,
+  onReset,
+}: {
+  label: string;
+  value: number;
+  range: [number, number];
+  onChange: (v: number) => void;
+  onCommit: (v: number) => void;
+  onReset: () => void;
+}) {
+  const start = useRef<{ x: number; v: number } | null>(null);
+  const [active, setActive] = useState(false);
+  return (
+    <div
+      role="separator"
+      aria-orientation="vertical"
+      aria-label={label}
+      aria-valuemin={range[0]}
+      aria-valuemax={range[1]}
+      aria-valuenow={value}
+      tabIndex={0}
+      title="Drag to resize, double-click to reset"
+      onPointerDown={(e) => {
+        try {
+          e.currentTarget.setPointerCapture(e.pointerId);
+        } catch {
+          // ohne Zeiger-Fang geht das Ziehen trotzdem, nur nicht außerhalb des Fensters
+        }
+        start.current = { x: e.clientX, v: value };
+        setActive(true);
+      }}
+      onPointerMove={(e) => {
+        if (start.current) onChange(clampTo(start.current.v + e.clientX - start.current.x, range));
+      }}
+      onPointerUp={(e) => {
+        if (!start.current) return;
+        const v = clampTo(start.current.v + e.clientX - start.current.x, range);
+        start.current = null;
+        setActive(false);
+        onCommit(v);
+      }}
+      onDoubleClick={onReset}
+      onKeyDown={(e) => {
+        const step = e.shiftKey ? 48 : 16;
+        if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+          e.preventDefault();
+          const v = clampTo(value + (e.key === "ArrowRight" ? step : -step), range);
+          onChange(v);
+          onCommit(v);
+        }
+      }}
+      className="no-drag group/split absolute -right-[4px] top-0 z-20 flex h-full w-[8px] cursor-col-resize justify-center outline-none"
+    >
+      <span className={`h-full w-[2px] rounded-full transition-colors ${active ? "bg-[var(--focus)]" : "bg-transparent group-hover/split:bg-[var(--focus)] group-focus-visible/split:bg-[var(--focus)]"}`} />
+    </div>
+  );
+}
+
 let composeUid = 0;
 const nextUid = () => ++composeUid;
 
@@ -88,6 +181,12 @@ export function MailView({ onOpenAccounts }: { onOpenAccounts: () => void }) {
   const [toast, setToast] = useState<Toast | null>(null);
   const [unsubBusy, setUnsubBusy] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
+  const [panes, setPanes] = useState(loadPanes);
+  const resetPane = (which: keyof Panes) => {
+    const next = { ...panes, [which]: DEFAULT_PANES[which] };
+    setPanes(next);
+    savePanes(next);
+  };
 
   const courseById = (id?: string) => (id ? app.courses.find((c) => c.id === id) : undefined);
 
@@ -307,7 +406,15 @@ export function MailView({ onOpenAccounts }: { onOpenAccounts: () => void }) {
   return (
     <div className="flex h-full min-h-0">
       {/* Links: Postfächer, Ordner, Kurse */}
-      <section className="flex w-[232px] shrink-0 flex-col border-r border-line bg-sidebar/60" aria-label="Mailboxes">
+      <section className="relative flex shrink-0 flex-col border-r border-line bg-sidebar/60" style={{ width: panes.side }} aria-label="Mailboxes">
+        <Splitter
+          label="Resize mailboxes"
+          value={panes.side}
+          range={SIDE_RANGE}
+          onChange={(side) => setPanes((p) => ({ ...p, side }))}
+          onCommit={(side) => savePanes({ ...panes, side })}
+          onReset={() => resetPane("side")}
+        />
         <div className="drag h-[44px] shrink-0" />
         <div className="scroll flex-1 px-3 pb-3">
           <Button variant="primary" className="mb-3 w-full" onClick={startNew}>
@@ -386,7 +493,15 @@ export function MailView({ onOpenAccounts }: { onOpenAccounts: () => void }) {
       </section>
 
       {/* Mitte: Liste */}
-      <section className="flex w-[360px] shrink-0 flex-col border-r border-line" aria-label="Messages">
+      <section className="relative flex min-w-[260px] shrink flex-col border-r border-line" style={{ width: panes.list }} aria-label="Messages">
+        <Splitter
+          label="Resize message list"
+          value={panes.list}
+          range={LIST_RANGE}
+          onChange={(list) => setPanes((p) => ({ ...p, list }))}
+          onCommit={(list) => savePanes({ ...panes, list })}
+          onReset={() => resetPane("list")}
+        />
         <div className="drag h-[44px] shrink-0" />
         <div className="px-4 pb-2">
           <div className="flex items-baseline gap-2">
@@ -517,7 +632,7 @@ export function MailView({ onOpenAccounts }: { onOpenAccounts: () => void }) {
       </section>
 
       {/* Rechts: Lesebereich */}
-      <section className="flex min-w-0 flex-1 flex-col" aria-label="Message">
+      <section className="flex min-w-[420px] flex-1 flex-col" aria-label="Message">
         <div className="drag h-[44px] shrink-0" />
         {current ? (
           <Reader
