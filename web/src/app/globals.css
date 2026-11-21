@@ -365,6 +365,61 @@ textarea.outline-none:focus-visible {
 }
 
 
+/* Alles Anklickbare zeigt die Hand (Tailwind macht Knöpfe sonst zum Pfeil), außer es ist gesperrt */
+button:not(:disabled),
+[role="button"]:not([aria-disabled="true"]),
+[role="tab"],
+[role="menuitem"],
+a[href],
+select,
+summary,
+label:has(> input[type="checkbox"]),
+label:has(> input[type="radio"]) {
+  cursor: pointer;
+}
+.cursor-default,
+.drag,
+.drag button {
+  cursor: default;
+}
+
+/* Anklickbare Flächen (Termine, Karten): zeigen beim Überfahren, dass man sie anklicken kann, und beim Drücken, dass es ankam */
+.hit {
+  cursor: pointer;
+  transition:
+    filter 140ms var(--ease-out),
+    box-shadow 140ms var(--ease-out),
+    transform 140ms var(--ease-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  .hit:hover {
+    filter: brightness(1.07) saturate(1.05);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--text) 22%, transparent), 0 4px 12px rgba(0, 0, 0, 0.12);
+  }
+}
+.hit:active {
+  transform: scale(0.985);
+  filter: brightness(0.97);
+}
+
+/* Kleine Hinweis-Karte beim Überfahren (nach kurzer Verzögerung, damit sie nicht flackert) */
+.tip {
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(-2px);
+  transition:
+    opacity 140ms var(--ease-out),
+    transform 140ms var(--ease-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  .tip-host:hover > .tip,
+  .tip-host:focus-within > .tip {
+    opacity: 1;
+    transform: none;
+    transition-delay: 350ms;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   * {
     transition-duration: 0.01ms !important;
@@ -382,7 +437,8 @@ textarea.outline-none:focus-visible {
   .answer-in {
     animation: none !important;
   }
-  .press:not(:disabled):active {
+  .press:not(:disabled):active,
+  .hit:active {
     transform: none;
   }
 }

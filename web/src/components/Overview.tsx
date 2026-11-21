@@ -36,6 +36,7 @@ import { matches, searchTerms } from "@/lib/search";
 import { REMIND_DAYS, useExamRegistered } from "@/lib/exam-reg";
 import { MailView } from "./MailView";
 import { VpnDialogHost, VpnLine, openVpnDialog } from "./VpnPanel";
+import { GoogleEventHost, openGoogleEvent } from "./GoogleEventDialog";
 import { CalendarView } from "./CalendarView";
 import { PlacesView } from "./PlacesView";
 import { CalendarChip, ClashTag, GoogleBlock, abbrTitle, mergeTwins, overlapRows, sharedZones, startMinutes, type DayEntry, type TimedEntry } from "./calendar-bits";
@@ -320,6 +321,7 @@ export function Overview({
       </main>
       {accountsOpen && <Accounts onClose={() => setAccountsOpen(false)} />}
       <VpnDialogHost />
+      <GoogleEventHost />
       {settingsOpen && <Settings onClose={() => setSettingsOpen(false)} onEditCourses={onEditCourses} onLogout={onLogout} />}
     </div>
   );
@@ -960,7 +962,7 @@ function OverlapGroup({ items, onOpen }: { items: TimedEntry[]; onOpen: (id: str
             onFocus: () => setActive(it.key),
             onBlur: () => setActive(null),
             title: `${title}, ${hhmm(it.start)}–${hhmm(it.end)}`,
-            className: "absolute inset-x-0 overflow-hidden rounded-[7px] px-1.5 py-1 text-left",
+            className: "hit absolute inset-x-0 overflow-hidden rounded-[7px] px-1.5 py-1 text-left",
           };
           return (
             <div key={it.key} className="relative min-w-0 basis-0" style={{ flexGrow: open ? 5 : 1, transition: "flex-grow 200ms var(--ease-in-out)" }}>
@@ -973,9 +975,13 @@ function OverlapGroup({ items, onOpen }: { items: TimedEntry[]; onOpen: (id: str
                   {body}
                 </button>
               ) : (
-                <div {...common} tabIndex={0} style={{ ...style, border: `1.5px dashed ${gColor}`, background: `color-mix(in srgb, ${gColor} 14%, var(--surface))` }}>
+                <button
+                  {...common}
+                  onClick={() => openGoogleEvent(it.ev!)}
+                  style={{ ...style, border: `1.5px dashed ${gColor}`, background: `color-mix(in srgb, ${gColor} 14%, var(--surface))` }}
+                >
                   {body}
-                </div>
+                </button>
               )}
             </div>
           );
@@ -1020,7 +1026,7 @@ function DeadlineBlock({
   const below = exam && d.location ? d.location : examBits ? null : shortOf(course);
 
   return (
-    <div className="flex items-start gap-1.5 rounded-[7px] py-1.5 pl-2 pr-1.5 transition-colors" style={style}>
+    <div className="hit flex items-start gap-1.5 rounded-[7px] py-1.5 pl-2 pr-1.5" style={style}>
       <button
         onClick={onOpen}
         title={[`${d.title}, ${nameOf(course)}`, d.location ? `Room: ${d.location}` : d.source].filter(Boolean).join(" · ")}

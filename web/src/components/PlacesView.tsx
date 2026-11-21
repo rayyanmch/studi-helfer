@@ -5,8 +5,9 @@
 // Live-Zahlen von der Uni und Meldungen von Studenten kommen später als eigene Quellen dazu.
 
 import { useEffect, useRef, useState } from "react";
-import { BookOpen, Clock, ExternalLink, Footprints, Heart, List, Map as MapIcon, Navigation, Plug, Utensils, Wifi, X } from "lucide-react";
+import { BookOpen, Clock, ExternalLink, Footprints, Heart, List, Map as MapIcon, Plug, Utensils, Wifi, X } from "lucide-react";
 import { Button, Spinner } from "./ui";
+import { RouteButton } from "./RouteButton";
 import {
   DAY_NAMES,
   KIND_LABEL,
@@ -257,7 +258,7 @@ function BusyLine({ p, now }: { p: Place; now: Date }) {
 function PlaceCard({ p, n, st, now, fav, active, onFav, onOpen, compact }: { p: Place; n: number; st: ReturnType<typeof openState>; now: Date; fav: boolean; active: boolean; onFav: () => void; onOpen: () => void; compact?: boolean }) {
   const Icon = KIND_ICON[p.kind];
   return (
-    <div className={`lift relative rounded-[12px] bg-surface p-3.5 transition-shadow ${active ? "shadow-[0_0_0_2px_var(--accent)]" : "shadow-[inset_0_0_0_1px_var(--line)]"}`}>
+    <div className={`hit relative rounded-[12px] bg-surface p-3.5 ${active ? "shadow-[0_0_0_2px_var(--accent)]" : "shadow-[inset_0_0_0_1px_var(--line)]"}`} onClick={(e) => (e.target as HTMLElement).closest("button, a") === null && onOpen()}>
       <div className="flex items-center gap-2.5">
         <span aria-hidden className="flex size-7 shrink-0 items-center justify-center rounded-full text-[12px] font-bold text-white" style={{ background: KIND_COLOR[p.kind] }}>
           {n}
@@ -434,14 +435,9 @@ function PlaceSheet({ p, now, fav, onFav, onClose }: { p: Place; now: Date; fav:
         )}
 
         <div className="mt-5 flex gap-2">
-          <a
-            href={`https://maps.apple.com/?daddr=${p.lat},${p.lon}&dirflg=w`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="press flex h-10 flex-1 items-center justify-center gap-2 rounded-[10px] bg-accent font-semibold text-on-accent hover:opacity-90"
-          >
-            <Navigation size={15} aria-hidden /> Directions
-          </a>
+          <span className="flex-1 [&>a]:h-10 [&>a]:w-full [&>a]:rounded-[10px] [&>a]:text-[14px]">
+            <RouteButton route={{ url: `https://maps.apple.com/?daddr=${p.lat},${p.lon}&dirflg=w`, label: p.name, exact: true }} label="Directions" />
+          </span>
           {p.website && (
             <a href={p.website} target="_blank" rel="noopener noreferrer" className="press flex h-10 items-center gap-1.5 rounded-[10px] px-4 font-semibold shadow-[inset_0_0_0_1px_var(--line)] hover:bg-hover">
               Website <ExternalLink size={13} aria-hidden />

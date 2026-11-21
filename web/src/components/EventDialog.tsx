@@ -6,12 +6,13 @@
 // openNewEvent({ date, start, moduleId }).
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { CalendarDays, Check, CircleCheck, ClipboardCheck, Clock, ExternalLink, EyeOff, MapPin, Navigation, Pencil, Repeat, RotateCcw, Trash2, X } from "lucide-react";
+import { CalendarDays, Check, CircleCheck, ClipboardCheck, Clock, ExternalLink, EyeOff, MapPin, Pencil, Repeat, RotateCcw, Trash2, X } from "lucide-react";
 import { Button, Swatch, colorOf, nameOf, tone } from "./ui";
 import * as store from "@/lib/app-store";
 import { COURSE_COLORS, appStore, realCourses, useApp } from "@/lib/app-store";
 import type { CourseColor, CustomEvent, Deadline } from "@/lib/mock-data";
 import { resolveRoom, routeUrl } from "@/lib/rooms";
+import { RouteButton } from "./RouteButton";
 import { KLIPS_URL, registrationHint, setExamRegistered, useExamRegistered } from "@/lib/exam-reg";
 import { lecturePeriod, newEventId, occurrences, parseIso, parseTimeLabel, timeLabel, weekdayOf } from "@/lib/recurrence";
 
@@ -255,16 +256,7 @@ function Details({ deadline: d, onOpenCourse }: { deadline: Deadline; onOpenCour
         </div>
         {d.kind === "klausur" && <ExamRegistration deadline={d} />}
         <div className="mt-4 flex flex-wrap items-center gap-2">
-          {place && (
-            <a
-              href={routeUrl(place.building.lat, place.building.lon)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="press inline-flex h-8 items-center justify-center gap-1.5 rounded-lg bg-accent px-3 text-[13px] font-semibold text-on-accent transition-colors hover:opacity-90"
-            >
-              <Navigation size={13} aria-hidden /> Route
-            </a>
-          )}
+          {place && <RouteButton route={{ url: routeUrl(place.building.lat, place.building.lon), label: place.label, exact: Boolean(direct) }} />}
           {canDone && (
             <Button variant={isDone ? "secondary" : "primary"} onClick={() => void store.toggleDone(d.id)} aria-pressed={isDone}>
               {isDone ? <RotateCcw size={13} aria-hidden /> : <Check size={13} aria-hidden />} {isDone ? "Mark as not done" : "Mark as done"}

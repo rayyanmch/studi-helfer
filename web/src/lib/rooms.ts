@@ -36,6 +36,29 @@ export function resolveRoom(text: string | null | undefined): RoomPlace | null {
   return { building: b, label: `Building ${b.ref}${name ? `, ${name}` : ""}`, room: m[2].trim() };
 }
 
+const isVirtual = (t: string) => /zoom|virtuell|virtual|online|teams\.microsoft|https?:/i.test(t);
+
+export interface Route {
+  url: string;
+  label: string; // was wir dem Studenten als Ziel nennen
+  exact: boolean; // true = Lage des Gebäudes bekannt; false = Apple Karten sucht den Text selbst
+}
+
+/**
+ * Ziel für „Route“: Mit Gebäudenummer (Uni-Raum) die genaue Lage. Bei Terminen, die jemand selbst eingetragen hat
+ * (Google Kalender, eigene Termine), ist der Ort meist eine Adresse oder ein Name: den reicht die App an Apple Karten weiter
+ * (`allowText`). Online-Termine und bloße Raumnummern ohne Gebäude haben kein Ziel.
+ */
+export function routeFor(location: string | null | undefined, opts: { allowText?: boolean } = {}): Route | null {
+  const room = resolveRoom(location);
+  if (room) return { url: routeUrl(room.building.lat, room.building.lon), label: room.label, exact: true };
+  const first = (location ?? "").trim().split("\n")[0].trim();
+  if (opts.allowText && first.length >= 6 && /[A-Za-zÄÖÜäöüß]{3}/.test(first) && !isVirtual(first)) {
+    return { url: `https://maps.apple.com/?daddr=${encodeURIComponent(first)}&dirflg=w`, label: first, exact: false };
+  }
+  return null;
+}
+
 /** Wegbeschreibung zu Fuß in der Karten-App des Macs (Apple Karten); der Startpunkt ist der Standort des Studenten. */
 export const routeUrl = (lat: number, lon: number) => `https://maps.apple.com/?daddr=${lat},${lon}&dirflg=w`;
 

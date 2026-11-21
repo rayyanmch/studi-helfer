@@ -8,6 +8,8 @@ import { useEffect, useState } from "react";
 import { CalendarPlus, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button, colorOf, examLabel, nameOf, shortOf, tone } from "./ui";
 import { openEvent, openNewEvent } from "./EventDialog";
+import { openGoogleEvent } from "./GoogleEventDialog";
+import { routeFor } from "@/lib/rooms";
 import { CalendarChip, DAY_MS, MonthView, abbrTitle, bare, courseById, isoOf, mondayOf, parseDay, startMinutes, timeRange, todayMs } from "./calendar-bits";
 import { setCalendar, useMail, type GoogleEvent } from "@/lib/mail-data";
 import { useApp } from "@/lib/app-store";
@@ -426,40 +428,58 @@ function GridBlock({
       </span>
     );
 
+  // Hülle ohne Beschneiden (damit der Hinweis herausragen darf), darin der Termin
+  const shell = (label: string, onClick: () => void, tip: React.ReactNode, className: string, style: React.CSSProperties, content: React.ReactNode) => (
+    <div className="tip-host absolute hover:z-30 focus-within:z-30" style={pos} {...hover}>
+      <button type="button" onClick={onClick} aria-label={label} className={`hit @container block size-full overflow-hidden rounded-[6px] px-1.5 py-1 text-left leading-tight ${className}`} style={style}>
+        {content}
+      </button>
+      <div role="tooltip" className="tip absolute left-0 top-full z-40 mt-1.5 w-max max-w-[250px] rounded-lg bg-accent px-3 py-2 text-[12px] leading-snug text-on-accent shadow-[0_8px_24px_rgba(0,0,0,0.28)]">
+        {tip}
+      </div>
+    </div>
+  );
+
   if (slot.d) {
     const d = slot.d;
     const course = courseById(d.courseId)!;
     const c = d.color ?? colorOf(course);
     const exam = d.kind === "klausur";
     const title = exam ? examLabel(d.title, course) : bare(d.title);
-    return (
-      <button
-        {...hover}
-        onClick={() => openEvent(d, { onOpenCourse: () => onOpenCourse(d.courseId) })}
-        title={[`${d.title}, ${nameOf(course)}, ${time}`, slot.both ? "Also in Google Calendar" : "", d.location ? `Room: ${d.location}` : ""].filter(Boolean).join(" · ")}
-        className={`@container absolute overflow-hidden rounded-[6px] px-1.5 py-1 text-left leading-tight ${done ? "opacity-50" : ""}`}
-        style={{
-          ...pos,
-          background: tone(c, "soft"),
-          boxShadow: exam ? `inset 0 0 0 2px ${tone(c)}` : slot.both ? `inset 0 0 0 1.5px ${tone(c)}` : undefined,
-        }}
-      >
-        {body(title, tone(c, "ink"), slot.both ? <span className="ml-1 font-bold" style={{ color: "#4285f4" }}>+G</span> : null, d.location || shortOf(course))}
-      </button>
+    const route = routeFor(d.location) ?? (d.roomChange ? routeFor(d.roomChange.was) : null);
+    return shell(
+      `${d.title}, ${time}`,
+      () => openEvent(d, { onOpenCourse: () => onOpenCourse(d.courseId) }),
+      <>
+        <b className="block font-semibold">{d.title}</b>
+        <span className="block opacity-80">{nameOf(course)} · {time}</span>
+        {d.location && <span className="block opacity-80">{d.roomChange ? `Room changed: ${d.location}` : d.location}</span>}
+        {slot.both && <span className="block opacity-80">Also in Google Calendar</span>}
+        <span className="mt-1 block font-semibold opacity-90">Click for details{route ? " and route" : ""}</span>
+      </>,
+      done ? "opacity-50" : "",
+      {
+        background: tone(c, "soft"),
+        boxShadow: exam ? `inset 0 0 0 2px ${tone(c)}` : slot.both ? `inset 0 0 0 1.5px ${tone(c)}` : undefined,
+      },
+      body(title, tone(c, "ink"), slot.both ? <span className="ml-1 font-bold" style={{ color: "#4285f4" }}>+G</span> : null, d.location || shortOf(course)),
     );
   }
   const ev = slot.ev!;
   const color = ev.color ?? "var(--muted)";
-  return (
-    <div
-      {...hover}
-      tabIndex={slot.cols > 1 ? 0 : undefined}
-      title={[ev.title, time, ev.location ?? "", ev.calendar ? `Google Calendar: ${ev.calendar}` : "Google Calendar"].filter(Boolean).join(" · ")}
-      className="@container absolute overflow-hidden rounded-[6px] px-1.5 py-1 leading-tight"
-      style={{ ...pos, border: `1.5px dashed ${color}`, background: `color-mix(in srgb, ${color} 14%, var(--surface))` }}
-    >
-      {body(ev.title, undefined, <span className="ml-1 font-bold" style={{ color: "#4285f4" }}>G</span>, ev.location ?? "")}
-    </div>
+  const route = routeFor(ev.location, { allowText: true });
+  return shell(
+    `${ev.title}, ${time}`,
+    () => openGoogleEvent(ev),
+    <>
+      <b className="block font-semibold">{ev.title}</b>
+      <span className="block opacity-80">{time}{ev.calendar ? ` · ${ev.calendar}` : ""}</span>
+      {ev.location && <span className="block opacity-80">{ev.location}</span>}
+      <span className="mt-1 block font-semibold opacity-90">Click for details{route ? " and route" : ""}</span>
+    </>,
+    "",
+    { border: `1.5px dashed ${color}`, background: `color-mix(in srgb, ${color} 14%, var(--surface))` },
+    body(ev.title, undefined, <span className="ml-1 font-bold" style={{ color: "#4285f4" }}>G</span>, ev.location ?? ""),
   );
 }
 
@@ -472,7 +492,7 @@ function TopChip({ d, done, onToggle, onOpenCourse }: { d: Deadline; done: boole
   const due = parseDay(d.date) <= todayMs() + 2 * DAY_MS && checkable && !done;
   return (
     <div
-      className={`flex min-w-0 items-center gap-1 rounded-[5px] py-0.5 pl-1.5 pr-1 text-[11px] font-semibold ${done ? "line-through" : ""}`}
+      className={`hit flex min-w-0 items-center gap-1 rounded-[5px] py-0.5 pl-1.5 pr-1 text-[11px] font-semibold ${done ? "line-through" : ""}`}
       style={done ? { background: "var(--sunken)", color: "var(--muted)" } : due || exam ? { background: tone(c), color: "var(--on-solid)" } : { background: tone(c, "soft"), color: tone(c, "ink") }}
     >
       <button onClick={() => openEvent(d, { onOpenCourse: () => onOpenCourse(d.courseId) })} title={`${d.title}, ${nameOf(course)}, ${d.time}`} className="min-w-0 flex-1 truncate text-left">
@@ -490,8 +510,14 @@ function TopChip({ d, done, onToggle, onOpenCourse }: { d: Deadline; done: boole
 function TopGoogle({ ev }: { ev: GoogleEvent }) {
   const color = ev.color ?? "var(--muted)";
   return (
-    <span title={`${ev.title}${ev.calendar ? ` · Google Calendar: ${ev.calendar}` : ""}`} className="truncate rounded-[5px] px-1.5 py-0.5 text-[11px] font-semibold" style={{ border: `1.5px dashed ${color}` }}>
+    <button
+      type="button"
+      onClick={() => openGoogleEvent(ev)}
+      title={`${ev.title}${ev.calendar ? ` · Google Calendar: ${ev.calendar}` : ""}. Click for details.`}
+      className="hit truncate rounded-[5px] px-1.5 py-0.5 text-left text-[11px] font-semibold"
+      style={{ border: `1.5px dashed ${color}` }}
+    >
       {abbrTitle(ev.title, 22)}
-    </span>
+    </button>
   );
 }

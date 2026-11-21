@@ -6,6 +6,7 @@
 import { AlertTriangle, Check } from "lucide-react";
 import { colorOf, examLabel, nameOf, shortOf, tone } from "./ui";
 import { openEvent } from "./EventDialog";
+import { openGoogleEvent } from "./GoogleEventDialog";
 import { appStore } from "@/lib/app-store";
 import type { GoogleEvent } from "@/lib/mail-data";
 import type { Deadline } from "@/lib/mock-data";
@@ -81,14 +82,16 @@ export function MonthView({
             {cell.entries.slice(0, 3).map((e) => {
                 if (e.ev) {
                   return (
-                    <span
+                    <button
                       key={e.key}
-                      title={`${e.ev.title}, ${e.ev.time}`}
-                      className="truncate rounded-[5px] px-1.5 py-0.5 text-left text-[11px] font-semibold text-muted"
+                      type="button"
+                      onClick={() => openGoogleEvent(e.ev!)}
+                      title={`${e.ev.title}, ${e.ev.time}. Click for details.`}
+                      className="hit truncate rounded-[5px] px-1.5 py-0.5 text-left text-[11px] font-semibold text-muted"
                       style={{ border: `1.5px dashed ${e.ev.color ?? "var(--muted)"}` }}
                     >
                       {abbrTitle(e.ev.title)}
-                    </span>
+                    </button>
                   );
                 }
                 const d = e.d!;
@@ -105,7 +108,7 @@ export function MonthView({
                     onClick={() => openEvent(d, { onOpenCourse: () => onOpen(d.courseId) })}
                     title={`${d.title}, ${nameOf(course)}, ${d.time}`}
                     aria-label={`${d.title}, ${nameOf(course)}, ${d.time}`}
-                    className={`truncate rounded-[5px] px-1.5 py-0.5 text-left text-[11px] font-semibold ${isDone ? "line-through" : ""}`}
+                    className={`hit truncate rounded-[5px] px-1.5 py-0.5 text-left text-[11px] font-semibold ${isDone ? "line-through" : ""}`}
                     style={
                       isDone
                         ? { background: "var(--sunken)", color: "var(--muted)" }
@@ -200,9 +203,13 @@ export function GoogleBlock({ ev, clash = null }: { ev: GoogleEvent; clash?: str
   const color = ev.color ?? "var(--muted)";
   return (
     <div
-      className="relative rounded-[7px] bg-surface px-2 py-2"
+      role="button"
+      tabIndex={0}
+      onClick={() => openGoogleEvent(ev)}
+      onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), openGoogleEvent(ev))}
+      className="hit relative rounded-[7px] bg-surface px-2 py-2 outline-none"
       style={{ border: `1.5px dashed ${color}` }}
-      title={[ev.title, ev.calendar ? `Google Calendar: ${ev.calendar}` : "Google Calendar"].join(" · ")}
+      title={[ev.title, ev.calendar ? `Google Calendar: ${ev.calendar}` : "Google Calendar", "Click for details"].join(" · ")}
     >
       <span
         aria-hidden
