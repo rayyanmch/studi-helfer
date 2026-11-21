@@ -239,7 +239,7 @@ Von Mika für später zurückgestellt. Reihenfolge = grob nach Nutzen. Nicht ver
 ## Wissen und Stolperfallen
 
 - PowerPoint-PDFs mit eingebetteter Calibri liefern über pypdf Zeichensalat („ϭϬ͗ϬϬ“ = „10:00“, „dŚƵƌƐĚĂǇ“ = „Thursday“). `studi_sync/textfix.py` übersetzt Ziffern, Satzzeichen und Kleinbuchstaben sicher zurück; Großbuchstaben sind je Schriftschnitt verschieden (ö = G oder K), deshalb werden bekannte Wörter (Wochentage, Group, Exam, Hörsaal) repariert. sheets.py und orga.py nutzen beide `normalize()`.
-- Zwei Claude-Sitzungen im selben Ordner: Die andere kann deine halbfertigen Dateien mitcommitten (passiert 2026-11-21 mit `ModuleView.tsx`, `main` baute kurz nicht). Nur eigene Dateien einzeln `git add`en und zusammengehörige Änderungen sofort gemeinsam pushen.
+- Zwei Claude-Sitzungen im selben Ordner: Die andere kann deine halbfertigen Dateien mitcommitten (2026-11-21 zweimal: `ModuleView.tsx`; und der Mensa-Commit `504546b` enthält die schon vorgemerkte Arbeit „Lösung neben dem Blatt / Sync-Intervall“). **Immer `git commit -- <eigene Dateien>` statt `git add` + `git commit`**, dann nimmt der Commit nur diese Pfade, egal was die andere Sitzung vorgemerkt hat.
 
 - PFERD warnt bei `tasks > 1` pauschal („KIT ILIAS“), das ist kein Fehler; `sync.py` ignoriert die Meldung. ILIAS-Lernmodule (Selbststudium) kosteten bei BWL >2 min pro Sync, obwohl die HTML-Seiten verworfen werden.
 - Gleiche Datei in Übung und Übungsgruppe (Abgaben) wird pro Modul nur einmal gezeigt (Name + Größe).
