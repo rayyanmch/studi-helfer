@@ -34,6 +34,7 @@ import { MensaToday } from "./MensaToday";
 import { matches, searchTerms } from "@/lib/search";
 import { REMIND_DAYS, useExamRegistered } from "@/lib/exam-reg";
 import { MailView } from "./MailView";
+import { VpnDialogHost, VpnLine, openVpnDialog } from "./VpnPanel";
 import { CalendarView } from "./CalendarView";
 import { CalendarChip, ClashTag, GoogleBlock, abbrTitle, mergeTwins, overlapRows, sharedZones, startMinutes, type DayEntry, type TimedEntry } from "./calendar-bits";
 import { Accounts } from "./Accounts";
@@ -221,6 +222,7 @@ export function Overview({
             </NavItem>
           </div>
         </nav>
+        <VpnLine />
         <SyncStatus problem={problem} job={job} lastSync={lastSync} failed={failedIds.length} onSync={sync} onStop={stop} />
       </aside>
 
@@ -309,6 +311,7 @@ export function Overview({
         )}
       </main>
       {accountsOpen && <Accounts onClose={() => setAccountsOpen(false)} />}
+      <VpnDialogHost />
       {settingsOpen && <Settings onClose={() => setSettingsOpen(false)} onEditCourses={onEditCourses} onLogout={onLogout} />}
     </div>
   );
@@ -598,7 +601,16 @@ function Banners({
   if (problem === "offline")
     return (
       <div className="mb-5">
-        <Notice tone="warn" icon={iliasDown ? <CloudOff size={16} aria-hidden /> : <WifiOff size={16} aria-hidden />} action={<Button onClick={onRetry}>Try again</Button>}>
+        <Notice
+          tone="warn"
+          icon={iliasDown ? <CloudOff size={16} aria-hidden /> : <WifiOff size={16} aria-hidden />}
+          action={
+            <span className="flex shrink-0 gap-2">
+              <Button onClick={openVpnDialog}>Uni VPN</Button>
+              <Button onClick={onRetry}>Try again</Button>
+            </span>
+          }
+        >
           {iliasDown
             ? `ILIAS isn’t responding right now. Your internet works, so it’s on ILIAS’s side. You are seeing the files from ${lastSync}.`
             : `No connection to ILIAS. You are seeing the files from ${lastSync}.`}

@@ -108,6 +108,12 @@ contextBridge.exposeInMainWorld("studi", {
     unsubscribe: call("studi:mail:unsubscribe"),
     saveAttachment: call("studi:mail:saveAttachment"),
   },
+  // Uni-VPN-Assistent (desktop/lib/vpn.js)
+  vpn: {
+    status: call("studi:vpn:status"),
+    open: call("studi:vpn:open"),
+    guide: call("studi:vpn:guide"),
+  },
   onDeadlinesChanged(callback) {
     const listener = () => callback();
     ipcRenderer.on("studi:deadlinesChanged", listener);
