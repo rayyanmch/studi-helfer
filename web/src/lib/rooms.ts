@@ -46,7 +46,7 @@ export interface Route {
 }
 
 const foldWord = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
-const SKIP_WORDS = /^(raum|room|saal|horsaal|seminarraum|gebaude|building|haus|bau|der|die|das|und|and|the|beim|zum|zur)$/;
+const SKIP_WORDS = /^(raum|room|saal|horsaal|seminarraum|gebaude|building|haus|bau|aula|der|die|das|und|and|the|beim|zum|zur)$/;
 
 /** Raum ohne Gebäudenummer, aber mit Namen („Physik Raum 2“): das Gebäude, dessen Name am besten passt. */
 function buildingByName(text: string): Building | null {
