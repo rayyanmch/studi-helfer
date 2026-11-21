@@ -48,6 +48,7 @@ const parse = (iso: string) => {
   const [y, m, d] = iso.split("-").map(Number);
   return new Date(y, m - 1, d, 12);
 };
+const isoOf = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 const monday = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate() - ((d.getDay() + 6) % 7), 12);
 
 function nthMonday(year: number, month: number, n: number) {
@@ -213,10 +214,16 @@ function courseWordsOf(course: Course, files: CourseFile[]): Set<string> {
 // ------------------------------------------------------------------ Zuordnung
 
 export function weeksOf(course: Course, opts: WeekOptions): Week[] {
-  const start = semesterStart(opts.today);
-  const todayWeek = lectureWeek(parse(opts.today), start);
   const all = course.folders.flatMap((folder) => folder.files.map((file) => ({ file, folder, role: roleOf(file, folder) })));
+  // Semester aus den Dateien selbst (Kurse aus dem letzten Semester), sonst aus „heute“
+  const dates = all.map((x) => x.file.modifiedAt).filter((t): t is number => Boolean(t)).sort((a, b) => a - b);
+  const median = dates.length ? new Date(dates[Math.floor(dates.length / 2)]) : null;
+  const start = median ? semesterStart(isoOf(median)) : semesterStart(opts.today);
+  const sameSemester = semesterStart(opts.today).getTime() === start.getTime();
+  const todayWeek = sameSemester ? lectureWeek(parse(opts.today), start) : -1;
   const courseWords = courseWordsOf(course, all.map((x) => x.file));
+  // Für Titel nur Kürzel weglassen, lange Wörter aus dem Kursnamen bleiben („Deskriptive Statistik“)
+  const titleWords = new Set([...courseWords].filter((w) => w.length <= 4 || !`${course.name} ${course.fullName ?? ""}`.toLowerCase().includes(w)));
 
   const placed = new Map<string, { n: number | "info" | "exam"; how: WeekFile["how"]; title?: string | null }>();
   const fallbackWeek = (f: CourseFile) => {
@@ -241,7 +248,20 @@ export function weeksOf(course: Course, opts: WeekOptions): Week[] {
     if (typeof p.n === "number") lectures.push({ file: x.file, n: p.n, words: topicWords(x.file.name, courseWords) });
   }
 
-  // 3. Alles andere: gleiche Themenwörter wie eine Vorlesung, sonst Datum
+  // 2b. Alles auf einmal hochgeladen (fast alle Vorlesungen in derselben Woche): Nummern im Namen sind die Wochen
+  const byDate = lectures.filter((l) => placed.get(l.file.id)!.how === "date" || placed.get(l.file.id)!.how === "session");
+  const numbered = byDate.map((l) => ({ l, num: lectureNumber(l.file.name) })).filter((x): x is { l: (typeof lectures)[number]; num: number } => x.num != null);
+  const spread = new Set(byDate.map((l) => l.n)).size;
+  const degenerate = byDate.length >= 4 && spread <= Math.max(1, Math.floor(byDate.length / 4)) && new Set(numbered.map((x) => x.num)).size >= byDate.length * 0.6;
+  if (degenerate) {
+    const min = Math.min(...numbered.map((x) => x.num));
+    for (const { l, num } of numbered) {
+      l.n = num - min + 1;
+      placed.set(l.file.id, { n: l.n, how: "name" });
+    }
+  }
+
+  // 3. Alles andere: gleiche Themenwörter wie eine Vorlesung, sonst Datum (bzw. Blattnummer, wenn alles auf einmal kam)
   for (const x of all) {
     if (placed.has(x.file.id)) continue;
     const own = fallbackWeek(x.file);
@@ -252,7 +272,8 @@ export function weeksOf(course: Course, opts: WeekOptions): Week[] {
       const before = matches.filter((l) => l.n <= own.n).sort((a, b) => b.n - a.n)[0];
       const pick = before ?? matches.sort((a, b) => a.n - b.n)[0];
       placed.set(x.file.id, { n: pick.n, how: "topic" });
-    } else placed.set(x.file.id, own);
+    } else if (degenerate && sheetNumber(x.file.name) != null) placed.set(x.file.id, { n: Math.max(1, sheetNumber(x.file.name)!), how: "name" });
+    else placed.set(x.file.id, own);
   }
 
   // 3b. Abgaben/Übungen mit Blattnummer, die nur nach Datum liegen (z. B. eigene Abgabe, später hochgeladen):
@@ -309,7 +330,7 @@ export function weeksOf(course: Course, opts: WeekOptions): Week[] {
     const lecturesHere = w.files.filter((f) => f.role === "lecture");
     const doc = (f: WeekFile) => f.file.kind === "pdf" || f.file.kind === "doc";
     const source = lecturesHere.some(doc) ? lecturesHere.filter(doc) : w.files.filter((f) => doc(f) && f.role !== "solution");
-    const fromNames = uniqueTitles(source.map((f) => cleanTitle(f.file.name, courseWords)).filter(Boolean));
+    const fromNames = uniqueTitles(source.map((f) => cleanTitle(f.file.name, titleWords)).filter(Boolean));
     const fromTopics = uniqueTitles(source.flatMap((f) => opts.topicsOf?.(f.file).slice(0, 1) ?? []));
     w.hints = [...fromNames, ...source.flatMap((f) => opts.topicsOf?.(f.file).slice(0, 2) ?? [])].slice(0, 8);
     if (ilias?.size) {
@@ -334,6 +355,16 @@ export function weeksOf(course: Course, opts: WeekOptions): Week[] {
     if (latest) latest.current = true;
   }
   return [...weeks, ...["info", "exam"].map((k) => groups.get(k)).filter((w): w is Week => Boolean(w))];
+}
+
+/** Nummer einer Vorlesung: „VL03_…“, „03_…“, „Kapitel 4“, „Lecture 5“, „V-07“ → 3, 3, 4, 5, 7 (Jahre und Semester zählen nicht). */
+function lectureNumber(name: string): number | null {
+  const base = name.replace(/\.[a-z0-9]{1,5}$/i, "").replace(/\b(WS|SS|WiSe|SoSe|W|S)\s?\d{2,4}([_ /-]?\d{2})?\b/gi, " ").replace(/\b(19|20)\d{2}\b/g, " ");
+  const m =
+    base.match(/(?:kapitel|chapter|lecture|vorlesung|einheit|unit|lektion|session|teil|part)\s*[-_ ]?\s*0*(\d{1,2})(?!\d)/i) ??
+    base.match(/(?:^|[^a-z0-9])(?:vl|v|l)[-_ ]?0*(\d{1,2})(?!\d)/i) ??
+    base.match(/(?:^|[^0-9])0*(\d{1,2})(?=[_\s.-]|$)/);
+  return m ? Number(m[1]) : null;
 }
 
 /** Blattnummer: „Übung 3“, „Homework_2“, „Blatt 04“, „0103_…“ (Reihe 01, Blatt 03) → 3, 2, 4, 3. */
