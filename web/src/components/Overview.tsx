@@ -12,6 +12,7 @@ import {
   Library,
   LogIn,
   Mail,
+  MapPin,
   Monitor,
   Moon,
   RefreshCw,
@@ -36,6 +37,7 @@ import { REMIND_DAYS, useExamRegistered } from "@/lib/exam-reg";
 import { MailView } from "./MailView";
 import { VpnDialogHost, VpnLine, openVpnDialog } from "./VpnPanel";
 import { CalendarView } from "./CalendarView";
+import { PlacesView } from "./PlacesView";
 import { CalendarChip, ClashTag, GoogleBlock, abbrTitle, mergeTwins, overlapRows, sharedZones, startMinutes, type DayEntry, type TimedEntry } from "./calendar-bits";
 import { Accounts } from "./Accounts";
 import { Settings } from "./Settings";
@@ -55,7 +57,7 @@ const LONG = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", 
 // Titel ohne „Submit “ vorne, für enge Stellen
 const bare = (t: string) => t.replace(/^Submit /, "");
 
-type View = "week" | "calendar" | "new" | "courses" | "mail" | "mensa" | "study" | string; // string = Modul-Id
+type View = "week" | "calendar" | "places" | "new" | "courses" | "mail" | "mensa" | "study" | string; // string = Modul-Id
 
 function parseDay(iso: string) {
   const [y, m, d] = iso.split("-").map(Number);
@@ -214,6 +216,9 @@ export function Overview({
             <NavItem active={!searching && view === "study"} onClick={() => open("study")} icon={<GraduationCap size={15} aria-hidden />} count={studyDue} countHint={`${studyDue} ${studyDue === 1 ? "card" : "cards"} to learn today`}>
               Study
             </NavItem>
+            <NavItem active={!searching && view === "places"} onClick={() => open("places")} icon={<MapPin size={15} aria-hidden />}>
+              Places
+            </NavItem>
             <NavItem active={view === "mail"} onClick={() => open("mail")} icon={<Mail size={15} aria-hidden />} count={mailUnread} countHint={`${mailUnread} unread`}>
               Mail
             </NavItem>
@@ -289,6 +294,7 @@ export function Overview({
                 {view === "week" && <Welcome onMensa={() => open("mensa")} />}
                 {view === "week" && <WeekView list={list} deadlines={mine} done={done} onToggle={toggleDone} onOpen={open} />}
                 {view === "calendar" && <CalendarView deadlines={mine} done={done} onToggle={toggleDone} onOpenCourse={open} />}
+                {view === "places" && <PlacesView />}
                 {view === "new" && <NewView list={list} onOpen={open} />}
                 {view === "courses" && <CoursesView onOpen={open} onEditCourses={onEditCourses} />}
                 {view === "mensa" && <MensaView />}

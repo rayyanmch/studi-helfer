@@ -19,6 +19,7 @@ const google = require("./lib/google");
 const unimail = require("./lib/unimail");
 const mailtools = require("./lib/mailtools");
 const vpn = require("./lib/vpn");
+const places = require("./lib/places");
 const study = require("./lib/study");
 const { createMensa } = require("./lib/mensa");
 const { createReminders } = require("./lib/reminders");
@@ -354,6 +355,8 @@ unimail.register(handle, packaged);
 mailtools.register(handle, packaged); // Newsletter abbestellen, Anhang in den Kursordner
 // Uni-VPN-Assistent (lib/vpn.js)
 vpn.register(handle);
+// Study places: Orte aus OpenStreetMap (lib/places.js)
+places.register(handle);
 // Lernbereich: Zusammenfassungen, Lernzettel, Karteikarten über Claude Code (lib/study.js)
 study.register(handle, { packaged, windows: () => windows, dialog, BrowserWindow, shell });
 

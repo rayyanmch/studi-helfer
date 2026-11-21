@@ -108,6 +108,10 @@ contextBridge.exposeInMainWorld("studi", {
     unsubscribe: call("studi:mail:unsubscribe"),
     saveAttachment: call("studi:mail:saveAttachment"),
   },
+  // Study places (desktop/lib/places.js)
+  places: {
+    fetch: call("studi:places:fetch"),
+  },
   // Uni-VPN-Assistent (desktop/lib/vpn.js)
   vpn: {
     status: call("studi:vpn:status"),
