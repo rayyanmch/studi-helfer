@@ -10,7 +10,7 @@ import { Button, colorOf, examLabel, nameOf, shortOf, tone } from "./ui";
 import { openEvent, openNewEvent } from "./EventDialog";
 import { openGoogleEvent } from "./GoogleEventDialog";
 import { placeLabel } from "@/lib/rooms";
-import { CalendarChip, DAY_MS, MonthView, abbrTitle, bare, courseById, isoOf, mondayOf, parseDay, startMinutes, timeRange, todayMs, withCourse } from "./calendar-bits";
+import { CalendarChip, DAY_MS, MonthView, sameEvent, abbrTitle, bare, courseById, isoOf, mondayOf, parseDay, startMinutes, timeRange, todayMs, withCourse } from "./calendar-bits";
 import { setCalendar, useMail, type GoogleEvent } from "@/lib/mail-data";
 import { useEventMails, type EventMail } from "@/lib/event-mail";
 import { MailBadge, cancelledStyle } from "./MailBadge";
@@ -37,16 +37,6 @@ interface Slot {
   group: number; // Termine, die sich überschneiden, haben dieselbe Gruppe
 }
 
-const words = (s: string) =>
-  new Set(
-    s
-      .normalize("NFD")
-      .replace(/[̀-ͯ]/g, "")
-      .toLowerCase()
-      .split(/[^a-z0-9]+/)
-      .filter((w) => w.length >= 3),
-  );
-const similar = (a: string, b: string) => [...words(a)].some((w) => words(b).has(w));
 
 /** Spalten für überlappende Termine (wie in Google Kalender): jede Gruppe bekommt so viele Spalten wie nötig. */
 function layout(slots: Omit<Slot, "col" | "cols" | "group">[]): Slot[] {
@@ -262,7 +252,7 @@ function WeekGrid({
         continue;
       }
       // Gleiche Zeit und ähnlicher Titel wie ein ILIAS-Termin: derselbe Termin, nur einmal zeigen
-      const twin = timed.find((t) => t.d && !t.both && t.start === r[0] && t.end === r[1] && similar(t.d.title + " " + (courseById(t.d.courseId)?.name ?? ""), ev.title));
+      const twin = timed.find((t) => t.d && !t.both && sameEvent(t.d, ev));
       if (twin) {
         twin.both = true;
         twin.ev = ev;
@@ -420,6 +410,11 @@ function GridBlock({
         {title}
       </span>
     ) : (
+      <>
+      {/* Sehr schmal (drei Termine nebeneinander): Startzeit und Titel senkrecht, statt eines leeren Kastens */}
+      <span aria-hidden className="hidden h-full overflow-hidden whitespace-nowrap text-[11px] font-semibold text-ellipsis @max-[38px]:block" style={{ writingMode: "vertical-rl", color: timeColor }}>
+        <span className="tabular-nums">{hhmm(slot.start)}</span> <span className="text-text">{title}</span>
+      </span>
       <span key={open ? "open" : "closed"} className={`${slot.cols > 1 ? "answer-in " : ""}block @max-[38px]:hidden`}>
         <span className="block truncate text-[11px] font-semibold tabular-nums" style={timeColor ? { color: timeColor } : undefined}>
           {tiny ? (
@@ -441,6 +436,7 @@ function GridBlock({
         )}
         {showSub && sub && <span className="block truncate text-[11px] text-muted">{sub}</span>}
       </span>
+      </>
     );
 
   // Hülle ohne Beschneiden (damit der rote Mail-Hinweis über die Ecke ragen darf), darin der Termin

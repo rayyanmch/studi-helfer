@@ -17,7 +17,7 @@ from .common import DATA_DIR, load_config, read_json, write_json
 from .deadlines import deadline_id
 from .textfix import fix_year, normalize, weekday_before
 
-RULES_VERSION = 5  # erhöhen, wenn sich die Regeln ändern → alles wird neu ausgewertet
+RULES_VERSION = 6  # erhöhen, wenn sich die Regeln ändern → alles wird neu ausgewertet
 CACHE = DATA_DIR / "sheet-deadlines-cache.json"
 OUTPUT = DATA_DIR / "sheet-deadlines.json"
 MAX_PAGES = 8  # Fristen und Klausurtermine stehen fast immer auf den ersten Seiten (Orga-Folien)
@@ -238,10 +238,15 @@ def _pdf_text(path: Path, pages: int = MAX_PAGES) -> str:
     return "\n".join((page.extract_text() or "") for page in reader.pages[:pages])
 
 
+# Satzbruchstücke statt Titel („Submit des Essays ist“ aus „Abgabe des Essays ist bis zum …“)
+_FRAGMENT_START = re.compile(r"^(?:submit|exam:?)?\s*(?:des|der|die|das|dem|den|ein|eine|einer|ist|sind|bis|zum|zur|am|im|the|is|are|of|by|until)\b", re.I)
+_FRAGMENT_END = re.compile(r"\b(?:ist|sind|bis|zum|zur|am|im|wird|werden|is|are|by|until|of)\s*$", re.I)
+
+
 def _title(file_name: str, kind: str, label: Optional[str] = None) -> str:
     """Titel: aus der Textstelle, wenn sie aussagekräftig ist, sonst aus dem Dateinamen."""
     generic = {"abgabe", "deadline", "due", "due date", "submission", "submit", "frist", "abgabetermin", "abgabefrist"}
-    if label and label.lower() not in generic:
+    if label and label.lower() not in generic and not _FRAGMENT_START.search(label) and not _FRAGMENT_END.search(label):
         return label
     stem = re.sub(r"[_\-]+", " ", Path(file_name).stem)
     stem = re.sub(r"\s{2,}", " ", stem).strip()

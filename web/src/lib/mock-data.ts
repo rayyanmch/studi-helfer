@@ -87,6 +87,8 @@ export interface Deadline {
   location?: string | null; // Ort (für den Termin-Dialog)
   /** Raum nur für diesen Tag per Mail geändert (lib/room-changes.ts); `was` = der normale Raum. */
   roomChange?: { was: string | null; mailId: string; subject: string };
+  file?: string; // Datei, in der die Frist steht (Übungsblatt, Orga-Folien), zum Öffnen
+  url?: string | null; // ILIAS-Seite (Übung, Sitzung), z. B. zum Abgeben
 }
 
 /**

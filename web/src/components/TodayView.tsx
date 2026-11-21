@@ -40,7 +40,7 @@ import { useMail, openMail, type GoogleEvent } from "@/lib/mail-data";
 import { guessCourse } from "@/lib/mail-tools";
 import { EVENT_MAIL_LABEL, useEventMails, type EventMail } from "@/lib/event-mail";
 import { CITY, firstRain, loadWeather, sky, useWeather, wet, type Weather, type WeatherDay } from "@/lib/weather";
-import { useTodayCards, useStudy, minutesFor } from "@/lib/study";
+import { useTodayCards, useStudy, minutesFor, openStudy } from "@/lib/study";
 import { useProgress } from "@/lib/progress";
 import { loadMensa, readPrefs, useMensa, type Dish, type MensaPrefs } from "@/lib/mensa";
 import type { Deadline } from "@/lib/mock-data";
@@ -126,12 +126,12 @@ export function TodayView({ deadlines, done, onOpen }: { deadlines: Deadline[]; 
     void loadWeather();
   }, []);
 
-  const today = app.today || isoOfDate(now);
+  const today = isoOfDate(now) > (app.today || "") ? isoOfDate(now) : app.today || isoOfDate(now);
   const hour = now.getHours();
   // Abends zeigt die Zeitleiste schon morgen
   const showDay = hour >= 19 ? addDaysIso(today, 1) : today;
   const dayLabel = showDay === today ? "Your day" : "Tomorrow";
-  const greeting = hour >= 5 && hour < 12 ? "Good morning" : hour >= 12 && hour < 18 ? "Good afternoon" : "Good evening";
+  const greeting = hour >= 5 && hour < 12 ? "Good morning" : hour >= 12 && hour < 18 ? "Good afternoon" : hour >= 18 ? "Good evening" : "Still up?";
   const dateLine = now.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
   const week =
     progress.currentWeek >= 1 && progress.currentWeek <= progress.lastWeek ? `Week ${progress.currentWeek} of ${progress.lastWeek}` : progress.currentWeek > progress.lastWeek ? "Exam period" : null;
@@ -187,7 +187,7 @@ export function TodayView({ deadlines, done, onOpen }: { deadlines: Deadline[]; 
           <h1 className="mt-0.5 text-[34px] font-bold leading-tight tracking-[-0.025em]">{greeting}</h1>
           <p className="mt-1.5 max-w-[680px] text-[15px] leading-relaxed text-muted">{briefing}</p>
         </div>
-        <WeatherNow weather={weather} />
+        <WeatherNow weather={weather} day={showDay} tomorrow={showDay !== today} />
       </header>
 
       {alerts.length > 0 && (
@@ -291,9 +291,9 @@ function brief({
   return out;
 }
 
-function WeatherNow({ weather }: { weather: Weather | null }) {
+function WeatherNow({ weather, day, tomorrow }: { weather: Weather | null; day: string; tomorrow: boolean }) {
   if (!weather) return null;
-  const t = weather.days[0];
+  const t = weather.days.find((d) => d.date === day) ?? weather.days[0];
   const s = sky(weather.now.code);
   return (
     <div className="flex items-center gap-3 rounded-[14px] bg-surface px-4 py-3" aria-label={`Weather in ${CITY}: ${weather.now.temp} degrees, ${s.label}`}>
@@ -310,11 +310,11 @@ function WeatherNow({ weather }: { weather: Weather | null }) {
       </span>
       {t && (
         <span className="ml-1 border-l border-line-soft pl-3 text-[12px] leading-[18px] text-muted">
-          <span className="block">
-            H {t.max}° · L {t.min}°
+          <span className="flex items-center gap-1 font-semibold text-text">
+            <WeatherIcon code={t.code} size={13} /> {tomorrow ? "Tomorrow" : "Today"} {t.min}–{t.max}°
           </span>
           <span className="flex items-center gap-1">
-            <Sunset size={12} aria-hidden /> {t.sunset}
+            <Sunset size={12} aria-hidden /> Sunset {t.sunset}
           </span>
         </span>
       )}
@@ -401,14 +401,18 @@ function DayLine({
   });
   const laneH = 46;
   const step = progress.steps.find((s) => s.kind === "catchup") ?? progress.steps[0];
+  const dayHours = weather ? weather.hours.filter((x) => x.time.startsWith(dayIso) && +x.time.slice(11, 13) >= h0 && +x.time.slice(11, 13) < h1) : [];
+  const maxRain = Math.max(0, ...dayHours.map((x) => x.rain));
+  const studyWeek = (s: NonNullable<typeof step>) => openStudy({ screen: "week", moduleId: s.module.course.id, weekKey: s.week.key });
 
   return (
     <section aria-label={label} className="rounded-[14px] bg-surface px-5 pb-4 pt-4">
       <div className="mb-3 flex items-baseline gap-3">
         <h2 className="text-[17px] font-bold">{label}</h2>
         <span className="text-[12px] text-muted">
-          {timed.length ? `${timed.length} ${timed.length === 1 ? "class" : "classes and events"}` : isToday ? "Nothing scheduled" : "Nothing scheduled yet"}
-          {weather ? ` · weather in ${CITY} by the hour` : ""}
+          {timed.length ? `${timed.length} ${timed.length === 1 ? "class" : "classes and events"} · ` : ""}
+          {weather ? `Weather in ${CITY} by the hour` : ""}
+          {weather && maxRain >= 30 ? " · blue bars: chance of rain" : ""}
         </span>
       </div>
       <div className="relative">
@@ -422,12 +426,14 @@ function DayLine({
                 <div key={h} className={`flex flex-col items-center gap-0.5 ${past ? "opacity-40" : ""}`}>
                   {w ? <WeatherIcon code={w.code} day={w.day} size={16} /> : <span className="h-4" />}
                   <span className="text-[11px] font-semibold tabular-nums">{w ? `${w.temp}°` : ""}</span>
-                  <span className="flex h-5 w-[6px] items-end overflow-hidden rounded-full bg-sunken" title={w ? `${w.rain}% rain` : undefined}>
-                    <span
-                      className="grow-y block w-full rounded-full"
-                      style={{ height: `${w ? Math.max(0, w.rain) : 0}%`, background: "var(--c-blue)", opacity: 0.75, "--delay": `${200 + k * 30}ms` } as React.CSSProperties}
-                    />
-                  </span>
+                  {maxRain >= 30 && (
+                    <span className="flex h-5 w-[6px] items-end overflow-hidden rounded-full bg-sunken" title={w ? `${w.rain}% chance of rain` : undefined}>
+                      <span
+                        className="grow-y block w-full rounded-full"
+                        style={{ height: `${w && w.rain >= 20 ? w.rain : 0}%`, background: "var(--c-blue)", opacity: 0.75, "--delay": `${200 + k * 30}ms` } as React.CSSProperties}
+                      />
+                    </span>
+                  )}
                 </div>
               );
             })}
@@ -471,12 +477,13 @@ function DayLine({
           </div>
         ) : (
           <div className="mt-3 flex flex-wrap items-center gap-2 rounded-[10px] bg-sunken px-3.5 py-2.5 text-[13px]">
-            <span className="text-muted">{isToday ? "A free day." : "Nothing in your calendar for tomorrow."}</span>
+            <span className="font-semibold">{isToday ? "A free day." : "Nothing planned tomorrow."}</span>
+            {(step || due > 0) && <span className="text-muted">Good time for:</span>}
             {step && (
-              <button onClick={() => onOpen("progress")} className="hit inline-flex items-center gap-1.5 rounded-full bg-surface px-3 py-1 font-semibold">
+              <button onClick={() => studyWeek(step)} className="hit inline-flex items-center gap-1.5 rounded-full bg-surface px-3 py-1 font-semibold" title="Opens this week’s cards in Study">
                 <span className="size-2 rounded-full" style={{ background: tone(colorOf(step.module.course)) }} />
-                {step.kind === "catchup" ? "Catch up on" : "Get ahead on"} {step.module.course.name} · Week {step.week.n}
-                <span className="font-normal text-muted">≈ {Math.max(1, Math.round(step.left))} h</span>
+                {step.module.course.name} · Week {step.week.n}
+                {step.week.title && <span className="max-w-[220px] truncate font-normal text-muted">{step.week.title}</span>}
               </button>
             )}
             {due > 0 && (
@@ -597,7 +604,9 @@ function StudyTile({ onOpen }: { onOpen: () => void }) {
             <CountUp value={due} />
           </span>
           <span className="mt-1 text-[13px] font-semibold">cards to learn today</span>
-          <span className="mt-auto pt-2 text-[12px] text-muted">About {minutesFor(due)} min{streak > 1 ? "" : ". Start a streak today."}</span>
+          <span className="mt-auto pt-2 text-[12px] text-muted">
+            About {minutesFor(due)} min{streak > 1 ? "" : study.stats.today > 0 ? ". Day 1 of your streak." : ". Start a streak today."}
+          </span>
         </>
       ) : (
         <>
@@ -638,9 +647,9 @@ function ProgressTile({ onOpen }: { onOpen: () => void }) {
         </>
       ) : (
         <>
-          <span className="text-[15px] font-bold leading-snug">{top ? `${top.course.name} needs the most` : "Your weekly plan"}</span>
+          <span className="text-[15px] font-bold leading-snug">{top ? `${top.course.name} is the biggest this week` : "Your week at a glance"}</span>
           <span className="mt-1 text-[12px] text-muted">
-            {top ? `About ${Math.max(1, Math.round(top.thisWeek!.hours))} of your ${model.hours} hours. Rate your weeks to see if you’re on track.` : "Rate your weeks to see if you’re on track."}
+            {top ? `Plan about ${Math.max(1, Math.round(top.thisWeek!.hours))} hours for it. Tick off what you’ve done to see if you’re on track.` : "Tick off what you’ve done to see if you’re on track."}
           </span>
         </>
       )}
@@ -655,18 +664,26 @@ function ProgressTile({ onOpen }: { onOpen: () => void }) {
   );
 }
 
+/** Absendername ohne Anführungszeichen und Escapes („\\"Mattermost Notifications\\"“ → „Mattermost Notifications“). */
+function senderName(m: { fromName: string; fromAddress: string }) {
+  const n = m.fromName.replace(/\\"/g, "").replace(/^["'\s]+|["'\s]+$/g, "").trim();
+  return n || m.fromAddress;
+}
+
 function MailTile({ onOpen }: { onOpen: () => void }) {
   const app = useApp();
   const mail = useMail();
   const connected = mail.accounts.filter((a) => a.connected).map((a) => a.id);
+  const uniOn = connected.includes("uni");
   const courses = app.courses.filter((c) => !c.semester || c.semester === "current");
   const inbox = mail.messages
     .filter((m) => m.folder === "inbox" && !mail.snoozed[m.id] && connected.includes(m.accountId))
     .sort((a, b) => b.date.localeCompare(a.date));
   const unread = inbox.filter((m) => m.unread);
   const courseMail = (m: (typeof inbox)[number]) => m.courseId ?? guessCourse(m, courses);
-  // Wichtigste ungelesene Mail: aus einem Kurs, sonst aus dem Uni-Postfach, sonst keine Werbung (Newsletter zählen nicht)
-  const top = unread.find((m) => courseMail(m)) ?? unread.find((m) => m.accountId === "uni" && !m.unsubscribe) ?? unread.find((m) => !m.unsubscribe);
+  // Zählt nur, was Anna wirklich lesen sollte: Mails aus ihren Kursen und aus dem Uni-Postfach (ohne Newsletter)
+  const important = unread.filter((m) => courseMail(m) || (m.accountId === "uni" && !m.unsubscribe));
+  const top = important[0];
   const topCourse = top ? courseById(courseMail(top) ?? "") : undefined;
   if (!connected.length) {
     return (
@@ -677,16 +694,11 @@ function MailTile({ onOpen }: { onOpen: () => void }) {
     );
   }
   return (
-    <Tile
-      icon={<Mail size={13} aria-hidden />}
-      label="Mail"
-      onClick={() => (top ? openMail(top.id) : onOpen())}
-      ariaLabel={top ? `${unread.length} unread mails. Open “${top.subject}”` : "No unread mail. Open Mail"}
-    >
+    <Tile icon={<Mail size={13} aria-hidden />} label="Mail" onClick={onOpen} ariaLabel={`${important.length} new mails from your courses. Open Mail`}>
       <span className="text-[28px] font-bold leading-none tabular-nums">
-        <CountUp value={unread.length} />
+        <CountUp value={important.length} />
       </span>
-      <span className="mt-1 text-[13px] font-semibold">{unread.length === 1 ? "unread mail" : "unread mails"}</span>
+      <span className="mt-1 text-[13px] font-semibold">{important.length === 1 ? "new mail from uni" : "new mails from uni"}</span>
       {top ? (
         <span className="mt-auto pt-2 text-[12px] leading-snug">
           {topCourse && (
@@ -696,11 +708,13 @@ function MailTile({ onOpen }: { onOpen: () => void }) {
             </span>
           )}
           <span className="line-clamp-2 text-muted">
-            {top.fromName || top.fromAddress}: {top.subject}
+            {senderName(top)}: {top.subject}
           </span>
         </span>
       ) : (
-        <span className="mt-auto pt-2 text-[12px] text-muted">{unread.length ? "Nothing from your courses, only newsletters." : "Inbox zero. Nice."}</span>
+        <span className="mt-auto pt-2 text-[12px] text-muted">
+          {!uniOn ? "Connect your uni mail to see mails from your profs here." : unread.length ? `Nothing from your courses. ${unread.length} other unread.` : "Inbox zero. Nice."}
+        </span>
       )}
     </Tile>
   );

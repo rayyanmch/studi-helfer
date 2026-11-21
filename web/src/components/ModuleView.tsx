@@ -17,6 +17,7 @@ import * as store from "@/lib/app-store";
 import { COURSE_COLORS, useApp } from "@/lib/app-store";
 
 const WD = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const WD_MON = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]; // ClassSlot.weekday: 0 = Montag
 const RECENT_DAYS = 14;
 
@@ -318,7 +319,7 @@ function ComingUp({
               return (
                 <li key={d.id} className="flex items-center gap-3 rounded-[10px] px-3.5 py-2.5" style={style}>
                   <span className="w-9 shrink-0 text-center">
-                    <span className="block text-[11px] font-semibold opacity-80">{WD[new Date(parseDay(d.date)).getDay()]}</span>
+                    <span className="block text-[11px] font-semibold opacity-80">{MON[Number(d.date.slice(5, 7)) - 1]}</span>
                     <span className="block text-[17px] font-bold leading-none">{Number(d.date.slice(8))}</span>
                   </span>
                   <button type="button" onClick={() => openEvent(d)} className="min-w-0 flex-1 text-left">
@@ -328,7 +329,7 @@ function ComingUp({
                       {(exam && examPart(d.title)?.rest) || d.title}
                     </span>
                     <span className="block truncate text-[12px] opacity-80">
-                      {isDone ? "done" : [days === 0 ? "today" : days === 1 ? "tomorrow" : `in ${days} days`, d.time, d.source].filter(Boolean).join(" · ")}
+                      {isDone ? "done" : [WD[new Date(parseDay(d.date)).getDay()], days === 0 ? "today" : days === 1 ? "tomorrow" : `in ${days} days`, d.time, d.source].filter(Boolean).join(" · ")}
                     </span>
                   </button>
                   {d.kind === "abgabe" && (

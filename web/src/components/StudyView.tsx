@@ -682,7 +682,7 @@ function RoundDone({
             <Flame size={13} aria-hidden /> {study.stats.streak}-day streak
           </span>
         )}
-        {study.stats.today > 0 && <span className="inline-flex items-center rounded-full bg-sunken px-3 py-1 text-muted">{study.stats.today} cards today</span>}
+        {study.stats.today > 0 && <span className="inline-flex items-center rounded-full bg-sunken px-3 py-1 text-muted">{study.stats.today} {study.stats.today === 1 ? "card" : "cards"} today</span>}
       </div>
       <p className="mt-4 text-[13px] text-muted">{leftToday ? `${leftToday} more ${leftToday === 1 ? "card" : "cards"} for today.` : "That’s everything for today."}</p>
       <div className="mt-6 flex justify-center gap-2">

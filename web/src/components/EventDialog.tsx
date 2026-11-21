@@ -6,7 +6,7 @@
 // openNewEvent({ date, start, moduleId }).
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { CalendarDays, Check, CircleCheck, ClipboardCheck, Clock, ExternalLink, EyeOff, MapPin, Pencil, Repeat, RotateCcw, Trash2, X } from "lucide-react";
+import { CalendarDays, Check, CircleCheck, ClipboardCheck, Clock, ExternalLink, EyeOff, FileText, MapPin, Pencil, Repeat, RotateCcw, Trash2, X } from "lucide-react";
 import { Button, Swatch, colorOf, nameOf, tone } from "./ui";
 import * as store from "@/lib/app-store";
 import { COURSE_COLORS, appStore, realCourses, useApp } from "@/lib/app-store";
@@ -297,6 +297,16 @@ function Details({ deadline: d, onOpenCourse }: { deadline: Deadline; onOpenCour
         <EventMails deadline={d} />
         {d.kind === "klausur" && <ExamRegistration deadline={d} />}
         <div className="mt-4 flex flex-wrap items-center gap-2">
+          {d.url && app.mode === "desktop" && (
+            <Button onClick={() => store.openIlias(d.url)}>
+              <ExternalLink size={13} aria-hidden /> {d.kind === "abgabe" ? "Hand in on ILIAS" : "Open in ILIAS"}
+            </Button>
+          )}
+          {d.file && app.mode === "desktop" && (
+            <Button onClick={() => store.openFile(d.file!)}>
+              <FileText size={13} aria-hidden /> Open {d.kind === "abgabe" ? "the sheet" : "the file"}
+            </Button>
+          )}
           {route && <RouteButton route={route} />}
           {join && (
             <a href={join} target="_blank" rel="noopener noreferrer" className="press inline-flex h-8 items-center gap-1.5 rounded-lg bg-accent px-3 text-[13px] font-semibold text-on-accent hover:opacity-90">

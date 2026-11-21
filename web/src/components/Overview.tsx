@@ -48,7 +48,7 @@ import { GoogleEventHost, openGoogleEvent } from "./GoogleEventDialog";
 import { CalendarView } from "./CalendarView";
 import { PlacesView } from "./PlacesView";
 import { placeLabel } from "@/lib/rooms";
-import { CalendarChip, ClashTag, GoogleBlock, abbrTitle, mergeTwins, overlapRows, sharedZones, startMinutes, withCourse, type DayEntry, type TimedEntry } from "./calendar-bits";
+import { ClashTag, GoogleBlock, abbrTitle, mergeTwins, overlapRows, sharedZones, startMinutes, withCourse, type DayEntry, type TimedEntry } from "./calendar-bits";
 import { Accounts } from "./Accounts";
 import { Settings } from "./Settings";
 import { ImportPanel, jobProgress, useJob, useTick, type Job } from "./ImportJob";
@@ -57,7 +57,7 @@ import { UpdateMenuItem } from "./UpdateNotice";
 import type { Problem } from "./AppShell";
 import { countFiles, countNew, type Course, type Deadline } from "@/lib/mock-data";
 import * as store from "@/lib/app-store";
-import { initMail, setCalendar, useMail } from "@/lib/mail-data";
+import { initMail, useMail } from "@/lib/mail-data";
 import { useRoomChanged } from "@/lib/room-changes";
 import { appStore, etaLabel, realCourses, useApp, useCommand } from "@/lib/app-store";
 
@@ -216,6 +216,11 @@ export function Overview({
   // Seitenleiste: welcher Eintrag ist markiert? Die dunkle Markierung gleitet vom alten zum neuen Eintrag.
   const activeNav = view === "mail" ? "mail" : searching ? null : course ? "courses" : view;
   const navRef = useRef<HTMLElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  // Neuer Tab beginnt oben (sonst bleibt die Scrollposition des vorigen und der Titel ist verdeckt)
+  useLayoutEffect(() => {
+    if (scrollRef.current) scrollRef.current.scrollTop = 0;
+  }, [view, searching]);
   const prevNav = useRef<string | null>(activeNav);
   useLayoutEffect(() => {
     const prev = prevNav.current;
@@ -332,7 +337,7 @@ export function Overview({
           </label>
         </header>
 
-        <div className="scroll flex-1">
+        <div ref={scrollRef} className="scroll flex-1">
           <div key={searching ? "search" : view} className="view-in mx-auto max-w-[1080px] px-10 pb-12">
             <Banners
               problem={problem}
@@ -795,31 +800,13 @@ function WeekView({
   onToggle: (id: string) => void;
   onOpen: (id: string) => void;
 }) {
-  // Vorlesungen/Übungstermine (kind "termin") im Wochenstreifen ein-/ausblenden; gemerkt pro Mac
-  const [showClasses, setShowClasses] = useState(() => {
-    try {
-      return localStorage.getItem("studi.showClasses") !== "0";
-    } catch {
-      return true;
-    }
-  });
-  const toggleClasses = () =>
-    setShowClasses((v) => {
-      try {
-        localStorage.setItem("studi.showClasses", v ? "0" : "1");
-      } catch {
-        // egal
-      }
-      return !v;
-    });
-  const hasClasses = deadlines.some((d) => d.kind === "termin");
+  // Kalender-Schalter (ILIAS / Google) stellt man im Kalender-Tab ein; hier gelten sie nur
   // Kalender an/aus (Variante B1): ILIAS-Fristen und Google Kalender, Standard beide an
   const mail = useMail();
   const googleConnected = mail.accounts.some((a) => a.id === "gmail" && a.connected);
   const showIlias = mail.calendars.ilias || !googleConnected; // ohne Google gibt es nichts umzuschalten
   const googleEvents = googleConnected && mail.calendars.google ? mail.events : [];
-  const classesFiltered = showClasses ? deadlines : deadlines.filter((d) => d.kind !== "termin");
-  const visible = showIlias ? classesFiltered : [];
+  const visible = showIlias ? deadlines : [];
   const wx = useWeatherDays();
   const notes = useEventMails(deadlines);
   const days = Array.from({ length: 4 }, (_, i) => {
@@ -888,35 +875,16 @@ function WeekView({
             }
           </p>
         </div>
-        <Button onClick={() => onOpen("calendar")}>
-          <CalendarDays size={14} aria-hidden /> Open calendar
-        </Button>
+        <div className="flex items-center gap-1">
+          <Button variant="plain" onClick={() => openNewEvent()}>
+            <CalendarPlus size={14} aria-hidden /> Add event
+          </Button>
+          <Button onClick={() => onOpen("calendar")}>
+            <CalendarDays size={14} aria-hidden /> Open calendar
+          </Button>
+        </div>
       </header>
 
-      {googleConnected && (
-        <div className="mt-4 flex flex-wrap items-center gap-2" role="group" aria-label="Calendars">
-          <CalendarChip on={mail.calendars.ilias} onChange={(on) => setCalendar("ilias", on)} dashed={false}>
-            ILIAS deadlines
-          </CalendarChip>
-          <CalendarChip on={mail.calendars.google} onChange={(on) => setCalendar("google", on)} dashed>
-            Google Calendar
-          </CalendarChip>
-          <span className="text-[12px] text-muted">Dashed = from Google Calendar</span>
-        </div>
-      )}
-
-      <div className="mt-4 flex flex-wrap items-center gap-3">
-        {hasClasses && (
-          <label className="inline-flex cursor-default items-center gap-2 text-[13px] text-muted">
-            <input type="checkbox" checked={showClasses} onChange={toggleClasses} className="accent-[var(--accent)]" />
-            Show classes and events
-          </label>
-        )}
-        {visible.length > 0 && <span className="text-[12px] text-muted">Click an entry to see details, change or hide it.</span>}
-        <Button variant="plain" className="-my-1 ml-auto" onClick={() => openNewEvent()}>
-          <CalendarPlus size={14} aria-hidden /> Add event
-        </Button>
-      </div>
 
       {/* Tage ohne Termine werden schmal, Tage mit Terminen teilen sich den Platz. */}
       <div

@@ -61,10 +61,13 @@ export function MonthView({
       weekend: i % 7 >= 5,
       past: diff < 0,
       today: diff === 0,
-      entries: [
-        ...deadlines.filter((x) => x.date === iso && courseById(x.courseId)).map((d) => ({ key: d.id, at: startMinutes(d.time), d, ev: null as GoogleEvent | null })),
-        ...events.filter((x) => x.date === iso).map((ev) => ({ key: `g-${ev.id}`, at: startMinutes(ev.time), d: null as Deadline | null, ev })),
-      ].sort((a, b) => a.at - b.at),
+      // Abgaben und Klausuren zuerst (sonst verschwinden sie hinter „+3 more“), gleiche Termine aus Google nur einmal
+      entries: mergeTwins(
+        [
+          ...deadlines.filter((x) => x.date === iso && courseById(x.courseId)).map((d) => ({ key: d.id, at: startMinutes(d.time), d, ev: null as GoogleEvent | null })),
+          ...events.filter((x) => x.date === iso).map((ev) => ({ key: `g-${ev.id}`, at: startMinutes(ev.time), d: null as Deadline | null, ev })),
+        ].sort((a, b) => a.at - b.at),
+      ).sort((a, b) => Number(Boolean(b.d && b.d.kind !== "termin")) - Number(Boolean(a.d && a.d.kind !== "termin")) || a.at - b.at),
     };
   });
 
@@ -278,19 +281,35 @@ export interface DayEntry {
 export type TimedEntry = DayEntry & { start: number; end: number };
 export type DayRow = { kind: "one"; e: DayEntry } | { kind: "group"; key: string; items: TimedEntry[] };
 
+// Wörter, die in fast jedem Termin stehen und allein nichts über den Kurs sagen
+const GENERIC = new Set([
+  "vorlesung", "lecture", "ubung", "uebung", "exercise", "tutorium", "tutorial", "seminar", "gruppe", "group", "sitzung", "session",
+  "fur", "der", "die", "das", "und", "and", "the", "for", "von", "mit", "zur", "zum", "einfuhrung", "introduction", "grundlagen",
+  "studierende", "online", "virtuell", "raum", "room", "hall", "horsaal",
+]);
+const courseWords = (s: string) => new Set([...titleWords(s)].filter((w) => !GENERIC.has(w)));
+
+/**
+ * Derselbe Termin aus ILIAS und Google? Beginn höchstens 10 Minuten auseinander und ein Kurswort gemeinsam. Für den Kurs
+ * zählen Titel, Kurzname, voller Name und die Teile („Mathe I Lecture“ = „Mathematik für Studierende der Informatik I“).
+ */
+export function sameEvent(d: Deadline, ev: GoogleEvent): boolean {
+  const a = startMinutes(d.time);
+  const b = startMinutes(ev.time);
+  if (a < 0 || b < 0 || Math.abs(a - b) > 10) return false;
+  const c = courseById(d.courseId);
+  const mine = courseWords([d.title, c?.name, c?.short, c?.fullName, ...(c?.parts ?? []).map((p) => p.label)].filter(Boolean).join(" "));
+  const theirs = courseWords(ev.title);
+  return [...theirs].some((w) => mine.has(w));
+}
+
 /** Gleiche Termine aus ILIAS und Google (gleiche Zeit, ähnlicher Titel) nur einmal zeigen. */
 export function mergeTwins(entries: DayEntry[]): DayEntry[] {
   const out = entries.map((e) => ({ ...e }));
   const drop = new Set<string>();
   for (const g of out) {
     if (!g.ev) continue;
-    const r = timeRange(g.ev.time);
-    if (!r) continue;
-    const twin = out.find((x) => {
-      if (!x.d || x.alsoGoogle) return false;
-      const rx = timeRange(x.d.time);
-      return rx && rx[0] === r[0] && rx[1] === r[1] && similarTitles(`${x.d.title} ${courseById(x.d.courseId)?.name ?? ""}`, g.ev!.title);
-    });
+    const twin = out.find((x) => x.d && !x.alsoGoogle && x.d.kind !== "abgabe" && sameEvent(x.d, g.ev!));
     if (twin) {
       twin.alsoGoogle = true;
       drop.add(g.key);

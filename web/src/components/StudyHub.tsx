@@ -772,7 +772,8 @@ function BoxTile({
             <span>
               <CountUp value={pct} suffix="%" /> learned
             </span>
-            {counts[0] > 0 && <span>· {counts[0]} new</span>}
+            {counts[1] + counts[2] > 0 && <span>· {counts[1] + counts[2]} started</span>}
+            {counts[0] > 0 && <span title={`${counts[0]} cards you haven’t seen yet`}>· {counts[0] > NEW_PER_DAY ? `${NEW_PER_DAY} new a day` : `${counts[0]} new`}</span>}
             <span className="flex-1" />
             {exam != null && (
               <span className="inline-flex items-center gap-1 font-semibold" style={{ color: tone(color, "ink") }}>
@@ -1242,7 +1243,7 @@ function WeekSheetButton({ course, week }: { course: Course; week: Week }) {
   const docs = week.files.filter((x) => STUDY_FILE.test(x.file.name) && isStudyDoc(x.type));
   if (week.kind !== "week" || !docs.length) return null;
   return existing ? (
-    <Button className="h-8" variant="plain" onClick={() => void openSheet(existing.id)} title={`Open “${existing.title}”`}>
+    <Button className="h-8" variant="plain" onClick={() => void openSheet(existing.id)} aria-label={`Open “${sheetTitle(existing.title)}”`}>
       <FileText size={13} aria-hidden /> Sheet
     </Button>
   ) : (
@@ -1293,11 +1294,14 @@ function CourseSheets({ course, weeks, math, onError }: { course: Course; weeks:
       )}
       {sheets
         .filter((s) => s.id !== exam?.id)
+        // Gleicher Titel und gleiche Art nur einmal (der neueste), Art als kleines Wort statt im Titel
+        .filter((s, i, all) => all.findIndex((x) => sheetType(x) === sheetType(s) && shortSheetTitle(x.title) === shortSheetTitle(s.title)) === i)
         .slice(0, 6)
         .map((s) => (
-          <button key={s.id} onClick={() => void open(s.id)} title={s.title} className="inline-flex h-9 max-w-[260px] items-center gap-1.5 rounded-[10px] bg-surface px-3 text-[13px] hover:bg-hover">
+          <button key={s.id} onClick={() => void open(s.id)} aria-label={`Open ${sheetType(s).toLowerCase()} “${sheetTitle(s.title)}”`} className="inline-flex h-9 max-w-[300px] items-center gap-1.5 rounded-[10px] bg-surface px-3 text-[13px] hover:bg-hover">
             <FileText size={13} className="shrink-0 text-muted" aria-hidden />
-            <span className="truncate">{s.title.replace(/^(Woche|Week) /, "W").replace(/:\s*/, " · ")}</span>
+            <span className="truncate">{shortSheetTitle(s.title)}</span>
+            <span className="shrink-0 text-[11px] text-muted">{sheetType(s)}</span>
           </button>
         ))}
     </section>
@@ -1623,7 +1627,7 @@ function Sheets({ courses, onNew, onError }: { courses: Course[]; onNew: () => v
                   }}
                   title="Open the PDF"
                 >
-                  <span className="block truncate font-semibold">{s.title}</span>
+                  <span className="block truncate font-semibold">{sheetTitle(s.title)}</span>
                   <span className="block truncate text-[12px] text-muted">
                     {[sheetKindLabel(s), c?.name ?? s.moduleName, date, `${s.files.length} ${s.files.length === 1 ? "file" : "files"}`, parts && s.kind === "study" ? `${parts} topics` : null, s.focus]
                       .filter(Boolean)
@@ -1664,6 +1668,22 @@ function Sheets({ courses, onNew, onError }: { courses: Course[]; onNew: () => v
 }
 
 /** „Study sheet · 6 pages“ / „Cheat sheet · 1 page“ für Listen. */
+/** Titel aus der KI kommen manchmal mit HTML-Zeichen („Folgen &amp; Grenzwert“). */
+function sheetTitle(t: string) {
+  return t.replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, "\"").replace(/&#39;/g, "'");
+}
+/** Kurz für Chips: „Woche 6: Folgen & Grenzwert – Spickzettel“ → „W6 · Folgen & Grenzwert“ (die Art steht daneben). */
+function shortSheetTitle(t: string) {
+  return sheetTitle(t)
+    .replace(/\s*[–-]\s*(Spickzettel|One-pager|Exam cheat sheet|Cheat sheet|Study sheet|Lernzettel|Einseiter)$/i, "")
+    .replace(/^(Woche|Week) /, "W")
+    .replace(/:\s*/, " · ");
+}
+/** Nur zwei Namen in der Oberfläche: Study sheet (ausführlich, mit Verbindungen) und Cheat sheet (kurz). */
+function sheetType(s: { kind?: string; length?: string }) {
+  return s.kind === "study" || s.length === "study" || s.length === "detailed" || s.length === "normal" ? "Study sheet" : "Cheat sheet";
+}
+
 function sheetKindLabel(s: { kind?: string; length?: string; pages?: number | null }) {
   if (s.kind === "study" || s.length === "study") return s.pages ? `Study sheet · ${s.pages} pages` : "Study sheet";
   if (s.kind === "exam") return "Exam cheat sheet";

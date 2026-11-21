@@ -117,6 +117,15 @@ const DEMO: AppState = {
 const INITIAL: AppState = { ...DEMO, mode: "loading" };
 
 let state: AppState = INITIAL;
+
+// Mitternacht: „today“ und „today, 23:54“ → „yesterday, 23:54“ weiterschalten, auch wenn die App die ganze Nacht offen ist
+if (typeof window !== "undefined") {
+  window.setInterval(() => {
+    if (state.mode !== "desktop") return;
+    const now = localIso();
+    if (now !== state.today) set({ today: now, lastSync: lastSyncLabel(state.lastSyncAt ?? null) });
+  }, 60_000);
+}
 const listeners = new Set<() => void>();
 
 function set(patch: Partial<AppState>) {
@@ -188,7 +197,7 @@ function tildePath(p: string | null): string {
 function lastSyncLabel(at: number | null): string {
   if (!at) return "not yet";
   const d = new Date(at);
-  const time = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  const time = d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false }); // 24 Stunden wie überall in der App
   const days = Math.round((new Date(localIso()).getTime() - new Date(localIso(d)).getTime()) / 86_400_000);
   if (days === 0) return `today, ${time}`;
   if (days === 1) return `yesterday, ${time}`;
@@ -293,7 +302,19 @@ function toDeadline(d: DesktopDeadline): Deadline {
   const seriesId =
     d.category === "session" ? `sess|${d.moduleId ?? OTHER_ID}|${d.title.toLowerCase()}|${new Date(`${d.date}T12:00:00`).getDay()}|${d.time.match(/\d{1,2}:\d{2}/)?.[0] ?? d.time}` : undefined;
   const title = d.kind === "klausur" ? examTitle(d.title) : tidyTitle(d.title); // nur Anzeige, die Id bleibt
-  return { id: d.id, courseId: d.category === "uni" ? UNI_ID : d.moduleId ?? OTHER_ID, title, date: d.date, time: d.time, kind: d.kind, source, seriesId, location: d.location ?? undefined };
+  return {
+    id: d.id,
+    courseId: d.category === "uni" ? UNI_ID : d.moduleId ?? OTHER_ID,
+    title,
+    date: d.date,
+    time: d.time,
+    kind: d.kind,
+    source,
+    seriesId,
+    location: d.location ?? undefined,
+    file: d.file,
+    url: d.url,
+  };
 }
 
 /** „!!! Virtuell!!! ISM - Übung“ → „ISM - Übung (online)“: Ausrufezeichen-Hinweise aus ILIAS lesbar machen. */
