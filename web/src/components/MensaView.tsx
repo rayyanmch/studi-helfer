@@ -61,6 +61,12 @@ export function MensaView() {
   const ordered = [...SECTIONS.flatMap(([, g]) => mains.filter((d) => g.includes(d.group))), ...sides, ...desserts];
   const zoomed = ordered.find((d) => d.id === zoom) ?? null;
   const weekSplit = days.findIndex((d) => parse(d).getDay() === 1 && d !== days[0]);
+  // Heute zu (Wochenende, Feiertag, nach 18:30): sagen, warum ein anderer Tag gezeigt wird
+  const tomorrow = isoOf(new Date(Date.now() + 86_400_000));
+  const closedNote =
+    day === null && shownDay && shownDay > today
+      ? `The mensa is closed now. Here is the menu for ${shownDay === tomorrow ? "tomorrow" : parse(shownDay).toLocaleDateString("en-US", { weekday: "long" })}.`
+      : null;
 
   return (
     <div className="pb-6">
@@ -70,6 +76,7 @@ export function MensaView() {
           <p className="mt-1 text-muted">
             {shownDay ? `${shortLoc(location)} · ${parse(shownDay).toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" })}` : "Kölner Studierendenwerk"}
           </p>
+          {closedNote && <p className="mt-0.5 text-[13px] text-muted">{closedNote}</p>}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Select label="Mensa" value={location} onChange={(v) => setPrefs({ location: v })} icon={<MapPin size={14} aria-hidden />}>
