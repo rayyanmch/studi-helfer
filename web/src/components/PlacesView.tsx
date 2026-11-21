@@ -8,6 +8,7 @@ import { useEffect, useRef, useState } from "react";
 import { BookOpen, Clock, ExternalLink, Footprints, Heart, List, Map as MapIcon, Plug, Utensils, Wifi, X } from "lucide-react";
 import { Button, Spinner } from "./ui";
 import { RouteButton } from "./RouteButton";
+import { PlacesMap } from "./PlacesMap";
 import {
   DAY_NAMES,
   KIND_LABEL,
@@ -202,15 +203,15 @@ export function PlacesView() {
                   </div>
                 )}
               </div>
-              <aside className="w-[260px] shrink-0 lg:sticky lg:top-4" aria-label="Map">
+              <aside className="w-[300px] shrink-0 lg:sticky lg:top-4" aria-label="Map">
                 <p className="mb-1.5 text-[12px] text-muted">Near you</p>
-                <PlacesMap places={shown.map((r) => r.p)} selected={selected} onSelect={setSelected} size={260} />
+                <PlacesMap places={shown.map((r) => r.p)} selected={selected} onSelect={setSelected} height={300} />
                 <p className="mt-2 text-[12px] text-muted">Click “Map” above to see it large.</p>
               </aside>
             </>
           ) : (
             <div className="grid gap-5 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
-              <PlacesMap places={shown.map((r) => r.p)} selected={selected} onSelect={setSelected} size={620} />
+              <PlacesMap places={shown.map((r) => r.p)} selected={selected} onSelect={setSelected} height={560} zoom={15} controls />
               <ul className="flex flex-col gap-2">
                 {shown.slice(0, 8).map(({ p, st }, i) => (
                   <li key={p.id}>
@@ -232,7 +233,7 @@ export function PlacesView() {
 
 function OpenLine({ st }: { st: ReturnType<typeof openState> }) {
   if (st.open === true) return <span className="font-semibold text-[var(--c-green-ink)]">Open{st.until ? ` · until ${st.until}` : ""}</span>;
-  if (st.open === false) return <span className="font-semibold text-danger">Closed{st.opens ? ` · opens ${st.opens}` : ""}</span>;
+  if (st.open === false) return <span className="text-muted"><b className="font-semibold text-text">Closed</b>{st.opens ? ` · opens ${st.opens}` : ""}</span>;
   return <span className="text-muted">Hours not listed</span>;
 }
 
@@ -273,7 +274,8 @@ function PlaceCard({ p, n, st, now, fav, active, onFav, onOpen, compact }: { p: 
           <Heart size={16} aria-hidden fill={fav ? "var(--danger)" : "none"} style={fav ? { color: "var(--danger)" } : undefined} />
         </button>
       </div>
-      {!compact && (
+      {/* Wie voll es „typisch“ ist, sagt nur etwas, solange geöffnet ist */}
+      {!compact && st.open !== false && (
         <div className="mt-2.5 rounded-[9px] bg-bg px-2.5 py-2">
           <BusyLine p={p} now={now} />
         </div>
@@ -296,47 +298,6 @@ function Feature({ icon, children, unknown }: { icon: React.ReactNode; children:
       {icon}
       {children}
     </span>
-  );
-}
-
-/** Einfache Karte ohne Kacheln: Pins nach Lage, Ringe bei 500 m und 1 km. */
-function PlacesMap({ places, selected, onSelect, size }: { places: Place[]; selected: string | null; onSelect: (id: string) => void; size: number }) {
-  const scale = size / 2 / (RADIUS * 1.05);
-  const project = (lat: number, lon: number) => {
-    const x = (lon - UNI.lon) * Math.cos((UNI.lat * Math.PI) / 180) * 111320;
-    const y = -(lat - UNI.lat) * 110574;
-    return [size / 2 + x * scale, size / 2 + y * scale] as const;
-  };
-  return (
-    <div className="relative overflow-hidden rounded-[12px] bg-sunken shadow-[inset_0_0_0_1px_var(--line)]" style={{ width: size, maxWidth: "100%", aspectRatio: "1 / 1" }}>
-      <svg viewBox={`0 0 ${size} ${size}`} className="absolute inset-0 size-full" aria-hidden>
-        {[500, 1000, 1500].map((r) => (
-          <circle key={r} cx={size / 2} cy={size / 2} r={r * scale} fill="none" stroke="var(--line)" strokeDasharray="3 5" />
-        ))}
-        {[500, 1000].map((r) => (
-          <text key={r} x={size / 2 + 4} y={size / 2 - r * scale - 3} fontSize="10" fill="var(--muted)">
-            {r} m
-          </text>
-        ))}
-      </svg>
-      <span aria-hidden className="absolute z-[1] size-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-[3px] border-bg bg-[var(--c-blue)] shadow-[0_0_0_6px_rgba(58,110,165,0.2)]" style={{ left: "50%", top: "50%" }} title={UNI.name} />
-      {places.slice(0, 60).map((p, i) => {
-        const [x, y] = project(p.lat, p.lon);
-        const on = selected === p.id;
-        return (
-          <button
-            key={p.id}
-            onClick={() => onSelect(p.id)}
-            title={p.name}
-            aria-label={p.name}
-            className={`absolute -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-bg text-[10px] font-bold text-white transition-transform hover:scale-110 ${on ? "z-[3] size-[30px] shadow-[0_0_0_4px_rgba(22,32,42,0.25)]" : "z-[2] size-[22px]"}`}
-            style={{ left: x, top: y, background: KIND_COLOR[p.kind] }}
-          >
-            {i + 1}
-          </button>
-        );
-      })}
-    </div>
   );
 }
 

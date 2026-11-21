@@ -442,3 +442,13 @@ label:has(> input[type="radio"]) {
     transform: none;
   }
 }
+
+/* Kartenkacheln: bei dunklem Design die Karte abdunkeln (folgt dem Mac oder der Wahl in der App) */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .map-tile {
+    filter: invert(1) hue-rotate(180deg) brightness(0.9) contrast(0.92) saturate(0.7);
+  }
+}
+:root[data-theme="dark"] .map-tile {
+  filter: invert(1) hue-rotate(180deg) brightness(0.9) contrast(0.92) saturate(0.7);
+}
