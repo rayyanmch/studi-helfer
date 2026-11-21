@@ -1,6 +1,7 @@
 """Login bei ILIAS Köln und Suche der eigenen Kurse (PFERD kann das Dashboard dort nicht lesen)."""
 
 import re
+import sys
 from datetime import date
 from pathlib import Path
 from typing import Any, Optional
@@ -10,7 +11,7 @@ import requests
 from bs4 import BeautifulSoup, Tag
 from PFERD.crawl.ilias.kit_ilias_html import IliasPage, IliasSoup
 
-from .common import BASE_URL, CLIENT_ID, DATA_DIR, USER_AGENT, AppError
+from .common import BASE_URL, CLIENT_ID, DATA_DIR, MSG_ILIAS_DOWN, MSG_UNREACHABLE, USER_AGENT, AppError, log_detail
 
 TIMEOUT = 30
 
@@ -19,9 +20,11 @@ def _get(session: requests.Session, url: str, **kwargs: Any) -> requests.Respons
     try:
         r = session.get(url, timeout=TIMEOUT, **kwargs)
     except requests.RequestException as e:
-        raise AppError("unreachable", f"Can't reach ILIAS ({type(e).__name__}).") from None
+        log_detail("ilias", e)
+        raise AppError("unreachable", MSG_UNREACHABLE) from None
     if r.status_code >= 500:
-        raise AppError("unreachable", f"ILIAS returned error {r.status_code}.")
+        print(f"[ilias] HTTP {r.status_code} for {url}", file=sys.stderr, flush=True)
+        raise AppError("unreachable", MSG_ILIAS_DOWN)
     return r
 
 
@@ -39,7 +42,7 @@ def login(username: str, password: str) -> requests.Session:
     soup = BeautifulSoup(r.content, "html.parser")
     form = soup.find("form", attrs={"name": "login_form"})
     if not isinstance(form, Tag) or not form.get("action"):
-        raise AppError("unexpected", "The ILIAS sign-in page looks different than expected.")
+        raise AppError("unexpected", "ILIAS looks different than usual right now. Try again later.")
 
     # Feldnamen aus dem Formular lesen; Fallback sind die Namen, die PFERD nutzt.
     user_field = "login_form/input_3/input_4"
@@ -60,14 +63,15 @@ def login(username: str, password: str) -> requests.Session:
             timeout=TIMEOUT,
         )
     except requests.RequestException as e:
-        raise AppError("unreachable", f"Can't reach ILIAS ({type(e).__name__}).") from None
+        log_detail("ilias", e)
+        raise AppError("unreachable", MSG_UNREACHABLE) from None
 
     if _logged_in(r):
         return session
     if BeautifulSoup(r.content, "html.parser").find("form", attrs={"name": "login_form"}):
-        raise AppError("wrong_password", "Wrong username or password.")
-    raise AppError("unexpected", "Sign-in not completed. Please sign in to ILIAS once in your browser "
-                   "(e.g. to accept the terms of use) and try again.")
+        raise AppError("wrong_password", "Wrong ID or password.")
+    raise AppError("unexpected", "Sign-in did not finish. Open ILIAS once in your browser, sign in there "
+                   "(maybe you need to accept the terms of use), then try again here.")
 
 
 # ------------------------------------------------------------------ Kurse finden

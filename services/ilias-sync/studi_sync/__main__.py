@@ -28,16 +28,17 @@ import sys
 import keyring
 import keyring.errors
 
-from .common import KEYCHAIN_SERVICE, AppError, emit, load_config
+from .common import KEYCHAIN_SERVICE, AppError, emit, load_config, log_detail
 
 
 def _password_for(username: str) -> str:
     try:
         password = keyring.get_password(KEYCHAIN_SERVICE, username)
     except keyring.errors.KeyringError as e:
-        raise AppError("keychain", f"Could not read the Keychain ({type(e).__name__}).") from None
+        log_detail("keychain", e)
+        raise AppError("keychain", "Could not read your saved password. Please sign in again.") from None
     if not password:
-        raise AppError("not_logged_in", "No password in the Keychain. Please sign in again.")
+        raise AppError("not_logged_in", "Your saved password is missing. Please sign in again.")
     return password
 
 
@@ -47,12 +48,13 @@ def cmd_login(args: argparse.Namespace) -> None:
     username = args.username.strip()
     password = sys.stdin.readline().rstrip("\r\n")
     if not username or not password:
-        raise AppError("wrong_password", "Enter your university username and password.")
+        raise AppError("wrong_password", "Enter your university ID and password.")
     login(username, password)
     try:
         keyring.set_password(KEYCHAIN_SERVICE, username, password)
     except keyring.errors.KeyringError as e:
-        raise AppError("keychain", f"Could not save the password to the Keychain ({type(e).__name__}).") from None
+        log_detail("keychain", e)
+        raise AppError("keychain", "Could not save your password on this Mac. Please try again.") from None
     emit({"type": "result", "ok": True, "username": username})
 
 
@@ -77,7 +79,7 @@ def cmd_courses(args: argparse.Namespace) -> None:
 
     username = load_config().get("username")
     if not username:
-        raise AppError("not_logged_in", "Not signed in to ILIAS yet.")
+        raise AppError("not_logged_in", "You are not signed in. Please sign in again.")
     session = login(username, _password_for(username))
     emit({"type": "result", "courses": list_courses(session, dump=args.dump)})
 
@@ -88,7 +90,7 @@ def cmd_deadlines(args: argparse.Namespace) -> None:
 
     username = load_config().get("username")
     if not username:
-        raise AppError("not_logged_in", "Not signed in to ILIAS yet.")
+        raise AppError("not_logged_in", "You are not signed in. Please sign in again.")
     result = refresh(login(username, _password_for(username)))
     from .sheets import refresh as refresh_sheets
 
@@ -146,7 +148,7 @@ def cmd_sync(args: argparse.Namespace) -> None:
 def _mail_login() -> tuple[str, str]:
     username = load_config().get("username")
     if not username:
-        raise AppError("not_logged_in", "Not signed in to ILIAS yet.")
+        raise AppError("not_logged_in", "You are not signed in. Please sign in again.")
     return username, _password_for(username)
 
 
@@ -222,7 +224,10 @@ def main() -> int:
         emit({"type": "error", "code": e.code, "message": e.message})
         return 1
     except Exception as e:  # noqa: BLE001 – Oberfläche soll immer eine verständliche Antwort bekommen
-        emit({"type": "error", "code": "internal", "message": f"{type(e).__name__}: {e}"})
+        import traceback
+
+        traceback.print_exc(file=sys.stderr)
+        emit({"type": "error", "code": "internal", "message": "Something went wrong. Please try again."})
         return 1
 
 

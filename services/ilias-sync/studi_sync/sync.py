@@ -292,12 +292,12 @@ def run_pferd(run: Run, log: Any) -> int:
 def sync(auto: bool) -> dict[str, Any]:
     cfg = load_config()
     if not cfg.get("username"):
-        raise AppError("not_logged_in", "Not signed in to ILIAS yet.")
+        raise AppError("not_logged_in", "You are not signed in. Please sign in again.")
     if not cfg.get("targetDir"):
-        raise AppError("not_configured", "No destination folder chosen yet.")
+        raise AppError("not_configured", "Choose a folder for your files first.")
     courses = [c for c in cfg.get("courses", []) if c.get("selected")]
     if not courses:
-        raise AppError("not_configured", "No courses selected.")
+        raise AppError("not_configured", "Pick at least one course first.")
 
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     LOGS.mkdir(exist_ok=True)
@@ -305,7 +305,7 @@ def sync(auto: bool) -> dict[str, Any]:
     try:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
     except BlockingIOError:
-        raise AppError("busy", "A sync is already running.") from None
+        raise AppError("busy", "Already getting new files. Please wait a moment.") from None
 
     trigger = "auto" if auto else "manual"
     run = Run(trigger, courses)

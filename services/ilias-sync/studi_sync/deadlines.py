@@ -16,7 +16,7 @@ from zoneinfo import ZoneInfo
 import requests
 from bs4 import BeautifulSoup
 
-from .common import BASE_URL, DATA_DIR, AppError, load_config, read_json, write_json
+from .common import BASE_URL, DATA_DIR, MSG_UNREACHABLE, AppError, load_config, log_detail, read_json, write_json
 
 DEADLINES = DATA_DIR / "deadlines.json"
 PARENTS = DATA_DIR / "object-parents.json"  # "exc/123" → ["crs-1", "grp-2"] (Brotkrumen, außen → innen)
@@ -39,18 +39,19 @@ def fetch_ics(session: requests.Session) -> str:
         modal_links = {html.unescape(x) for x in re.findall(
             r'["\']([^"\']*cmd=getModalForSubscription[^"\']*)["\']', cal.text)}
         if not modal_links:
-            raise AppError("unexpected", "ILIAS calendar: subscription dialog not found.")
+            raise AppError("unexpected", "Could not read your ILIAS calendar. Try again later.")
         link = sorted(modal_links)[0]
         modal = session.get(link if link.startswith("http") else f"{BASE_URL}/{link.lstrip('./')}", timeout=TIMEOUT)
         urls = sorted(set(re.findall(r'(https?://[^"\'<>\s]*calendar\.php\?[^"\'<>\s]*)', html.unescape(modal.text))))
         if not urls:
-            raise AppError("unexpected", "ILIAS calendar: subscription URL not found.")
+            raise AppError("unexpected", "Could not read your ILIAS calendar. Try again later.")
         url = next((u for u in urls if "limited=0" in u), urls[0])
         r = session.get(url, timeout=TIMEOUT)
     except requests.RequestException as e:
-        raise AppError("unreachable", f"Can't reach ILIAS ({type(e).__name__}).") from None
+        log_detail("calendar", e)
+        raise AppError("unreachable", MSG_UNREACHABLE) from None
     if "BEGIN:VCALENDAR" not in r.text:
-        raise AppError("unexpected", "ILIAS calendar: no calendar data received.")
+        raise AppError("unexpected", "Could not read your ILIAS calendar. Try again later.")
     return r.text
 
 

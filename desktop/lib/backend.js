@@ -55,7 +55,8 @@ function runHelper(isPackaged, args, { stdin, timeoutMs = 120_000 } = {}) {
     try {
       helper = helperCommand(isPackaged);
     } catch (e) {
-      resolve({ type: "error", code: "setup", message: e.message });
+      console.error("[helper]", e.message);
+      resolve({ type: "error", code: "setup", message: "Studi-Helfer could not start one of its parts. Please restart the app." });
       return;
     }
     fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -71,7 +72,8 @@ function runHelper(isPackaged, args, { stdin, timeoutMs = 120_000 } = {}) {
     child.stderr.on("data", (d) => (err += d));
     child.on("error", (e) => {
       clearTimeout(timer);
-      resolve({ type: "error", code: "setup", message: `Helper failed to start: ${e.message}` });
+      console.error("[helper] start failed:", e.message);
+      resolve({ type: "error", code: "setup", message: "Studi-Helfer could not start one of its parts. Please restart the app." });
     });
     child.on("close", (code) => {
       clearTimeout(timer);
@@ -84,10 +86,15 @@ function runHelper(isPackaged, args, { stdin, timeoutMs = 120_000 } = {}) {
           // nächste Zeile probieren
         }
       }
+      // Technik (Stacktrace, Exit-Code) nur ins Log, die Oberfläche bekommt einen verständlichen Satz.
+      console.error(`[helper] ${args[0]} exited (${code}):`, (err || out).trim().split("\n").slice(-5).join(" | "));
       resolve({
         type: "error",
         code: code === null ? "timeout" : "internal",
-        message: (err || out).trim().split("\n").slice(-3).join(" ") || `Helper exited (${code})`,
+        message:
+          code === null
+            ? "This took too long. Check your internet connection and try again."
+            : "Something went wrong. Please try again.",
       });
     });
     if (stdin !== undefined) child.stdin.write(stdin);
@@ -178,7 +185,7 @@ function readRuns(limit = 30) {
 /** Startet einen Sync losgelöst von der App: er läuft weiter, auch wenn die App beendet wird. */
 function startSync(isPackaged) {
   const state = readState();
-  if (state.running) return { ok: false, code: "busy", message: "A sync is already running." };
+  if (state.running) return { ok: false, code: "busy", message: "Already getting new files. Please wait a moment." };
   let helper;
   try {
     helper = helperCommand(isPackaged);

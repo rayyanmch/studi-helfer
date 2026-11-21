@@ -26,6 +26,16 @@ KEYCHAIN_SERVICE = "Studi-Helfer ILIAS"
 USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Studi-Helfer"
 
 
+# Fehlertexte für die Oberfläche: ein Satz, was los ist, und was man tun kann. Technik nur ins Log (stderr).
+MSG_UNREACHABLE = "Can't reach ILIAS. Check your internet connection and try again."
+MSG_ILIAS_DOWN = "ILIAS is having problems right now. Try again in a few minutes."
+
+
+def log_detail(where: str, e: BaseException) -> None:
+    """Technische Einzelheiten nur ins Log, nie in die Oberfläche."""
+    print(f"[{where}] {type(e).__name__}: {e}", file=sys.stderr, flush=True)
+
+
 class AppError(Exception):
     """Fehler mit festem Code, den die Oberfläche übersetzen kann."""
 
