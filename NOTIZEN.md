@@ -7,6 +7,8 @@ Gemeinsames Gedächtnis für alle KI-Agenten und Menschen im Projekt. Wird über
 
 Wer gerade woran arbeitet (Person, Aufgabe, betroffene Dateien). Eintragen beim Start, löschen wenn fertig.
 
+- Rayyan (Agent): Seitenleiste mit Gruppe „Learn“ (Study + Progress), Animationen (Karteikarten umdrehen/wegwischen, Study-Startseite, Übergänge). Dateien: `Overview.tsx` (nur Seitenleiste), `StudyHub.tsx`, `StudyView.tsx`, `globals.css` (neue Klassen, nichts entfernt), `ProgressView.tsx`.
+
 
 
 
