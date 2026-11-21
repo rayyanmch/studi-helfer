@@ -72,6 +72,33 @@ export interface Deadline {
   time: string; // "by 10:00", "14:00" oder "all day" (wie deadlines.py)
   kind: "abgabe" | "termin" | "klausur"; // nur "abgabe" lässt sich abhaken
   source?: string; // wo die KI die Frist gefunden hat
+  color?: CourseColor; // eigene Farbe (eigene Termine); fehlt sie, gilt die Kursfarbe
+  customId?: string; // eigener Termin: Id in CustomEvent (zum Bearbeiten)
+  seriesId?: string; // wiederkehrender erkannter Termin (zum Ausblenden der ganzen Serie)
+  notes?: string; // Notiz zu eigenem Termin
+  location?: string | null; // Ort (für den Termin-Dialog)
+}
+
+/**
+ * Selbst eingetragener Termin („Mathe tutorial group 05, every Thursday 10:00–11:30“).
+ * Wird in der Mac-App gespeichert (custom-events.json), im Browser nur im Speicher.
+ */
+export interface CustomEvent {
+  id: string; // "ev-…"
+  title: string;
+  moduleId: string | null; // Modul (Course.id) oder null = ohne Kurs
+  color: CourseColor | null; // null = Farbe des Moduls
+  kind: "termin" | "abgabe" | "klausur";
+  date: string; // erster Tag, "2026-11-26"
+  start: string | null; // "10:00"; null = ganztägig
+  end: string | null; // "11:30"
+  location: string;
+  notes: string;
+  repeat: "none" | "daily" | "weekly" | "biweekly" | "monthly";
+  weekdays: number[]; // bei weekly/biweekly: 0 = Montag … 6 = Sonntag (leer = Wochentag von date)
+  until: string | null; // letzter Tag; null = Ende der Vorlesungszeit (bei Wiederholung)
+  skipHolidays: boolean; // Feiertage, Weihnachtspause, Rosenmontag auslassen
+  exceptions: string[]; // einzelne ausgelassene Tage
 }
 
 export const TODAY = "2026-11-20";

@@ -5,9 +5,10 @@
 // Dann Dateien nach Art („Lecture slides“, „Exercises“ …) mit Filter, Suche und Sortierung.
 
 import { useEffect, useRef, useState } from "react";
-import { Check, ChevronDown, ChevronLeft, ChevronRight, ExternalLink, FolderOpen, Pencil, RotateCcw, Search, X } from "lucide-react";
+import { CalendarPlus, Check, ChevronDown, ChevronLeft, ChevronRight, ExternalLink, FolderOpen, Pencil, RotateCcw, Search, X } from "lucide-react";
 import { Button, Swatch, colorOf, tone } from "./ui";
 import { CheckButton, DocTile, FileRow, FolderBadge, displayName } from "./files";
+import { openEvent, openNewEvent } from "./EventDialog";
 import type { ClassSlot, Course, CourseColor, CourseFile, Deadline } from "@/lib/mock-data";
 import * as store from "@/lib/app-store";
 import { COURSE_COLORS, useApp } from "@/lib/app-store";
@@ -76,6 +77,9 @@ export function ModuleView({
           )}
         </div>
         <div className="flex flex-wrap gap-2">
+          <Button onClick={() => openNewEvent({ moduleId: course.id === "other" ? null : course.id })}>
+            <CalendarPlus size={14} aria-hidden /> Add event
+          </Button>
           {course.iliasUrl && (
             <Button onClick={() => store.openIlias(course.iliasUrl)}>
               <ExternalLink size={14} aria-hidden /> Open in ILIAS
@@ -292,33 +296,34 @@ function ComingUp({
           <ul className={`grid grid-cols-1 gap-1.5 ${both ? "" : "lg:grid-cols-2"}`}>
             {shown.map((d) => {
               const isDone = done.includes(d.id);
+              const c = d.color ?? color;
               const days = Math.round((parseDay(d.date) - parseDay(today)) / 86_400_000);
               const urgent = d.kind === "abgabe" && days <= 3 && !isDone;
               const exam = d.kind === "klausur";
               const style = isDone
                 ? { background: "var(--sunken)", color: "var(--muted)" }
                 : exam
-                  ? { background: "var(--surface)", boxShadow: `inset 0 0 0 2.5px ${tone(color)}` }
+                  ? { background: "var(--surface)", boxShadow: `inset 0 0 0 2.5px ${tone(c)}` }
                   : urgent
-                    ? { background: tone(color), color: "var(--on-solid)" }
-                    : { background: tone(color, "soft") };
+                    ? { background: tone(c), color: "var(--on-solid)" }
+                    : { background: tone(c, "soft") };
               return (
                 <li key={d.id} className="flex items-center gap-3 rounded-[10px] px-3.5 py-2.5" style={style}>
                   <span className="w-9 shrink-0 text-center">
                     <span className="block text-[11px] font-semibold opacity-80">{WD[new Date(parseDay(d.date)).getDay()]}</span>
                     <span className="block text-[17px] font-bold leading-none">{Number(d.date.slice(8))}</span>
                   </span>
-                  <span className="min-w-0 flex-1">
+                  <button type="button" onClick={() => openEvent(d)} className="min-w-0 flex-1 text-left">
                     <span className={`block truncate font-semibold ${isDone ? "line-through" : ""}`}>
-                      {exam && <span className="mr-1.5 rounded-full px-1.5 text-[11px] font-bold" style={{ background: tone(color), color: "var(--on-solid)" }}>Exam</span>}
+                      {exam && <span className="mr-1.5 rounded-full px-1.5 text-[11px] font-bold" style={{ background: tone(c), color: "var(--on-solid)" }}>Exam</span>}
                       {d.title}
                     </span>
                     <span className="block truncate text-[12px] opacity-80">
                       {isDone ? "done" : [days === 0 ? "today" : days === 1 ? "tomorrow" : `in ${days} days`, d.time, d.source].filter(Boolean).join(" · ")}
                     </span>
-                  </span>
+                  </button>
                   {d.kind === "abgabe" && (
-                    <span style={isDone || urgent ? undefined : { color: tone(color) }}>
+                    <span style={isDone || urgent ? undefined : { color: tone(c) }}>
                       <CheckButton done={isDone} onClick={() => onToggle(d.id)} label={d.title} onSolid={urgent} />
                     </span>
                   )}
@@ -344,21 +349,28 @@ function ComingUp({
               const first = g[0];
               const last = g[g.length - 1];
               return (
-                <li key={`${first.date}${first.time}${first.title}`} className="flex items-center gap-3 rounded-[10px] bg-surface px-3.5 py-2.5">
-                  <span className="w-9 shrink-0 text-center text-[13px] font-bold">{WD[new Date(parseDay(first.date)).getDay()]}</span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate font-semibold">{first.title}</span>
-                    <span className="block truncate text-[12px] text-muted">
-                      {[first.time, "weekly", `next ${new Date(parseDay(first.date)).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`, `until ${new Date(parseDay(last.date)).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`, first.source]
-                        .filter(Boolean)
-                        .join(" · ")}
+                <li key={`${first.date}${first.time}${first.title}`}>
+                  <button
+                    type="button"
+                    onClick={() => openEvent(first)}
+                    className="flex w-full items-center gap-3 rounded-[10px] bg-surface px-3.5 py-2.5 text-left hover:bg-hover"
+                    style={first.color ? { boxShadow: `inset 3px 0 0 ${tone(first.color)}` } : undefined}
+                  >
+                    <span className="w-9 shrink-0 text-center text-[13px] font-bold">{WD[new Date(parseDay(first.date)).getDay()]}</span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate font-semibold">{first.title}</span>
+                      <span className="block truncate text-[12px] text-muted">
+                        {[first.time, "weekly", `next ${new Date(parseDay(first.date)).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`, `until ${new Date(parseDay(last.date)).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`, first.source]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </span>
                     </span>
-                  </span>
+                  </button>
                 </li>
               );
             })}
             {schedule.single.slice(0, 4).map((e) => (
-              <li key={e.id} className="flex items-center gap-3 rounded-[10px] bg-surface px-3.5 py-2.5">
+              <li key={e.id} className="flex cursor-default items-center gap-3 rounded-[10px] bg-surface px-3.5 py-2.5 hover:bg-hover" onClick={() => openEvent(e)}>
                 <span className="w-9 shrink-0 text-center">
                   <span className="block text-[11px] font-semibold text-muted">{WD[new Date(parseDay(e.date)).getDay()]}</span>
                   <span className="block text-[17px] font-bold leading-none">{Number(e.date.slice(8))}</span>

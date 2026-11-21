@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   AlertTriangle,
   CalendarDays,
+  CalendarPlus,
   Check,
   ChevronDown,
   Inbox,
@@ -22,6 +23,7 @@ import { Button, Notice, Spinner, Swatch, colorOf, nameOf, shortOf, tone } from 
 import { CheckButton, FileRow, Highlight, displayName } from "./files";
 import { CoursesView } from "./CoursesView";
 import { ModuleView } from "./ModuleView";
+import { openEvent, openNewEvent } from "./EventDialog";
 import { MailView } from "./MailView";
 import { Accounts } from "./Accounts";
 import { Settings } from "./Settings";
@@ -693,12 +695,17 @@ function WeekView({
         </div>
       )}
 
-      {hasClasses && (
-        <label className="mt-4 inline-flex cursor-default items-center gap-2 text-[13px] text-muted">
-          <input type="checkbox" checked={showClasses} onChange={toggleClasses} className="accent-[var(--accent)]" />
-          Show classes and events
-        </label>
-      )}
+      <div className="mt-4 flex flex-wrap items-center gap-3">
+        {hasClasses && (
+          <label className="inline-flex cursor-default items-center gap-2 text-[13px] text-muted">
+            <input type="checkbox" checked={showClasses} onChange={toggleClasses} className="accent-[var(--accent)]" />
+            Show classes and events
+          </label>
+        )}
+        <Button variant="plain" className="-my-1 ml-auto" onClick={() => openNewEvent()}>
+          <CalendarPlus size={14} aria-hidden /> Add event
+        </Button>
+      </div>
 
       {range === "month" && <MonthView deadlines={visible} events={googleEvents} done={done} onOpen={onOpen} />}
 
@@ -724,7 +731,7 @@ function WeekView({
                   d={d}
                   done={done.includes(d.id)}
                   onToggle={() => onToggle(d.id)}
-                  onOpen={() => onOpen(d.courseId)}
+                  onOpen={() => openEvent(d, { onOpenCourse: () => onOpen(d.courseId) })}
                 />
               ))}
               {day.events.map((ev) => (
@@ -818,14 +825,14 @@ function MonthView({ deadlines, events, done, onOpen }: { deadlines: Deadline[];
               cell.items.slice(0, 3).map((d) => {
                 const course = courseById(d.courseId);
                 if (!course) return null;
-                const c = colorOf(course);
+                const c = d.color ?? colorOf(course);
                 const isDone = d.kind === "abgabe" && done.includes(d.id);
                 const exam = d.kind === "klausur";
                 const label = exam && d.title === "Exam" ? `Exam ${shortOf(course)}` : bare(d.title);
                 return (
                   <button
                     key={d.id}
-                    onClick={() => onOpen(d.courseId)}
+                    onClick={() => openEvent(d, { onOpenCourse: () => onOpen(d.courseId) })}
                     title={`${d.title}, ${nameOf(course)}, ${d.time}`}
                     className={`truncate rounded-[5px] px-1.5 py-0.5 text-left text-[11px] font-semibold ${isDone ? "line-through" : ""}`}
                     style={
@@ -934,7 +941,7 @@ function DayHead({ day }: { day: { num: number; wd: number; wide: boolean; today
 function DeadlineBlock({ d, done, onToggle, onOpen }: { d: Deadline; done: boolean; onToggle: () => void; onOpen: () => void }) {
   const course = courseById(d.courseId);
   if (!course) return null;
-  const c = colorOf(course);
+  const c = d.color ?? colorOf(course);
   const exam = d.kind === "klausur";
   const checkable = d.kind === "abgabe"; // Termine und Klausuren hakt man nicht ab
   const isDone = checkable && done;
@@ -952,7 +959,7 @@ function DeadlineBlock({ d, done, onToggle, onOpen }: { d: Deadline; done: boole
     <div className="flex items-start gap-1.5 rounded-[7px] py-1.5 pl-2 pr-1.5 transition-colors" style={style}>
       <button
         onClick={onOpen}
-        title={d.source ? `${d.kind === "klausur" ? "Room" : "Found in"}: ${d.source}` : `Open ${nameOf(course)}`}
+        title={d.source ? `${d.kind === "klausur" ? "Room" : "Found in"}: ${d.source}` : `${d.title}, ${nameOf(course)}`}
         className="min-w-0 flex-1 text-left"
       >
         {exam && (

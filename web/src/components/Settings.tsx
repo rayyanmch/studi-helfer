@@ -170,7 +170,7 @@ function Calendars() {
       <div className="rounded-[12px] bg-surface">
         <p className="px-4 pb-1 pt-3 text-[13px] text-muted">
           ILIAS only knows dates your lecturers enter there. Add your timetable to see all lectures and tutorials: in KLIPS, open your calendar, choose
-          “Export / Subscribe” and copy the link. Google and Apple calendar links work too.
+          “Export / Subscribe” and copy the link. Google and Apple calendar links work too. Anything missing? Use “Add event” in the week view or on a course page.
         </p>
         <ul className="divide-y divide-[var(--line)]">
           {app.calendars.map((c) => (
@@ -234,6 +234,14 @@ function Calendars() {
           <p role="status" className={`px-4 pb-3 text-[13px] ${msg.ok ? "text-ok" : "text-danger"}`}>
             {msg.text}
           </p>
+        )}
+        {app.hiddenEvents.length > 0 && (
+          <div className="flex items-center gap-3 border-t border-line px-4 py-2.5">
+            <span className="min-w-0 flex-1 text-[13px] text-muted">
+              {app.hiddenEvents.length} hidden {app.hiddenEvents.length === 1 ? "event" : "events or series"}
+            </span>
+            <Button onClick={() => void store.hideEvent("*", false)}>Show all again</Button>
+          </div>
         )}
       </div>
     </section>

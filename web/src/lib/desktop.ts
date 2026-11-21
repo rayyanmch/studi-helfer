@@ -10,7 +10,7 @@
 // Alle Texte, die von hier kommen (message, time, title, updated), sind englisch.
 // Das Uni-Passwort geht nur an login() und landet im macOS-Schlüsselbund. Nie speichern oder loggen.
 
-import type { ClassSlot, Course, CourseColor, CourseFile, Deadline, Folder } from "./mock-data";
+import type { ClassSlot, Course, CourseColor, CourseFile, CustomEvent, Deadline, Folder } from "./mock-data";
 
 /** Fehlercodes, die die Oberfläche übersetzen sollte. */
 export type DesktopErrorCode =
@@ -220,6 +220,13 @@ export interface StudiDesktop {
   setModuleColor(id: string, color: CourseColor | null): Promise<Ok | Fail>;
   /** Wahltermin („Exercise Mon 12:00 or Wed 17:45“) als eigenen markieren (on) oder abwählen. Danach getDeadlines()/getFiles() neu holen. */
   setSlotChoice(moduleId: string, key: string, on: boolean): Promise<Ok | Fail>;
+  /** Eigene Termine und ausgeblendete erkannte Termine (Ids bzw. Serien, siehe recurrence.ts seriesOf). */
+  getCustomEvents(): Promise<{ events: CustomEvent[]; hidden: string[] }>;
+  /** Neu anlegen oder ersetzen (gleiche id). Gibt den gesäuberten Termin zurück. */
+  saveCustomEvent(event: CustomEvent): Promise<Ok<{ event: CustomEvent }> | Fail>;
+  deleteCustomEvent(id: string): Promise<Ok | Fail>;
+  /** Erkannten Termin oder Serie ausblenden (hidden) bzw. wieder zeigen; key "*" zeigt alle wieder. */
+  setEventHidden(key: string, hidden: boolean): Promise<Ok | Fail>;
   /** Dateien als gesehen markieren (verschwinden aus „New“). */
   markSeen(fileIds: string[]): Promise<Ok>;
   setNotifications(on: boolean): Promise<Ok>;

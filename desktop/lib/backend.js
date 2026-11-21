@@ -560,6 +560,78 @@ function scheduleFor(cfg, modules, moduleOfCourse) {
   return buildSchedule({ orga: readJson(ORGA_EVENTS, null), cfg, moduleOf, modules });
 }
 
+// ------------------------------------------------------------------ Eigene Termine, ausgeblendete Termine
+
+const CUSTOM_EVENTS = path.join(DATA_DIR, "custom-events.json");
+const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
+const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
+const EVENT_COLORS = ["blue", "orange", "green", "plum", "ochre", "teal", "rose", "indigo"];
+
+/** Eigene Termine und ausgeblendete erkannte Termine (Ids oder Serien). Die Oberfläche löst Wiederholungen auf. */
+function getCustomEvents() {
+  const data = readJson(CUSTOM_EVENTS, { events: [], hidden: [] });
+  return { events: Array.isArray(data.events) ? data.events : [], hidden: Array.isArray(data.hidden) ? data.hidden : [] };
+}
+
+const str = (v, max) => (typeof v === "string" ? v.replace(/[\u0000-\u001f]/g, " ").trim().slice(0, max) : "");
+
+/** Prüft und säubert einen Termin aus der Oberfläche; null = ungültig. */
+function cleanEvent(ev) {
+  if (!ev || typeof ev !== "object" || typeof ev.id !== "string" || !/^ev-[a-z0-9]{4,24}$/.test(ev.id)) return null;
+  if (!ISO_DAY.test(ev.date || "")) return null;
+  const start = HHMM.test(ev.start || "") ? ev.start : null;
+  const end = start && HHMM.test(ev.end || "") && ev.end > start ? ev.end : null;
+  return {
+    id: ev.id,
+    title: str(ev.title, 80) || "Untitled",
+    moduleId: typeof ev.moduleId === "string" && ev.moduleId.length < 60 ? ev.moduleId : null,
+    color: EVENT_COLORS.includes(ev.color) ? ev.color : null,
+    kind: ["termin", "abgabe", "klausur"].includes(ev.kind) ? ev.kind : "termin",
+    date: ev.date,
+    start,
+    end,
+    location: str(ev.location, 120),
+    notes: str(ev.notes, 1000),
+    repeat: ["none", "daily", "weekly", "biweekly", "monthly"].includes(ev.repeat) ? ev.repeat : "none",
+    weekdays: Array.isArray(ev.weekdays) ? [...new Set(ev.weekdays.filter((d) => Number.isInteger(d) && d >= 0 && d <= 6))] : [],
+    until: ISO_DAY.test(ev.until || "") ? ev.until : null,
+    skipHolidays: ev.skipHolidays !== false,
+    exceptions: Array.isArray(ev.exceptions) ? ev.exceptions.filter((d) => ISO_DAY.test(d)).slice(0, 400) : [],
+  };
+}
+
+function saveCustomEvent(ev) {
+  const clean = cleanEvent(ev);
+  if (!clean) return { ok: false, code: "invalid", message: "This event could not be saved. Check the date and times." };
+  const data = getCustomEvents();
+  const i = data.events.findIndex((e) => e.id === clean.id);
+  if (i >= 0) data.events[i] = clean;
+  else if (data.events.length < 500) data.events.push(clean);
+  else return { ok: false, code: "invalid", message: "Too many events." };
+  writeJson(CUSTOM_EVENTS, data);
+  return { ok: true, event: clean };
+}
+
+function deleteCustomEvent(id) {
+  const data = getCustomEvents();
+  data.events = data.events.filter((e) => e.id !== id);
+  writeJson(CUSTOM_EVENTS, data);
+  return { ok: true };
+}
+
+/** Erkannten Termin (Id) oder ganze Serie ausblenden bzw. wieder zeigen; key = "*" zeigt alle wieder. */
+function setEventHidden(key, hidden) {
+  if (typeof key !== "string" || key.length > 300) return { ok: false, code: "invalid", message: "Unknown event." };
+  const data = getCustomEvents();
+  const set = new Set(data.hidden);
+  if (key === "*") set.clear();
+  else if (hidden) set.add(key);
+  else set.delete(key);
+  data.hidden = [...set].slice(-2000);
+  writeJson(CUSTOM_EVENTS, data);
+  return { ok: true };
+}
+
 /** Wahltermin („Übung Mo 12:00 oder Mi 17:45“) als eigenen markieren bzw. wieder abwählen. */
 function setSlotChoice(moduleId, key, on) {
   if (typeof moduleId !== "string" || !moduleId.startsWith("mod-") || typeof key !== "string" || key.length > 80) {
@@ -833,6 +905,10 @@ module.exports = {
   aiDeadlines,
   getDeadlines,
   setSlotChoice,
+  getCustomEvents,
+  saveCustomEvent,
+  deleteCustomEvent,
+  setEventHidden,
   getDoneDeadlines,
   setDeadlineDone,
   DATA_DIR,

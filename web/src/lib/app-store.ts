@@ -13,7 +13,8 @@
 
 import { useEffect, useSyncExternalStore } from "react";
 import * as mock from "./mock-data";
-import type { ClassSlot, Course, CourseColor, CourseFile, Deadline } from "./mock-data";
+import type { ClassSlot, Course, CourseColor, CourseFile, CustomEvent, Deadline } from "./mock-data";
+import { composeDeadlines, parseIso } from "./recurrence";
 import {
   getDesktop,
   type DesktopCourse,
@@ -60,7 +61,10 @@ export interface AppState {
   setupSelected: string[];
   setupStatus: "idle" | "loading" | "ready" | "error";
   setupError: string | null;
-  deadlines: Deadline[];
+  deadlines: Deadline[]; // alles für Kalender und Listen: erkannte (ohne ausgeblendete) + eigene Termine
+  autoDeadlines: Deadline[]; // erkannte Termine (ILIAS, Übungsblätter, Orga-Folien, Kalender-Abos)
+  customEvents: CustomEvent[]; // selbst eingetragene Termine (mit Wiederholung)
+  hiddenEvents: string[]; // ausgeblendete erkannte Termine (Id oder Serie)
   done: string[];
   digests: Record<string, string>;
   lastSync: string; // fertiger Text, z. B. "today, 9:41 AM"
@@ -89,6 +93,9 @@ const DEMO: AppState = {
   setupStatus: "ready",
   setupError: null,
   deadlines: mock.deadlines,
+  autoDeadlines: mock.deadlines,
+  customEvents: [],
+  hiddenEvents: [],
   done: [],
   digests: mock.digests,
   lastSync: `today, ${mock.LAST_SYNC}`,
@@ -264,7 +271,21 @@ function toDeadline(d: DesktopDeadline): Deadline {
   // In der Oberfläche heißt source „wo“: Raum bei Terminen/Klausuren, Datei bei Fristen aus Übungsblättern.
   const fromFile = d.file ? `From ${displayName(d.file.split("/").pop() ?? "")}` : undefined;
   const source = d.location ?? (d.category === "sheet" || d.category === "ai" || d.category === "schedule" ? fromFile : undefined);
-  return { id: d.id, courseId: d.moduleId ?? OTHER_ID, title: d.title, date: d.date, time: d.time, kind: d.kind, source };
+  // ILIAS-Sitzungen einer Reihe („ISM - Vorlesung“, jeden Donnerstag 10:00) lassen sich zusammen ausblenden
+  const seriesId =
+    d.category === "session" ? `sess|${d.moduleId ?? OTHER_ID}|${d.title.toLowerCase()}|${new Date(`${d.date}T12:00:00`).getDay()}|${d.time}` : undefined;
+  return { id: d.id, courseId: d.moduleId ?? OTHER_ID, title: d.title, date: d.date, time: d.time, kind: d.kind, source, seriesId, location: d.location ?? undefined };
+}
+
+/** Kalender neu zusammensetzen (erkannte − ausgeblendete + eigene Termine), Sammelmodul „Other“ und Digest anpassen. */
+function applyCalendar(patch: Partial<Pick<AppState, "autoDeadlines" | "customEvents" | "hiddenEvents" | "done">> = {}) {
+  const next = { ...state, ...patch };
+  const list = composeDeadlines(next.autoDeadlines, next.customEvents, next.hiddenEvents, parseIso(next.today || localIso()));
+  // Termine ohne passendes Modul (Kalender-Abo, eigene ohne Kurs) landen unter „Other“
+  const hasOther = list.some((x) => x.courseId === OTHER_ID);
+  const courses = next.courses.filter((c) => c.id !== OTHER_ID);
+  if (hasOther) courses.push({ id: OTHER_ID, name: "Other", short: "Other", lecturer: "", total: 0, folders: [], color: "indigo", semester: "current" });
+  set({ ...patch, courses, deadlines: list, digests: buildDigests(courses, list, next.done, next.today || localIso()) });
 }
 
 /** Kurze Zusammenfassung pro Modul ohne KI: neue/geänderte Dateien und die nächste Frist. */
@@ -322,6 +343,9 @@ export async function initApp() {
     setupSelected: [],
     setupStatus: "idle",
     deadlines: [],
+    autoDeadlines: [],
+    customEvents: [],
+    hiddenEvents: [],
     digests: {},
     done: [],
     job: null,
@@ -382,13 +406,50 @@ export async function refresh() {
 
 export async function refreshDeadlines() {
   const d = api();
-  const [{ deadlines }, done] = await Promise.all([d.getDeadlines(), d.getDoneDeadlines()]);
-  const list = deadlines.map(toDeadline);
-  // Termine aus eingefügten Kalendern ohne passendes Modul landen unter „Other“
-  const hasOther = list.some((x) => x.courseId === OTHER_ID);
-  const courses = state.courses.filter((c) => c.id !== OTHER_ID);
-  if (hasOther) courses.push({ id: OTHER_ID, name: "Other", short: "Other", lecturer: "", total: 0, folders: [], color: "indigo", semester: "current" });
-  set({ courses, deadlines: list, done, digests: buildDigests(courses, list, done, localIso()) });
+  const [{ deadlines }, done, custom] = await Promise.all([
+    d.getDeadlines(),
+    d.getDoneDeadlines(),
+    d.getCustomEvents ? d.getCustomEvents() : Promise.resolve({ events: [], hidden: [] }),
+  ]);
+  applyCalendar({ autoDeadlines: deadlines.map(toDeadline), done, customEvents: custom.events, hiddenEvents: custom.hidden });
+}
+
+// ------------------------------------------------------------------ Eigene Termine, Kalender bearbeiten
+
+/** Eigenen Termin anlegen oder ändern. Im Browser nur im Speicher. */
+export async function saveEvent(ev: CustomEvent): Promise<{ ok: boolean; message?: string }> {
+  const before = state.customEvents;
+  const exists = before.some((e) => e.id === ev.id);
+  applyCalendar({ customEvents: exists ? before.map((e) => (e.id === ev.id ? ev : e)) : [...before, ev] });
+  if (state.mode !== "desktop") return { ok: true };
+  const res = await api().saveCustomEvent(ev);
+  if (!res.ok) {
+    applyCalendar({ customEvents: before });
+    return { ok: false, message: res.message };
+  }
+  applyCalendar({ customEvents: state.customEvents.map((e) => (e.id === ev.id ? res.event : e)) });
+  return { ok: true };
+}
+
+export async function deleteEvent(id: string) {
+  applyCalendar({ customEvents: state.customEvents.filter((e) => e.id !== id) });
+  if (state.mode === "desktop") await api().deleteCustomEvent(id);
+}
+
+/** Nur einen Tag eines wiederkehrenden eigenen Termins auslassen. */
+export async function skipOccurrence(id: string, day: string) {
+  const ev = state.customEvents.find((e) => e.id === id);
+  if (ev) await saveEvent({ ...ev, exceptions: [...new Set([...ev.exceptions, day])] });
+}
+
+/** Erkannten Termin (Id) oder ganze Serie ausblenden bzw. wieder zeigen; "*" zeigt alle wieder. */
+export async function hideEvent(key: string, hidden = true) {
+  const set0 = new Set(state.hiddenEvents);
+  if (key === "*") set0.clear();
+  else if (hidden) set0.add(key);
+  else set0.delete(key);
+  applyCalendar({ hiddenEvents: [...set0] });
+  if (state.mode === "desktop") await api().setEventHidden(key, hidden);
 }
 
 /** Module, die in der Kursübersicht erscheinen (ohne Sammelmodul „Other“). */

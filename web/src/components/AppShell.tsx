@@ -8,6 +8,7 @@ import { Setup } from "./Setup";
 import { Overview } from "./Overview";
 import { DemoPanel } from "./DemoPanel";
 import { UpdateNotice } from "./UpdateNotice";
+import { EventDialogHost } from "./EventDialog";
 
 export type Screen = "login" | "setup" | "import" | "overview";
 export type Problem = store.Problem;
@@ -82,6 +83,7 @@ function Shell({ first }: { first: Screen }) {
           }}
         />
       )}
+      {screen === "overview" && <EventDialogHost />}
       {desktop && <UpdateNotice />}
       {!desktop && (
         <DemoPanel
