@@ -59,6 +59,16 @@ contextBridge.exposeInMainWorld("studi", {
       return () => ipcRenderer.removeListener("studi:updateState", listener);
     },
   },
+  // Google-Konto (desktop/lib/google.js, Typen in web/src/lib/google.ts)
+  google: {
+    status: call("studi:google:status"),
+    connect: call("studi:google:connect"),
+    disconnect: call("studi:google:disconnect"),
+    events: call("studi:google:events"),
+    mails: call("studi:google:mails"),
+    modify: call("studi:google:modify"),
+    send: call("studi:google:send"),
+  },
   onDeadlinesChanged(callback) {
     const listener = () => callback();
     ipcRenderer.on("studi:deadlinesChanged", listener);

@@ -2,12 +2,12 @@
 
 // Mail und Google-Kalender: Typen, Beispieldaten und ein kleiner Speicher für die Oberfläche.
 //
-// Heute liefert dieser Speicher nur Beispieldaten (Browser). In der Mac-App ist noch nichts
-// verbunden: dort zeigt die Oberfläche „Not connected“. Rayyans Hintergrundteil ersetzt später
-// die Funktionen unten durch echte (Gmail-API, Uni-Postfach, Google Kalender), die Typen bleiben.
+// Browser: Beispieldaten. Mac-App: echtes Google-Konto (Gmail und Kalender über desktop/lib/google.js,
+// Anbindung in web/src/lib/google.ts). Das Uni-Postfach (IMAP) ist noch nicht angeschlossen.
 
 import { useSyncExternalStore } from "react";
 import { appStore } from "./app-store";
+import { getGoogle } from "./google";
 
 export type MailAccountId = "gmail" | "uni";
 export type MailFolder = "inbox" | "sent" | "drafts" | "archive";
@@ -32,6 +32,8 @@ export interface MailMessage {
   date: string; // "2026-11-20T09:12" (lokale Zeit)
   unread: boolean;
   courseId?: string; // nur gesetzt, wenn die App den Kurs erkannt hat
+  threadId?: string; // Gmail: für Antworten
+  messageIdHeader?: string; // Gmail: „Message-ID“ der Mail, für „In-Reply-To“
 }
 
 /** Termin aus dem Google Kalender (nur lesen). */
@@ -48,11 +50,19 @@ export interface CalendarToggles {
   google: boolean;
 }
 
+export interface GoogleInfo {
+  available: boolean; // Zugangsdatei vorhanden (nur Mac-App)
+  expired: boolean; // Anmeldung abgelaufen, neu verbinden
+  loading: boolean;
+  error: string;
+}
+
 interface MailState {
   accounts: MailAccount[];
   messages: MailMessage[];
   events: GoogleEvent[];
   calendars: CalendarToggles;
+  google: GoogleInfo;
 }
 
 // --- Beispieldaten ------------------------------------------------------------
@@ -184,10 +194,12 @@ const EMPTY: MailState = {
   messages: [],
   events: [],
   calendars: { ilias: true, google: true },
+  google: { available: true, expired: false, loading: false, error: "" },
 };
 
 let state: MailState = EMPTY;
-let mode: "none" | "demo" = "none";
+let mode: "none" | "demo" | "desktop" = "none";
+let timer: ReturnType<typeof setInterval> | undefined;
 const listeners = new Set<() => void>();
 
 function set(next: Partial<MailState>) {
@@ -195,17 +207,28 @@ function set(next: Partial<MailState>) {
   listeners.forEach((l) => l());
 }
 
-/** Beispieldaten laden (Browser-Vorschau). In der Mac-App bleibt alles „Not connected“. */
+/** Browser: Beispieldaten laden. Mac-App: Google-Konto abfragen (Mails und Termine, falls verbunden). */
 export function initMail(demo: boolean) {
-  const target = demo ? "demo" : "none";
+  const target = demo ? "demo" : "desktop";
   if (mode === target && state !== EMPTY) return;
   mode = target;
+  clearInterval(timer);
   if (demo) {
-    state = { accounts: ACCOUNTS.map((a) => ({ ...a })), messages: MESSAGES.map((m) => ({ ...m })), events: EVENTS, calendars: loadToggles() };
-  } else {
-    state = { ...EMPTY, calendars: loadToggles() };
+    state = {
+      ...EMPTY,
+      accounts: ACCOUNTS.map((a) => ({ ...a })),
+      messages: MESSAGES.map((m) => ({ ...m })),
+      events: EVENTS,
+      calendars: loadToggles(),
+    };
+    listeners.forEach((l) => l());
+    return;
   }
+  state = { ...EMPTY, calendars: loadToggles() };
   listeners.forEach((l) => l());
+  void refreshGoogle();
+  // Alle 2 Minuten nachsehen, ob neue Mails oder Termine da sind
+  timer = setInterval(() => void refreshGoogle(true), 120_000);
 }
 
 export function useMail(): MailState {
@@ -221,6 +244,56 @@ export function useMail(): MailState {
 
 export const isMailDemo = () => mode === "demo";
 
+// --- Google (nur Mac-App) ---------------------------------------------------------
+
+const withGmail = (accounts: MailAccount[], patch: Partial<MailAccount>) => accounts.map((a) => (a.id === "gmail" ? { ...a, ...patch } : a));
+
+/** Holt Kalender und Mails von Google (still im Hintergrund, wenn `quiet`). */
+export async function refreshGoogle(quiet = false) {
+  const g = getGoogle();
+  if (!g || mode !== "desktop") return;
+  if (!quiet) set({ google: { ...state.google, loading: true } });
+  const st = await g.status();
+  if (!st.connected) {
+    set({
+      accounts: withGmail(state.accounts, { connected: false, address: st.email }),
+      messages: state.messages.filter((m) => m.accountId !== "gmail"),
+      events: [],
+      google: { available: st.available, expired: st.expired, loading: false, error: "" },
+    });
+    return;
+  }
+  const [ev, ma] = await Promise.all([g.events(), g.mails()]);
+  const error = !ev.ok ? ev.message : !ma.ok ? ma.message : "";
+  set({
+    accounts: withGmail(state.accounts, { connected: true, address: st.email }),
+    events: ev.ok ? ev.events : state.events,
+    messages: ma.ok ? [...ma.mails, ...state.messages.filter((m) => m.accountId !== "gmail")] : state.messages,
+    google: { available: st.available, expired: false, loading: false, error },
+  });
+}
+
+/** „Connect Google“: öffnet den Browser des Macs. Gibt einen Fehlertext zurück oder null. */
+export async function connectGoogle(): Promise<string | null> {
+  if (mode === "demo") {
+    await new Promise((r) => setTimeout(r, 900));
+    connectAccount("gmail");
+    return null;
+  }
+  const g = getGoogle();
+  if (!g) return "Please update the app to connect Google.";
+  const res = await g.connect();
+  if (!res.ok) return res.message;
+  await refreshGoogle();
+  return null;
+}
+
+export async function disconnectGoogle() {
+  if (mode === "demo") return disconnectAccount("gmail");
+  await getGoogle()?.disconnect();
+  await refreshGoogle();
+}
+
 // --- Aktionen (später: echte Funktionen im Hintergrundteil) -----------------------
 
 export function setCalendar(key: keyof CalendarToggles, on: boolean) {
@@ -233,11 +306,22 @@ export function setCalendar(key: keyof CalendarToggles, on: boolean) {
   set({ calendars });
 }
 
+const isGmail = (id: string) => state.messages.find((m) => m.id === id)?.accountId === "gmail";
+
+/** Ändert bei Gmail auch im Postfach (sofort in der Oberfläche, im Hintergrund bei Google). */
+async function syncChange(id: string, change: { unread?: boolean; archive?: boolean }) {
+  if (mode !== "desktop" || !isGmail(id)) return;
+  const res = await getGoogle()?.modify(id, change);
+  if (res && !res.ok) set({ google: { ...state.google, error: res.message } });
+}
+
 export function setMailRead(id: string, unread: boolean) {
   set({ messages: state.messages.map((m) => (m.id === id ? { ...m, unread } : m)) });
+  void syncChange(id, { unread });
 }
 
 export function archiveMail(id: string) {
+  void syncChange(id, { archive: true, unread: false });
   set({ messages: state.messages.map((m) => (m.id === id ? { ...m, folder: "archive", unread: false } : m)) });
 }
 
@@ -254,9 +338,22 @@ export interface OutgoingMail {
   to: string;
   subject: string;
   body: string;
+  threadId?: string; // Antwort in derselben Unterhaltung (Gmail)
+  inReplyTo?: string; // Message-ID der Mail, auf die geantwortet wird
 }
 
-export function sendMail(m: OutgoingMail) {
+/** Sendet eine Mail. Gibt einen Fehlertext zurück oder null. */
+export async function sendMail(m: OutgoingMail): Promise<string | null> {
+  if (mode === "desktop" && m.accountId === "gmail") {
+    const res = await getGoogle()?.send({ to: m.to, subject: m.subject, body: m.body, threadId: m.threadId, inReplyTo: m.inReplyTo });
+    if (!res) return "Please update the app to send mail.";
+    if (!res.ok) return res.message;
+  }
+  addSent(m);
+  return null;
+}
+
+function addSent(m: OutgoingMail) {
   const account = state.accounts.find((a) => a.id === m.accountId);
   const now = new Date();
   const pad = (n: number) => String(n).padStart(2, "0");

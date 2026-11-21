@@ -8,7 +8,7 @@ import { Check, Lock, X } from "lucide-react";
 import { Button, Spinner } from "./ui";
 import { AccountChip } from "./MailView";
 import { useApp } from "@/lib/app-store";
-import { connectAccount, disconnectAccount, useMail, type MailAccountId } from "@/lib/mail-data";
+import { connectAccount, connectGoogle, disconnectAccount, disconnectGoogle, useMail, type MailAccountId } from "@/lib/mail-data";
 
 export function Accounts({ onClose }: { onClose: () => void }) {
   const app = useApp();
@@ -24,7 +24,17 @@ export function Accounts({ onClose }: { onClose: () => void }) {
     return () => window.removeEventListener("keydown", esc);
   }, [onClose]);
 
-  // Vorschau: „Anmelden“ dauert kurz, dann ist das Konto verbunden. Später: echte Anmeldung bei Google bzw. der Uni.
+  const [error, setError] = useState("");
+
+  // Google: in der Mac-App öffnet sich der Browser des Macs. Im Browser-Preview ist es eine Simulation.
+  const connectGoogleNow = async () => {
+    setError("");
+    setBusy("gmail");
+    const err = await connectGoogle();
+    setBusy(null);
+    if (err) setError(err);
+  };
+  // Uni-Mail: noch nicht angeschlossen (nur Vorschau)
   const connect = (id: MailAccountId) => {
     setBusy(id);
     window.setTimeout(() => {
@@ -63,17 +73,17 @@ export function Accounts({ onClose }: { onClose: () => void }) {
             <Row
               icon={<AccountChip id="gmail" size={34} />}
               title="Google"
-              sub={gmail?.connected ? `${gmail.address}, Gmail and Calendar` : "Gmail and Calendar, read and write mail"}
+              sub={gmail?.connected ? `${gmail.address}, Gmail and Calendar` : mail.google.expired ? "Your login expired. Connect again." : "Gmail and Calendar, read and write mail"}
               right={
                 gmail?.connected ? (
                   <div className="flex items-center gap-3">
                     <Connected />
-                    <button onClick={() => disconnectAccount("gmail")} className="rounded-md px-1.5 py-1 text-[12px] font-semibold text-danger hover:bg-danger-soft">
+                    <button onClick={() => void disconnectGoogle()} className="rounded-md px-1.5 py-1 text-[12px] font-semibold text-danger hover:bg-danger-soft">
                       Disconnect
                     </button>
                   </div>
                 ) : (
-                  <ConnectButton busy={busy === "gmail"} disabled={desktop} onClick={() => connect("gmail")} />
+                  <ConnectButton busy={busy === "gmail"} disabled={desktop && !mail.google.available} onClick={() => void connectGoogleNow()} label={mail.google.expired ? "Reconnect" : "Connect"} />
                 )
               }
             />
@@ -90,12 +100,15 @@ export function Accounts({ onClose }: { onClose: () => void }) {
                     </button>
                   </div>
                 ) : (
-                  <ConnectButton busy={busy === "uni"} disabled={desktop} onClick={() => connect("uni")} />
+                  <ConnectButton busy={busy === "uni"} disabled={desktop} onClick={() => connect("uni")} label="Connect" />
                 )
               }
             />
           </ul>
-          {desktop && <p className="mt-3 text-[12px] text-muted">Connecting Google and the university mailbox is not live yet. The buttons work in the browser preview.</p>}
+          {busy === "gmail" && desktop && <p className="mt-3 text-[12px] text-muted">Your browser opened. Sign in with Google there and allow access. Google may warn that the app is not verified: choose “Advanced”, then “Go to Studi-Helfer”.</p>}
+          {error && <p role="alert" className="mt-3 text-[13px] font-medium text-danger">{error}</p>}
+          {desktop && !mail.google.available && <p className="mt-3 text-[12px] text-muted">The Google access file is missing on this Mac (google-client.json).</p>}
+          {desktop && <p className="mt-3 text-[12px] text-muted">University mail is not live yet.</p>}
           <p className="mt-4 flex items-start gap-2 text-[12px] text-muted">
             <Lock size={12} className="mt-0.5 shrink-0" aria-hidden />
             <span>Your mail and your login stay on your Mac. Nothing is sent to a server or to an AI. You can disconnect at any time.</span>
@@ -127,7 +140,7 @@ function Connected() {
   );
 }
 
-function ConnectButton({ busy, disabled, onClick }: { busy: boolean; disabled: boolean; onClick: () => void }) {
+function ConnectButton({ busy, disabled, onClick, label }: { busy: boolean; disabled: boolean; onClick: () => void; label: string }) {
   return (
     <Button onClick={onClick} disabled={busy || disabled}>
       {busy ? (
@@ -135,7 +148,7 @@ function ConnectButton({ busy, disabled, onClick }: { busy: boolean; disabled: b
           <Spinner size={12} /> Connecting…
         </>
       ) : (
-        "Connect"
+        label
       )}
     </Button>
   );

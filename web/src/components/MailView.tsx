@@ -22,6 +22,7 @@ import {
 import type { Course, CourseColor } from "@/lib/mock-data";
 
 type Box = "all" | MailAccountId;
+type Draft = { accountId: MailAccountId; to: string; subject: string; body: string; threadId?: string; inReplyTo?: string };
 
 const FOLDERS: { id: MailFolder; label: string; icon: typeof Inbox }[] = [
   { id: "inbox", label: "Inbox", icon: Inbox },
@@ -59,7 +60,7 @@ export function MailView({ onOpenAccounts }: { onOpenAccounts: () => void }) {
   const [courseId, setCourseId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<string | null>(null);
-  const [compose, setCompose] = useState<null | { accountId: MailAccountId; to: string; subject: string; body: string }>(null);
+  const [compose, setCompose] = useState<null | Draft>(null);
 
   const courseById = (id?: string) => (id ? app.courses.find((c) => c.id === id) : undefined);
 
@@ -98,7 +99,9 @@ export function MailView({ onOpenAccounts }: { onOpenAccounts: () => void }) {
   const startReply = (m: MailMessage) =>
     setCompose({
       accountId: m.accountId,
-      to: m.fromName,
+      to: m.fromAddress || m.fromName,
+      threadId: m.threadId,
+      inReplyTo: m.messageIdHeader,
       subject: m.subject.startsWith("Re: ") ? m.subject : `Re: ${m.subject}`,
       body: `\n\nOn ${mailDateLong(m.date, app.today)}, ${m.fromName} wrote:\n${m.body
         .split("\n")
@@ -196,6 +199,11 @@ export function MailView({ onOpenAccounts }: { onOpenAccounts: () => void }) {
             />
           </label>
         </div>
+        {mail.google.error && (
+          <p role="alert" className="mx-4 mb-2 rounded-lg bg-danger-soft px-3 py-2 text-[12px] font-medium text-danger">
+            {mail.google.error}
+          </p>
+        )}
         <ul className="scroll flex-1 px-2 pb-3">
           {list.length === 0 && (
             <li className="px-3 py-10 text-center text-muted">
@@ -388,7 +396,7 @@ function Compose({
   accounts,
   onClose,
 }: {
-  draft: { accountId: MailAccountId; to: string; subject: string; body: string };
+  draft: Draft;
   accounts: MailAccount[];
   onClose: () => void;
 }) {
@@ -397,6 +405,7 @@ function Compose({
   const [subject, setSubject] = useState(draft.subject);
   const [body, setBody] = useState(draft.body);
   const [state, setState] = useState<"idle" | "sending" | "sent">("idle");
+  const [error, setError] = useState("");
   const bodyRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -411,14 +420,18 @@ function Compose({
   }, [draft.to, onClose]);
 
   const ready = to.trim().length > 0 && subject.trim().length > 0 && state === "idle";
-  const send = () => {
+  const send = async () => {
     if (!ready) return;
+    setError("");
     setState("sending");
-    window.setTimeout(() => {
-      sendMail({ accountId, to: to.trim(), subject: subject.trim(), body });
-      setState("sent");
-      window.setTimeout(onClose, 700);
-    }, 600);
+    const err = await sendMail({ accountId, to: to.trim(), subject: subject.trim(), body, threadId: draft.threadId, inReplyTo: draft.inReplyTo });
+    if (err) {
+      setError(err);
+      setState("idle");
+      return;
+    }
+    setState("sent");
+    window.setTimeout(onClose, 700);
   };
 
   const field = "w-full bg-transparent py-2 outline-none placeholder:text-muted";
@@ -427,7 +440,7 @@ function Compose({
       role="dialog"
       aria-label="New mail"
       className="no-drag fixed bottom-6 right-6 z-40 w-[540px] max-w-[calc(100vw-48px)] overflow-hidden rounded-[14px] bg-surface shadow-[0_0_0_1px_var(--line),0_24px_60px_rgba(0,0,0,0.28)]"
-      onKeyDown={(e) => (e.metaKey || e.ctrlKey) && e.key === "Enter" && send()}
+      onKeyDown={(e) => (e.metaKey || e.ctrlKey) && e.key === "Enter" && void send()}
     >
       <div className="flex items-center bg-accent px-4 py-2.5 text-on-accent">
         <b className="flex-1 font-semibold">{subject.startsWith("Re: ") ? "Reply" : "New mail"}</b>
@@ -469,7 +482,7 @@ function Compose({
       </div>
       <div className="flex items-center gap-3 border-t border-line-soft px-4 py-2.5">
         <button
-          onClick={send}
+          onClick={() => void send()}
           disabled={!ready}
           className="flex h-9 items-center gap-2 rounded-[9px] bg-accent px-4 font-semibold text-on-accent transition-opacity hover:opacity-90 disabled:opacity-40"
         >
@@ -477,7 +490,13 @@ function Compose({
           {state === "sent" ? "Sent" : state === "sending" ? "Sending…" : "Send"}
           {state === "idle" && <span className="text-[12px] font-medium opacity-60">⌘↵</span>}
         </button>
-        <span className="flex-1" />
+        {error ? (
+          <span role="alert" className="min-w-0 flex-1 truncate text-[12px] font-medium text-danger" title={error}>
+            {error}
+          </span>
+        ) : (
+          <span className="flex-1" />
+        )}
         <button onClick={onClose} className="rounded-md px-2 py-1 text-muted hover:bg-hover">
           Discard
         </button>
@@ -498,7 +517,7 @@ function NotConnected({ desktop, onOpenAccounts }: { desktop: boolean; onOpenAcc
           <h1 className="mt-4 text-[24px] font-bold tracking-[-0.02em]">Your mail, next to your courses</h1>
           <p className="mt-1.5 text-muted">
             {desktop
-              ? "Connecting Gmail and your university mailbox is on its way. This part of the app is not live yet."
+              ? "Connect your Google account to read and write Gmail here. Your university mailbox follows soon."
               : "Connect your Gmail and your university mailbox to read and write mail here."}
           </p>
           <Button variant="primary" className="mt-5 h-10 px-5 text-[14px]" onClick={onOpenAccounts}>

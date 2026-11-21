@@ -15,6 +15,7 @@ const backend = require("./lib/backend");
 const { buildModules } = require("./lib/modules");
 const { startBundledUi } = require("./lib/ui-server");
 const updater = require("./lib/updater");
+const google = require("./lib/google");
 
 let uiUrl = process.env.STUDI_UI_URL || "http://localhost:3000";
 let uiServer = null;
@@ -337,6 +338,8 @@ handle("studi:openIlias", (url) => {
 handle("studi:setDeadlineDone", (id, done) => backend.setDeadlineDone(id, Boolean(done)));
 // Update-Knopf: neueste Fassung von GitHub (lib/updater.js)
 updater.register(handle, () => windows);
+// Google-Konto: Anmeldung, Kalender, Gmail (lib/google.js)
+google.register(handle);
 
 // ------------------------------------------------------------------ Sync-Stand an die Fenster schicken
 
