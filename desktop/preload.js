@@ -69,6 +69,15 @@ contextBridge.exposeInMainWorld("studi", {
     modify: call("studi:google:modify"),
     send: call("studi:google:send"),
   },
+  // Uni-Postfach mit dem ILIAS-Login (desktop/lib/unimail.js, Typen in web/src/lib/google.ts)
+  unimail: {
+    status: call("studi:unimail:status"),
+    connect: call("studi:unimail:connect"),
+    disconnect: call("studi:unimail:disconnect"),
+    mails: call("studi:unimail:mails"),
+    modify: call("studi:unimail:modify"),
+    send: call("studi:unimail:send"),
+  },
   onDeadlinesChanged(callback) {
     const listener = () => callback();
     ipcRenderer.on("studi:deadlinesChanged", listener);

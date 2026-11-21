@@ -3,11 +3,11 @@
 // Mail und Google-Kalender: Typen, Beispieldaten und ein kleiner Speicher für die Oberfläche.
 //
 // Browser: Beispieldaten. Mac-App: echtes Google-Konto (Gmail und Kalender über desktop/lib/google.js,
-// Anbindung in web/src/lib/google.ts). Das Uni-Postfach (IMAP) ist noch nicht angeschlossen.
+// Anbindung in web/src/lib/google.ts). Uni-Postfach per IMAP/SMTP mit dem ILIAS-Login (desktop/lib/unimail.js).
 
 import { useSyncExternalStore } from "react";
 import { appStore } from "./app-store";
-import { getGoogle } from "./google";
+import { getGoogle, getUniMail } from "./google";
 
 export type MailAccountId = "gmail" | "uni";
 export type MailFolder = "inbox" | "sent" | "drafts" | "archive";
@@ -63,6 +63,7 @@ interface MailState {
   events: GoogleEvent[];
   calendars: CalendarToggles;
   google: GoogleInfo;
+  uni: { error: string };
 }
 
 // --- Beispieldaten ------------------------------------------------------------
@@ -146,7 +147,7 @@ const MESSAGES: MailMessage[] = [
   }),
   msg({
     id: "s1", accountId: "uni", folder: "sent", courseId: "mathe", date: "2026-11-14T16:48",
-    fromName: "Mika Muster", fromAddress: "mmuster1@smail.uni-koeln.de", to: "Prof. Lindner",
+    fromName: "Me", fromAddress: "mmuster1@smail.uni-koeln.de", to: "Prof. Lindner",
     subject: "Question about task 3",
     body: "Dear Prof. Lindner,\n\nI have a question about task 3. Is theorem 4.2 also allowed for the second part?\n\nBest regards\nMika",
   }),
@@ -195,6 +196,7 @@ const EMPTY: MailState = {
   events: [],
   calendars: { ilias: true, google: true },
   google: { available: true, expired: false, loading: false, error: "" },
+  uni: { error: "" },
 };
 
 let state: MailState = EMPTY;
@@ -227,8 +229,12 @@ export function initMail(demo: boolean) {
   state = { ...EMPTY, calendars: loadToggles() };
   listeners.forEach((l) => l());
   void refreshGoogle();
+  void refreshUni();
   // Alle 2 Minuten nachsehen, ob neue Mails oder Termine da sind
-  timer = setInterval(() => void refreshGoogle(true), 120_000);
+  timer = setInterval(() => {
+    void refreshGoogle(true);
+    void refreshUni();
+  }, 120_000);
 }
 
 export function useMail(): MailState {
@@ -273,6 +279,52 @@ export async function refreshGoogle(quiet = false) {
   });
 }
 
+// --- Uni-Postfach (nur Mac-App) ----------------------------------------------------
+
+const withUni = (accounts: MailAccount[], patch: Partial<MailAccount>) => accounts.map((a) => (a.id === "uni" ? { ...a, ...patch } : a));
+let uniBusy = false;
+
+/** Holt die Uni-Mails (IMAP über den Hintergrundteil). */
+export async function refreshUni() {
+  const u = getUniMail();
+  if (!u || mode !== "desktop" || uniBusy) return;
+  uniBusy = true;
+  try {
+    const st = await u.status();
+    if (!st.connected) {
+      set({ accounts: withUni(state.accounts, { connected: false, address: st.address }), messages: state.messages.filter((m) => m.accountId !== "uni") });
+      return;
+    }
+    set({ accounts: withUni(state.accounts, { connected: true, address: st.address }) });
+    const res = await u.mails();
+    if (!res.ok) return set({ uni: { error: res.message } });
+    set({ messages: [...state.messages.filter((m) => m.accountId !== "uni"), ...res.mails], uni: { error: "" } });
+  } finally {
+    uniBusy = false;
+  }
+}
+
+/** „Connect“ beim Uni-Postfach: prüft den ILIAS-Login am Mailserver. Gibt einen Fehlertext zurück oder null. */
+export async function connectUni(): Promise<string | null> {
+  if (mode === "demo") {
+    await new Promise((r) => setTimeout(r, 900));
+    connectAccount("uni");
+    return null;
+  }
+  const u = getUniMail();
+  if (!u) return "Please update the app to connect university mail.";
+  const res = await u.connect();
+  if (!res.ok) return res.message;
+  await refreshUni();
+  return null;
+}
+
+export async function disconnectUni() {
+  if (mode === "demo") return disconnectAccount("uni");
+  await getUniMail()?.disconnect();
+  await refreshUni();
+}
+
 /** „Connect Google“: öffnet den Browser des Macs. Gibt einen Fehlertext zurück oder null. */
 export async function connectGoogle(): Promise<string | null> {
   if (mode === "demo") {
@@ -306,13 +358,20 @@ export function setCalendar(key: keyof CalendarToggles, on: boolean) {
   set({ calendars });
 }
 
-const isGmail = (id: string) => state.messages.find((m) => m.id === id)?.accountId === "gmail";
+const accountOf = (id: string) => state.messages.find((m) => m.id === id)?.accountId;
 
-/** Ändert bei Gmail auch im Postfach (sofort in der Oberfläche, im Hintergrund bei Google). */
+/** Ändert auch im echten Postfach (sofort in der Oberfläche, im Hintergrund bei Google bzw. der Uni). */
 async function syncChange(id: string, change: { unread?: boolean; archive?: boolean }) {
-  if (mode !== "desktop" || !isGmail(id)) return;
-  const res = await getGoogle()?.modify(id, change);
-  if (res && !res.ok) set({ google: { ...state.google, error: res.message } });
+  if (mode !== "desktop") return;
+  const account = accountOf(id);
+  if (account === "gmail") {
+    const res = await getGoogle()?.modify(id, change);
+    if (res && !res.ok) set({ google: { ...state.google, error: res.message } });
+  } else if (account === "uni") {
+    const res = await getUniMail()?.modify(id, change);
+    if (res && !res.ok) set({ uni: { error: res.message } });
+    if (change.archive) void refreshUni(); // im Archiv hat die Mail eine neue Kennung
+  }
 }
 
 export function setMailRead(id: string, unread: boolean) {
@@ -346,6 +405,11 @@ export interface OutgoingMail {
 export async function sendMail(m: OutgoingMail): Promise<string | null> {
   if (mode === "desktop" && m.accountId === "gmail") {
     const res = await getGoogle()?.send({ to: m.to, subject: m.subject, body: m.body, threadId: m.threadId, inReplyTo: m.inReplyTo });
+    if (!res) return "Please update the app to send mail.";
+    if (!res.ok) return res.message;
+  }
+  if (mode === "desktop" && m.accountId === "uni") {
+    const res = await getUniMail()?.send({ to: m.to, subject: m.subject, body: m.body, inReplyTo: m.inReplyTo });
     if (!res) return "Please update the app to send mail.";
     if (!res.ok) return res.message;
   }

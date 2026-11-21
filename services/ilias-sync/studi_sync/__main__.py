@@ -13,6 +13,10 @@
     calendar-test --url URL      Prüft einen iCal-Link (Anzahl Termine, Beispiele), speichert nichts.
     sync [--auto]                Ein Sync-Lauf (--auto: von launchd, mit Zufallsverzögerung,
                                  Netz-Wartezeit, Wiederholungen und Mitteilungen).
+    mail-check                   Uni-Postfach (IMAP) mit dem ILIAS-Passwort prüfen.
+    mail-list                    Uni-Mails holen; stdin: {"known": [Ids]} (bekannte nur mit Ordner/gelesen).
+    mail-modify                  stdin: {"id", "unread"?, "archive"?}
+    mail-send                    stdin: {"to", "subject", "body", "inReplyTo"?}
     pferd-run --config DATEI     Intern: PFERD mit Köln-Korrekturen starten.
 
 Ergebnis: {"type": "result", ...} oder {"type": "error", "code": ..., "message": ...} (Exit 1).
@@ -139,6 +143,50 @@ def cmd_sync(args: argparse.Namespace) -> None:
           "changed": len(record["changed"]), "problems": record["problems"], "courses": record["courses"]})
 
 
+def _mail_login() -> tuple[str, str]:
+    username = load_config().get("username")
+    if not username:
+        raise AppError("not_logged_in", "Not signed in to ILIAS yet.")
+    return username, _password_for(username)
+
+
+def _stdin_json() -> dict:
+    import json
+
+    try:
+        data = json.loads(sys.stdin.read() or "{}")
+    except ValueError:
+        raise AppError("invalid", "Invalid input.") from None
+    return data if isinstance(data, dict) else {}
+
+
+def cmd_mail_check(args: argparse.Namespace) -> None:
+    from . import unimail
+
+    emit(unimail.check(*_mail_login()))
+
+
+def cmd_mail_list(args: argparse.Namespace) -> None:
+    from . import unimail
+
+    known = {str(k) for k in _stdin_json().get("known", []) if isinstance(k, str)}
+    emit(unimail.list_mails(*_mail_login(), known))
+
+
+def cmd_mail_modify(args: argparse.Namespace) -> None:
+    from . import unimail
+
+    data = _stdin_json()
+    unread = data.get("unread")
+    emit(unimail.modify(*_mail_login(), str(data.get("id", "")), unread if isinstance(unread, bool) else None, data.get("archive") is True))
+
+
+def cmd_mail_send(args: argparse.Namespace) -> None:
+    from . import unimail
+
+    emit(unimail.send(*_mail_login(), _stdin_json()))
+
+
 def cmd_pferd_run(args: argparse.Namespace) -> None:
     from .pferd_run import run
 
@@ -159,6 +207,8 @@ def main() -> int:
     p = sub.add_parser("orga"); p.set_defaults(fn=cmd_orga)
     p = sub.add_parser("calendar-test"); p.add_argument("--url", required=True); p.set_defaults(fn=cmd_calendar_test)
     p = sub.add_parser("sync"); p.add_argument("--auto", action="store_true"); p.set_defaults(fn=cmd_sync)
+    for name, fn in (("mail-check", cmd_mail_check), ("mail-list", cmd_mail_list), ("mail-modify", cmd_mail_modify), ("mail-send", cmd_mail_send)):
+        sub.add_parser(name).set_defaults(fn=fn)
     p = sub.add_parser("pferd-run"); p.add_argument("--config", required=True); p.set_defaults(fn=cmd_pferd_run)
     args = parser.parse_args()
 

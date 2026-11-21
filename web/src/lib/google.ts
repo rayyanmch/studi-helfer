@@ -28,13 +28,28 @@ export interface GoogleApi {
   send(mail: { to: string; subject: string; body: string; threadId?: string; inReplyTo?: string }): Promise<{ ok: true; id: string } | GoogleFail>;
 }
 
+/** Uni-Postfach (Uni Köln) mit dem ILIAS-Login, über den Python-Helfer (IMAP/SMTP). */
+export interface UniMailApi {
+  status(): Promise<{ signedIn: boolean; connected: boolean; address: string }>;
+  connect(): Promise<{ ok: true; address: string } | GoogleFail>;
+  disconnect(): Promise<{ ok: true }>;
+  mails(): Promise<{ ok: true; mails: GoogleMail[] } | GoogleFail>;
+  modify(id: string, change: { unread?: boolean; archive?: boolean }): Promise<{ ok: true } | GoogleFail>;
+  send(mail: { to: string; subject: string; body: string; inReplyTo?: string }): Promise<{ ok: true; id: string } | GoogleFail>;
+}
+
 declare module "./desktop" {
   interface StudiDesktop {
     /** fehlt in älteren Fassungen der App */
     google?: GoogleApi;
+    unimail?: UniMailApi;
   }
 }
 
 export function getGoogle(): GoogleApi | null {
   return getDesktop()?.google ?? null;
+}
+
+export function getUniMail(): UniMailApi | null {
+  return getDesktop()?.unimail ?? null;
 }

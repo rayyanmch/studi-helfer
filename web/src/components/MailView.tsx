@@ -199,11 +199,11 @@ export function MailView({ onOpenAccounts }: { onOpenAccounts: () => void }) {
             />
           </label>
         </div>
-        {mail.google.error && (
-          <p role="alert" className="mx-4 mb-2 rounded-lg bg-danger-soft px-3 py-2 text-[12px] font-medium text-danger">
-            {mail.google.error}
+        {[mail.google.error, mail.uni.error].filter(Boolean).map((error) => (
+          <p key={error} role="alert" className="mx-4 mb-2 rounded-lg bg-danger-soft px-3 py-2 text-[12px] font-medium text-danger">
+            {error}
           </p>
-        )}
+        ))}
         <ul className="scroll flex-1 px-2 pb-3">
           {list.length === 0 && (
             <li className="px-3 py-10 text-center text-muted">
@@ -517,7 +517,7 @@ function NotConnected({ desktop, onOpenAccounts }: { desktop: boolean; onOpenAcc
           <h1 className="mt-4 text-[24px] font-bold tracking-[-0.02em]">Your mail, next to your courses</h1>
           <p className="mt-1.5 text-muted">
             {desktop
-              ? "Connect your Google account to read and write Gmail here. Your university mailbox follows soon."
+              ? "Connect Gmail or your university mailbox to read and write mail here. University mail uses your ILIAS login."
               : "Connect your Gmail and your university mailbox to read and write mail here."}
           </p>
           <Button variant="primary" className="mt-5 h-10 px-5 text-[14px]" onClick={onOpenAccounts}>

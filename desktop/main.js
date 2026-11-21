@@ -16,6 +16,7 @@ const { buildModules } = require("./lib/modules");
 const { startBundledUi } = require("./lib/ui-server");
 const updater = require("./lib/updater");
 const google = require("./lib/google");
+const unimail = require("./lib/unimail");
 
 let uiUrl = process.env.STUDI_UI_URL || "http://localhost:3000";
 let uiServer = null;
@@ -340,6 +341,8 @@ handle("studi:setDeadlineDone", (id, done) => backend.setDeadlineDone(id, Boolea
 updater.register(handle, () => windows);
 // Google-Konto: Anmeldung, Kalender, Gmail (lib/google.js)
 google.register(handle);
+// Uni-Postfach mit dem ILIAS-Login (lib/unimail.js → Python-Helfer)
+unimail.register(handle, packaged);
 
 // ------------------------------------------------------------------ Sync-Stand an die Fenster schicken
 

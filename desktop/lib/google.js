@@ -190,6 +190,8 @@ async function disconnect() {
     }
   }
   clearTokens();
+  cache.clear();
+  lastMails = null;
   return { ok: true };
 }
 
@@ -244,6 +246,8 @@ async function api(url, options = {}) {
   const data = await res.json().catch(() => null);
   if (!res.ok) {
     const msg = data?.error?.message || `Google returned an error (${res.status}).`;
+    // Minuten-Limit von Google: kurz warten statt den langen englischen Fehler zu zeigen
+    if (res.status === 429 || /quota|rate ?limit/i.test(msg)) return fail("busy", "Google needs a short break. Your mail updates again in a minute.");
     return fail(res.status === 403 ? "forbidden" : "failed", msg);
   }
   return { ok: true, data };
@@ -392,26 +396,63 @@ async function pool(items, limit, fn) {
 
 const FOLDER_QUERIES = {
   inbox: { labelIds: "INBOX", max: 40 },
-  sent: { labelIds: "SENT", max: 15 },
   drafts: { labelIds: "DRAFT", max: 10 },
+  sent: { labelIds: "SENT", max: 15 },
   archive: { q: "-in:inbox -in:sent -in:drafts -in:spam -in:trash -in:chats", max: 15 },
 };
 
+// Zwischenspeicher: jede Mail wird nur EINMAL ganz geladen (5 Einheiten pro Mail bei Google).
+// Danach kosten Abrufe nur noch die Listen (Ordner + ungelesen), das hält das Minuten-Limit ein.
+const cache = new Map(); // id → Mail ohne folder/unread
+let lastMails = null;
+let pauseUntil = 0;
+
+async function listIds(params) {
+  const r = await api(`${GMAIL}/messages?${new URLSearchParams(params)}`);
+  return r.ok ? { ok: true, ids: (r.data.messages || []).map((m) => m.id) } : r;
+}
+
 async function mails() {
-  const all = [];
+  // Nach „zu viele Anfragen“ eine Minute Pause, bis dahin den letzten Stand zeigen
+  if (Date.now() < pauseUntil && lastMails) return { ok: true, mails: lastMails };
+  const lists = {};
   for (const [folder, spec] of Object.entries(FOLDER_QUERIES)) {
-    const params = new URLSearchParams({ maxResults: String(spec.max) });
-    if (spec.labelIds) params.set("labelIds", spec.labelIds);
-    if (spec.q) params.set("q", spec.q);
-    const list = await api(`${GMAIL}/messages?${params}`);
-    if (!list.ok) return list;
-    const got = await pool(list.data.messages || [], 6, async (ref) => {
-      const r = await api(`${GMAIL}/messages/${ref.id}?format=full`);
-      return r.ok ? toMail(r.data, folder) : null;
-    });
-    all.push(...got.filter(Boolean));
+    const r = await listIds({ maxResults: String(spec.max), ...(spec.labelIds ? { labelIds: spec.labelIds } : { q: spec.q }) });
+    if (!r.ok) return busyOr(r);
+    lists[folder] = r.ids;
   }
-  return { ok: true, mails: all };
+  const unread = await listIds({ q: "is:unread", maxResults: "200" });
+  if (!unread.ok) return busyOr(unread);
+  const unreadSet = new Set(unread.ids);
+
+  const missing = [...new Set(Object.values(lists).flat())].filter((id) => !cache.has(id));
+  let failed = null;
+  await pool(missing, 3, async (id) => {
+    if (failed) return;
+    const r = await api(`${GMAIL}/messages/${id}?format=full`);
+    if (r.ok) cache.set(id, toMail(r.data, "inbox"));
+    else failed = r;
+  });
+
+  const seen = new Set();
+  const out = [];
+  for (const [folder, ids] of Object.entries(lists)) {
+    for (const id of ids) {
+      const m = cache.get(id);
+      if (!m || seen.has(id)) continue; // eine Mail nur einmal (z. B. an sich selbst: Posteingang + Gesendet)
+      seen.add(id);
+      out.push({ ...m, folder, unread: unreadSet.has(id) });
+    }
+  }
+  lastMails = out;
+  if (failed && failed.code === "busy") pauseUntil = Date.now() + 60_000;
+  return { ok: true, mails: out };
+}
+
+function busyOr(r) {
+  if (r.code !== "busy") return r;
+  pauseUntil = Date.now() + 60_000;
+  return lastMails ? { ok: true, mails: lastMails } : r;
 }
 
 /** Gelesen/ungelesen und Archivieren: Gmail-Etiketten ändern. */
