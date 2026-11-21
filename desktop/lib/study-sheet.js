@@ -73,6 +73,75 @@ const EXAM_FOCUS = [
   "Each point is one line where possible (max ~25 words). Prefer a table, list or diagram over a paragraph.",
 ].join(" ");
 
+/** Lernzettel („Study sheet“, wie Rayyans Lernhilfen): verstehen und verbinden statt nur abfragen. */
+const STUDY_FOCUS = [
+  "UNDERSTANDING FIRST: this study sheet should make the student understand the topic and see how everything fits together, so they can then remember it for the exam.",
+  "Explain why and how, not only what. Leave out course organisation, history slides and filler.",
+  "Mark what the exam will likely ask with **bold** or a 'tip' callout (only exam tips that are in the material).",
+].join(" ");
+
+/** Schreibstil (gilt für Lernzettel und Spickzettel). */
+const TONES = {
+  simple:
+    "WRITING STYLE: very simple. Write for someone who is new to the topic or finds it hard: short sentences, everyday words, explain every technical term the first time (in brackets), one concrete example per idea, analogies welcome. Never assume prior knowledge.",
+  focused:
+    "WRITING STYLE: for a student who attends the lectures: clear and direct, use the technical terms of the course without re-explaining basics, focus on how things work and why.",
+  academic:
+    "WRITING STYLE: formal and academic, like a good textbook or a model exam answer: precise definitions as in the literature, exact terminology (keep the English terms where the course uses them), name the authors and models from the material, no colloquial language, no analogies or jokes.",
+};
+
+/** Seitenziel für Lernzettel: kommt aus der Oberfläche (Materialmenge × Tiefe). */
+function studyLength(pages) {
+  const p = Math.max(2, Math.min(16, Math.round(Number(pages) || 5)));
+  const parts = Math.max(2, Math.min(8, Math.round(p / 1.4)));
+  const visuals = Math.max(1, Math.round(p / 2));
+  return `LENGTH: about ${p} A4 pages in total. That is roughly ${p * 250} words of text (not more), about ${parts} parts and at most ${visuals} diagrams or figures in the whole sheet. Fill the pages with explanation, examples and connections, not with repetition. Keep each list short (2–3 items per section).`;
+}
+
+/** Mehrere Materialien zu denselben Themen verbinden und auf Folien verweisen. */
+function connectPrompt(count, legend) {
+  return [
+    legend ? `THE FILES: ${legend}` : "",
+    count > 1
+      ? "CONNECT THE MATERIAL: the files are different kinds of material on the same topics (e.g. lecture slides, tutorial slides, exercise sheets, readings). Structure by topic, never file by file. In each part, bring together what each file contributes: the lecture's definition, the tutorial's example or exercise, the reading's detail. Say explicitly how they connect (e.g. 'Das Tutorium übt genau das an …', 'Für Aufgabe 2 auf Blatt 5 brauchst du …')."
+      : "",
+    "REFERENCES: cite the material inline, directly after the statement, in exactly this form: [F2 p.14] or [F2 p.14-16] (file number and PDF page number from the '--- Page N ---' markers). About one reference per paragraph, example or table, so the student can jump to the slide. Never invent pages.",
+    "thread (the 'red thread' at the start): one row per part, in the same order: topic (short), where (only references like '[F1 p.4-12] [F3 p.2]'), link (one sentence: how the materials connect or what builds on what).",
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+/** Kurze Namen für Dateien im PDF („VL 9“, „Tut 5“), Art und Woche kommen aus der Oberfläche. */
+const FILE_ABBR = {
+  de: { lecture: "VL", notes: "Skript", sheet: "Blatt", exslides: "Übung", tutorial: "Tut", solution: "Lösung", reading: "Text", selfstudy: "SLE", exam: "Klausur", info: "Orga", other: "Datei" },
+  en: { lecture: "Lecture", notes: "Notes", sheet: "Sheet", exslides: "Exercise", tutorial: "Tutorial", solution: "Solution", reading: "Reading", selfstudy: "Self-study", exam: "Exam", info: "Info", other: "File" },
+};
+function fileLabels(files, info, lang) {
+  if (!info?.some((x) => x?.type)) return null; // ohne Arten: Dateinamen zeigen
+  const A = FILE_ABBR[lang] || FILE_ABBR.de;
+  const raw = files.map((f, i) => {
+    const meta = info?.[i] || {};
+    const base = String(f.name || "").replace(/\.[a-z0-9]+$/i, "");
+    // Semester und Jahre zuerst weg („BWL26_05_Folien_WiSe_2026_27“ → „BWL_05_Folien_WiSe_“), dann die erste Zahl 1–99
+    // („09-System Modeling II“ → 9, „BWL_W2026_02“ → 2)
+    const stripped = base
+      .replace(/(?:19|20)\d{2}(?:[_/-]\d{2})?/g, " ")
+      .replace(/(?:WiSe|SoSe|WS|SS|Wi|So)[\s_-]?\d{2}(?:[_/-]\d{2})?/gi, " ")
+      .replace(/^([A-Za-zÄÖÜäöü]{2,6})\d{2}(?=[_\s-])/, "$1 ");
+    const num = stripped.match(/(?:^|[^\d])(\d{1,2})(?![\d.])/)?.[1];
+    const n = num != null ? Number(num) : meta.week ?? null;
+    const abbr = A[meta.type] || null;
+    if (!abbr) return base.length > 22 ? `${base.slice(0, 20)}…` : base;
+    return n != null ? `${abbr} ${n}` : abbr;
+  });
+  // Doppelte unterscheiden („VL 6a“, „VL 6b“)
+  const seen = {};
+  for (const l of raw) seen[l] = (seen[l] || 0) + 1;
+  const k = {};
+  return raw.map((l) => (seen[l] > 1 ? `${l}${String.fromCharCode(97 + (k[l] = (k[l] ?? -1) + 1))}` : l));
+}
+
 /** Harte Grenzen je Länge, falls die KI mehr liefert (Anzahl pro Abschnitt, Teile). */
 const CAPS = {
   short: { parts: 3, each: 2, terms: 3, formulas: 3, definitions: 2, theorems: 1, methods: 1, examples: 1, intuition: 1, practice: 1, mistakes: 1, misconceptions: 1, questions: 2, steps: 4, rows: 5, visuals: 1, visualsTotal: 2, callouts: 1, bigPicture: 2 },
@@ -141,9 +210,10 @@ const SCHEMA = {
       required: ["title", "summary", "beginner", "analogies", "examples", "tables", "terms", "mnemonics", "misconceptions", "anecdotes", "questions", "visuals", "callouts", "sources"],
       additionalProperties: false,
     }),
+    thread: arr({ type: "object", properties: { topic: str, where: str, link: str }, required: ["topic", "where", "link"], additionalProperties: false }),
     bigPicture: arr(lead),
   },
-  required: ["language", "title", "intro", "parts", "bigPicture"],
+  required: ["language", "title", "intro", "thread", "parts", "bigPicture"],
   additionalProperties: false,
 };
 
@@ -184,20 +254,31 @@ const MATH_SCHEMA = {
       required: ["title", "summary", "intuition", "definitions", "theorems", "formulas", "methods", "examples", "tasks", "mistakes", "proofs", "practice", "visuals", "callouts", "sources"],
       additionalProperties: false,
     }),
+    thread: arr({ type: "object", properties: { topic: str, where: str, link: str }, required: ["topic", "where", "link"], additionalProperties: false }),
     bigPicture: arr(lead),
   },
-  required: ["language", "title", "intro", "parts", "bigPicture"],
+  required: ["language", "title", "intro", "thread", "parts", "bigPicture"],
   additionalProperties: false,
 };
 
-function mathPrompt({ moduleName, count, include, length, focus, context, candidates }) {
+/** Länge, Fokus, Verbindungen und Schreibstil: für Lernzettel anders als für Spickzettel. */
+function framing({ length, pages, tone, count, legend }) {
+  const study = length === "study";
+  return [
+    study ? STUDY_FOCUS : EXAM_FOCUS,
+    TONES[tone] || TONES.focused,
+    study ? connectPrompt(count, legend) : "Leave thread empty. Do not write inline references like [F1 p.2]; use sources.",
+    study ? studyLength(pages) : LENGTHS[length] || LENGTHS.normal,
+  ].join("\n");
+}
+
+function mathPrompt({ moduleName, count, include, length, focus, context, candidates, pages, tone, legend }) {
   const on = Object.entries(MATH_SECTIONS).filter(([k]) => include[k] && !["answers", "bigPicture", "visuals", "figures"].includes(k));
   const off = Object.keys(MATH_SECTIONS).filter((k) => !include[k] && !["answers", "bigPicture", "summary", "visuals", "figures"].includes(k));
   return [
     `Course: ${moduleName || "unknown"}. Write a study guide for a math course from these ${count} file(s), marked F1…F${count}.`,
     context ? `The files belong to: ${context}. Start the title with it, e.g. "Woche 3–4: …" (in the language of the material).` : "",
     MATH_RULES,
-    EXAM_FOCUS,
     "Structure it into parts by topic, like a good tutor. Each part contains:",
     ...on.map(([k, d]) => `- ${k}: ${d}`),
     include.practice ? (include.answers ? "- In practice, 'a' is the full solution." : "- In practice, leave 'a' empty.") : "",
@@ -205,29 +286,30 @@ function mathPrompt({ moduleName, count, include, length, focus, context, candid
     include.bigPicture ? `- bigPicture: ${MATH_SECTIONS.bigPicture}` : "Leave bigPicture empty.",
     include.visuals ? V.visualPrompt({ subject: "math", figures: include.figures, candidates }) : "Leave visuals empty in every part. CALLOUTS: 1–2 per part ('remember' for the key takeaway, 'warning' for traps).",
     "sources: the file numbers and pages a part is based on.",
-    LENGTHS[length] || LENGTHS.normal,
+    framing({ length, pages, tone, count, legend }),
     focus ? `Focus on: ${focus}.` : "",
   ]
     .filter(Boolean)
     .join("\n");
 }
 
-function prompt({ moduleName, count, include, length, focus, context, subject, candidates }) {
+function prompt({ moduleName, count, include, length, focus, context, subject, candidates, pages, tone, legend }) {
   const on = Object.entries(SECTIONS).filter(([k]) => include[k] && !["answers", "visuals", "figures"].includes(k));
   const off = Object.keys(SECTIONS).filter((k) => !include[k] && !["answers", "bigPicture", "visuals", "figures"].includes(k));
   return [
-    `Course: ${moduleName || "unknown"}. Write a study guide ("Lernhilfe") from these ${count} file(s), marked F1…F${count}.`,
+    length === "study"
+      ? `Course: ${moduleName || "unknown"}. Write a study sheet ("Lernhilfe") from these ${count} file(s), marked F1…F${count}.`
+      : `Course: ${moduleName || "unknown"}. Write a cheat sheet ("Spickzettel") from these ${count} file(s), marked F1…F${count}.`,
     context ? `The files belong to: ${context}. Start the title with it, e.g. "Woche 3–4: …" (in the language of the material).` : "",
     "Structure it into parts by topic (not by file), like a good tutor would. Each part contains:",
     ...on.filter(([k]) => k !== "bigPicture").map(([k, d]) => `- ${k}: ${d}`),
     include.questions && include.answers ? "- In questions, fill 'a' with a short model answer." : include.questions ? "- In questions, leave 'a' empty." : "",
     off.length ? `Leave these arrays empty in every part: ${off.join(", ")}.` : "",
     include.bigPicture ? `- bigPicture: ${SECTIONS.bigPicture}` : "Leave bigPicture empty.",
-    EXAM_FOCUS,
     "Use **bold** for key words inside texts. Tables only where they really help.",
     include.visuals ? V.visualPrompt({ subject, figures: include.figures, candidates }) : "Leave visuals empty in every part. CALLOUTS: 1–2 per part ('remember' for the key takeaway, 'warning' for traps, 'tip' only for exam tips from the material).",
     "sources: the file numbers and pages a part is based on.",
-    LENGTHS[length] || LENGTHS.normal,
+    framing({ length, pages, tone, count, legend }),
     focus ? `Focus on: ${focus}.` : "",
   ]
     .filter(Boolean)
@@ -331,7 +413,10 @@ const esc = (s) =>
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
 /** Text mit **fett** → HTML. */
-const richPlain = (s) => esc(s).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+const richPlain = (s) =>
+  esc(s)
+    .replace(/`([^`\n]{1,60})`/g, "<code>$1</code>")
+    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
 
 /** Text mit $…$ / $$…$$ (und \\(…\\), \\[…\\]) → HTML mit KaTeX; der Rest wie richPlain. */
 function richMath(s) {
@@ -362,6 +447,9 @@ function sheetHtml(sheet, { moduleName, accent = "#22325c" }) {
   const M = MATH_LABELS[sheet.language] || MATH_LABELS.de;
   const rich = sheet.math ? richMath : richPlain;
   const fileName = (i) => sheet.files[i - 1]?.name.replace(/\.[a-z0-9]+$/i, "") ?? null;
+  const study = sheet.length === "study";
+  // Kurzname der Datei („VL 9“), bei älteren Lernzetteln der Dateiname
+  const label = (i) => sheet.labels?.[i - 1] || fileName(i);
   const parts = sheet.parts || [];
   const h3 = (key, body) => (body ? `${L[key] ? `<h3>${L[key]}</h3>` : ""}${body}` : "");
   // „Definition über R².“ → „Definition über R²:“ (Satzzeichen am Ende vereinheitlichen, Fragen bleiben Fragen)
@@ -381,7 +469,7 @@ function sheetHtml(sheet, { moduleName, accent = "#22325c" }) {
   const groupSources = (sources) => {
     const byFile = new Map();
     for (const x of sources || []) {
-      const name = fileName(x.file);
+      const name = label(x.file);
       if (!name) continue;
       const pages = byFile.get(name) ?? new Set();
       if (x.page > 0) pages.add(x.page);
@@ -474,11 +562,23 @@ function sheetHtml(sheet, { moduleName, accent = "#22325c" }) {
     </section>`;
   };
 
+  // Lernzettel: welche Datei welcher Kurzname ist, und der rote Faden durch die Materialien
+  const T = sheet.language === "en" ? { material: "Material", thread: "How it all fits together", topic: "Topic", where: "Where", link: "How it connects" } : { material: "Material", thread: "Roter Faden", topic: "Thema", where: "Wo", link: "Zusammenhang" };
+  const materialHtml =
+    sheet.labels?.length && sheet.files?.length
+      ? `<p class="legend"><strong>${T.material}:</strong> ${sheet.files.map((f, i) => `<span class="lg"><b>${esc(label(i + 1))}</b> ${esc(fileName(i + 1))}</span>`).join("")}</p>`
+      : "";
+  const threadHtml = sheet.thread?.length
+    ? `<section class="thread"><h2>${T.thread}</h2><table><thead><tr><th>${T.topic}</th><th>${T.where}</th><th>${T.link}</th></tr></thead><tbody>${sheet.thread
+        .map((r) => `<tr><td><strong>${rich(r.topic)}</strong></td><td class="where">${rich(r.where)}</td><td>${rich(r.link)}</td></tr>`)
+        .join("")}</tbody></table></section>`
+    : "";
+
   const big = sheet.bigPicture?.length ? `<section class="part" id="big"><h2>${L.bigPicture}</h2>${numbered(sheet.bigPicture, (x) => `<strong>${rich(leadText(x.lead))}</strong> ${rich(x.text)}`)}</section>` : "";
   const date = new Date(sheet.createdAt).toLocaleDateString(sheet.language === "en" ? "en-US" : "de-DE", { day: "numeric", month: "long", year: "numeric" });
 
-  return `<!doctype html><html lang="${sheet.language || "de"}"><head><meta charset="utf-8"><title>${esc(sheet.title)}</title><style>
-  @page { size: A4; margin: ${sheet.length === "short" || sheet.length === "exam" ? "10mm 11mm 11mm 11mm" : sheet.length === "normal" ? "14mm 15mm 15mm 15mm" : "18mm 17mm 18mm 17mm"}; }
+  const html = `<!doctype html><html lang="${sheet.language || "de"}"><head><meta charset="utf-8"><title>${esc(sheet.title)}</title><style>
+  @page { size: A4; margin: ${sheet.length === "short" || sheet.length === "exam" ? "10mm 11mm 11mm 11mm" : sheet.length === "normal" || sheet.length === "study" ? "14mm 15mm 15mm 15mm" : "18mm 17mm 18mm 17mm"}; }
   * { box-sizing: border-box; }
   body { font: 10.5pt/1.55 -apple-system, "Helvetica Neue", Helvetica, Arial, sans-serif; color: #1d1d1f; margin: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .meta { font-size: 8.5pt; color: #6b7280; margin-bottom: 10px; display: flex; justify-content: space-between; }
@@ -503,6 +603,18 @@ function sheetHtml(sheet, { moduleName, accent = "#22325c" }) {
   .sources { font-size: 8.5pt; color: #6b7280; margin-top: 8px; }
   .part { break-inside: auto; }
   /* Kompakt (2–3 Seiten) */
+  a.ref { display: inline-block; font-size: 0.76em; font-weight: 650; line-height: 1.35; color: ${accent}; background: #eaeff8; border-radius: 3px; padding: 0 4px; margin: 0 0 0 2px; text-decoration: none; white-space: nowrap; vertical-align: 0.08em; }
+  .legend { font-size: 8.4pt; color: #4b5563; margin: 4px 0 10px; line-height: 1.7; }
+  .legend .lg { display: inline-block; margin-right: 12px; white-space: nowrap; } .legend .lg b { color: ${accent}; font-weight: 650; margin-right: 3px; }
+  .thread { break-inside: avoid; } .thread table { font-size: 9pt; } .thread td.where { white-space: normal; width: 22%; } .thread td:first-child { width: 24%; }
+  .thread th { background: #e9edf5; }
+  code { font: 0.92em ui-monospace, Menlo, monospace; background: #f1f3f6; border-radius: 3px; padding: 0 3px; }
+  body.study { font-size: 9.6pt; line-height: 1.45; }
+  body.study h1 { font-size: 19pt; } body.study h2 { font-size: 13pt; margin: 16px 0 6px; } body.study h3 { font-size: 10.4pt; margin: 10px 0 4px; }
+  body.study p { margin: 0 0 5px; } body.study li { margin: 2px 0; } body.study ul, body.study ol { margin-bottom: 6px; }
+  body.study table { font-size: 8.8pt; } body.study th, body.study td { padding: 3px 6px; }
+  body.study figure.visual > svg, body.study figure.visual pre.mermaid > svg { max-height: 72mm; }
+  body.study .box, body.study .callout { margin: 4px 0 7px; }
   body.normal { font-size: 9pt; line-height: 1.38; }
   body.normal h1 { font-size: 16pt; margin-bottom: 6px; } body.normal .intro { margin-bottom: 8px; }
   body.normal .cols { column-count: 2; column-gap: 7mm; column-rule: 1px solid #e3e7ee; }
@@ -546,15 +658,45 @@ function sheetHtml(sheet, { moduleName, accent = "#22325c" }) {
   ${V.VISUAL_CSS}
 </style>${sheet.math ? `<link rel="stylesheet" href="${pathToFileURL(require.resolve("katex/dist/katex.min.css")).href}">` : ""}</head><body class="${sheet.length === "exam" ? "short exam" : sheet.length || ""}">
   <div class="meta"><span>${esc(moduleName || "")}</span><span>${esc(date)} · ${L.made}</span></div>
-  ${parts.length > 3 && !brief ? `<nav class="toc"><p>${L.contents}</p><ol>${parts.map((p, i) => `<li><a href="#p${i}">${rich(p.title)}</a></li>`).join("")}${big ? `<li><a href="#big">${L.bigPicture}</a></li>` : ""}</ol></nav>` : ""}
+  ${parts.length > 3 && !brief && !(study && sheet.thread?.length) ? `<nav class="toc"><p>${L.contents}</p><ol>${parts.map((p, i) => `<li><a href="#p${i}">${rich(p.title)}</a></li>`).join("")}${big ? `<li><a href="#big">${L.bigPicture}</a></li>` : ""}</ol></nav>` : ""}
   <h1>${rich(sheet.title)}</h1>
   <p class="intro">${rich(sheet.intro)}</p>
+  ${study ? materialHtml : ""}
+  ${study ? threadHtml : ""}
   <div class="cols">
   ${parts.map(partHtml).join("")}
   ${big}
   </div>
   ${needsScript(sheet) ? V.pageScript() : ""}
 </body></html>`;
+  return linkRefs(html, sheet, label, L.page);
+}
+
+/** „[F2 p.14-16]“ im Text → kleine Marke „VL 9 S. 14–16“, die die Folien-PDF öffnet. */
+function linkRefs(html, sheet, label, pageWord) {
+  const re = /\[F(\d{1,2})(?:\s*(?:p\.?|S\.?|pp\.?)\s*(\d+(?:\s*[-–,]\s*\d+)*))?\]/g;
+  return html
+    .split(/(<pre[\s\S]*?<\/pre>|<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>)/)
+    .map((chunk, k) =>
+      k % 2
+        ? chunk
+        : chunk.replace(re, (m, f, pages) => {
+            const i = Number(f);
+            const file = sheet.files?.[i - 1];
+            if (!file) return "";
+            const pg = pages ? pages.replace(/\s*-\s*/g, "–").replace(/\s*,\s*/g, ", ") : "";
+            const first = pages ? Number(pages.match(/\d+/)[0]) : 0;
+            let href = "";
+            try {
+              href = pathToFileURL(file.path).href + (first ? `#page=${first}` : "");
+            } catch {
+              href = "";
+            }
+            const text = `${esc(label(i))}${pg ? ` ${pageWord} ${pg}` : ""}`;
+            return href ? `<a class="ref" href="${href}">${text}</a>` : `<span class="ref">${text}</span>`;
+          }),
+    )
+    .join("");
 }
 
 /** Braucht der Lernzettel das Skript im Druckfenster (Mermaid-Diagramme oder Folienseiten)? */
@@ -579,6 +721,11 @@ function upgrade(sheet) {
   };
 }
 
+/** Seitenzahl einer von Chromium erzeugten PDF (Seitenobjekte zählen). */
+function pageCount(buf) {
+  return (Buffer.from(buf).toString("latin1").match(/\/Type\s*\/Page(?![s\w])/g) || []).length;
+}
+
 /** HTML → PDF mit einem unsichtbaren Fenster. */
 async function renderPdf(BrowserWindow, input, { moduleName, accent, outFile }) {
   // Längen auch bei älteren Lernzetteln einhalten (neu erstellte sind schon gekürzt, trim ändert dann nichts)
@@ -597,14 +744,25 @@ async function renderPdf(BrowserWindow, input, { moduleName, accent, outFile }) 
         await new Promise((r) => setTimeout(r, 500));
       }
     }
-    const pdf = await win.webContents.printToPDF({
-      pageSize: "A4",
-      printBackground: true,
-      preferCSSPageSize: true,
-      displayHeaderFooter: true,
-      headerTemplate: "<span></span>",
-      footerTemplate: `<div style="width:100%;font:7.5pt -apple-system,Helvetica,sans-serif;color:#9ca3af;text-align:center"><span class="pageNumber"></span> / <span class="totalPages"></span></div>`,
-    });
+    const print = (scale = 1) =>
+      win.webContents.printToPDF({
+        pageSize: "A4",
+        printBackground: true,
+        preferCSSPageSize: true,
+        scale,
+        displayHeaderFooter: true,
+        headerTemplate: "<span></span>",
+        footerTemplate: `<div style="width:100%;font:7.5pt -apple-system,Helvetica,sans-serif;color:#9ca3af;text-align:center"><span class="pageNumber"></span> / <span class="totalPages"></span></div>`,
+      });
+    let pdf = await print();
+    // Spickzettel passen immer auf ihre Seite(n): sonst etwas kleiner drucken (bis ~84 %)
+    const fit = { short: 1, exam: 2 }[sheet.length];
+    if (fit) {
+      for (const scale of [0.95, 0.9, 0.85]) {
+        if (pageCount(pdf) <= fit) break;
+        pdf = await print(scale);
+      }
+    }
     fs.mkdirSync(path.dirname(outFile), { recursive: true });
     fs.writeFileSync(outFile, pdf);
     return outFile;
@@ -614,4 +772,4 @@ async function renderPdf(BrowserWindow, input, { moduleName, accent, outFile }) 
   }
 }
 
-module.exports = { trim, SUBJECT_LABELS: V.SUBJECT_LABELS, SECTIONS, SCHEMA, MATH_SECTIONS, MATH_SCHEMA, MATH_RULES, cleanInclude, prompt, mathPrompt, sheetHtml, renderPdf, upgrade, richMath };
+module.exports = { trim, fileLabels, TONES, SUBJECT_LABELS: V.SUBJECT_LABELS, SECTIONS, SCHEMA, MATH_SECTIONS, MATH_SCHEMA, MATH_RULES, cleanInclude, prompt, mathPrompt, sheetHtml, renderPdf, upgrade, richMath };

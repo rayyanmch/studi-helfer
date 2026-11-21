@@ -368,15 +368,29 @@ function pageScript() {
   const done = () => { window.__ready = true; };
   try {
     if (window.mermaid && document.querySelector("pre.mermaid")) {
-      mermaid.initialize({ startOnLoad: false, securityLevel: "strict", theme: "base", fontFamily: "-apple-system, Helvetica, Arial, sans-serif",
-        flowchart: { nodeSpacing: 26, rankSpacing: 22, padding: 8, useMaxWidth: true }, sequence: { useMaxWidth: true, mirrorActors: false, showSequenceNumbers: false }, class: { useMaxWidth: true },
+      const config = (flowchart) => ({ startOnLoad: false, securityLevel: "strict", theme: "base", fontFamily: "-apple-system, Helvetica, Arial, sans-serif",
+        flowchart, sequence: { useMaxWidth: true, mirrorActors: false, showSequenceNumbers: false }, class: { useMaxWidth: true },
         themeCSS: ".actor-line { stroke-dasharray: 4 3; }",
         themeVariables: { primaryColor: "#eef3fb", primaryBorderColor: "#3a5ba0", primaryTextColor: "#1d1d1f", lineColor: "#22325c", secondaryColor: "#f4f6fa", tertiaryColor: "#fbfcfe", fontSize: "13px" } });
+      mermaid.initialize(config({ nodeSpacing: 26, rankSpacing: 22, padding: 8, useMaxWidth: true }));
       for (const el of document.querySelectorAll("pre.mermaid")) {
         try { await mermaid.parse(el.textContent); } catch { el.closest("figure")?.remove(); }
       }
-      await mermaid.run({ querySelector: "pre.mermaid", suppressErrors: true });
-      for (const el of document.querySelectorAll("pre.mermaid")) if (!el.querySelector("svg")) el.closest("figure")?.remove();
+      // Klassendiagramme brauchen längere Kanten, sonst finden Multiplizitäten keinen Platz („Could not find a suitable point“)
+      const all = [...document.querySelectorAll("pre.mermaid")];
+      const isClass = (el) => /^\s*classDiagram/.test(el.textContent);
+      const rest = all.filter((el) => !isClass(el));
+      const classes = all.filter(isClass);
+      if (rest.length) await mermaid.run({ nodes: rest, suppressErrors: true });
+      if (classes.length) {
+        mermaid.initialize(config({ nodeSpacing: 40, rankSpacing: 50, padding: 8, useMaxWidth: true }));
+        await mermaid.run({ nodes: classes, suppressErrors: true });
+      }
+      // Fehlerbild („Syntax error in text“) nie drucken: Abbildung entfernen
+      for (const el of document.querySelectorAll("pre.mermaid")) {
+        const svg = el.querySelector("svg");
+        if (!svg || svg.getAttribute("aria-roledescription") === "error" || /Syntax error in text/.test(svg.textContent || "")) el.closest("figure")?.remove();
+      }
     }
   } catch (e) { console.error(e); }
   try {

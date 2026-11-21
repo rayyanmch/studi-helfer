@@ -77,7 +77,51 @@ export const MATH_SECTIONS = [
 
 export type SectionKey = (typeof SHEET_SECTIONS)[number]["key"] | (typeof MATH_SECTIONS)[number]["key"];
 export type Include = Partial<Record<SectionKey, boolean>>;
-export type SheetLength = "short" | "normal" | "detailed" | "exam";
+export type SheetLength = "short" | "normal" | "detailed" | "exam" | "study";
+export type SheetTone = "simple" | "focused" | "academic";
+
+/** Schreibstil der Lernzettel und Spickzettel. */
+export const TONES: { id: SheetTone; label: string; hint: string; sample: string }[] = [
+  { id: "simple", label: "Simple", hint: "Starts from zero: everyday words, every term explained, analogies", sample: "A class is like a cookie cutter: it describes what every cookie looks like." },
+  { id: "focused", label: "Focused", hint: "You’ve been to the lectures: straight to the point, course terms", sample: "A class defines attributes and operations; objects are its instances at runtime." },
+  { id: "academic", label: "Academic", hint: "Textbook style: exact definitions, authors and models named", sample: "A class describes a set of objects with identical structure, behaviour and semantics." },
+];
+
+const TONE_KEY = "studi.sheetTone";
+export function savedTone(): SheetTone {
+  try {
+    const t = localStorage.getItem(TONE_KEY);
+    if (t === "simple" || t === "focused" || t === "academic") return t;
+  } catch {
+    // Browser-Speicher nicht verfügbar
+  }
+  return "focused";
+}
+export function saveTone(t: SheetTone) {
+  try {
+    localStorage.setItem(TONE_KEY, t);
+  } catch {
+    // egal
+  }
+}
+
+/** Grobe Seitenzahl der gewählten Dateien (aus den Auswertungen, sonst geschätzt). */
+export function materialPages(files: { pages?: number | null }[]) {
+  return files.reduce((n, f) => n + (f.pages && f.pages > 0 ? f.pages : 18), 0);
+}
+
+export type SheetDepth = "essentials" | "standard" | "deep";
+const DEPTH_FACTOR: Record<SheetDepth, number> = { essentials: 0.55, standard: 1, deep: 1.7 };
+
+/** Seitenziel eines Lernzettels: etwa eine Seite je 9 Folien, je nach Tiefe, 2–16 Seiten. */
+export function studyPages(materialPageCount: number, depth: SheetDepth) {
+  return Math.max(2, Math.min(16, Math.round((materialPageCount / 9) * DEPTH_FACTOR[depth])));
+}
+
+/** Spickzettel: eine Seite für bis zu zwei Wochen oder wenig Stoff, sonst zwei. */
+export function cheatPages(weekCount: number, materialPageCount: number) {
+  return weekCount > 2 || materialPageCount > 90 ? 2 : 1;
+}
 
 const on = (...keys: SectionKey[]): Include =>
   Object.fromEntries(SHEET_SECTIONS.map((s) => [s.key, s.key === "summary" || keys.includes(s.key)])) as Include;
@@ -114,7 +158,9 @@ export interface Sheet {
   sections?: { heading: string }[]; // ältere Lernzettel
   math?: boolean;
   weeks?: string[]; // Wochen-Keys, aus denen der Lernzettel gemacht ist
-  kind?: "week" | "exam"; // exam = Klausur-Spickzettel für den ganzen Kurs
+  kind?: "week" | "exam" | "study"; // week/exam = Spickzettel (Woche / ganzer Kurs), study = ausführlicher Lernzettel
+  tone?: SheetTone;
+  pages?: number | null; // Seitenziel bei Lernzetteln
 }
 
 export interface StudyJob {
@@ -168,7 +214,10 @@ export interface StudyApi {
     math?: boolean;
     subject?: string;
     weeks?: string[];
-    kind?: "week" | "exam";
+    kind?: "week" | "exam" | "study";
+    tone?: SheetTone;
+    pages?: number;
+    fileInfo?: { path: string; type: string; week: number | null }[];
   }): Promise<Ok<{ sheet: Sheet }> | Fail>;
   openSheet(id: string, reveal?: boolean): Promise<Ok<{ path: string }> | Fail>;
   deleteSheet(id: string): Promise<Ok>;
@@ -182,6 +231,7 @@ export interface SheetRun {
   startedAt?: number;
   step?: "reading" | "writing" | "pdf";
   title?: string; // nur Oberfläche
+  kind?: "study" | "cheat"; // nur Oberfläche
 }
 
 /** Eigene Einträge und Änderungen an automatischen Einträgen (Glossar/Formelsammlung, je Modul). */
@@ -481,11 +531,14 @@ export async function createSheet(opts: {
   math?: boolean;
   subject?: string;
   weeks?: string[];
-  kind?: "week" | "exam";
+  kind?: "week" | "exam" | "study";
+  tone?: SheetTone;
+  pages?: number;
+  fileInfo?: { path: string; type: string; week: number | null }[];
 }): Promise<{ sheet?: Sheet; error?: string }> {
   const a = api();
   if (!a) return { error: "Study sheets work in the Mac app." };
-  set({ sheetRun: { running: true, startedAt: Date.now(), step: "reading", title: opts.moduleName } });
+  set({ sheetRun: { running: true, startedAt: Date.now(), step: "reading", title: opts.moduleName, kind: opts.length === "study" ? "study" : "cheat" } });
   const poll = setInterval(async () => {
     const s = await a.sheetState();
     if (s.running && state.sheetRun.running) set({ sheetRun: { ...state.sheetRun, step: s.step } });
@@ -506,11 +559,13 @@ export const QUICK_INCLUDE_MATH: Include = onMath("definitions", "formulas", "me
  * Lernzettel ohne Baukasten: eine Woche auf einer Seite („One-pager“) oder der ganze Kurs als Klausur-Spickzettel
  * (2–3 Seiten). Nimmt Vorlesungen, Texte und Übungsblätter der Wochen, Stil nach Fachrichtung.
  */
-export async function quickSheet(course: Course, weeks: Week[], opts: { kind: "week" | "exam"; math: boolean; subject: string }) {
-  const paths = weeks
-    .flatMap((w) => w.files)
-    .filter((x) => STUDY_FILE.test(x.file.name) && isStudyDoc(x.type) && !state.unreadable[fileKey(x.file)])
-    .map((x) => fileKey(x.file));
+export async function quickSheet(course: Course, weeks: Week[], opts: { kind: "week" | "exam"; math: boolean; subject: string; tone?: SheetTone }) {
+  const picked = weeks.flatMap((w) =>
+    w.files
+      .filter((x) => STUDY_FILE.test(x.file.name) && isStudyDoc(x.type) && !state.unreadable[fileKey(x.file)])
+      .map((x) => ({ path: fileKey(x.file), type: x.type as string, week: w.kind === "week" ? w.n : null })),
+  );
+  const paths = picked.map((x) => x.path);
   if (!paths.length) return { error: "No readable files in this week yet." };
   const exam = opts.kind === "exam";
   const context = exam
@@ -527,12 +582,16 @@ export async function quickSheet(course: Course, weeks: Week[], opts: { kind: "w
     subject: opts.subject,
     weeks: weeks.map((w) => w.key),
     kind: opts.kind,
+    tone: opts.tone ?? savedTone(),
+    fileInfo: picked,
   });
 }
 
 /** Vorhandener Lernzettel für diese Woche (zuletzt erstellt) bzw. der Klausur-Spickzettel eines Kurses. */
 export function sheetFor(sheets: Sheet[], courseId: string, weekKey: string | null) {
-  return sheets.find((s) => s.moduleId === courseId && (weekKey ? s.kind !== "exam" && s.weeks?.length === 1 && s.weeks[0] === weekKey : s.kind === "exam"));
+  return sheets.find(
+    (s) => s.moduleId === courseId && (weekKey ? (s.kind === "week" || (!s.kind && s.length === "short")) && s.weeks?.length === 1 && s.weeks[0] === weekKey : s.kind === "exam"),
+  );
 }
 
 export async function openSheet(id: string, reveal = false): Promise<string | null> {

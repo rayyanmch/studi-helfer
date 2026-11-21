@@ -34,7 +34,16 @@ import { useApp } from "@/lib/app-store";
 import {
   type Card,
   type Include,
-  type SheetLength,
+  type SheetDepth,
+  type SheetTone,
+  TONES,
+  QUICK_INCLUDE,
+  QUICK_INCLUDE_MATH,
+  cheatPages,
+  materialPages,
+  savedTone,
+  saveTone,
+  studyPages,
   NEW_PER_DAY,
   PRESETS,
   SHEET_SECTIONS,
@@ -1169,8 +1178,13 @@ export function WeekPicker({
                         <li key={x.file.id}>
                           <label className="flex cursor-default items-center gap-2.5 rounded-md px-1.5 py-1 hover:bg-hover">
                             <input type="checkbox" checked={on} onChange={() => set([k], !on)} className="size-3.5" style={{ accentColor: tone(color) }} />
-                            <span className="w-[66px] shrink-0 text-[11px] font-semibold uppercase tracking-normal text-muted">{ROLE_LABEL[x.role]}</span>
+                            {mode === "sheet" ? (
+                              <span className="w-[92px] shrink-0 truncate text-[12px] font-semibold text-muted">{DOC_LABEL[x.type]}</span>
+                            ) : (
+                              <span className="w-[66px] shrink-0 text-[11px] font-semibold uppercase tracking-normal text-muted">{ROLE_LABEL[x.role]}</span>
+                            )}
                             <span className="min-w-0 flex-1 truncate text-[13px]">{displayName(x.file.name)}</span>
+                            {mode === "sheet" && study.files[k]?.pages ? <span className="shrink-0 text-[12px] tabular-nums text-muted">{study.files[k]?.pages} p.</span> : null}
                           </label>
                         </li>
                       );
@@ -1273,10 +1287,13 @@ function SheetRunning() {
     <div className="flex items-center gap-3 rounded-[10px] bg-surface px-4 py-3 text-[13px]" role="status">
       <Spinner />
       <span className="flex-1">
-        <strong className="font-semibold">Writing your study sheet{sheetRun.title ? ` for ${sheetRun.title}` : ""}</strong>
+        <strong className="font-semibold">
+          Writing your {sheetRun.kind === "study" ? "study sheet" : "cheat sheet"}
+          {sheetRun.title ? ` for ${sheetRun.title}` : ""}
+        </strong>
         <span className="text-muted">
           {" "}
-          · {step} · usually 1–3 minutes{secs ? ` · ${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, "0")}` : ""}
+          · {step} · usually {sheetRun.kind === "study" ? "2–5" : "1–2"} minutes{secs ? ` · ${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, "0")}` : ""}
         </span>
       </span>
       <span className="text-[12px] text-muted">It opens by itself when it’s ready.</span>
@@ -1292,14 +1309,14 @@ function Sheets({ courses, onNew, onError }: { courses: Course[]; onNew: () => v
       <div className="mb-2 flex items-center gap-2">
         <h2 className="flex-1 text-[17px] font-bold">Study sheets</h2>
         <Button onClick={onNew} disabled={study.available === false || study.sheetRun.running || courses.length === 0}>
-          <NotebookPen size={14} aria-hidden /> New study sheet
+          <NotebookPen size={14} aria-hidden /> New sheet
         </Button>
       </div>
       {study.sheets.length === 0 ? (
         <button onClick={onNew} disabled={study.available === false} className="w-full rounded-[12px] border border-dashed border-line px-5 py-6 text-left hover:bg-hover">
-          <span className="block font-semibold">Make your own study guide as a PDF</span>
+          <span className="block font-semibold">Make a study sheet or a cheat sheet as a PDF</span>
           <span className="mt-1 block text-[13px] text-muted">
-            One page per week with what matters for the exam, or a 2–3 page cheat sheet for the whole course. Saved in your Uni folder.
+            A study sheet explains your lectures and tutorials and links them, with references to the slides. A cheat sheet fits a week on one page. Saved in your Uni folder.
           </span>
         </button>
       ) : (
@@ -1312,7 +1329,8 @@ function Sheets({ courses, onNew, onError }: { courses: Course[]; onNew: () => v
             return (
               <li key={s.id} className="group flex items-center gap-3 border-b border-line-soft px-2.5 py-2.5 last:border-0">
                 <span className="relative grid h-10 w-8 shrink-0 place-items-end rounded-[4px] pb-1 text-[8px] font-bold text-white" style={{ background: tone(color) }} aria-hidden>
-                  PDF
+                  {s.kind === "study" ? <span className="absolute -right-1 -top-1 h-10 w-8 rounded-[4px] opacity-40" style={{ background: tone(color) }} /> : null}
+                  <span className="relative">PDF</span>
                 </span>
                 <button
                   className="min-w-0 flex-1 text-left"
@@ -1324,7 +1342,7 @@ function Sheets({ courses, onNew, onError }: { courses: Course[]; onNew: () => v
                 >
                   <span className="block truncate font-semibold">{s.title}</span>
                   <span className="block truncate text-[12px] text-muted">
-                    {[c?.name ?? s.moduleName, date, `${s.files.length} ${s.files.length === 1 ? "file" : "files"}`, parts ? `${parts} parts` : null, s.focus]
+                    {[sheetKindLabel(s), c?.name ?? s.moduleName, date, `${s.files.length} ${s.files.length === 1 ? "file" : "files"}`, parts && s.kind === "study" ? `${parts} topics` : null, s.focus]
                       .filter(Boolean)
                       .join(" · ")}
                   </span>
@@ -1362,23 +1380,35 @@ function Sheets({ courses, onNew, onError }: { courses: Course[]; onNew: () => v
   );
 }
 
-const PREFS_KEY = "studi.sheetPrefs2"; // neue Längen (Einseiter als Standard)
+/** „Study sheet · 6 pages“ / „Cheat sheet · 1 page“ für Listen. */
+function sheetKindLabel(s: { kind?: string; length?: string; pages?: number | null }) {
+  if (s.kind === "study" || s.length === "study") return s.pages ? `Study sheet · ${s.pages} pages` : "Study sheet";
+  if (s.kind === "exam") return "Exam cheat sheet";
+  if (s.length === "short") return "Cheat sheet · 1 page";
+  if (s.length === "exam") return "Cheat sheet · 2 pages";
+  return "Study sheet";
+}
 
-function loadPrefs(): { include: Include; includeMath: Include; length: SheetLength } {
-  const fallback = { include: PRESETS[0].include, includeMath: MATH_PRESETS[1].include, length: "short" as SheetLength };
+const PREFS_KEY = "studi.sheetPrefs3"; // Lernzettel oder Spickzettel, Tiefe, Bausteine
+
+function loadPrefs(): { include: Include; includeMath: Include; kind: SheetKind; depth: SheetDepth } {
+  const fallback = { include: PRESETS[0].include, includeMath: MATH_PRESETS[2].include, kind: "study" as SheetKind, depth: "standard" as SheetDepth };
   try {
     const raw = JSON.parse(localStorage.getItem(PREFS_KEY) ?? "null");
     if (raw && typeof raw === "object" && raw.include)
       return {
         include: { ...fallback.include, ...raw.include, summary: true },
         includeMath: { ...fallback.includeMath, ...(raw.includeMath ?? {}), summary: true },
-        length: raw.length ?? "short",
+        kind: raw.kind === "cheat" ? "cheat" : "study",
+        depth: raw.depth === "essentials" || raw.depth === "deep" ? raw.depth : "standard",
       };
   } catch {
     // Browser-Speicher nicht verfügbar
   }
   return fallback;
 }
+
+type SheetKind = "study" | "cheat";
 
 function NewSheet({
   courses,
@@ -1408,15 +1438,22 @@ function NewSheet({
   const SECTIONS = math ? MATH_SECTIONS : SHEET_SECTIONS;
   const PRESET_LIST = math ? MATH_PRESETS : PRESETS;
   const [prefs] = useState(loadPrefs);
+  const [kind, setKind] = useState<SheetKind>(prefs.kind);
+  const [depth, setDepth] = useState<SheetDepth>(prefs.depth);
+  const [sheetTone, setSheetTone] = useState<SheetTone>(savedTone);
   const [includeText, setIncludeText] = useState<Include>(prefs.include);
   const [includeMath, setIncludeMath] = useState<Include>(prefs.includeMath);
   const include = math ? includeMath : includeText;
   const setInclude = (fn: Include | ((cur: Include) => Include)) => (math ? setIncludeMath : setIncludeText)(fn);
-  const [length, setLength] = useState<SheetLength>(prefs.length);
   const [focus, setFocus] = useState("");
 
   const weeks = useWeeks(course);
   const chosenWeeks = weeks.filter((w) => w.files.some((x) => picked.includes(fileKey(x.file))));
+  const pickedFiles = weeks.flatMap((w) => w.files.filter((x) => picked.includes(fileKey(x.file))).map((x) => ({ ...x, week: w.kind === "week" ? w.n : null })));
+  const matPages = materialPages(pickedFiles.map((x) => ({ pages: study.files[fileKey(x.file)]?.pages })));
+  const studyPg = studyPages(matPages, depth);
+  const cheatPg = cheatPages(chosenWeeks.length, matPages);
+  const pages = kind === "study" ? studyPg : cheatPg;
   const preset = PRESET_LIST.find((p) => SECTIONS.every((s) => Boolean(p.include[s.key]) === Boolean(include[s.key])))?.id ?? null;
   const parentOf = math ? "practice" : "questions";
   const set = (k: keyof Include, v: boolean) =>
@@ -1426,25 +1463,56 @@ function NewSheet({
       if (k === "answers" && v) next[parentOf] = true;
       return next;
     });
+  const kinds = new Set(pickedFiles.map((x) => x.type));
+  const mixed = kinds.size > 1;
 
   const submit = () => {
     if (!course) return;
     try {
-      localStorage.setItem(PREFS_KEY, JSON.stringify({ include: includeText, includeMath, length }));
+      localStorage.setItem(PREFS_KEY, JSON.stringify({ include: includeText, includeMath, kind, depth }));
     } catch {
       // egal
     }
+    saveTone(sheetTone);
     onError(null);
-    const context = chosenWeeks
-      .map((w) => (w.kind === "week" ? `Week ${w.n}${w.title ? ` (${w.title})` : ""}` : weekLabel(w)))
-      .join(", ");
-    void createSheet({ moduleId: course.id, moduleName: course.name, paths: picked, focus: focus.trim() || undefined, include, length, context, math, subject }).then((res) => {
+    const weeksLabel = chosenWeeks.map((w) => (w.kind === "week" ? `Week ${w.n}${w.title ? ` (${w.title})` : ""}` : weekLabel(w))).join(", ");
+    const common = {
+      moduleId: course.id,
+      moduleName: course.name,
+      paths: picked,
+      focus: focus.trim() || undefined,
+      math,
+      subject,
+      tone: sheetTone,
+      weeks: chosenWeeks.map((w) => w.key),
+    };
+    const job =
+      kind === "study"
+        ? createSheet({
+            ...common,
+            include,
+            length: "study",
+            kind: "study",
+            pages: studyPg,
+            context: weeksLabel,
+            fileInfo: pickedFiles.map((x) => ({ path: fileKey(x.file), type: x.type, week: x.week })),
+          })
+        : createSheet({
+            ...common,
+            include: math ? QUICK_INCLUDE_MATH : QUICK_INCLUDE,
+            length: cheatPg === 1 ? "short" : "exam",
+            kind: "week",
+            context: cheatPg === 1 ? weeksLabel : `${weeksLabel}. Make it a cheat sheet: only what is most likely to be asked`,
+            fileInfo: pickedFiles.map((x) => ({ path: fileKey(x.file), type: x.type, week: x.week })),
+          });
+    void job.then((res) => {
       if (res.error) onError(res.error);
     });
     onStarted();
   };
 
-  const sizeHint = picked.length > 10 ? "That’s a lot. Claude uses the saved summaries for some files, so the sheet stays readable." : null;
+  const minutes = kind === "study" ? Math.max(2, Math.round(0.7 + studyPg * 0.35)) : 1;
+  const toneInfo = TONES.find((t) => t.id === sheetTone) ?? TONES[1];
 
   return (
     <>
@@ -1452,8 +1520,8 @@ function NewSheet({
         <ChevronLeft size={15} aria-hidden /> Study
       </button>
       <header>
-        <h1 className="text-[30px] font-bold leading-tight tracking-[-0.02em]">New study sheet</h1>
-        <p className="mt-1 text-muted">A PDF study guide made from your lectures, with exactly the parts you want.</p>
+        <h1 className="text-[30px] font-bold leading-tight tracking-[-0.02em]">New sheet</h1>
+        <p className="mt-1 text-muted">Pick your material, Claude turns it into a PDF to learn from.</p>
       </header>
 
       <Step n={1} title="Course">
@@ -1466,6 +1534,7 @@ function NewSheet({
               onClick={() => {
                 setModuleId(c.id);
                 setPicked([]);
+                setSubjectPick(null);
               }}
             >
               {c.name}
@@ -1474,15 +1543,67 @@ function NewSheet({
         </div>
       </Step>
 
-      <Step n={2} title="Which weeks?">
+      <Step n={2} title="Material">
+        <p className="-mt-1 text-[13px] text-muted">Whole weeks, or open a week and pick files, e.g. the lecture and the tutorial slides. The sheet links them.</p>
         {course ? <WeekPicker course={course} weeks={weeks} picked={picked} onChange={setPicked} mode="sheet" /> : null}
-        {sizeHint && <p className="mt-1 text-[12px] text-muted">{sizeHint}</p>}
       </Step>
 
-      <Step n={3} title="What should be in it?">
+      <Step n={3} title="What do you want to make?">
+        <div role="radiogroup" aria-label="Kind of sheet" className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <KindCard
+            on={kind === "study"}
+            color={color}
+            onClick={() => setKind("study")}
+            preview={<SheetPreview kind="study" pages={picked.length ? studyPg : 4} color={color} />}
+            title="Study sheet"
+            tagline="To understand it"
+            text={"Every topic explained and linked across your files, with clickable references to the slides (“VL\u00a09\u00a0p.\u00a014”)."}
+            meta={picked.length ? `About ${studyPg} pages · from ${matPages} pages of material` : "Grows with the material you pick"}
+          />
+          <KindCard
+            on={kind === "cheat"}
+            color={color}
+            onClick={() => setKind("cheat")}
+            preview={<SheetPreview kind="cheat" pages={picked.length ? cheatPg : 1} color={color} />}
+            title="Cheat sheet"
+            tagline="To revise it fast"
+            text="Only what the exam asks, dense in two columns: terms, tables, traps and exam questions. Great the night before."
+            meta={picked.length ? `${cheatPg} ${cheatPg === 1 ? "page" : "pages"}${cheatPg === 2 ? " · more than two weeks" : ""}` : "1 page per week, 2 for more"}
+          />
+        </div>
+        {kind === "study" && picked.length > 0 && !mixed && (
+          <p className="mt-2 text-[12px] text-muted">Tip: add the tutorial or exercise slides of the same week, then the sheet shows how they connect to the lecture.</p>
+        )}
+      </Step>
+
+      <Step n={4} title="Style">
+        <p className="mb-1.5 text-[12px] font-semibold text-muted">Writing</p>
+        <div role="radiogroup" aria-label="Writing style" className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+          {TONES.map((t) => {
+            const onIt = sheetTone === t.id;
+            return (
+              <button
+                key={t.id}
+                role="radio"
+                aria-checked={onIt}
+                onClick={() => setSheetTone(t.id)}
+                className={`rounded-[10px] px-3 py-2.5 text-left transition-colors ${onIt ? "" : "bg-sunken/60 hover:bg-hover"}`}
+                style={onIt ? { background: tone(color, "soft"), boxShadow: `inset 0 0 0 1.5px ${tone(color)}` } : undefined}
+              >
+                <span className="block text-[13px] font-semibold" style={onIt ? { color: tone(color, "ink") } : undefined}>
+                  {t.label}
+                </span>
+                <span className="block text-[12px] text-muted">{t.hint}</span>
+              </button>
+            );
+          })}
+        </div>
+        <p className="mt-2 text-[12px] text-muted">
+          Sounds like: <span className="italic text-text">“{toneInfo.sample}”</span>
+        </p>
         {course && (
-          <div className="-mt-1 mb-4">
-            <p className="mb-1.5 text-[12px] font-semibold text-muted">Subject style · decides the kind of diagrams and sections</p>
+          <div className="mt-4">
+            <p className="mb-1.5 text-[12px] font-semibold text-muted">Subject · decides the kind of diagrams and sections</p>
             <div className="flex flex-wrap gap-1.5">
               {SUBJECTS.map((x) => (
                 <button
@@ -1498,77 +1619,89 @@ function NewSheet({
                 </button>
               ))}
             </div>
-            <p className="mt-1.5 text-[12px] text-muted">{SUBJECTS.find((x) => x.id === subject)?.hint}.</p>
           </div>
         )}
-        <p className="mb-1.5 text-[12px] font-semibold text-muted">Start from a template, then switch parts on or off</p>
-        <div className="flex flex-wrap gap-1.5">
-          {PRESET_LIST.map((p) => (
-            <button
-              key={p.id}
-              onClick={() => setInclude(p.include)}
-              aria-pressed={preset === p.id}
-              className={`h-8 rounded-full px-3.5 text-[13px] font-medium transition-colors ${preset === p.id ? "bg-accent text-on-accent" : "bg-sunken hover:bg-hover"}`}
-            >
-              {p.label}
-            </button>
-          ))}
-        </div>
-        <ul className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3">
-          {SECTIONS.map((s) => {
-            const onIt = Boolean(include[s.key]);
-            const locked = "fixed" in s && s.fixed;
-            return (
-              <li key={s.key}>
-                <button
-                  onClick={() => !locked && set(s.key, !onIt)}
-                  aria-pressed={onIt}
-                  disabled={locked}
-                  className={`flex h-full w-full items-start gap-2.5 rounded-[10px] px-3 py-2.5 text-left transition-colors ${onIt ? "" : "bg-sunken/60 hover:bg-hover"}`}
-                  style={onIt ? { background: tone(color, "soft"), boxShadow: `inset 0 0 0 1.5px ${tone(color)}` } : undefined}
-                >
-                  <span
-                    className="mt-0.5 grid size-4 shrink-0 place-items-center rounded-[4px]"
-                    style={onIt ? { background: tone(color), color: "var(--on-solid)" } : { boxShadow: "inset 0 0 0 1.5px var(--muted)" }}
-                    aria-hidden
-                  >
-                    {onIt && <Check size={11} strokeWidth={3} />}
-                  </span>
-                  <span className="min-w-0">
-                    <span className="block text-[13px] font-semibold" style={onIt ? { color: tone(color, "ink") } : undefined}>
-                      {s.label}
-                      {locked && <span className="ml-1 font-normal text-muted">always</span>}
-                    </span>
-                    <span className="block text-[12px] text-muted">{s.hint}</span>
-                  </span>
-                </button>
-              </li>
-            );
-          })}
-        </ul>
       </Step>
 
-      <Step n={4} title="Length and focus">
-        <Segmented
-          value={length}
-          onChange={(v) => setLength(v as SheetLength)}
-          options={[
-            { value: "short", label: "One page" },
-            { value: "normal", label: "Compact · 2–3 pages" },
-            { value: "detailed", label: "Detailed · 6+ pages" },
-          ]}
-        />
-        <input
-          value={focus}
-          onChange={(e) => setFocus(e.target.value)}
-          placeholder="Focus (optional), e.g. “only what the exam needs” or “Zuschlagskalkulation”"
-          className="mt-3 h-9 w-full rounded-lg bg-sunken px-3 text-[13px] outline-none placeholder:text-muted focus:shadow-[inset_0_0_0_2px_var(--focus)]"
-        />
-      </Step>
+      {kind === "study" ? (
+        <Step n={5} title="What should be in it?">
+          <p className="mb-1.5 text-[12px] font-semibold text-muted">Start from a template, then switch parts on or off</p>
+          <div className="flex flex-wrap gap-1.5">
+            {PRESET_LIST.map((p) => (
+              <button
+                key={p.id}
+                onClick={() => setInclude(p.include)}
+                aria-pressed={preset === p.id}
+                className={`h-8 rounded-full px-3.5 text-[13px] font-medium transition-colors ${preset === p.id ? "bg-accent text-on-accent" : "bg-sunken hover:bg-hover"}`}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+          <ul className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3">
+            {SECTIONS.map((s) => {
+              const onIt = Boolean(include[s.key]);
+              const locked = "fixed" in s && s.fixed;
+              return (
+                <li key={s.key}>
+                  <button
+                    onClick={() => !locked && set(s.key, !onIt)}
+                    aria-pressed={onIt}
+                    disabled={locked}
+                    className={`flex h-full w-full items-start gap-2.5 rounded-[10px] px-3 py-2.5 text-left transition-colors ${onIt ? "" : "bg-sunken/60 hover:bg-hover"}`}
+                    style={onIt ? { background: tone(color, "soft"), boxShadow: `inset 0 0 0 1.5px ${tone(color)}` } : undefined}
+                  >
+                    <span
+                      className="mt-0.5 grid size-4 shrink-0 place-items-center rounded-[4px]"
+                      style={onIt ? { background: tone(color), color: "var(--on-solid)" } : { boxShadow: "inset 0 0 0 1.5px var(--muted)" }}
+                      aria-hidden
+                    >
+                      {onIt && <Check size={11} strokeWidth={3} />}
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block text-[13px] font-semibold" style={onIt ? { color: tone(color, "ink") } : undefined}>
+                        {s.label}
+                        {locked && <span className="ml-1 font-normal text-muted">always</span>}
+                      </span>
+                      <span className="block text-[12px] text-muted">{s.hint}</span>
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+          <p className="mb-1.5 mt-5 text-[12px] font-semibold text-muted">How deep</p>
+          <Segmented
+            value={depth}
+            onChange={(v) => setDepth(v as SheetDepth)}
+            options={[
+              { value: "essentials", label: `Essentials${picked.length ? ` · ${studyPages(matPages, "essentials")} p.` : ""}` },
+              { value: "standard", label: `Standard${picked.length ? ` · ${studyPages(matPages, "standard")} p.` : ""}` },
+              { value: "deep", label: `In depth${picked.length ? ` · ${studyPages(matPages, "deep")} p.` : ""}` },
+            ]}
+          />
+          <FocusInput value={focus} onChange={setFocus} />
+        </Step>
+      ) : (
+        <Step n={5} title="Focus">
+          <p className="-mt-1 text-[13px] text-muted">A cheat sheet picks its own parts so it fits: key terms, tables, traps and likely exam questions{math ? ", formulas and recipes" : ""}.</p>
+          <FocusInput value={focus} onChange={setFocus} />
+        </Step>
+      )}
 
       <div className="sticky bottom-0 -mx-2 flex items-center gap-3 rounded-[12px] bg-bg/90 px-2 py-3 backdrop-blur">
         <span className="flex-1 text-[12px] text-muted">
-          {length === "short" ? "One page, only what matters for the exam. About 1 minute." : length === "normal" ? "2–3 pages. About 1–2 minutes." : "Everything in detail. 3–5 minutes."} The PDF opens by itself.
+          {picked.length ? (
+            <>
+              <strong className="font-semibold text-text">
+                {kind === "study" ? "Study sheet" : "Cheat sheet"} · {kind === "study" ? "about " : ""}
+                {pages} {pages === 1 ? "page" : "pages"} · {toneInfo.label}
+              </strong>{" "}
+              · takes about {minutes} {minutes === 1 ? "minute" : "minutes"}, the PDF opens by itself.
+            </>
+          ) : (
+            "Pick some material first."
+          )}
         </span>
         <Button variant="plain" onClick={onBack}>
           Cancel
@@ -1578,6 +1711,150 @@ function NewSheet({
         </Button>
       </div>
     </>
+  );
+}
+
+function FocusInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  return (
+    <input
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder="Focus (optional), e.g. “Zuschlagskalkulation” or “only the UML parts”"
+      aria-label="Focus (optional)"
+      className="mt-3 h-9 w-full rounded-lg bg-sunken px-3 text-[13px] outline-none placeholder:text-muted focus:shadow-[inset_0_0_0_2px_var(--focus)]"
+    />
+  );
+}
+
+function KindCard({
+  on,
+  color,
+  onClick,
+  preview,
+  title,
+  tagline,
+  text,
+  meta,
+}: {
+  on: boolean;
+  color: CourseColor;
+  onClick: () => void;
+  preview: React.ReactNode;
+  title: string;
+  tagline: string;
+  text: string;
+  meta: string;
+}) {
+  return (
+    <button
+      role="radio"
+      aria-checked={on}
+      onClick={onClick}
+      className={`flex items-stretch gap-4 rounded-[12px] p-3.5 text-left transition-colors ${on ? "" : "bg-sunken/60 hover:bg-hover"}`}
+      style={on ? { background: tone(color, "soft"), boxShadow: `inset 0 0 0 1.5px ${tone(color)}` } : undefined}
+    >
+      <span className="grid w-[112px] shrink-0 place-items-center rounded-[8px] bg-sunken py-1.5" aria-hidden>
+        {preview}
+      </span>
+      <span className="flex min-w-0 flex-col py-0.5">
+        <span className="flex items-baseline gap-2">
+          <span className="text-[15px] font-bold" style={on ? { color: tone(color, "ink") } : undefined}>
+            {title}
+          </span>
+          <span className="text-[12px] text-muted">{tagline}</span>
+        </span>
+        <span className="mt-1 text-[13px] leading-snug text-muted">{text}</span>
+        <span className="mt-auto pt-2 text-[12px] font-semibold" style={{ color: on ? tone(color, "ink") : "var(--text)" }}>
+          {meta}
+        </span>
+      </span>
+    </button>
+  );
+}
+
+/** Kleine Seitenansicht: Lernzettel als Stapel (mehr Material = mehr Blätter), Spickzettel als dichte Seite in zwei Spalten. */
+function SheetPreview({ kind, pages, color }: { kind: SheetKind; pages: number; color: CourseColor }) {
+  const c = tone(color);
+  // Papier ist immer weiß (wie das PDF), auch im Dunkelmodus: helle Tönung statt der dunklen „soft“-Farbe
+  const soft = `color-mix(in srgb, ${c} 18%, white)`;
+  const ink = "#6b7480";
+  const paper = "#ffffff";
+  const edge = "#cfd5dd";
+  const back = kind === "study" ? Math.min(3, Math.max(0, Math.ceil(pages / 3))) : pages > 1 ? 1 : 0;
+  const W = 62;
+  const H = 84;
+  const x0 = 14;
+  const y0 = 12;
+  const line = (x: number, y: number, w: number, o = 0.28) => <rect key={`${x}-${y}`} x={x} y={y} width={w} height={1.6} rx={0.8} fill={ink} opacity={o} />;
+  return (
+    <svg viewBox="0 0 96 112" width={96} height={112} role="img" aria-label={kind === "study" ? `${pages} pages` : `${pages} page`}>
+      {Array.from({ length: back }, (_, i) => back - i).map((k) => (
+        <rect key={k} x={x0 + k * 4} y={y0 - k * 3.5} width={W} height={H} rx={2.5} fill={paper} stroke={edge} strokeWidth={0.8} opacity={1 - k * 0.12} />
+      ))}
+      <rect x={x0} y={y0} width={W} height={H} rx={2.5} fill={paper} stroke={edge} strokeWidth={0.8} />
+      {kind === "study" ? (
+        <g>
+          <rect x={x0 + 6} y={y0 + 6} width={34} height={3.4} rx={1} fill={c} />
+          <rect x={x0 + 6} y={y0 + 11.5} width={W - 12} height={0.8} fill={c} opacity={0.7} />
+          {/* Roter Faden: kleine Tabelle */}
+          <rect x={x0 + 6} y={y0 + 15} width={W - 12} height={13} rx={1} fill={soft} />
+          {[0, 1, 2].map((r) => (
+            <g key={r}>
+              <rect x={x0 + 8} y={y0 + 17.5 + r * 3.6} width={10} height={1.4} rx={0.7} fill={c} opacity={0.8} />
+              <rect x={x0 + 21} y={y0 + 17.5 + r * 3.6} width={8} height={1.4} rx={0.7} fill={ink} opacity={0.35} />
+              <rect x={x0 + 32} y={y0 + 17.5 + r * 3.6} width={18} height={1.4} rx={0.7} fill={ink} opacity={0.25} />
+            </g>
+          ))}
+          <rect x={x0 + 6} y={y0 + 32} width={22} height={2.4} rx={1} fill={c} opacity={0.9} />
+          {line(x0 + 6, y0 + 37, 48)}
+          {line(x0 + 6, y0 + 40.5, 44)}
+          {line(x0 + 6, y0 + 44, 30)}
+          <rect x={x0 + 38} y={y0 + 43.2} width={12} height={3.2} rx={1.2} fill={soft} stroke={c} strokeWidth={0.6} />
+          {/* Diagramm */}
+          <rect x={x0 + 10} y={y0 + 51} width={14} height={8} rx={1.5} fill="none" stroke={c} strokeWidth={0.9} />
+          <rect x={x0 + 36} y={y0 + 51} width={14} height={8} rx={1.5} fill="none" stroke={c} strokeWidth={0.9} />
+          <path d={`M${x0 + 24} ${y0 + 55} H${x0 + 36}`} stroke={c} strokeWidth={0.9} />
+          {line(x0 + 6, y0 + 64, 50)}
+          {line(x0 + 6, y0 + 67.5, 46)}
+          {line(x0 + 6, y0 + 71, 38)}
+          <rect x={x0 + 46} y={y0 + 70.2} width={10} height={3.2} rx={1.2} fill={soft} stroke={c} strokeWidth={0.6} />
+          {line(x0 + 6, y0 + 74.5, 42)}
+        </g>
+      ) : (
+        <g>
+          <rect x={x0 + 5} y={y0 + 5} width={30} height={2.8} rx={1} fill={c} />
+          <rect x={x0 + 5} y={y0 + 9.5} width={W - 10} height={0.6} fill={c} opacity={0.7} />
+          <rect x={x0 + W / 2 - 0.3} y={y0 + 13} width={0.6} height={H - 18} fill={edge} />
+          {[0, 1].map((col) => {
+            const cx = x0 + 5 + col * (W / 2 - 2.5);
+            const cw = W / 2 - 7.5;
+            return (
+              <g key={col}>
+                {[0, 1, 2].map((blk) => {
+                  const by = y0 + 13 + blk * 22;
+                  return (
+                    <g key={blk}>
+                      <rect x={cx} y={by} width={cw * 0.55} height={1.8} rx={0.8} fill={c} opacity={0.9} />
+                      {(col + blk) % 2 === 0 ? (
+                        <rect x={cx} y={by + 3.5} width={cw} height={7} rx={1} fill={soft} />
+                      ) : (
+                        <>
+                          {line(cx, by + 4, cw, 0.3)}
+                          {line(cx, by + 6.6, cw * 0.85, 0.3)}
+                        </>
+                      )}
+                      {line(cx, by + 12.5, cw * 0.9, 0.3)}
+                      {line(cx, by + 15.1, cw * 0.75, 0.3)}
+                      {line(cx, by + 17.7, cw * 0.95, 0.3)}
+                    </g>
+                  );
+                })}
+              </g>
+            );
+          })}
+        </g>
+      )}
+    </svg>
   );
 }
 

@@ -514,7 +514,15 @@ function createStudy({ packaged, broadcast, ...deps }) {
     const dir = cfg.targetDir ? path.join(cfg.targetDir, "Study sheets") : path.join(DIR, "pdf");
     const clean = (x) => String(x || "").replace(/\s*:\s*/g, " – ").replace(/[/\\*?"<>|\n\r]/g, "-").replace(/\s+/g, " ").trim();
     // Einseiter und Klausur-Spickzettel im Namen kenntlich machen (sonst „… (2).pdf“ neben dem langen Lernzettel derselben Woche)
-    const tag = /spickzettel|cheat ?sheet|one-?pager|einseiter/i.test(sheet.title || "") ? "" : sheet.kind === "exam" ? " – Exam cheat sheet" : sheet.length === "short" ? " – One-pager" : "";
+    const tag = /spickzettel|cheat ?sheet|one-?pager|einseiter|lernhilfe|lernzettel|study (sheet|guide)/i.test(sheet.title || "")
+      ? ""
+      : sheet.kind === "exam"
+        ? " – Exam cheat sheet"
+        : sheet.length === "short"
+          ? " – One-pager"
+          : sheet.length === "study"
+            ? " – Study sheet"
+            : "";
     const base = clean(`${moduleName ? `${moduleName} – ` : ""}${sheet.title}${tag}`).slice(0, 120) || "Study sheet";
     let file = path.join(dir, `${base}.pdf`);
     for (let n = 2; fs.existsSync(file) && n < 100; n++) file = path.join(dir, `${base} (${n}).pdf`);
@@ -564,7 +572,7 @@ function createStudy({ packaged, broadcast, ...deps }) {
     return parts.length ? { ok: true, input: parts.join("\n\n") } : fail("ai_error", "These files couldn't be read.");
   }
 
-  async function createSheet({ moduleId, moduleName, paths, focus, include, length, accent, context, math, subject, weeks, kind }) {
+  async function createSheet({ moduleId, moduleName, paths, focus, include, length, accent, context, math, subject, weeks, kind, tone, pages, fileInfo }) {
     math = Boolean(math);
     subject = ["business", "math", "cs", "law", "science", "humanities"].includes(subject) ? subject : math ? "math" : "business";
     if (sheetRunning) return fail("busy", "A study sheet is already being written.");
@@ -572,7 +580,19 @@ function createStudy({ packaged, broadcast, ...deps }) {
     if (!files.length) return fail("invalid", "Choose at least one file.");
     const inc = sheetLib.cleanInclude(include, math);
     if (length === "short" || length === "exam") inc.figures = false;
-    const len = ["short", "normal", "detailed", "exam"].includes(length) ? length : "normal";
+    const len = ["short", "normal", "detailed", "exam", "study"].includes(length) ? length : "normal";
+    const toneOk = ["simple", "focused", "academic"].includes(tone) ? tone : "focused";
+    const pageGoal = len === "study" ? Math.max(2, Math.min(16, Math.round(Number(pages) || 5))) : null;
+    // Art und Woche je Datei (aus der Oberfläche): für „F1 = Vorlesungsfolien …“ und Kurznamen wie „VL 9“
+    const infoBy = new Map((Array.isArray(fileInfo) ? fileInfo : []).filter((x) => x && typeof x.path === "string").map((x) => [x.path, x]));
+    const info = files.map((p) => {
+      const x = infoBy.get(p) || {};
+      return { type: typeof x.type === "string" ? x.type : null, week: Number.isFinite(x.week) ? x.week : null };
+    });
+    const KIND_TEXT = { lecture: "lecture slides", notes: "lecture notes", sheet: "exercise sheet", exslides: "exercise session slides", tutorial: "tutorial slides", solution: "solution", reading: "reading", selfstudy: "self-study unit", exam: "old exam", info: "course info" };
+    const legend = files
+      .map((p, i) => `F${i + 1} = ${KIND_TEXT[info[i].type] || "file"} "${path.basename(p)}"${info[i].week != null ? ` (week ${info[i].week})` : ""}`)
+      .join("; ");
     const focusText = typeof focus === "string" && focus.trim() ? focus.trim().slice(0, 300) : null;
     sheetProgress = { startedAt: Date.now(), step: "reading" };
     sheetRunning = (async () => {
@@ -590,6 +610,9 @@ function createStudy({ packaged, broadcast, ...deps }) {
           context: typeof context === "string" ? context.slice(0, 400) : "",
           subject,
           candidates: src.candidates || "",
+          tone: toneOk,
+          pages: pageGoal,
+          legend,
         }),
         input: src.input,
         schema: math ? sheetLib.MATH_SCHEMA : sheetLib.SCHEMA,
@@ -608,12 +631,15 @@ function createStudy({ packaged, broadcast, ...deps }) {
         math,
         subject,
         weeks: Array.isArray(weeks) ? weeks.map(String).slice(0, 30) : [],
-        kind: kind === "exam" ? "exam" : "week",
+        kind: len === "study" ? "study" : kind === "exam" ? "exam" : "week",
         include: inc,
         length: len,
+        tone: toneOk,
+        pages: pageGoal,
         files: files.map((p) => ({ path: p, name: path.basename(p) })),
         ...res.data,
       };
+      sheet.labels = sheetLib.fileLabels(sheet.files, info, sheet.language);
       const accentColor = /^#[0-9a-f]{6}$/i.test(String(accent || "")) ? accent : undefined;
       sheet.accent = accentColor || null;
       try {
