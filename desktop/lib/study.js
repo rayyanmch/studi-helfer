@@ -219,10 +219,31 @@ const FILE_SCHEMA = obj({
   topics: list({ type: "string" }, "2–6 short topic names"),
   terms: list(obj({ term: { type: "string" }, definition: { type: "string" }, page }), "Up to 12 key terms with a one-sentence definition"),
   cards: list(
-    obj({ q: { type: "string" }, a: { type: "string" }, page }),
+    obj({
+      q: { type: "string" },
+      a: { type: "string" },
+      page,
+      type: { type: "string", enum: ["concept", "definition", "theorem", "formula", "strategy", "compute", "truefalse", "proof"] },
+      steps: list({ type: "string" }, "Only for compute/strategy/proof: 2–5 short steps; otherwise empty"),
+    }),
     "6–12 flashcards that test understanding: a clear question, a short exact answer",
   ),
 });
+
+/** Anweisung für Mathe-Fächer (Konzept: kleine Karten, verschiedene Kartentypen, Rechenwege Schritt für Schritt). */
+const MATH_FILE_PROMPT = [
+  "This is a mathematics course.",
+  sheetLib.MATH_RULES,
+  "Flashcards: 8–14 small cards (one fact each), a mix of these types:",
+  "definition (term → exact definition with notation),",
+  "theorem (name or situation → statement with all conditions),",
+  "formula (what it computes → the formula; or a formula with a gap '___' → the missing part),",
+  "strategy (a concrete task from the material → which method and the first step; trains choosing the right method),",
+  "compute (a small calculation like in the exercise sheets → result, with 2–4 steps in 'steps'),",
+  "truefalse (a statement → 'Wahr' or 'Falsch' plus the reason or a counterexample),",
+  "proof (which theorem → the key idea of its proof in one or two sentences, steps optional).",
+  "Answers are short; put the working into 'steps'. keyPoints and terms also use LaTeX.",
+].join(" ");
 
 // ------------------------------------------------------------------ Text holen
 
@@ -252,11 +273,13 @@ function createStudy({ packaged, broadcast, ...deps }) {
 
   const push = () => broadcast("studi:study:state", jobState());
 
-  async function analyzeOne(p, moduleName) {
+  async function analyzeOne(p, moduleName, math = false) {
     const hashes = readJson(HASHES, {});
     const hash = hashOf(p, hashes);
     writeJson(HASHES, hashes);
-    if (readJson(ANALYSES, {})[hash]) return { ok: true, cached: true };
+    const cached = readJson(ANALYSES, {})[hash];
+    // Mathe-Modus: ältere Auswertungen ohne Formeln werden einmal neu gemacht
+    if (cached && (!math || cached.math)) return { ok: true, cached: true };
     if (readJson(UNREADABLE, {})[hash]) return fail("no_text", "This file is handwritten or scanned, so it can't be read yet.");
     const text = await fileText(packaged(), p, FILE_CHARS);
     if (!text.ok) {
@@ -270,7 +293,9 @@ function createStudy({ packaged, broadcast, ...deps }) {
     const name = path.basename(p);
     const res = await askClaude({
       system: SYSTEM,
-      prompt: `Course: ${moduleName || "unknown"}. File: ${name}${text.partial ? ` (only pages 1–${text.pagesIncluded} of ${text.pages})` : ""}. Create the study aids for this file.`,
+      prompt: `Course: ${moduleName || "unknown"}. File: ${name}${text.partial ? ` (only pages 1–${text.pagesIncluded} of ${text.pages})` : ""}. Create the study aids for this file.${
+        math ? `\n${MATH_FILE_PROMPT}` : " Card types here are mostly concept or definition; steps stay empty."
+      }`,
       input: text.text,
       schema: FILE_SCHEMA,
     });
@@ -282,6 +307,7 @@ function createStudy({ packaged, broadcast, ...deps }) {
       model: MODEL,
       pages: text.pages,
       partial: text.partial ? text.pagesIncluded : null,
+      math: Boolean(math),
       ...res.data,
     };
     writeJson(ANALYSES, analyses);
@@ -289,7 +315,8 @@ function createStudy({ packaged, broadcast, ...deps }) {
   }
 
   /** Startet die Auswertung im Hintergrund; Fortschritt kommt über "studi:study:state". */
-  function analyze(paths, moduleName) {
+  function analyze(paths, moduleName, opts = {}) {
+    const math = Boolean(opts && opts.math);
     const todo = [...new Set((Array.isArray(paths) ? paths : []).filter(allowedPath))];
     if (job.running) {
       // laufender Auftrag: nur noch Fehlendes hinten anhängen
@@ -309,7 +336,7 @@ function createStudy({ packaged, broadcast, ...deps }) {
         const t0 = Date.now();
         let res;
         try {
-          res = await analyzeOne(p, moduleName);
+          res = await analyzeOne(p, moduleName, math);
         } catch (e) {
           console.error("[study]", e);
           res = fail("ai_error", "Something went wrong. Please try again.");
@@ -484,11 +511,12 @@ function createStudy({ packaged, broadcast, ...deps }) {
     return parts.length ? { ok: true, input: parts.join("\n\n") } : fail("ai_error", "These files couldn't be read.");
   }
 
-  async function createSheet({ moduleId, moduleName, paths, focus, include, length, accent, context }) {
+  async function createSheet({ moduleId, moduleName, paths, focus, include, length, accent, context, math }) {
+    math = Boolean(math);
     if (sheetRunning) return fail("busy", "A study sheet is already being written.");
     const files = [...new Set((Array.isArray(paths) ? paths : []).filter(allowedPath))].slice(0, 30);
     if (!files.length) return fail("invalid", "Choose at least one file.");
-    const inc = sheetLib.cleanInclude(include);
+    const inc = sheetLib.cleanInclude(include, math);
     const len = ["short", "normal", "detailed"].includes(length) ? length : "normal";
     const focusText = typeof focus === "string" && focus.trim() ? focus.trim().slice(0, 300) : null;
     sheetProgress = { startedAt: Date.now(), step: "reading" };
@@ -498,9 +526,16 @@ function createStudy({ packaged, broadcast, ...deps }) {
       sheetProgress.step = "writing";
       const res = await askClaude({
         system: SYSTEM,
-        prompt: sheetLib.prompt({ moduleName, count: files.length, include: inc, length: len, focus: focusText, context: typeof context === "string" ? context.slice(0, 400) : "" }),
+        prompt: (math ? sheetLib.mathPrompt : sheetLib.prompt)({
+          moduleName,
+          count: files.length,
+          include: inc,
+          length: len,
+          focus: focusText,
+          context: typeof context === "string" ? context.slice(0, 400) : "",
+        }),
         input: src.input,
-        schema: sheetLib.SCHEMA,
+        schema: math ? sheetLib.MATH_SCHEMA : sheetLib.SCHEMA,
         timeoutMs: 600_000,
       });
       if (!res.ok) return res;
@@ -512,6 +547,7 @@ function createStudy({ packaged, broadcast, ...deps }) {
         createdAt: Date.now(),
         focus: focusText,
         context: typeof context === "string" ? context.slice(0, 120) : null,
+        math,
         include: inc,
         length: len,
         files: files.map((p) => ({ path: p, name: path.basename(p) })),
@@ -650,8 +686,10 @@ function createStudy({ packaged, broadcast, ...deps }) {
 /** Textdatei für Anki („Datei → Importieren“): Vorderseite, Rückseite, Schlagwörter, getrennt durch Tab. */
 function ankiText(cards) {
   // HTML an, damit Zeilenumbrüche erhalten bleiben; deshalb < > & im Text maskieren
+  // $…$ → \\(…\\), $$…$$ → \\[…\\] (so zeigt Anki Formeln mit MathJax)
+  const mathjax = (s) => String(s ?? "").replace(/\$\$([\s\S]+?)\$\$/g, "\\[$1\\]").replace(/\$([^$\n]+?)\$/g, "\\($1\\)");
   const clean = (s) =>
-    String(s ?? "")
+    mathjax(s)
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;")
@@ -673,7 +711,7 @@ function register(handle, { packaged, windows, dialog, BrowserWindow, shell }) {
   const study = createStudy({ packaged, broadcast, BrowserWindow, shell });
   handle("studi:study:status", () => study.status());
   handle("studi:study:get", (paths) => study.get(paths));
-  handle("studi:study:analyze", (paths, moduleName) => study.analyze(paths, String(moduleName || "")));
+  handle("studi:study:analyze", (paths, moduleName, opts) => study.analyze(paths, String(moduleName || ""), opts || {}));
   handle("studi:study:cancel", () => study.cancel());
   handle("studi:study:review", (cardId, knew, practice) => study.review(cardId, Boolean(knew), Boolean(practice)));
   handle("studi:study:suspend", (cardId, on) => study.suspend(cardId, Boolean(on)));

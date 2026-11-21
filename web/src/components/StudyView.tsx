@@ -7,12 +7,14 @@ import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, ArrowRight, Check, ChevronDown, ChevronRight, EyeOff, FileText, Layers, NotebookPen, RotateCcw, Square, X } from "lucide-react";
 import { Button, Notice, Spinner, colorOf, tone } from "./ui";
 import { DocTile, displayName } from "./files";
+import { MathText } from "./MathText";
 import type { Course, CourseColor, CourseFile } from "@/lib/mock-data";
 import * as store from "@/lib/app-store";
 import { useApp } from "@/lib/app-store";
 import {
   type Analysis,
   type Card,
+  type CardType,
   analyze,
   cancelAnalyze,
   cardsOf,
@@ -29,6 +31,7 @@ import {
   STUDY_FILE,
 } from "@/lib/study";
 import { weekLabel } from "@/lib/weeks";
+import { useMathMode } from "@/lib/subject";
 
 // --- Reiter „Study“ auf der Kursseite ------------------------------------------------
 
@@ -49,9 +52,10 @@ export function StudyPanel({ course }: { course: Course }) {
   const due = todaysSet(cards, study.today, study.stats).all;
   const missing = files.filter((f) => !study.files[fileKey(f)] && !study.unreadable[fileKey(f)]);
 
+  const { math } = useMathMode(course, files.map((f) => study.files[fileKey(f)]));
   const startAnalyze = async (list: CourseFile[]) => {
     setError(null);
-    const msg = await analyze(list.map(fileKey), course.name);
+    const msg = await analyze(list.map(fileKey), course.name, math);
     if (msg) setError(msg);
   };
 
@@ -239,6 +243,7 @@ export function Review({
 }) {
   const [i, setI] = useState(0);
   const [shown, setShown] = useState(false);
+  const [stepsShown, setStepsShown] = useState(0); // Rechenweg Schritt für Schritt aufdecken
   const [result, setResult] = useState({ knew: 0, again: 0 });
   const card = cards[i];
   const finished = i >= cards.length;
@@ -246,8 +251,11 @@ export function Review({
 
   const next = () => {
     setShown(false);
+    setStepsShown(0);
     setI((n) => n + 1);
   };
+  const steps = card?.steps ?? [];
+  const nextStep = () => setStepsShown((n) => Math.min(steps.length, n + 1));
   const answer = (knew: boolean) => {
     if (!card) return;
     void review(card.id, knew, practice);
@@ -271,6 +279,8 @@ export function Review({
       } else if (!finished && (e.key === " " || e.key === "Enter") && !shown) {
         e.preventDefault();
         setShown(true);
+      } else if (!finished && !shown && (e.key === "n" || e.key === "N") && stepsShown < steps.length) {
+        nextStep();
       } else if (!finished && shown && e.key === "1") answer(false);
       else if (!finished && shown && e.key === "2") answer(true);
     };
@@ -324,11 +334,30 @@ export function Review({
             </button>
             {isNewCard(card) && <span className="font-semibold text-[var(--c-green-ink)]">new</span>}
           </p>
-          <p className="mt-4 min-h-[56px] text-[20px] font-semibold leading-snug">{card.q}</p>
+          {card.type && card.type !== "concept" && (
+            <p className="mt-4 text-[12px] font-semibold" style={{ color: tone(color, "ink") }}>
+              {TYPE_LABEL[card.type]}
+            </p>
+          )}
+          <p className={`${card.type && card.type !== "concept" ? "mt-1" : "mt-4"} min-h-[56px] text-[20px] font-semibold leading-snug`}>
+            <MathText text={card.q} math={card.math} />
+          </p>
+          {steps.length > 0 && (shown || stepsShown > 0) && (
+            <ol className="mt-4 flex flex-col gap-1.5 border-l-2 pl-4 text-[15px]" style={{ borderColor: tone(color, "soft") }}>
+              {steps.slice(0, shown ? steps.length : stepsShown).map((st, k) => (
+                <li key={k} className="leading-relaxed">
+                  <span className="mr-2 text-[12px] font-semibold text-muted">{k + 1}.</span>
+                  <MathText text={st} math={card.math} />
+                </li>
+              ))}
+            </ol>
+          )}
           {shown ? (
             <>
               <div className="my-5 h-px bg-line" />
-              <p className="whitespace-pre-line text-[15px] leading-relaxed">{card.a}</p>
+              <p className="whitespace-pre-line text-[15px] leading-relaxed">
+                <MathText text={card.a} math={card.math} />
+              </p>
               <div className="mt-8 flex flex-wrap items-center gap-2">
                 <Button onClick={() => answer(false)}>
                   <RotateCcw size={14} aria-hidden /> Didn’t know <Kbd>1</Kbd>
@@ -343,7 +372,12 @@ export function Review({
               </div>
             </>
           ) : (
-            <div className="mt-8 flex items-center gap-2">
+            <div className="mt-8 flex flex-wrap items-center gap-2">
+              {steps.length > 0 && stepsShown < steps.length && (
+                <Button onClick={nextStep} title="Try the next step yourself first, then check it">
+                  {stepsShown === 0 ? "Show first step" : "Next step"} <Kbd>N</Kbd>
+                </Button>
+              )}
               <Button variant="primary" onClick={() => setShown(true)}>
                 Show answer <Kbd>Space</Kbd>
               </Button>
@@ -365,6 +399,18 @@ export function Review({
 }
 
 const isNewCard = (c: Card) => !c.state || !c.state.box;
+
+/** Kartentypen im Mathe-Modus (Konzept: kleine Karten, Methodenwahl üben, Rechenwege, Gegenbeispiele). */
+export const TYPE_LABEL: Record<CardType, string> = {
+  concept: "Concept",
+  definition: "Definition",
+  theorem: "Theorem",
+  formula: "Formula",
+  strategy: "Which method?",
+  compute: "Calculate",
+  truefalse: "True or false?",
+  proof: "Proof idea",
+};
 
 export function Kbd({ children }: { children: React.ReactNode }) {
   return <kbd className="ml-1 rounded bg-hover px-1 font-sans text-[11px] font-medium opacity-70">{children}</kbd>;
@@ -413,6 +459,7 @@ export function SummaryRow({
         ) : analysis ? (
           <button onClick={() => setOpen(!open)} className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[12px] font-medium hover:bg-hover" style={{ color: tone(color, "ink") }}>
             Summary · {ids.length} cards{learned ? ` · ${learned} learned` : ""}
+            {analysis.math && <span className="text-muted"> · formulas</span>}
             {open ? <ChevronDown size={13} aria-hidden /> : <ChevronRight size={13} aria-hidden />}
           </button>
         ) : unreadable ? (
@@ -427,7 +474,9 @@ export function SummaryRow({
       </div>
       {open && analysis && (
         <div className="px-3 pb-4 pl-[50px] text-[14px] leading-relaxed">
-          <p>{analysis.summary}</p>
+          <p>
+            <MathText text={analysis.summary} math={analysis.math} />
+          </p>
           {analysis.partial && <p className="mt-1 text-[12px] text-muted">Based on pages 1–{analysis.partial} of {analysis.pages}.</p>}
           {analysis.topics.length > 0 && (
             <p className="mt-3 flex flex-wrap gap-1.5">
@@ -444,7 +493,7 @@ export function SummaryRow({
               <li key={i} className="flex gap-2">
                 <span className="mt-[9px] size-1.5 shrink-0 rounded-full" style={{ background: tone(color) }} aria-hidden />
                 <span>
-                  {k.text}
+                  <MathText text={k.text} math={analysis.math} />
                   {k.page > 0 && <span className="ml-1 text-[12px] text-muted">p. {k.page}</span>}
                 </span>
               </li>
@@ -456,8 +505,12 @@ export function SummaryRow({
               <dl className="grid grid-cols-1 gap-x-4 gap-y-1.5 sm:grid-cols-[minmax(120px,max-content)_1fr]">
                 {analysis.terms.map((t, i) => (
                   <div key={i} className="contents">
-                    <dt className="font-semibold">{t.term}</dt>
-                    <dd className="text-muted">{t.definition}</dd>
+                    <dt className="font-semibold">
+                      <MathText text={t.term} math={analysis.math} />
+                    </dt>
+                    <dd className="text-muted">
+                      <MathText text={t.definition} math={analysis.math} />
+                    </dd>
                   </div>
                 ))}
               </dl>

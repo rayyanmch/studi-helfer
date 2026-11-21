@@ -6,6 +6,8 @@
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
+const { pathToFileURL } = require("node:url");
+const katex = require("katex");
 
 /** Bausteine, die der Nutzer an- und ausschalten kann (Reihenfolge = Reihenfolge im PDF). */
 const SECTIONS = {
@@ -22,6 +24,31 @@ const SECTIONS = {
   answers: "short model answers to the review questions",
   bigPicture: "at the end: the 3–6 core ideas that connect all parts",
 };
+
+/** Bausteine für Mathe-Fächer (eigene Herangehensweise: Definitionen, Sätze, Formeln, Rezepte, Rechenwege). */
+const MATH_SECTIONS = {
+  summary: "a short overview in 2–4 paragraphs with bold lead-ins: what this part is about and why it matters",
+  intuition: "the intuition behind it: what it means, geometric or everyday picture, 1–3 short points",
+  definitions: "every important definition, exactly as in the material, with notation",
+  theorems: "theorems, rules and properties (Sätze), with all conditions, exactly as in the material",
+  formulas: "a formula sheet: each formula with what the symbols mean / when to use it",
+  methods: "recipes: step-by-step procedures for the standard task types (e.g. 'Polarform bestimmen: 1. … 2. …')",
+  examples: "fully worked examples from the material or exercise sheets: task, every step on its own line with the reason, result",
+  tasks: "typical exam task types seen in the exercise sheets and how to approach each",
+  mistakes: "typical mistakes (forgotten conditions, sign errors, wrong case distinctions) and the correct way",
+  proofs: "proof ideas: the key trick of important proofs in 1–3 sentences",
+  practice: "practice problems of the same type as in the material",
+  answers: "full solutions to the practice problems, step by step",
+  bigPicture: "at the end: how the parts connect (3–6 points)",
+};
+
+const MATH_RULES = [
+  "This is a mathematics course. Write ALL mathematics in LaTeX: inline as $...$, displayed formulas as $$...$$.",
+  "Use proper notation (\\mathbb{R}, \\mathbb{C}, \\frac{}{}, \\sum, \\lim, \\le, \\Rightarrow). Never write math with Unicode symbols like ², ≤, ∑ outside LaTeX.",
+  "Definitions and theorems must be exact and complete, including all conditions. Do not simplify them into something false.",
+  "In worked examples, every step is its own line and says why (e.g. 'mit dem konjugierten Nenner erweitern').",
+  "Calculations must be correct; check each step. If the material has no solution, solve it yourself carefully and say 'eigene Lösung'.",
+].join(" ");
 
 const LENGTHS = {
   short: "Keep it compact: about 2–3 pages in total, only the essentials.",
@@ -70,12 +97,65 @@ const SCHEMA = {
   additionalProperties: false,
 };
 
-function cleanInclude(include) {
+function cleanInclude(include, math = false) {
   const out = {};
-  for (const k of Object.keys(SECTIONS)) out[k] = Boolean(include?.[k]);
+  for (const k of Object.keys(math ? MATH_SECTIONS : SECTIONS)) out[k] = Boolean(include?.[k]);
   out.summary = true; // ohne Zusammenfassung ist es kein Lernzettel
-  if (!out.questions) out.answers = false;
+  if (math ? !out.practice : !out.questions) out.answers = false;
   return out;
+}
+
+const def = { type: "object", properties: { name: str, text: str }, required: ["name", "text"], additionalProperties: false };
+const MATH_SCHEMA = {
+  type: "object",
+  properties: {
+    language: { type: "string", enum: ["de", "en"] },
+    title: str,
+    intro: str,
+    parts: arr({
+      type: "object",
+      properties: {
+        title: str,
+        summary: arr(lead),
+        intuition: arr(str),
+        definitions: arr(def),
+        theorems: arr({ type: "object", properties: { name: str, statement: str }, required: ["name", "statement"], additionalProperties: false }),
+        formulas: arr({ type: "object", properties: { name: str, formula: str, meaning: str }, required: ["name", "formula", "meaning"], additionalProperties: false }),
+        methods: arr({ type: "object", properties: { name: str, steps: arr(str) }, required: ["name", "steps"], additionalProperties: false }),
+        examples: arr({ type: "object", properties: { task: str, steps: arr(str), result: str }, required: ["task", "steps", "result"], additionalProperties: false }),
+        tasks: arr({ type: "object", properties: { type: str, approach: str }, required: ["type", "approach"], additionalProperties: false }),
+        mistakes: arr({ type: "object", properties: { wrong: str, right: str }, required: ["wrong", "right"], additionalProperties: false }),
+        proofs: arr(def),
+        practice: arr(qa),
+        sources: arr({ type: "object", properties: { file: { type: "integer" }, page: { type: "integer" } }, required: ["file", "page"], additionalProperties: false }),
+      },
+      required: ["title", "summary", "intuition", "definitions", "theorems", "formulas", "methods", "examples", "tasks", "mistakes", "proofs", "practice", "sources"],
+      additionalProperties: false,
+    }),
+    bigPicture: arr(lead),
+  },
+  required: ["language", "title", "intro", "parts", "bigPicture"],
+  additionalProperties: false,
+};
+
+function mathPrompt({ moduleName, count, include, length, focus, context }) {
+  const on = Object.entries(MATH_SECTIONS).filter(([k]) => include[k] && k !== "answers" && k !== "bigPicture");
+  const off = Object.keys(MATH_SECTIONS).filter((k) => !include[k] && !["answers", "bigPicture", "summary"].includes(k));
+  return [
+    `Course: ${moduleName || "unknown"}. Write a study guide for a math course from these ${count} file(s), marked F1…F${count}.`,
+    context ? `The files belong to: ${context}. Start the title with it, e.g. "Woche 3–4: …" (in the language of the material).` : "",
+    MATH_RULES,
+    "Structure it into 2–6 parts by topic, like a good tutor. Each part contains:",
+    ...on.map(([k, d]) => `- ${k}: ${d}`),
+    include.practice ? (include.answers ? "- In practice, 'a' is the full solution." : "- In practice, leave 'a' empty.") : "",
+    off.length ? `Leave these arrays empty in every part: ${off.join(", ")}.` : "",
+    include.bigPicture ? `- bigPicture: ${MATH_SECTIONS.bigPicture}` : "Leave bigPicture empty.",
+    "sources: the file numbers and pages a part is based on.",
+    LENGTHS[length] || LENGTHS.normal,
+    focus ? `Focus on: ${focus}.` : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
 }
 
 function prompt({ moduleName, count, include, length, focus, context }) {
@@ -141,6 +221,53 @@ const LABELS = {
   },
 };
 
+const MATH_LABELS = {
+  de: {
+    summary: "Überblick",
+    intuition: "Intuition",
+    definitions: "Definitionen",
+    theorems: "Sätze und Regeln",
+    formulas: "Formeln",
+    methods: "So gehst du vor",
+    examples: "Durchgerechnete Beispiele",
+    tasks: "Typische Klausuraufgaben",
+    mistakes: "Typische Fehler",
+    proofs: "Beweisideen",
+    practice: "Übungsaufgaben",
+    definition: "Definition",
+    theorem: "Satz",
+    example: "Beispiel",
+    result: "Ergebnis",
+    solution: "Lösung",
+    wrong: "Falsch",
+    right: "Richtig",
+    formula: "Formel",
+    meaning: "Bedeutung",
+  },
+  en: {
+    summary: "Overview",
+    intuition: "Intuition",
+    definitions: "Definitions",
+    theorems: "Theorems and rules",
+    formulas: "Formulas",
+    methods: "How to do it",
+    examples: "Worked examples",
+    tasks: "Typical exam tasks",
+    mistakes: "Typical mistakes",
+    proofs: "Proof ideas",
+    practice: "Practice problems",
+    definition: "Definition",
+    theorem: "Theorem",
+    example: "Example",
+    result: "Result",
+    solution: "Solution",
+    wrong: "Wrong",
+    right: "Right",
+    formula: "Formula",
+    meaning: "Meaning",
+  },
+};
+
 const esc = (s) =>
   String(s ?? "")
     .replace(/&/g, "&amp;")
@@ -148,10 +275,28 @@ const esc = (s) =>
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
 /** Text mit **fett** → HTML. */
-const rich = (s) => esc(s).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+const richPlain = (s) => esc(s).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+
+/** Text mit $…$ / $$…$$ (und \\(…\\), \\[…\\]) → HTML mit KaTeX; der Rest wie richPlain. */
+function richMath(s) {
+  const text = String(s ?? "");
+  const re = /\$\$([\s\S]+?)\$\$|\\\[([\s\S]+?)\\\]|\$([^$\n]+?)\$|\\\(([\s\S]+?)\\\)/g;
+  let out = "";
+  let last = 0;
+  for (const m of text.matchAll(re)) {
+    out += richPlain(text.slice(last, m.index));
+    const display = m[1] != null || m[2] != null;
+    const tex = m[1] ?? m[2] ?? m[3] ?? m[4];
+    out += katex.renderToString(tex, { displayMode: display, throwOnError: false, output: "html", strict: "ignore" });
+    last = m.index + m[0].length;
+  }
+  return out + richPlain(text.slice(last));
+}
 
 function sheetHtml(sheet, { moduleName, accent = "#22325c" }) {
   const L = LABELS[sheet.language] || LABELS.de;
+  const M = MATH_LABELS[sheet.language] || MATH_LABELS.de;
+  const rich = sheet.math ? richMath : richPlain;
   const fileName = (i) => sheet.files[i - 1]?.name.replace(/\.[a-z0-9]+$/i, "") ?? null;
   const parts = sheet.parts || [];
   const h3 = (key, body) => (body ? `<h3>${L[key]}</h3>${body}` : "");
@@ -164,7 +309,44 @@ function sheetHtml(sheet, { moduleName, accent = "#22325c" }) {
   const bullets = (list, f = rich) => (list?.length ? `<ul>${list.map((x) => `<li>${f(x)}</li>`).join("")}</ul>` : "");
   const numbered = (list, f) => (list?.length ? `<ol>${list.map((x) => `<li>${f(x)}</li>`).join("")}</ol>` : "");
 
+  const sourcesOf = (p) => {
+    const list = (p.sources || []).filter((x) => fileName(x.file)).map((x) => `${esc(fileName(x.file))}${x.page > 0 ? ` ${L.page} ${x.page}` : ""}`);
+    return list.length ? `<p class="sources">${L.sources}: ${[...new Set(list)].join(" · ")}</p>` : "";
+  };
+
+  // Mathe: Kästen für Definitionen und Sätze, Formeltabelle, Rezepte und Rechenwege
+  const mathPartHtml = (p, i) => {
+    const h = (key, body) => (body ? `<h3>${M[key]}</h3>${body}` : "");
+    const steps = (list) => (list?.length ? `<ol class="steps">${list.map((x) => `<li>${rich(x)}</li>`).join("")}</ol>` : "");
+    return `<section class="part" id="p${i}">
+      <h2>${rich(p.title)}</h2>
+      ${h("summary", leads(p.summary))}
+      ${h("intuition", bullets(p.intuition, rich))}
+      ${h("definitions", (p.definitions || []).map((d) => `<div class="box def"><div class="box-h">${M.definition} · ${rich(d.name)}</div>${rich(d.text)}</div>`).join(""))}
+      ${h("theorems", (p.theorems || []).map((t) => `<div class="box thm"><div class="box-h">${M.theorem} · ${rich(t.name)}</div>${rich(t.statement)}</div>`).join(""))}
+      ${h(
+        "formulas",
+        p.formulas?.length
+          ? `<table class="formulas"><tbody>${p.formulas.map((f) => `<tr><td class="f-name">${rich(f.name)}</td><td class="f-formula">${rich(f.formula)}</td><td>${rich(f.meaning)}</td></tr>`).join("")}</tbody></table>`
+          : "",
+      )}
+      ${h("methods", (p.methods || []).map((m) => `<div class="method"><p><strong>${rich(m.name)}</strong></p>${steps(m.steps)}</div>`).join(""))}
+      ${h(
+        "examples",
+        (p.examples || [])
+          .map((e) => `<div class="example"><p><strong>${M.example}:</strong> ${rich(e.task)}</p>${steps(e.steps)}${e.result ? `<p class="result"><strong>${M.result}:</strong> ${rich(e.result)}</p>` : ""}</div>`)
+          .join(""),
+      )}
+      ${h("tasks", bullets(p.tasks, (t) => `<strong>${rich(t.type)}:</strong> ${rich(t.approach)}`))}
+      ${h("mistakes", bullets(p.mistakes, (m) => `<span class="wrong">${M.wrong}:</span> ${rich(m.wrong)}<br><span class="right">${M.right}:</span> ${rich(m.right)}`))}
+      ${h("proofs", bullets(p.proofs, (x) => `<strong>${rich(x.name)}:</strong> ${rich(x.text)}`))}
+      ${h("practice", numbered(p.practice, (q) => `${rich(q.q)}${sheet.include?.answers && q.a ? `<div class="answer"><span>${M.solution}:</span> ${rich(q.a)}</div>` : ""}`))}
+      ${sourcesOf(p)}
+    </section>`;
+  };
+
   const partHtml = (p, i) => {
+    if (sheet.math) return mathPartHtml(p, i);
     const tables = (p.tables || [])
       .filter((t) => t.columns?.length && t.rows?.length)
       .map(
@@ -225,7 +407,17 @@ function sheetHtml(sheet, { moduleName, accent = "#22325c" }) {
   .answer { margin-top: 3px; color: #374151; font-size: 9.5pt; } .answer span { font-weight: 650; color: #3a5ba0; }
   .sources { font-size: 8.5pt; color: #6b7280; margin-top: 8px; }
   .part { break-inside: auto; }
-</style></head><body>
+  .box { border-left: 3px solid ${accent}; background: #f4f6fa; border-radius: 3px; padding: 7px 11px; margin: 0 0 8px; break-inside: avoid; }
+  .box.thm { border-left-color: #3a5ba0; background: #eef3fb; }
+  .box-h { font-weight: 650; color: ${accent}; font-size: 9.5pt; margin-bottom: 2px; }
+  table.formulas td { border: none; border-bottom: 1px solid #e3e7ee; padding: 6px 7px; vertical-align: middle; }
+  td.f-name { font-weight: 650; width: 22%; } td.f-formula { width: 40%; }
+  ol.steps { margin: 2px 0 6px; } ol.steps li { margin: 2px 0; }
+  .example, .method { break-inside: avoid; margin: 0 0 8px; }
+  .result { margin-top: 2px; }
+  .wrong { font-weight: 650; color: #b3261e; } .right { font-weight: 650; color: #2f7a46; }
+  .katex { font-size: 1.04em; } .katex-display { margin: 6px 0; }
+</style>${sheet.math ? `<link rel="stylesheet" href="${pathToFileURL(require.resolve("katex/dist/katex.min.css")).href}">` : ""}</head><body>
   <div class="meta"><span>${esc(moduleName || "")}</span><span>${esc(date)} · ${L.made}</span></div>
   ${parts.length > 1 ? `<nav class="toc"><p>${L.contents}</p><ol>${parts.map((p, i) => `<li><a href="#p${i}">${rich(p.title)}</a></li>`).join("")}${big ? `<li><a href="#big">${L.bigPicture}</a></li>` : ""}</ol></nav>` : ""}
   <h1>${rich(sheet.title)}</h1>
@@ -277,4 +469,4 @@ async function renderPdf(BrowserWindow, sheet, { moduleName, accent, outFile }) 
   }
 }
 
-module.exports = { SECTIONS, SCHEMA, cleanInclude, prompt, sheetHtml, renderPdf, upgrade };
+module.exports = { SECTIONS, SCHEMA, MATH_SECTIONS, MATH_SCHEMA, MATH_RULES, cleanInclude, prompt, mathPrompt, sheetHtml, renderPdf, upgrade, richMath };

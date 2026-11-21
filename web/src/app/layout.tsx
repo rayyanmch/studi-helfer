@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Instrument_Sans } from "next/font/google";
+import "katex/dist/katex.min.css"; // Formeln in Karteikarten und Zusammenfassungen (Mathe-Modus)
 import "./globals.css";
 import { THEME_BOOT_SCRIPT } from "@/components/theme";
 

@@ -21,8 +21,11 @@ export interface Analysis {
   keyPoints: { text: string; page: number }[];
   topics: string[];
   terms: { term: string; definition: string; page: number }[];
-  cards: { q: string; a: string; page: number }[];
+  cards: { q: string; a: string; page: number; type?: CardType; steps?: string[] }[];
+  math?: boolean; // mit Formeln (LaTeX) und Mathe-Kartentypen ausgewertet
 }
+
+export type CardType = "concept" | "definition" | "theorem" | "formula" | "strategy" | "compute" | "truefalse" | "proof";
 
 export interface CardState {
   box: number; // Leitner-Fach 1–5 (1 = nochmal heute, 2 = morgen, 3 = in 3 Tagen, 4 = in 1 Woche, 5 = in 2 Wochen)
@@ -47,12 +50,38 @@ export const SHEET_SECTIONS = [
   { key: "bigPicture", label: "Big picture", hint: "The core ideas that connect everything" },
 ] as const;
 
-export type SectionKey = (typeof SHEET_SECTIONS)[number]["key"];
-export type Include = Record<SectionKey, boolean>;
+/** Bausteine für Mathe-Fächer (eigene Herangehensweise, siehe desktop/lib/study-sheet.js MATH_SECTIONS). */
+export const MATH_SECTIONS = [
+  { key: "summary", label: "Overview", hint: "What it’s about, in a few short paragraphs", fixed: true },
+  { key: "intuition", label: "Intuition", hint: "What it means, as a picture or everyday idea" },
+  { key: "definitions", label: "Definitions", hint: "Exact definitions with notation, in boxes" },
+  { key: "theorems", label: "Theorems & rules", hint: "Statements with all conditions, in boxes" },
+  { key: "formulas", label: "Formula sheet", hint: "Each formula with what the symbols mean" },
+  { key: "methods", label: "Recipes", hint: "Step by step: how to solve each task type" },
+  { key: "examples", label: "Worked examples", hint: "Full solutions, every step with the reason" },
+  { key: "tasks", label: "Typical exam tasks", hint: "Task types from the sheets and how to start" },
+  { key: "mistakes", label: "Typical mistakes", hint: "Forgotten conditions, sign errors and the fix" },
+  { key: "proofs", label: "Proof ideas", hint: "The key trick of important proofs" },
+  { key: "practice", label: "Practice problems", hint: "New problems of the same type" },
+  { key: "answers", label: "Solutions", hint: "Step-by-step solutions to the practice problems", needs: "practice" },
+  { key: "bigPicture", label: "Big picture", hint: "How the parts connect" },
+] as const;
+
+export type SectionKey = (typeof SHEET_SECTIONS)[number]["key"] | (typeof MATH_SECTIONS)[number]["key"];
+export type Include = Partial<Record<SectionKey, boolean>>;
 export type SheetLength = "short" | "normal" | "detailed";
 
 const on = (...keys: SectionKey[]): Include =>
   Object.fromEntries(SHEET_SECTIONS.map((s) => [s.key, s.key === "summary" || keys.includes(s.key)])) as Include;
+const onMath = (...keys: SectionKey[]): Include =>
+  Object.fromEntries(MATH_SECTIONS.map((s) => [s.key, s.key === "summary" || keys.includes(s.key)])) as Include;
+
+export const MATH_PRESETS: { id: string; label: string; include: Include }[] = [
+  { id: "formulas", label: "Formula sheet", include: onMath("definitions", "theorems", "formulas") },
+  { id: "exam", label: "Exam prep", include: onMath("formulas", "methods", "examples", "tasks", "mistakes", "practice", "answers") },
+  { id: "understand", label: "Understand it", include: onMath("intuition", "definitions", "theorems", "examples", "proofs", "bigPicture") },
+  { id: "all", label: "Everything", include: onMath(...MATH_SECTIONS.map((s) => s.key)) },
+];
 
 export const PRESETS: { id: string; label: string; include: Include }[] = [
   { id: "guide", label: "Study guide", include: on("beginner", "analogies", "examples", "tables", "misconceptions", "questions", "bigPicture") },
@@ -75,6 +104,7 @@ export interface Sheet {
   length?: SheetLength;
   parts?: { title: string }[];
   sections?: { heading: string }[]; // ältere Lernzettel
+  math?: boolean;
 }
 
 export interface StudyJob {
@@ -108,7 +138,7 @@ export interface StudyApi {
     weekTitles: Record<string, Record<string, string>>;
   }>;
   weekTitles(moduleId: string, moduleName: string, weeks: { key: string; title: string; hints: string[] }[]): Promise<Ok<{ titles: Record<string, string> }> | Fail>;
-  analyze(paths: string[], moduleName: string): Promise<Ok | Fail>;
+  analyze(paths: string[], moduleName: string, opts?: { math?: boolean }): Promise<Ok | Fail>;
   cancel(): Promise<Ok>;
   review(cardId: string, knew: boolean, practice?: boolean): Promise<Ok<{ card: CardState; stats: StudyStats }> | Fail>;
   suspend(cardId: string, on: boolean): Promise<Ok<{ card: CardState }> | Fail>;
@@ -123,6 +153,7 @@ export interface StudyApi {
     length: SheetLength;
     accent?: string;
     context?: string;
+    math?: boolean;
   }): Promise<Ok<{ sheet: Sheet }> | Fail>;
   openSheet(id: string, reveal?: boolean): Promise<Ok<{ path: string }> | Fail>;
   deleteSheet(id: string): Promise<Ok>;
@@ -144,6 +175,9 @@ export interface Card {
   q: string;
   a: string;
   page: number;
+  type?: CardType;
+  steps?: string[];
+  math?: boolean;
   file: string; // Dateiname
   path: string;
   moduleId?: string;
@@ -286,10 +320,10 @@ export function takeTarget(): StudyTarget | null {
 
 // ------------------------------------------------------------------ Aktionen
 
-export async function analyze(paths: string[], moduleName: string): Promise<string | null> {
+export async function analyze(paths: string[], moduleName: string, math = false): Promise<string | null> {
   const a = api();
   if (!a) return "Summaries work in the Mac app.";
-  const res = await a.analyze(paths, moduleName);
+  const res = await a.analyze(paths, moduleName, { math });
   return res.ok ? null : res.message;
 }
 
@@ -351,6 +385,7 @@ export async function createSheet(opts: {
   length: SheetLength;
   accent?: string;
   context?: string;
+  math?: boolean;
 }): Promise<{ sheet?: Sheet; error?: string }> {
   const a = api();
   if (!a) return { error: "Study sheets work in the Mac app." };
@@ -404,7 +439,7 @@ export function cardsOf(paths: string[], s: Pick<StudyState, "files" | "cards">,
     seen.add(a.id);
     a.cards.forEach((c, i) => {
       const id = `${a.id}:${i}`;
-      out.push({ id, q: c.q, a: c.a, page: c.page, file: a.name, path: p, moduleId, state: s.cards[id] });
+      out.push({ id, q: c.q, a: c.a, page: c.page, type: c.type, steps: c.steps, math: a.math, file: a.name, path: p, moduleId, state: s.cards[id] });
     });
   }
   return out;

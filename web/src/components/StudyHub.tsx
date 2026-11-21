@@ -19,11 +19,14 @@ import {
   Layers,
   NotebookPen,
   Shuffle,
+  Sigma,
   Trash2,
 } from "lucide-react";
 import { Button, Spinner, Swatch, colorOf, inDays, tone } from "./ui";
 import { displayName } from "./files";
-import { ErrorNotice, NoClaude, Progress, Review, SummaryList } from "./StudyView";
+import { ErrorNotice, NoClaude, Progress, Review, SummaryList, TYPE_LABEL } from "./StudyView";
+import { MathText } from "./MathText";
+import { setMathMode, useMathMode } from "@/lib/subject";
 import type { Course, CourseColor, CourseFile } from "@/lib/mock-data";
 import { realCourses, useApp } from "@/lib/app-store";
 import {
@@ -33,6 +36,8 @@ import {
   NEW_PER_DAY,
   PRESETS,
   SHEET_SECTIONS,
+  MATH_PRESETS,
+  MATH_SECTIONS,
   active,
   allCards,
   analyze,
@@ -462,9 +467,11 @@ function Deck({
   const exam = course ? examIn(course.id, app.deadlines, app.today) : null;
   const missing = files.filter((f) => !study.files[fileKey(f)] && !study.unreadable[fileKey(f)]);
 
+  const mathMode = useMathMode(course, files.map((f) => study.files[fileKey(f)]));
+  const withoutFormulas = mathMode.math ? files.filter((f) => study.files[fileKey(f)] && !study.files[fileKey(f)]?.math) : [];
   const summarize = async (list: CourseFile[]) => {
     onError(null);
-    const msg = await analyze(list.map(fileKey), course?.name ?? "");
+    const msg = await analyze(list.map(fileKey), course?.name ?? "", mathMode.math);
     if (msg) onError(msg);
   };
 
@@ -507,6 +514,40 @@ function Deck({
           </Button>
         </div>
       </header>
+
+      {course && (
+        <div className="-mt-2 flex flex-wrap items-center gap-2 text-[13px]">
+          <button
+            onClick={() => setMathMode(course.id, mathMode.math ? (mathMode.auto ? "off" : null) : mathMode.auto ? null : "on")}
+            aria-pressed={mathMode.math}
+            className={`inline-flex h-7 items-center gap-1.5 rounded-full px-3 font-semibold transition-colors ${mathMode.math ? "" : "bg-sunken text-muted hover:text-text"}`}
+            style={mathMode.math ? { background: tone(color, "soft"), color: tone(color, "ink") } : undefined}
+            title="Math mode writes formulas in LaTeX and makes cards for definitions, theorems, formulas, methods and calculations."
+          >
+            <Sigma size={13} aria-hidden /> Math mode {mathMode.math ? "on" : "off"}
+          </button>
+          <span className="text-muted">
+            {mathMode.math
+              ? "Formulas, definitions, theorems and step-by-step calculations."
+              : mathMode.auto
+                ? "Turned off for this course."
+                : "Turn on for courses with formulas and calculations."}
+          </span>
+        </div>
+      )}
+
+      {withoutFormulas.length > 0 && !study.job.running && (
+        <div className="flex flex-wrap items-center gap-3 rounded-[12px] bg-surface px-4 py-3 text-[13px]">
+          <Sigma size={16} className="shrink-0" style={{ color: tone(color, "ink") }} aria-hidden />
+          <span className="min-w-0 flex-1">
+            <strong className="font-semibold">{withoutFormulas.length} {withoutFormulas.length === 1 ? "file was" : "files were"} summarized without math mode.</strong>{" "}
+            <span className="text-muted">Redo them for formulas and math cards (about {Math.max(1, Math.round((withoutFormulas.length * 55) / 2 / 60))} min). Your progress on the old cards is reset.</span>
+          </span>
+          <Button onClick={() => void summarize(withoutFormulas)} disabled={study.available === false}>
+            Redo with formulas
+          </Button>
+        </div>
+      )}
 
       <Progress color={color} />
 
@@ -815,8 +856,13 @@ function CardList({ cards, colorOf: colorFor }: { cards: Card[]; colorOf: (c: Ca
           <li key={c.id} className={`flex items-start gap-3 border-b border-line-soft px-2.5 py-2 last:border-0 ${hidden ? "opacity-50" : ""}`}>
             <span className="mt-1.5 size-2 shrink-0 rounded-full" style={{ background: tone(colorFor(c)) }} aria-hidden />
             <span className="min-w-0 flex-1">
-              <span className="block text-[13px] font-semibold">{c.q}</span>
-              <span className="block text-[13px] text-muted">{c.a}</span>
+              <span className="block text-[13px] font-semibold">
+                {c.type && c.type !== "concept" && <span className="mr-1.5 text-[11px] font-semibold text-muted">{TYPE_LABEL[c.type]}</span>}
+                <MathText text={c.q} math={c.math} />
+              </span>
+              <span className="block text-[13px] text-muted">
+                <MathText text={c.a} math={c.math} />
+              </span>
             </span>
             <span className="shrink-0 text-[12px] text-muted">{hidden ? "hidden" : c.state?.box ? `box ${c.state.box}` : "new"}</span>
             <button
@@ -949,11 +995,16 @@ function Sheets({ courses, onNew, onError }: { courses: Course[]; onNew: () => v
 
 const PREFS_KEY = "studi.sheetPrefs";
 
-function loadPrefs(): { include: Include; length: SheetLength } {
-  const fallback = { include: PRESETS[0].include, length: "normal" as SheetLength };
+function loadPrefs(): { include: Include; includeMath: Include; length: SheetLength } {
+  const fallback = { include: PRESETS[0].include, includeMath: MATH_PRESETS[1].include, length: "normal" as SheetLength };
   try {
     const raw = JSON.parse(localStorage.getItem(PREFS_KEY) ?? "null");
-    if (raw && typeof raw === "object" && raw.include) return { include: { ...fallback.include, ...raw.include, summary: true }, length: raw.length ?? "normal" };
+    if (raw && typeof raw === "object" && raw.include)
+      return {
+        include: { ...fallback.include, ...raw.include, summary: true },
+        includeMath: { ...fallback.includeMath, ...(raw.includeMath ?? {}), summary: true },
+        length: raw.length ?? "normal",
+      };
   } catch {
     // Browser-Speicher nicht verfügbar
   }
@@ -978,26 +1029,34 @@ function NewSheet({
   const course = courses.find((c) => c.id === moduleId) ?? null;
   const color: CourseColor = course ? colorOf(course) : "blue";
   const [picked, setPicked] = useState<string[]>([]);
+  const mathMode = useMathMode(course, course ? studyFiles(course).map((f) => study.files[fileKey(f)]) : []);
+  const math = mathMode.math;
+  const SECTIONS = math ? MATH_SECTIONS : SHEET_SECTIONS;
+  const PRESET_LIST = math ? MATH_PRESETS : PRESETS;
   const [prefs] = useState(loadPrefs);
-  const [include, setInclude] = useState<Include>(prefs.include);
+  const [includeText, setIncludeText] = useState<Include>(prefs.include);
+  const [includeMath, setIncludeMath] = useState<Include>(prefs.includeMath);
+  const include = math ? includeMath : includeText;
+  const setInclude = (fn: Include | ((cur: Include) => Include)) => (math ? setIncludeMath : setIncludeText)(fn);
   const [length, setLength] = useState<SheetLength>(prefs.length);
   const [focus, setFocus] = useState("");
 
   const weeks = useWeeks(course);
   const chosenWeeks = weeks.filter((w) => w.files.some((x) => picked.includes(fileKey(x.file))));
-  const preset = PRESETS.find((p) => SHEET_SECTIONS.every((s) => p.include[s.key] === include[s.key]))?.id ?? null;
+  const preset = PRESET_LIST.find((p) => SECTIONS.every((s) => Boolean(p.include[s.key]) === Boolean(include[s.key])))?.id ?? null;
+  const parentOf = math ? "practice" : "questions";
   const set = (k: keyof Include, v: boolean) =>
     setInclude((cur) => {
       const next = { ...cur, [k]: v, summary: true };
-      if (k === "questions" && !v) next.answers = false;
-      if (k === "answers" && v) next.questions = true;
+      if (k === parentOf && !v) next.answers = false;
+      if (k === "answers" && v) next[parentOf] = true;
       return next;
     });
 
   const submit = () => {
     if (!course) return;
     try {
-      localStorage.setItem(PREFS_KEY, JSON.stringify({ include, length }));
+      localStorage.setItem(PREFS_KEY, JSON.stringify({ include: includeText, includeMath, length }));
     } catch {
       // egal
     }
@@ -1005,7 +1064,7 @@ function NewSheet({
     const context = chosenWeeks
       .map((w) => (w.kind === "week" ? `Week ${w.n}${w.title ? ` (${w.title})` : ""}` : weekLabel(w)))
       .join(", ");
-    void createSheet({ moduleId: course.id, moduleName: course.name, paths: picked, focus: focus.trim() || undefined, include, length, context }).then((res) => {
+    void createSheet({ moduleId: course.id, moduleName: course.name, paths: picked, focus: focus.trim() || undefined, include, length, context, math }).then((res) => {
       if (res.error) onError(res.error);
     });
     onStarted();
@@ -1047,8 +1106,21 @@ function NewSheet({
       </Step>
 
       <Step n={3} title="What should be in it?">
+        {course && (
+          <p className="-mt-1 mb-3 flex flex-wrap items-center gap-2 text-[13px] text-muted">
+            <button
+              onClick={() => setMathMode(course.id, math ? (mathMode.auto ? "off" : null) : mathMode.auto ? null : "on")}
+              aria-pressed={math}
+              className={`inline-flex h-7 items-center gap-1.5 rounded-full px-3 font-semibold transition-colors ${math ? "" : "bg-sunken hover:text-text"}`}
+              style={math ? { background: tone(color, "soft"), color: tone(color, "ink") } : undefined}
+            >
+              <Sigma size={13} aria-hidden /> Math mode {math ? "on" : "off"}
+            </button>
+            {math ? "Formulas in LaTeX, definitions and theorems in boxes, worked examples step by step." : "For courses with formulas, turn on math mode."}
+          </p>
+        )}
         <div className="flex flex-wrap gap-1.5">
-          {PRESETS.map((p) => (
+          {PRESET_LIST.map((p) => (
             <button
               key={p.id}
               onClick={() => setInclude(p.include)}
@@ -1060,8 +1132,8 @@ function NewSheet({
           ))}
         </div>
         <ul className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3">
-          {SHEET_SECTIONS.map((s) => {
-            const onIt = include[s.key];
+          {SECTIONS.map((s) => {
+            const onIt = Boolean(include[s.key]);
             const locked = "fixed" in s && s.fixed;
             return (
               <li key={s.key}>
