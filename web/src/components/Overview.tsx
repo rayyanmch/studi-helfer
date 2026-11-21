@@ -100,7 +100,7 @@ export function Overview({
   const mailState = useMail();
   useEffect(() => initMail(!desktop), [desktop]); // Beispiel-Postfächer nur in der Browser-Vorschau
   const mailUnread = mailState.messages.filter(
-    (m) => m.folder === "inbox" && m.unread && mailState.accounts.some((a) => a.id === m.accountId && a.connected),
+    (m) => m.folder === "inbox" && m.unread && !mailState.snoozed[m.id] && mailState.accounts.some((a) => a.id === m.accountId && a.connected),
   ).length;
 
   const { job, start, stop, dismiss, retry } = useJob((finished) => {

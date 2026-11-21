@@ -97,6 +97,10 @@ contextBridge.exposeInMainWorld("studi", {
       return () => ipcRenderer.removeListener("studi:study:state", listener);
     },
   },
+  // Newsletter abbestellen (desktop/lib/mailtools.js)
+  mailtools: {
+    unsubscribe: call("studi:mail:unsubscribe"),
+  },
   onDeadlinesChanged(callback) {
     const listener = () => callback();
     ipcRenderer.on("studi:deadlinesChanged", listener);

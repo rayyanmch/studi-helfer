@@ -7,7 +7,8 @@
 
 import { useSyncExternalStore } from "react";
 import { appStore } from "./app-store";
-import { getGoogle, getUniMail } from "./google";
+import { getGoogle, getMailTools, getUniMail } from "./google";
+import { stamp } from "./mail-tools";
 
 export type MailAccountId = "gmail" | "uni";
 export type MailFolder = "inbox" | "sent" | "drafts" | "archive";
@@ -34,7 +35,25 @@ export interface MailMessage {
   courseId?: string; // nur gesetzt, wenn die App den Kurs erkannt hat
   threadId?: string; // Gmail: für Antworten
   messageIdHeader?: string; // Gmail: „Message-ID“ der Mail, für „In-Reply-To“
+  unsubscribe?: Unsubscribe; // Newsletter: Abmelde-Link aus dem Kopf der Mail („List-Unsubscribe“)
+  attachments?: string[]; // Namen der Anhänge (nur zur Anzeige)
 }
+
+/** Abmelden bei Newslettern: https-Adresse und/oder mailto; `oneClick` = ohne Webseite möglich (RFC 8058). */
+export interface Unsubscribe {
+  url?: string;
+  mailto?: string;
+  oneClick: boolean;
+}
+
+/** Mail, die gerade verschickt wird: 10 Sekunden zum Zurücknehmen, dann geht sie raus. */
+export interface Outbox {
+  id: number;
+  mail: OutgoingMail;
+  status: "waiting" | "sending" | "failed";
+  error: string;
+}
+export const UNDO_SECONDS = 10;
 
 /** Termin aus dem Google Kalender (nur lesen). */
 export interface GoogleEvent {
@@ -64,6 +83,10 @@ interface MailState {
   calendars: CalendarToggles;
   google: GoogleInfo;
   uni: { error: string };
+  snoozed: Record<string, string>; // Mail-Id → "2026-11-22T08:00" (kommt dann zurück in den Posteingang)
+  unsubscribed: string[]; // Absender-Adressen, bei denen schon abbestellt wurde
+  ignoredEvents: string[]; // Mail-Ids, bei denen der Terminvorschlag abgelehnt wurde
+  outbox: Outbox | null;
 }
 
 // --- Beispieldaten ------------------------------------------------------------
@@ -89,6 +112,7 @@ const MESSAGES: MailMessage[] = [
     id: "u1", accountId: "uni", courseId: "mathe", unread: true, date: "2026-11-20T09:12",
     fromName: "Prof. Lindner", fromAddress: "lindner@uni-koeln.de",
     subject: "Sheet 7 moved to Tuesday",
+    attachments: ["Sheet 7.pdf"],
     body: "Hello everyone,\n\ndue to the holiday on Monday, the deadline for Sheet 7 moves to Tuesday, November 24, at 10:00.\n\nTask 3 needs theorem 4.2 from the lecture notes. Please read it again before you start.\n\nBest regards\nProf. Lindner",
   }),
   msg({
@@ -101,7 +125,7 @@ const MESSAGES: MailMessage[] = [
     id: "u3", accountId: "uni", courseId: "softwaretechnik", unread: true, date: "2026-11-19T17:20",
     fromName: "Tutor Jonas", fromAddress: "jonas.keller@smail.uni-koeln.de",
     subject: "Tutorial room changed to 1.21",
-    body: "Hi all,\n\nwe moved to a bigger room: 1.21, same time as always.\n\nSee you on Friday!\nJonas",
+    body: "Hi all,\n\nwe moved to a bigger room: 1.21, same time as always.\n\nOur next tutorial is on Friday, November 27 at 14:00 in room 1.21. See you there!\nJonas",
   }),
   msg({
     id: "u4", accountId: "uni", courseId: "datenbanken", unread: true, date: "2026-11-18T11:30",
@@ -132,6 +156,27 @@ const MESSAGES: MailMessage[] = [
     fromName: "Leo", fromAddress: "leo.n@gmail.com",
     subject: "Weekend trip in December?",
     body: "Hi Mika,\n\nwe are thinking about a weekend in the mountains before Christmas. Are you in? Prices go up next week, so we should decide soon.\n\nLeo",
+  }),
+  msg({
+    id: "g5", accountId: "gmail", unread: true, date: "2026-11-20T07:30",
+    fromName: "StudiDeals", fromAddress: "news@studideals.example",
+    unsubscribe: { url: "https://studideals.example/unsubscribe", oneClick: true },
+    subject: "−40% on laptop sleeves this week",
+    body: "Hi Mika,\n\nthis week only: 40% off laptop sleeves and notebooks. Shop now before the semester gets busy!\n\nYour StudiDeals team",
+  }),
+  msg({
+    id: "g6", accountId: "gmail", date: "2026-11-17T07:30",
+    fromName: "StudiDeals", fromAddress: "news@studideals.example",
+    unsubscribe: { url: "https://studideals.example/unsubscribe", oneClick: true },
+    subject: "Back to campus: our top 10",
+    body: "Hi Mika,\n\nhere are the ten most loved items for your desk.\n\nYour StudiDeals team",
+  }),
+  msg({
+    id: "g7", accountId: "gmail", date: "2026-11-10T07:30",
+    fromName: "StudiDeals", fromAddress: "news@studideals.example",
+    unsubscribe: { url: "https://studideals.example/unsubscribe", oneClick: true },
+    subject: "Weekend sale starts now",
+    body: "Hi Mika,\n\nour weekend sale is live.\n\nYour StudiDeals team",
   }),
   msg({
     id: "g3", accountId: "gmail", date: "2026-11-16T10:10",
@@ -190,6 +235,34 @@ function loadToggles(): CalendarToggles {
   return { ilias: true, google: true };
 }
 
+// Snooze, Abmeldungen und abgelehnte Terminvorschläge merkt sich die App nur auf diesem Mac (Demo getrennt davon).
+const storeKey = (name: string) => `studi.${name}${mode === "demo" ? ".demo" : ""}`;
+
+function loadJson<T>(name: string, fallback: T): T {
+  try {
+    const raw = window.localStorage.getItem(storeKey(name));
+    if (raw) return JSON.parse(raw) as T;
+  } catch {
+    // egal
+  }
+  return fallback;
+}
+
+function saveJson(name: string, value: unknown) {
+  try {
+    window.localStorage.setItem(storeKey(name), JSON.stringify(value));
+  } catch {
+    // ohne Speicher gilt es nur bis zum Neustart
+  }
+}
+
+const persisted = () => ({
+  calendars: loadToggles(),
+  snoozed: loadJson<Record<string, string>>("snoozed", {}),
+  unsubscribed: loadJson<string[]>("unsubscribed", []),
+  ignoredEvents: loadJson<string[]>("ignoredEvents", []),
+});
+
 const EMPTY: MailState = {
   accounts: ACCOUNTS.map((a) => ({ ...a, connected: false })),
   messages: [],
@@ -197,11 +270,17 @@ const EMPTY: MailState = {
   calendars: { ilias: true, google: true },
   google: { available: true, expired: false, loading: false, error: "" },
   uni: { error: "" },
+  snoozed: {},
+  unsubscribed: [],
+  ignoredEvents: [],
+  outbox: null,
 };
 
 let state: MailState = EMPTY;
 let mode: "none" | "demo" | "desktop" = "none";
 let timer: ReturnType<typeof setInterval> | undefined;
+let sweepTimer: ReturnType<typeof setInterval> | undefined;
+let pageHookSet = false;
 const listeners = new Set<() => void>();
 
 function set(next: Partial<MailState>) {
@@ -215,19 +294,28 @@ export function initMail(demo: boolean) {
   if (mode === target && state !== EMPTY) return;
   mode = target;
   clearInterval(timer);
+  clearInterval(sweepTimer);
+  if (!pageHookSet) {
+    pageHookSet = true;
+    // Schließt das Fenster, während eine Mail auf „Undo“ wartet, geht sie lieber sofort raus als verloren
+    window.addEventListener("pagehide", () => flushOutbox());
+  }
   if (demo) {
     state = {
       ...EMPTY,
       accounts: ACCOUNTS.map((a) => ({ ...a })),
       messages: MESSAGES.map((m) => ({ ...m })),
       events: EVENTS,
-      calendars: loadToggles(),
+      ...persisted(),
     };
     listeners.forEach((l) => l());
+    sweepSnoozed();
+    sweepTimer = setInterval(sweepSnoozed, 20_000);
     return;
   }
-  state = { ...EMPTY, calendars: loadToggles() };
+  state = { ...EMPTY, ...persisted() };
   listeners.forEach((l) => l());
+  sweepTimer = setInterval(sweepSnoozed, 20_000);
   void refreshGoogle();
   void refreshUni();
   // Alle 2 Minuten nachsehen, ob neue Mails oder Termine da sind
@@ -361,17 +449,22 @@ export function setCalendar(key: keyof CalendarToggles, on: boolean) {
 const accountOf = (id: string) => state.messages.find((m) => m.id === id)?.accountId;
 
 /** Ändert auch im echten Postfach (sofort in der Oberfläche, im Hintergrund bei Google bzw. der Uni). */
-async function syncChange(id: string, change: { unread?: boolean; archive?: boolean }) {
-  if (mode !== "desktop") return;
+// Änderungen laufen nacheinander (bei der Uni öffnet jede eine Verbindung, 40 gleichzeitig wären zu viel)
+let syncChain: Promise<void> = Promise.resolve();
+
+function syncChange(id: string, change: { unread?: boolean; archive?: boolean }): Promise<void> {
+  if (mode !== "desktop") return Promise.resolve();
   const account = accountOf(id);
-  if (account === "gmail") {
-    const res = await getGoogle()?.modify(id, change);
-    if (res && !res.ok) set({ google: { ...state.google, error: res.message } });
-  } else if (account === "uni") {
-    const res = await getUniMail()?.modify(id, change);
-    if (res && !res.ok) set({ uni: { error: res.message } });
-    if (change.archive) void refreshUni(); // im Archiv hat die Mail eine neue Kennung
-  }
+  syncChain = syncChain.then(async () => {
+    if (account === "gmail") {
+      const res = await getGoogle()?.modify(id, change);
+      if (res && !res.ok) set({ google: { ...state.google, error: res.message } });
+    } else if (account === "uni") {
+      const res = await getUniMail()?.modify(id, change);
+      if (res && !res.ok) set({ uni: { error: res.message } });
+    }
+  });
+  return syncChain;
 }
 
 export function setMailRead(id: string, unread: boolean) {
@@ -380,8 +473,81 @@ export function setMailRead(id: string, unread: boolean) {
 }
 
 export function archiveMail(id: string) {
-  void syncChange(id, { archive: true, unread: false });
+  const account = accountOf(id);
+  const done = syncChange(id, { archive: true, unread: false });
+  if (account === "uni") void done.then(() => refreshUni()); // im Archiv hat die Mail eine neue Kennung
   set({ messages: state.messages.map((m) => (m.id === id ? { ...m, folder: "archive", unread: false } : m)) });
+  if (state.snoozed[id]) unsnoozeMail(id);
+}
+
+/** Alle Mails eines Absenders im Posteingang archivieren. Gibt zurück, wie viele es waren. */
+export function archiveSender(address: string): number {
+  const a = address.toLowerCase();
+  const ids = state.messages.filter((m) => m.folder === "inbox" && m.fromAddress.toLowerCase() === a).map((m) => m.id);
+  ids.forEach(archiveMail);
+  return ids.length;
+}
+
+// --- Später erinnern (Snooze) -------------------------------------------------------
+
+/** Mail verschwindet aus dem Posteingang und kommt zur gewählten Zeit ungelesen zurück (nur auf diesem Mac). */
+export function snoozeMail(id: string, until: string) {
+  const snoozed = { ...state.snoozed, [id]: until };
+  saveJson("snoozed", snoozed);
+  set({ snoozed });
+}
+
+export function unsnoozeMail(id: string) {
+  const { [id]: _gone, ...snoozed } = state.snoozed;
+  void _gone;
+  saveJson("snoozed", snoozed);
+  set({ snoozed });
+}
+
+function sweepSnoozed() {
+  const now = stamp(new Date());
+  const due = Object.entries(state.snoozed)
+    .filter(([, until]) => until <= now)
+    .map(([id]) => id);
+  if (due.length === 0) return;
+  const snoozed = { ...state.snoozed };
+  due.forEach((id) => delete snoozed[id]);
+  saveJson("snoozed", snoozed);
+  set({ snoozed, messages: state.messages.map((m) => (due.includes(m.id) ? { ...m, unread: true } : m)) });
+}
+
+// --- Newsletter abbestellen ---------------------------------------------------------
+
+/** Bestellt den Newsletter ab. `opened` = die Seite des Absenders ist im Browser offen, dort noch bestätigen. */
+export async function unsubscribeMail(m: MailMessage): Promise<{ error?: string; opened?: boolean }> {
+  const u = m.unsubscribe;
+  if (!u) return { error: "This mail has no unsubscribe link." };
+  let opened = false;
+  if (mode === "demo") {
+    await new Promise((r) => setTimeout(r, 700));
+  } else if (u.url) {
+    const tools = getMailTools();
+    if (!tools) return { error: "Please update the app to unsubscribe." };
+    const res = await tools.unsubscribe({ url: u.url, oneClick: u.oneClick });
+    if (!res.ok) return { error: res.message };
+    opened = res.how === "opened";
+  } else if (u.mailto) {
+    const [addr, query = ""] = u.mailto.replace(/^mailto:/i, "").split("?");
+    const subject = new URLSearchParams(query).get("subject") || "unsubscribe";
+    const err = await deliver({ accountId: m.accountId, to: decodeURIComponent(addr), subject, body: "unsubscribe" });
+    if (err) return { error: err };
+  }
+  const unsubscribed = [...new Set([...state.unsubscribed, m.fromAddress.toLowerCase()])];
+  saveJson("unsubscribed", unsubscribed);
+  set({ unsubscribed });
+  return { opened };
+}
+
+/** „Looks like an event“ nicht mehr zeigen. */
+export function ignoreEvent(id: string) {
+  const ignoredEvents = [...state.ignoredEvents, id];
+  saveJson("ignoredEvents", ignoredEvents);
+  set({ ignoredEvents });
 }
 
 export function connectAccount(id: MailAccountId) {
@@ -401,20 +567,57 @@ export interface OutgoingMail {
   inReplyTo?: string; // Message-ID der Mail, auf die geantwortet wird
 }
 
-/** Sendet eine Mail. Gibt einen Fehlertext zurück oder null. */
-export async function sendMail(m: OutgoingMail): Promise<string | null> {
-  if (mode === "desktop" && m.accountId === "gmail") {
+/** Schickt die Mail wirklich ab. Gibt einen Fehlertext zurück oder null. */
+async function deliver(m: OutgoingMail): Promise<string | null> {
+  if (mode !== "desktop") return null;
+  if (m.accountId === "gmail") {
     const res = await getGoogle()?.send({ to: m.to, subject: m.subject, body: m.body, threadId: m.threadId, inReplyTo: m.inReplyTo });
     if (!res) return "Please update the app to send mail.";
-    if (!res.ok) return res.message;
+    return res.ok ? null : res.message;
   }
-  if (mode === "desktop" && m.accountId === "uni") {
-    const res = await getUniMail()?.send({ to: m.to, subject: m.subject, body: m.body, inReplyTo: m.inReplyTo });
-    if (!res) return "Please update the app to send mail.";
-    if (!res.ok) return res.message;
+  const res = await getUniMail()?.send({ to: m.to, subject: m.subject, body: m.body, inReplyTo: m.inReplyTo });
+  if (!res) return "Please update the app to send mail.";
+  return res.ok ? null : res.message;
+}
+
+// Senden mit „Undo“: Die Mail wartet UNDO_SECONDS Sekunden, dann geht sie raus.
+let outboxTimer: ReturnType<typeof setTimeout> | undefined;
+let outboxId = 0;
+
+/** Legt die Mail in den Ausgang. Wartet schon eine andere, geht die sofort raus. */
+export function queueSend(m: OutgoingMail) {
+  flushOutbox();
+  const box: Outbox = { id: ++outboxId, mail: m, status: "waiting", error: "" };
+  set({ outbox: box });
+  outboxTimer = setTimeout(() => void runSend(box), UNDO_SECONDS * 1000);
+}
+
+async function runSend(box: Outbox) {
+  clearTimeout(outboxTimer);
+  if (state.outbox?.id === box.id) set({ outbox: { ...box, status: "sending" } });
+  const err = await deliver(box.mail);
+  if (err) {
+    if (state.outbox?.id === box.id) set({ outbox: { ...box, status: "failed", error: err } });
+    else set({ google: { ...state.google, error: err } });
+    return;
   }
-  addSent(m);
-  return null;
+  addSent(box.mail);
+  if (state.outbox?.id === box.id) set({ outbox: null });
+}
+
+/** Sofort senden, wenn noch eine Mail wartet (neue Mail, Fenster zu). */
+export function flushOutbox() {
+  const box = state.outbox;
+  if (box?.status === "waiting") void runSend(box);
+}
+
+/** „Undo“: nimmt die Mail zurück und gibt sie zurück, damit das Schreibfenster wieder aufgeht. */
+export function undoSend(): OutgoingMail | null {
+  const box = state.outbox;
+  if (!box || box.status === "sending") return null;
+  clearTimeout(outboxTimer);
+  set({ outbox: null });
+  return box.mail;
 }
 
 function addSent(m: OutgoingMail) {

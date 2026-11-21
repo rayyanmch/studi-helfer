@@ -38,11 +38,17 @@ export interface UniMailApi {
   send(mail: { to: string; subject: string; body: string; inReplyTo?: string }): Promise<{ ok: true; id: string } | GoogleFail>;
 }
 
+/** Newsletter abbestellen: „done“ = direkt abbestellt, „opened“ = die Seite des Absenders ist im Browser offen. */
+export interface MailToolsApi {
+  unsubscribe(arg: { url: string; oneClick: boolean }): Promise<{ ok: true; how: "done" | "opened" } | GoogleFail>;
+}
+
 declare module "./desktop" {
   interface StudiDesktop {
     /** fehlt in älteren Fassungen der App */
     google?: GoogleApi;
     unimail?: UniMailApi;
+    mailtools?: MailToolsApi;
   }
 }
 
@@ -52,4 +58,8 @@ export function getGoogle(): GoogleApi | null {
 
 export function getUniMail(): UniMailApi | null {
   return getDesktop()?.unimail ?? null;
+}
+
+export function getMailTools(): MailToolsApi | null {
+  return getDesktop()?.mailtools ?? null;
 }

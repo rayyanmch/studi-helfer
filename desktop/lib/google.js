@@ -358,6 +358,30 @@ function bodyOf(payload) {
   return text.trim().slice(0, 20_000);
 }
 
+/** „List-Unsubscribe“ (Newsletter): https-Adresse und/oder mailto, dazu „One-Click“ (RFC 8058). */
+function parseUnsubscribe(h) {
+  const raw = h["list-unsubscribe"];
+  if (!raw) return undefined;
+  const items = [...String(raw).matchAll(/<([^>]+)>/g)].map((m) => m[1].trim());
+  const url = items.find((x) => /^https:\/\//i.test(x));
+  const mailto = items.find((x) => /^mailto:/i.test(x));
+  if (!url && !mailto) return undefined;
+  return { ...(url ? { url } : {}), ...(mailto ? { mailto } : {}), oneClick: /one-click/i.test(h["list-unsubscribe-post"] || "") };
+}
+
+/** Namen der Anhänge (nur zur Anzeige). */
+function attachmentsOf(payload) {
+  const names = [];
+  (function walk(p) {
+    if (!p) return;
+    // Bilder, die nur im Text stehen (Signatur, Logo), zählen nicht
+    const inlineImage = (p.headers || []).some((h) => /content-disposition/i.test(h.name) && /^\s*inline/i.test(h.value)) && /^image\//.test(p.mimeType || "");
+    if (p.filename && !inlineImage && !/\.(p7s|asc)$/i.test(p.filename)) names.push(p.filename);
+    (p.parts || []).forEach(walk);
+  })(payload);
+  return names.slice(0, 20);
+}
+
 /** Gmail-Nachricht → MailMessage (Form wie in web/src/lib/mail-data.ts). */
 function toMail(m, folder) {
   const h = {};
@@ -377,6 +401,8 @@ function toMail(m, folder) {
     unread: (m.labelIds || []).includes("UNREAD"),
     threadId: m.threadId,
     messageIdHeader: h["message-id"] || "",
+    unsubscribe: parseUnsubscribe(h),
+    attachments: attachmentsOf(m.payload),
   };
 }
 

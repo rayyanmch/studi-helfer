@@ -233,6 +233,16 @@ textarea.outline-none:focus-visible {
   scrollbar-width: thin;
 }
 
+/* „Undo“-Meldung beim Senden: der Balken läuft in 10 Sekunden leer */
+@keyframes toast-run {
+  from {
+    width: 100%;
+  }
+  to {
+    width: 0;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   * {
     transition-duration: 0.01ms !important;

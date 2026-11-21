@@ -144,6 +144,38 @@ def _text(msg: email.message.Message) -> str:
     return content.strip()[:20_000]
 
 
+def _unsubscribe(msg: email.message.Message) -> dict[str, Any] | None:
+    """„List-Unsubscribe“ (Newsletter): https-Adresse und/oder mailto, dazu One-Click (RFC 8058)."""
+    raw = str(msg["List-Unsubscribe"] or "")
+    items = [x.strip() for x in re.findall(r"<([^>]+)>", raw)]
+    url = next((x for x in items if x.lower().startswith("https://")), None)
+    mailto = next((x for x in items if x.lower().startswith("mailto:")), None)
+    if not url and not mailto:
+        return None
+    out: dict[str, Any] = {"oneClick": "one-click" in str(msg["List-Unsubscribe-Post"] or "").lower()}
+    if url:
+        out["url"] = url
+    if mailto:
+        out["mailto"] = mailto
+    return out
+
+
+def _attachments(msg: email.message.Message) -> list[str]:
+    """Namen der Anhänge. Bilder, die nur im Text stehen (Signatur, Logo), zählen nicht."""
+    names: list[str] = []
+    try:
+        for part in msg.walk():
+            name = part.get_filename()
+            if not name or name.lower().endswith((".p7s", ".asc")):  # digitale Unterschriften sind keine Anhänge
+                continue
+            if part.get_content_disposition() == "inline" and part.get_content_maintype() == "image":
+                continue
+            names.append(name)
+    except Exception:
+        pass
+    return names[:20]
+
+
 def _date(msg: email.message.Message, fallback: float) -> str:
     try:
         d = email.utils.parsedate_to_datetime(msg["Date"]).astimezone()
@@ -234,6 +266,8 @@ def list_mails(username: str, password: str, known: set[str]) -> dict[str, Any]:
                         "body": _text(msg),
                         "date": _date(msg, time.time()),
                         "messageIdHeader": (msg["Message-ID"] or "").strip(),
+                        "unsubscribe": _unsubscribe(msg),
+                        "attachments": _attachments(msg),
                     }
                 )
             imap.close()

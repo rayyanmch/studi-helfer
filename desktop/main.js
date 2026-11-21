@@ -17,6 +17,7 @@ const { startBundledUi } = require("./lib/ui-server");
 const updater = require("./lib/updater");
 const google = require("./lib/google");
 const unimail = require("./lib/unimail");
+const mailtools = require("./lib/mailtools");
 const study = require("./lib/study");
 const { createMensa } = require("./lib/mensa");
 const mensa = createMensa({ dataDir: backend.DATA_DIR });
@@ -348,6 +349,7 @@ updater.register(handle, () => windows);
 google.register(handle);
 // Uni-Postfach mit dem ILIAS-Login (lib/unimail.js → Python-Helfer)
 unimail.register(handle, packaged);
+mailtools.register(handle); // Newsletter abbestellen
 // Lernbereich: Zusammenfassungen, Lernzettel, Karteikarten über Claude Code (lib/study.js)
 study.register(handle, { packaged, windows: () => windows, dialog });
 
