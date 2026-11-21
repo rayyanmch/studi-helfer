@@ -7,6 +7,7 @@ Gemeinsames Gedächtnis für alle KI-Agenten und Menschen im Projekt. Wird über
 
 Wer gerade woran arbeitet (Person, Aufgabe, betroffene Dateien). Eintragen beim Start, löschen wenn fertig.
 
+- 2026-11-21/22 nachts, Rayyans Agent (Nachtschicht, allein): kleine Verständlichkeits-Verbesserungen nach Befundliste unten. Nur Texte, Zustände, Hinweise, kleine Bausteine in `Login.tsx`, `CoursesView.tsx`, `Settings.tsx`, `ModuleView.tsx`, `Overview.tsx` (klein), `EventDialog.tsx`, `MensaView.tsx`, `ui.tsx`, Python-Fehlertexte in `studi_sync/`. Mail/Google/Accounts bleiben unberührt.
 
 
 
@@ -14,6 +15,31 @@ Wer gerade woran arbeitet (Person, Aufgabe, betroffene Dateien). Eintragen beim 
 
 
 
+
+
+## Nachtschicht
+
+Protokoll der Nacht 21./22.11. (Rayyans Agent, allein). Eine Zeile pro Durchgang: was, warum, wie getestet, was offen ist.
+
+- 21.11. 04:40: Rundgang als „Lena“ (1. Semester BWL, keine Technik) mit Datenkopie (`STUDI_DATA_DIR`, Uni-Ordner als APFS-Klon, Zeitplan aus) und leerem Datenordner. Nichts geändert, Befundliste unten.
+
+## Nachtschicht – Befunde
+
+Priorisiert, oben zuerst. Status in Klammern.
+
+1. **Login sagt nicht, was die App tut** (`Login.tsx`). Lena sieht nur „Sign in to ILIAS“ und weiß nicht, warum sie hier ihr Passwort eingeben soll; „University ID“ ohne Beispiel, „Keychain“ ist ein Fachwort. Vorschlag: ein Satz „Gets your course files and deadlines from ILIAS for you.“, Platzhalter „e.g. mmuster1“, „Your password is stored only on this Mac.“ (offen)
+2. **Technische Fehlertexte** (`ilias.py`, `deadlines.py`, `__main__.py`, `backend.js`): „Can't reach ILIAS (ConnectTimeout).“, „ILIAS returned error 503.“, „TypeError: …“, „Helper failed to start: …“. Lena weiß nicht, was sie tun soll. Vorschlag: ein Satz, was los ist, und was man tun kann („Check your internet connection and try again.“); Technik nur ins Log. (offen)
+3. **Ordnerpfade als Knopftext** (`CoursesView.tsx`, `Settings.tsx`, `Setup.tsx`): „Open /Users/…/Uni“ bricht auf zwei Zeilen um, „Change courses“ ebenso. Vorschlag: „Open Uni folder“, Pfad mit `~` kürzen. (offen)
+4. **Keine Begrüßung nach dem ersten Import**: Lena weiß nicht, dass Dateien in `~/Uni` liegen, Fristen von selbst kommen, es Mensa gibt. Vorschlag: kleine, abschaltbare Karte auf der Startseite (3 Punkte). (offen)
+5. **Kalender-Text in Settings** (`Settings.tsx`): langer Absatz mit „KLIPS“, „Export / Subscribe“. Vorschlag: zwei kurze Sätze, Schritte nummeriert. (offen)
+6. **Suche findet deutsche Wörter nicht** (`Overview.tsx`, `SearchView`): „klausur“ ergibt „No results“, obwohl es Klausuren und Altklausuren gibt; keine Hilfe im leeren Ergebnis. Vorschlag: Arten (Exams, Exercises, Slides …) mitsuchen, deutsche Synonyme (Klausur, Übung, Folien, Lösung), Hinweis bei 0 Treffern. (offen)
+7. **„From 0 Folien“** bei Klausurterminen auf der Kursseite (`ModuleView.tsx`): Quelle wirkt wie ein Fehler. Vorschlag: „Found in “0 Folien”“. (offen)
+8. **Versteckte Funktionen**: Dass man Termine anklicken (bearbeiten/ausblenden), Wahltermine antippen und Kurse per Doppelklick umbenennen kann, sieht man nicht. Vorschlag: kurze Hinweise („Tap a time to choose it“, Tooltip/Untertitel). (offen)
+9. **4 Wochen: nur Farbe zeigt den Kurs** (`Overview.tsx`, `MonthView`): mehrere „Lecture“-Streifen am selben Tag, Kurs nur über Farbe erkennbar. Vorschlag: Kurzname im Tooltip/aria-label, ggf. „Lecture · BWL“. (offen)
+10. **Dialoge bekommen beim Öffnen einen blauen Rahmen** (Settings, Termin): Fokusrahmen auf dem ganzen Dialog wirkt wie ein Fehler. Vorschlag: Fokus auf den Dialog ohne sichtbaren Rahmen (Tastatur bleibt bedienbar). (offen)
+11. **Mensa am Wochenende** (`MensaView.tsx`): springt still auf Montag. Vorschlag: „Closed today. Showing Monday.“ (offen)
+12. **Suchfeld mit doppeltem Fokusrahmen** (`Overview.tsx`). (offen)
+13. **Termin-Dialog ohne „Mark as done“** für Abgaben (nur Kreis im Kasten). (offen, klein)
 
 ## Nachrichten
 
