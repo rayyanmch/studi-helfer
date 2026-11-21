@@ -146,12 +146,24 @@ export function MonthView({
 }
 
 // Schalter für einen Kalender (Haken in der Kapsel). „dashed“ zeigt, wie dessen Termine aussehen.
-export function CalendarChip({ on, onChange, dashed, children }: { on: boolean; onChange: (on: boolean) => void; dashed: boolean; children: React.ReactNode }) {
+export function CalendarChip({
+  on,
+  onChange,
+  dashed,
+  small = false,
+  children,
+}: {
+  on: boolean;
+  onChange: (on: boolean) => void;
+  dashed: boolean;
+  small?: boolean; // kleiner, z. B. neben „Next 4 days“ auf der Startseite
+  children: React.ReactNode;
+}) {
   return (
     <button
       onClick={() => onChange(!on)}
       aria-pressed={on}
-      className={`press flex h-8 items-center gap-2 rounded-full pl-2 pr-3.5 font-semibold transition-colors ${on ? "bg-accent text-on-accent" : "bg-surface text-muted shadow-[inset_0_0_0_1.5px_var(--line)] hover:bg-hover"}`}
+      className={`press flex items-center gap-2 rounded-full pl-2 font-semibold transition-colors ${small ? "h-7 pr-3 text-[12px]" : "h-8 pr-3.5"} ${on ? "bg-accent text-on-accent" : "bg-surface text-muted shadow-[inset_0_0_0_1.5px_var(--line)] hover:bg-hover"}`}
     >
       <span
         aria-hidden

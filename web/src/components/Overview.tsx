@@ -48,7 +48,7 @@ import { GoogleEventHost, openGoogleEvent } from "./GoogleEventDialog";
 import { CalendarView } from "./CalendarView";
 import { PlacesView } from "./PlacesView";
 import { placeLabel } from "@/lib/rooms";
-import { ClashTag, GoogleBlock, abbrTitle, mergeTwins, overlapRows, sharedZones, startMinutes, withCourse, type DayEntry, type TimedEntry } from "./calendar-bits";
+import { CalendarChip, ClashTag, GoogleBlock, abbrTitle, mergeTwins, overlapRows, sharedZones, startMinutes, withCourse, type DayEntry, type TimedEntry } from "./calendar-bits";
 import { Accounts } from "./Accounts";
 import { Settings } from "./Settings";
 import { ImportPanel, jobProgress, useJob, useTick, type Job } from "./ImportJob";
@@ -57,7 +57,7 @@ import { UpdateMenuItem } from "./UpdateNotice";
 import type { Problem } from "./AppShell";
 import { countFiles, countNew, type Course, type Deadline } from "@/lib/mock-data";
 import * as store from "@/lib/app-store";
-import { initMail, useMail } from "@/lib/mail-data";
+import { initMail, setCalendar, useMail } from "@/lib/mail-data";
 import { useRoomChanged } from "@/lib/room-changes";
 import { appStore, etaLabel, realCourses, useApp, useCommand } from "@/lib/app-store";
 
@@ -843,8 +843,19 @@ function WeekView({
   return (
     <>
       {/* Nächste Abgabe, Klausur und KLIPS-Erinnerung stehen schon im Satz oben (TodayView) */}
-      <header className="mt-8 flex flex-wrap items-center gap-3">
-        <h2 className="flex-1 text-[17px] font-bold">Next 4 days</h2>
+      <header className="mt-8 flex flex-wrap items-center gap-x-3 gap-y-2">
+        <h2 className="text-[17px] font-bold">Next 4 days</h2>
+        {googleConnected && (
+          <div className="flex items-center gap-1.5" role="group" aria-label="Calendars to show">
+            <CalendarChip small on={mail.calendars.ilias} onChange={(on) => setCalendar("ilias", on)} dashed={false}>
+              ILIAS
+            </CalendarChip>
+            <CalendarChip small on={mail.calendars.google} onChange={(on) => setCalendar("google", on)} dashed>
+              Google
+            </CalendarChip>
+          </div>
+        )}
+        <span className="flex-1" />
         <Button variant="plain" onClick={() => openNewEvent()}>
           <CalendarPlus size={14} aria-hidden /> Add event
         </Button>
