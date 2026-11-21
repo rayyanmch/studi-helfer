@@ -7,6 +7,7 @@ import { AlertTriangle, Check } from "lucide-react";
 import { colorOf, examLabel, nameOf, shortOf, tone } from "./ui";
 import { openEvent } from "./EventDialog";
 import { openGoogleEvent } from "./GoogleEventDialog";
+import { placeLabel } from "@/lib/rooms";
 import { appStore } from "@/lib/app-store";
 import type { GoogleEvent } from "@/lib/mail-data";
 import type { Deadline } from "@/lib/mock-data";
@@ -163,9 +164,9 @@ export function startMinutes(time: string): number {
   return m ? +m[1] * 60 + +m[2] : -1;
 }
 
-/** Von–bis in Minuten, wenn die Zeit „10:00 to 11:30“ lautet. */
+/** Von–bis in Minuten: „10:00 to 11:30“ (Google), „10:00–11:30“ (Stundenplan, eigene Termine), „10:00 - 11:30“. */
 export function timeRange(time: string): [number, number] | null {
-  const m = /(\d{1,2}):(\d{2})\s*to\s*(\d{1,2}):(\d{2})/.exec(time);
+  const m = /(\d{1,2}):(\d{2})\s*(?:to|–|—|-|bis)\s*(\d{1,2}):(\d{2})/.exec(time);
   return m ? [+m[1] * 60 + +m[2], +m[3] * 60 + +m[4]] : null;
 }
 
@@ -225,7 +226,7 @@ export function GoogleBlock({ ev, clash = null }: { ev: GoogleEvent; clash?: str
         {ev.time.replace(" to ", "–")}
       </span>
       <span className="mt-1 block pr-[18px] text-[13px] font-semibold leading-snug">{ev.title}</span>
-      {ev.location && <span className="block truncate text-[12px] text-muted">{ev.location}</span>}
+      {ev.location && <span className="block truncate text-[12px] text-muted">{placeLabel(ev.location)}</span>}
       {clash && <ClashTag other={clash} />}
     </div>
   );

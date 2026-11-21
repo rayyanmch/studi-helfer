@@ -6,7 +6,7 @@
 import { useEffect, useRef, useSyncExternalStore } from "react";
 import { CalendarDays, Clock, ExternalLink, MapPin, X } from "lucide-react";
 import { RouteButton } from "./RouteButton";
-import { routeFor } from "@/lib/rooms";
+import { placeLabel, routeFor } from "@/lib/rooms";
 import type { GoogleEvent } from "@/lib/mail-data";
 
 let current: GoogleEvent | null = null;
@@ -75,7 +75,7 @@ function GoogleEventDialog({ ev }: { ev: GoogleEvent }) {
             </p>
             {ev.location && (
               <p className="mt-1 flex items-start gap-2 text-[13px]">
-                <MapPin size={14} className="mt-0.5 shrink-0 text-muted" aria-hidden /> <span className="min-w-0 break-words">{ev.location}</span>
+                <MapPin size={14} className="mt-0.5 shrink-0 text-muted" aria-hidden /> <span className="min-w-0 break-words">{placeLabel(ev.location)}</span>
               </p>
             )}
             {route && !route.exact && <p className="mt-2 text-[12px] text-muted">Apple Maps looks this place up for you.</p>}

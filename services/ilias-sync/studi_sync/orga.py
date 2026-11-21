@@ -27,7 +27,7 @@ from .deadlines import PARENTS
 from .sheets import DEADLINE_WORDS, EVENT_WORDS, SOLUTION, _find_dates, _pdf_text
 from .textfix import WEEKDAY_RE, fix_year, normalize, weekday_before, weekday_of
 
-RULES_VERSION = 1
+RULES_VERSION = 2  # 2: Überschrift „ROOM“ ist kein Raum, „start in lecture week 3“ gilt für die genannte Art
 CACHE = DATA_DIR / "orga-cache.json"
 OUTPUT = DATA_DIR / "orga-events.json"
 MAX_PAGES = 25  # Orga-Folien: Zeiten stehen meist auf den ersten 5–15 Folien
@@ -95,6 +95,7 @@ GENERIC_HEADER = re.compile(r"\b(termine?|zeiten|dates|times|schedule|zeit und o
 ROOM = re.compile(
     r"(hörsaal|\bhs\b|\braum\b|\broom\b|\baula\b|seminarraum|\bs\d{2,4}\b|gebäude|building|str\.|straße|strasse|online|zoom|"
     r"hybrid|präsenz|mensa|labor|lecture hall|\bhall\b|\bsr\b|\bpc-?pool)", re.I)
+LABEL_ONLY = re.compile(r"(?:room|raum|ort|location|where|wo|place|venue)", re.I)
 LECTURE_ROOM = re.compile(r"(hörsaal|\bhs\b|\baula\b|lecture hall)", re.I)
 SMALL_ROOM = re.compile(r"(seminarraum|\bsr\b|\bs\d{2,4}\b|room\s+s?\d|pc-?pool|labor)", re.I)
 
@@ -117,6 +118,14 @@ def _room(rest: str) -> Optional[str]:
     room = re.split(r"(?<=[a-zäöü0-9])\.\s+(?=[A-ZÄÖÜ])|\s(?:für|for|statt|findet|takes)\b", rest[start:], maxsplit=1)[0]
     room = re.sub(r"\s{2,}", " ", room).strip(" ,;:|·()-.")
     room = re.sub(r"^(?:im|in der|in|at|room:|raum:|ort:)\s+", "", room, flags=re.I)
+    # Folien-Überschrift („ROOM“, „Raum“, „Ort“) allein ist kein Raum: der steht dann in der nächsten Zeile
+    if LABEL_ONLY.fullmatch(room):
+        return None
+    # „Lecture hall H161 (building 213, formerly H1)“ über zwei Zeilen: Klammer auflösen, „formerly …“ weg
+    if "(" in room and ")" not in room:
+        room = room.replace("(", ", ")
+    room = re.sub(r",?\s*\b(?:formerly|ehemals|früher|ehem\.)\b.*$", "", room, flags=re.I)
+    room = re.sub(r"\s+,", ",", re.sub(r"\s{2,}", " ", room)).strip(" ,;:|·()-.")
     return room[:60] or None
 
 
@@ -192,13 +201,15 @@ def find_slots(lines: list[str], default_type: str = "lecture") -> list[dict[str
                 header_type, header_skip = None, False
             elif headerish and SKIP.search(line) and line.rstrip().endswith(":"):
                 header_skip = True
-            if roomless and len(line) < 50 and ROOM.search(line) and not t and i - roomless[-1]["_line"] <= 2:
+            room_line = not t or LECTURE_ROOM.search(line) or SMALL_ROOM.search(line)
+            if roomless and len(line) < 50 and ROOM.search(line) and room_line and i - roomless[-1]["_line"] <= 2:
                 room = _room(line)
-                for s in roomless:
-                    s["room"] = room
-                    if s["_conf"] < 2 and _room_type(room):
-                        s["type"], s["_conf"] = _room_type(room), 1
-                roomless = []
+                if room:  # bloße Überschrift („ROOM“): weiter in der nächsten Zeile suchen
+                    for s in roomless:
+                        s["room"] = room
+                        if s["_conf"] < 2 and _room_type(room):
+                            s["type"], s["_conf"] = _room_type(room), 1
+                    roomless = []
             continue
         if OFFICE.search(line) or SKIP.search(line):
             continue
@@ -307,6 +318,9 @@ def _date_hits(text: str, ref: date) -> list[tuple[date, int, int]]:
     return [(fix_year(d, weekday_before(text, s), ref), s, e) for d, s, e in _find_dates(text, ref)]
 
 
+WEEK_WORDS = re.compile(r"\b(?:lecture|teaching|semester)\s+weeks?\b|vorlesungs(?:woche\w*|zeit)|semesterwoche\w*", re.I)
+
+
 def find_markers(lines: list[str], ref: date) -> dict[str, Any]:
     starts: dict[str, str] = {}
     week_offsets: dict[str, int] = {}
@@ -314,7 +328,7 @@ def find_markers(lines: list[str], ref: date) -> dict[str, Any]:
     for i, line in enumerate(lines):
         window = f"{line} {lines[i + 1]}" if i + 1 < len(lines) and len(line) < 50 else line
         if START_RE.search(line) and not SKIP.search(window):
-            typ = _type_in(window) or "all"
+            typ = _type_in(WEEK_WORDS.sub(" ", window)) or "all"
             hits = _date_hits(window, ref)
             if hits:
                 d = hits[0][0].isoformat()

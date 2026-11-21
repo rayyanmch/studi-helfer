@@ -290,9 +290,16 @@ function toDeadline(d: DesktopDeadline): Deadline {
     (d.category === "uni" ? "Found in “University dates”" : d.category === "sheet" || d.category === "ai" || d.category === "schedule" ? fromFile : undefined);
   // ILIAS-Sitzungen einer Reihe („ISM - Vorlesung“, jeden Donnerstag 10:00) lassen sich zusammen ausblenden
   const seriesId =
-    d.category === "session" ? `sess|${d.moduleId ?? OTHER_ID}|${d.title.toLowerCase()}|${new Date(`${d.date}T12:00:00`).getDay()}|${d.time}` : undefined;
-  const title = d.kind === "klausur" ? examTitle(d.title) : d.title; // nur Anzeige, die Id bleibt
+    d.category === "session" ? `sess|${d.moduleId ?? OTHER_ID}|${d.title.toLowerCase()}|${new Date(`${d.date}T12:00:00`).getDay()}|${d.time.match(/\d{1,2}:\d{2}/)?.[0] ?? d.time}` : undefined;
+  const title = d.kind === "klausur" ? examTitle(d.title) : tidyTitle(d.title); // nur Anzeige, die Id bleibt
   return { id: d.id, courseId: d.category === "uni" ? UNI_ID : d.moduleId ?? OTHER_ID, title, date: d.date, time: d.time, kind: d.kind, source, seriesId, location: d.location ?? undefined };
+}
+
+/** „!!! Virtuell!!! ISM - Übung“ → „ISM - Übung (online)“: Ausrufezeichen-Hinweise aus ILIAS lesbar machen. */
+function tidyTitle(title: string): string {
+  const online = /!{2,}\s*(?:virtuell|virtual|online)\s*!*/i.test(title);
+  const clean = title.replace(/!{2,}\s*(?:virtuell|virtual|online|hybrid)?\s*!*/gi, " ").replace(/\s{2,}/g, " ").trim();
+  return clean ? (online ? `${clean} (online)` : clean) : title;
 }
 
 const ORDINAL: Record<string, string> = { first: "1st", second: "2nd", third: "3rd" };

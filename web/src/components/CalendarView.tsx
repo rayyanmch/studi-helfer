@@ -9,7 +9,7 @@ import { CalendarPlus, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button, colorOf, examLabel, nameOf, shortOf, tone } from "./ui";
 import { openEvent, openNewEvent } from "./EventDialog";
 import { openGoogleEvent } from "./GoogleEventDialog";
-import { routeFor, routeForDeadline } from "@/lib/rooms";
+import { placeLabel, routeFor, routeForDeadline } from "@/lib/rooms";
 import { CalendarChip, DAY_MS, MonthView, abbrTitle, bare, courseById, isoOf, mondayOf, parseDay, startMinutes, timeRange, todayMs, withCourse } from "./calendar-bits";
 import { setCalendar, useMail, type GoogleEvent } from "@/lib/mail-data";
 import { useApp } from "@/lib/app-store";
@@ -244,7 +244,9 @@ function WeekGrid({
     const timed: Omit<Slot, "col" | "cols" | "group">[] = [];
     const top: { key: string; d: Deadline | null; ev: GoogleEvent | null }[] = [];
     for (const d of ds) {
-      const r = timeRange(d.time) ?? (d.kind === "termin" && startMinutes(d.time) >= 0 ? [startMinutes(d.time), startMinutes(d.time) + 60] as [number, number] : null);
+      // Ohne Ende: Uni-Veranstaltungen dauern fast immer 90 Minuten, alles andere zeigen wir als eine Stunde
+      const len = d.courseId !== "other" && d.courseId !== "uni" ? 90 : 60;
+      const r = timeRange(d.time) ?? (d.kind === "termin" && startMinutes(d.time) >= 0 ? [startMinutes(d.time), startMinutes(d.time) + len] as [number, number] : null);
       if (r && d.kind !== "abgabe") timed.push({ key: d.id, start: r[0], end: Math.max(r[1], r[0] + 20), d, ev: null, both: false });
       else top.push({ key: d.id, d, ev: null });
     }
@@ -458,7 +460,7 @@ function GridBlock({
       <>
         <b className="block font-semibold">{exam ? d.title : withCourse(d.title, course)}</b>
         <span className="block opacity-80">{nameOf(course)} · {time}</span>
-        {d.location && <span className="block opacity-80">{d.roomChange ? `Room changed: ${d.location}` : d.location}</span>}
+        {d.location && <span className="block opacity-80">{d.roomChange ? `Room changed: ${placeLabel(d.location)}` : placeLabel(d.location)}</span>}
         {slot.both && <span className="block opacity-80">Also in Google Calendar</span>}
         <span className="mt-1 block font-semibold opacity-90">Click for details{route ? " and route" : ""}</span>
       </>,
@@ -467,7 +469,7 @@ function GridBlock({
         background: tone(c, "soft"),
         boxShadow: exam ? `inset 0 0 0 2px ${tone(c)}` : slot.both ? `inset 0 0 0 1.5px ${tone(c)}` : undefined,
       },
-      body(title, tone(c, "ink"), slot.both ? <span className="ml-1 font-bold" style={{ color: "#4285f4" }}>+G</span> : null, d.location || shortOf(course)),
+      body(title, tone(c, "ink"), slot.both ? <span className="ml-1 font-bold" style={{ color: "#4285f4" }}>+G</span> : null, placeLabel(d.location) || shortOf(course)),
     );
   }
   const ev = slot.ev!;
@@ -479,12 +481,12 @@ function GridBlock({
     <>
       <b className="block font-semibold">{ev.title}</b>
       <span className="block opacity-80">{time}{ev.calendar ? ` · ${ev.calendar}` : ""}</span>
-      {ev.location && <span className="block opacity-80">{ev.location}</span>}
+      {ev.location && <span className="block opacity-80">{placeLabel(ev.location)}</span>}
       <span className="mt-1 block font-semibold opacity-90">Click for details{route ? " and route" : ""}</span>
     </>,
     "",
     { border: `1.5px dashed ${color}`, background: `color-mix(in srgb, ${color} 14%, var(--surface))` },
-    body(ev.title, undefined, <span className="ml-1 font-bold" style={{ color: "#4285f4" }}>G</span>, ev.location ?? ""),
+    body(ev.title, undefined, <span className="ml-1 font-bold" style={{ color: "#4285f4" }}>G</span>, placeLabel(ev.location)),
   );
 }
 

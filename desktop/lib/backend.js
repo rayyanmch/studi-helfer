@@ -745,10 +745,24 @@ function getDeadlines() {
     }
   }
   // Stundenplan zuletzt: ILIAS-Sitzungen und Kalender-Abos kennen Raum und Ausnahmen besser
-  for (const ev of scheduleFor(cfg, modules, moduleOfCourse).events) {
+  const scheduled = scheduleFor(cfg, modules, moduleOfCourse).events;
+  for (const ev of scheduled) {
     if (ids.has(ev.id) || overlaps(termsByDay.get(`${ev.moduleId}|${ev.date}`) || [], ev)) continue;
     ids.add(ev.id);
     all.push(ev);
+  }
+  // ILIAS-Sitzungen haben oft nur einen Beginn („17:45“). Das Ende steht im Stundenplan (gleiches Modul, Wochentag, Beginn):
+  // ohne das zeichnet der Kalender sie zu kurz.
+  const slotEnd = new Map();
+  for (const ev of scheduled) {
+    const m = /^(\d{2}:\d{2})–(\d{2}:\d{2})$/.exec(ev.time || "");
+    if (m) slotEnd.set(`${ev.moduleId}|${new Date(`${ev.date}T12:00:00`).getDay()}|${m[1]}`, m[2]);
+  }
+  for (const d of all) {
+    if (d.kind !== "termin" || !/^\d{1,2}:\d{2}$/.test(d.time || "")) continue;
+    const start = d.time.padStart(5, "0");
+    const end = slotEnd.get(`${d.moduleId}|${new Date(`${d.date}T12:00:00`).getDay()}|${start}`);
+    if (end) d.time = `${start}–${end}`;
   }
   all.sort((a, b) => (a.date === b.date ? String(a.start).localeCompare(String(b.start)) : a.date.localeCompare(b.date)));
   return {

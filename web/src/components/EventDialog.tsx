@@ -11,7 +11,7 @@ import { Button, Swatch, colorOf, nameOf, tone } from "./ui";
 import * as store from "@/lib/app-store";
 import { COURSE_COLORS, appStore, realCourses, useApp } from "@/lib/app-store";
 import type { CourseColor, CustomEvent, Deadline } from "@/lib/mock-data";
-import { resolveRoom, routeForDeadline } from "@/lib/rooms";
+import { joinLink, placeLabel, resolveRoom, routeForDeadline } from "@/lib/rooms";
 import { RouteButton } from "./RouteButton";
 import { KLIPS_URL, registrationHint, setExamRegistered, useExamRegistered } from "@/lib/exam-reg";
 import { lecturePeriod, newEventId, occurrences, parseIso, parseTimeLabel, timeLabel, weekdayOf } from "@/lib/recurrence";
@@ -201,7 +201,8 @@ function Details({ deadline: d, onOpenCourse }: { deadline: Deadline; onOpenCour
   const app = useApp();
   const course = app.courses.find((c) => c.id === d.courseId);
   const color = d.color ?? (course ? colorOf(course) : "indigo");
-  const where = d.location ?? (d.source && !d.source.startsWith("Found in ") ? d.source : undefined);
+  const where = d.location ? placeLabel(d.location) : d.source && !d.source.startsWith("Found in ") ? placeLabel(d.source) : undefined;
+  const join = joinLink(d.location);
   // Route: Gebäudenummer am Raum, sonst das Gebäude, dessen Name passt, bei eigenen Terminen auch eine Adresse.
   // Bei geändertem Raum ohne Gebäude gilt das Gebäude des normalen Raums.
   const direct = resolveRoom(d.location);
@@ -258,6 +259,11 @@ function Details({ deadline: d, onOpenCourse }: { deadline: Deadline; onOpenCour
         {d.kind === "klausur" && <ExamRegistration deadline={d} />}
         <div className="mt-4 flex flex-wrap items-center gap-2">
           {route && <RouteButton route={route} />}
+          {join && (
+            <a href={join} target="_blank" rel="noopener noreferrer" className="press inline-flex h-8 items-center gap-1.5 rounded-lg bg-accent px-3 text-[13px] font-semibold text-on-accent hover:opacity-90">
+              Join online <ExternalLink size={13} aria-hidden />
+            </a>
+          )}
           {canDone && (
             <Button variant={isDone ? "secondary" : "primary"} onClick={() => void store.toggleDone(d.id)} aria-pressed={isDone}>
               {isDone ? <RotateCcw size={13} aria-hidden /> : <Check size={13} aria-hidden />} {isDone ? "Mark as not done" : "Mark as done"}

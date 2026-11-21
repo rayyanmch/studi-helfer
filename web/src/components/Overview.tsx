@@ -39,6 +39,7 @@ import { VpnDialogHost, VpnLine, openVpnDialog } from "./VpnPanel";
 import { GoogleEventHost, openGoogleEvent } from "./GoogleEventDialog";
 import { CalendarView } from "./CalendarView";
 import { PlacesView } from "./PlacesView";
+import { placeLabel } from "@/lib/rooms";
 import { CalendarChip, ClashTag, GoogleBlock, abbrTitle, mergeTwins, overlapRows, sharedZones, startMinutes, withCourse, type DayEntry, type TimedEntry } from "./calendar-bits";
 import { Accounts } from "./Accounts";
 import { Settings } from "./Settings";
@@ -934,7 +935,7 @@ function OverlapGroup({ items, onOpen }: { items: TimedEntry[]; onOpen: (id: str
           const c = it.d && course ? (it.d.color ?? colorOf(course)) : null;
           const gColor = it.ev?.color ?? "var(--muted)";
           const title = it.d ? (it.d.kind === "klausur" && course ? examLabel(it.d.title, course) : course ? withCourse(bare(it.d.title), course) : bare(it.d.title)) : it.ev!.title;
-          const sub = it.d ? (it.d.location || (course ? shortOf(course) : "")) : (it.ev!.location ?? "");
+          const sub = it.d ? (placeLabel(it.d.location) || (course ? shortOf(course) : "")) : placeLabel(it.ev!.location);
           const body = squeezed ? (
             // Schmaler Nachbar eines aufgeklappten Termins: Titel senkrecht lesbar statt leerer Kasten
             <span aria-hidden className="block h-full overflow-hidden whitespace-nowrap text-[11px] font-semibold text-ellipsis" style={{ writingMode: "vertical-rl" }}>
@@ -1029,13 +1030,14 @@ function DeadlineBlock({
   const examBits = exam ? examPart(d.title) : null;
   const title = examBits ? `${shortOf(course)}${examBits.rest ? ` · ${examBits.rest}` : ""}` : withCourse(bare(d.title), course);
   // „Lecture“ allein sagt nicht, welcher Kurs: der Kurzname steht im Titel, darunter der Raum
-  const below = exam && d.location ? d.location : examBits ? null : title !== bare(d.title) ? d.location || null : shortOf(course);
+  const place = placeLabel(d.location);
+  const below = exam && place ? place : examBits ? null : title !== bare(d.title) ? place || null : shortOf(course);
 
   return (
     <div className="hit flex items-start gap-1.5 rounded-[7px] py-1.5 pl-2 pr-1.5" style={style}>
       <button
         onClick={onOpen}
-        title={[`${d.title}, ${nameOf(course)}`, d.location ? `Room: ${d.location}` : d.source].filter(Boolean).join(" · ")}
+        title={[`${d.title}, ${nameOf(course)}`, d.location ? `Room: ${placeLabel(d.location)}` : d.source].filter(Boolean).join(" · ")}
         className="min-w-0 flex-1 text-left"
       >
         {exam && (

@@ -28,7 +28,14 @@ export function resolveRoom(text: string | null | undefined): RoomPlace | null {
   if (!first || /zoom|virtuell|virtual|online|https?:/i.test(first)) return null;
   // Gebäudenummer hat 2–3 Stellen; „1.21“ oder „12.3“ sind Raumnummern ohne Gebäude
   const m = /^(?:geb(?:äude|\.)?\s*)?(\d{2,3}[a-z]?)(?![\d.]\d)(?=\s|$|[,/:-])\s*[,/:-]?\s*(.*)$/i.exec(first);
-  if (!m) return null;
+  if (!m) {
+    // „Lecture hall H161, building 213“: Gebäudenummer mitten im Text
+    const inside = /\b(?:building|geb(?:äude|\.))\s*(\d{2,3}[a-z]?)\b/i.exec(first);
+    const hit = inside && BUILDINGS.find((x) => x.ref.toLowerCase() === inside[1].toLowerCase());
+    if (!hit) return null;
+    const room = first.replace(inside[0], "").replace(/\s*,\s*$|^\s*,\s*/g, "").trim();
+    return { building: hit, label: `Building ${hit.ref}${hit.name ? `, ${hit.name}` : ""}`, room };
+  }
   const ref = m[1].toLowerCase();
   const b = BUILDINGS.find((x) => x.ref.toLowerCase() === ref);
   if (!b) return null;
@@ -101,6 +108,24 @@ export function routeFor(location: string | null | undefined, opts: { allowText?
 export function routeForDeadline(d: { id: string; location?: string | null; roomChange?: { was: string | null } | null }): Route | null {
   const own = !d.id.startsWith("uni|");
   return routeFor(d.location, { allowText: own }) ?? (d.roomChange ? routeFor(d.roomChange.was) : null);
+}
+
+/** Ort kurz und lesbar: Online-Termine als „Online (Zoom)“ statt Link und Passwort, sonst die erste Zeile. */
+export function placeLabel(location: string | null | undefined): string {
+  const text = (location ?? "").trim();
+  if (!text) return "";
+  if (isVirtual(text)) {
+    if (/zoom/i.test(text)) return "Online (Zoom)";
+    if (/teams\.microsoft|\bteams\b/i.test(text)) return "Online (Teams)";
+    if (/webex/i.test(text)) return "Online (Webex)";
+    return "Online";
+  }
+  return text.split("\n")[0].trim().replace(/[:,;]$/, "");
+}
+
+/** Link zum Online-Raum (Zoom, Teams, Webex …), falls einer dabeisteht. */
+export function joinLink(location: string | null | undefined): string | null {
+  return /https?:\/\/[^\s<>"]+/.exec(location ?? "")?.[0] ?? null;
 }
 
 /** Wegbeschreibung zu Fuß in der Karten-App des Macs (Apple Karten); der Startpunkt ist der Standort des Studenten. */
