@@ -7,7 +7,6 @@ Gemeinsames Gedächtnis für alle KI-Agenten und Menschen im Projekt. Wird über
 
 Wer gerade woran arbeitet (Person, Aufgabe, betroffene Dateien). Eintragen beim Start, löschen wenn fertig.
 
-- **Rayyans Agent (2. Sitzung): Lösung neben dem Blatt + Sync-Intervall** (2026-11-21). Neu: `web/src/lib/solutions.ts`. Klein geändert: `files.tsx` (FileRow zeigt „Solution“-Chip), `ModuleView.tsx` (Dateilisten), `mock-data.ts` (zwei Beispiel-Lösungen), `Settings.tsx` (Intervall-Auswahl), `app-store.ts`/`desktop.ts` (`schedule.every`), `desktop/lib/backend.js` (launchd `StartInterval`), `desktop/main.js` (nur `setSchedule`), `studi_sync/sync.py` (keine Zufallsverzögerung bei kurzen Intervallen).
 
 
 
@@ -77,6 +76,8 @@ Kurze Nachrichten zwischen den Agenten (und Menschen). Neues oben, mit Datum und
 
 ## Entscheidungen
 
+- 2026-11-21: **Sync-Intervall einstellbar** (Settings → Updates: alle 30 min / 1 h / 3 h / einmal täglich zur Uhrzeit). `config.schedule.every` (`"30m"|"1h"|"3h"|"daily"`, fehlt = täglich); launchd bekommt dafür `StartInterval` statt `StartCalendarInterval` (`applySchedule` in `backend.js`). Bei kurzen Intervallen keine Zufallsverzögerung in `sync.py` (sonst bis zu 15 min Warten). Läuft auch bei offener App; parallele Läufe verhindert das Lock (`busy`).
+- 2026-11-21: **Lösung neben dem Blatt** ohne KI (`web/src/lib/solutions.ts`, `linkSolutions(files)`): Lösung = Name mit Lösung/Solution/Musterlösung; Nummer nach Blatt/Sheet/Übung/Exercise/Homework/Woche/Einheit … (sonst die einzige Zahl), gleiche Nummer im selben Modul, derselbe ILIAS-Ordner gewinnt, Vorlesungsfolien zählen nicht. Auf der Modulseite Chip „Solution“ am Blatt, an der Lösung „Solution to …“. Bei Rayyan: alle 6 BWL-Lösungen richtig zugeordnet (Woche 3 hat zwei).
 - 2026-11-21: **Mensa über CloudMensa** (Rayyan). Das Kölner Studierendenwerk bettet auf kstw.de/speiseplan `app.cloudmensa.io/menu/kstw` ein; die Seite ruft öffentliche Supabase-Funktionen auf (`public_get_organization_by_slug` mit `kstw`, `public_get_week_menu_cached` mit Organisation + Zeitraum) mit dem öffentlichen Schlüssel aus der Seite. Wir holen Mo dieser bis Fr nächster Woche (≈0,8 MB, 0,3 s), bereiten auf (englische Namen ohne Allergen-Ziffern, Studi/Bedienstete/Gäste-Preis, Ausgabe und Uhrzeit, vegan/vegetarisch, Allergene kurz, ausverkauft) und speichern im localStorage; neu nach 30 min oder am nächsten Tag. Fotos sind 4747 px groß und ohne Cache: `desktop/lib/mensa.js` lädt jedes einmal, verkleinert mit `sips` auf 360 px PNG (Transparenz bleibt, ≈140 KB) nach `<App-Daten>/mensa-thumbs/`, löscht nach 45 Tagen. Zülpicher Straße hat keine Fotos → Symbol je Gericht (Suppe, Pizza, Fisch, Blatt …).
 
 - 2026-11-21: **Eigene Termine und ausblendbare erkannte Termine** (Rayyan). Gespeichert in `custom-events.json` (App-Daten: `{events, hidden}`), Electron prüft und säubert jeden Termin (`cleanEvent`). Wiederholungen löst die Oberfläche auf (`web/src/lib/recurrence.ts`, gleiche Faustregel für Vorlesungszeit und Feiertage wie `desktop/lib/schedule.js`), im Browser nur im Speicher. Erkannte Termine bearbeiten = als eigenen Termin übernehmen und das Original (Id oder Serie) ausblenden; Serien: `orga|<Modul>|<Slot>`, `cal|<UID>`, ILIAS-Sitzungen `sess|<Modul>|<Titel>|<Wochentag>|<Zeit>`. Zurückholen in Settings → Calendars.
