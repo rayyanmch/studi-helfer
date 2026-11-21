@@ -11,6 +11,7 @@ type Status = "idle" | "loading" | "wrong" | "offline" | "error";
 
 // Seite, auf der ILIAS selbst „Passwort vergessen“ anbietet.
 const ILIAS_LOGIN = "https://www.ilias.uni-koeln.de/ilias/login.php";
+const FIRST_STEPS = "https://studierende.uni-koeln.de/erstsemester/erste_schritte/index_ger.html";
 
 const field =
   "h-11 w-full rounded-[10px] bg-bg px-3.5 outline-none placeholder:text-muted focus:shadow-[inset_0_0_0_2px_var(--focus)] disabled:opacity-60";
@@ -140,6 +141,13 @@ export function Login({ result, onSuccess }: { result: LoginResult; onSuccess: (
           >
             Forgot password?
           </a>
+          {/* Erstis müssen ihren Uni-Account erst in KLIPS freischalten (Link in der Einschreibungs-Mail), sonst klappt kein Login */}
+          <p className="mt-2 text-[13px] text-muted">
+            New student?{" "}
+            <a href={FIRST_STEPS} target="_blank" rel="noopener noreferrer" className="rounded font-semibold text-[var(--focus)] hover:underline">
+              Activate your uni account first
+            </a>
+          </p>
 
           <p className="mt-10 flex items-center justify-center gap-1.5 text-[12px] text-muted">
             <Lock size={12} className="shrink-0" aria-hidden /> Your password stays on this Mac and only goes to ILIAS.

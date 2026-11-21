@@ -11,6 +11,10 @@ const GROUPS: string[][] = [
   ["deadline", "submission", "abgabe", "frist"],
   ["reading", "literatur", "lektüre", "paper"],
   ["self-study", "selbststudium", "selbstlern"],
+  // Uni-Termine (desktop/lib/uni-dates.js) und Prüfungsanmeldung, wie Erstis danach suchen
+  ["semester fee", "semesterbeitrag", "rückmeldung", "rueckmeldung"],
+  ["registration", "register", "anmeldung", "belegung", "klips"],
+  ["christmas", "weihnachten", "ferien", "vorlesungsfrei"],
 ];
 
 /** Klein, ohne Akzente/Umlaute („Übung“ → „ubung“), damit „ubung“ und „übung“ gleich gefunden werden. */

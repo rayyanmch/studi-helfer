@@ -52,7 +52,7 @@ export function Welcome({ onMensa }: { onMensa: () => void }) {
           )}
         </Item>
         <Item icon={<CalendarDays size={16} aria-hidden />} title="Your week">
-          Deadlines and classes show up below. Click one to change or hide it, tick the circle when you’re done.
+          Deadlines and classes show up below. Click one to change or hide it, tick the circle when you’re done. Your Mac reminds you the evening before.
         </Item>
         <Item icon={<UtensilsCrossed size={16} aria-hidden />} title="Lunch">
           See what’s on the menu at your Mensa today, with prices and vegan options.
