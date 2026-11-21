@@ -11,3 +11,10 @@ build/
 __pycache__/
 studi-sync.spec
 desktop/build-resources/
+
+# Geheime Zugangsdaten (Google OAuth u. Ä.) nie einchecken
+.secrets/
+**/.secrets/
+client_secret*.json
+*client_secret*.json
+google-client.json
