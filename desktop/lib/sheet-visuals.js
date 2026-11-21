@@ -63,6 +63,7 @@ function visualPrompt({ subject, figures, candidates }) {
     figures
       ? `FIGURES: you may include slide pages as figures (type figure, file + page) when a page shows a diagram, model or graphic that the text refers to (max 1 per part). ${candidates ? `Pages with little text (likely graphics): ${candidates}.` : ""}`
       : "Do not use type figure.",
+    "Never write about the material itself (no 'nicht Gegenstand des Materials', no 'siehe Folie 31'); just teach the content.",
     "CALLOUTS: 1–3 per part: 'remember' for the one key takeaway, 'tip' only for exam tips stated in the material, 'warning' for typical traps, 'code' for short code (real line breaks, max 12 lines, first line a comment naming what it shows, in the part about that topic).",
   ];
   return parts.filter(Boolean).join("\n");
@@ -185,8 +186,8 @@ function plain(t) {
     .replace(/\\sqrt\{?([^}\s]+)\}?/g, "√$1")
     .replace(/\\pi/g, "π")
     .replace(/\\(left|right|,|;)/g, "")
-    .replace(/_\{([^}]+)\}|_(\w)/g, (_, a, b) => [...(a ?? b)].map((c) => sub[c] ?? c).join(""))
-    .replace(/\^\{([^}]+)\}|\^(\w|-)/g, (_, a, b) => [...(a ?? b)].map((c) => sup[c] ?? c).join(""))
+    .replace(/_\{([^}]+)\}|_(\d+|[a-z])/gi, (_, a, b) => [...(a ?? b)].map((c) => sub[c] ?? c).join(""))
+    .replace(/\^\{([^}]+)\}|\^(\d+|-?[a-z])/gi, (_, a, b) => [...(a ?? b)].map((c) => sup[c] ?? c).join(""))
     .replace(/\\[a-z]+/gi, "");
 }
 
@@ -307,7 +308,8 @@ function visualHtml(v, { rich, files, accent, labels }) {
       return `<figure class="visual"><div class="chain">${steps}</div>${cap ? `<figcaption>${cap}</figcaption>` : ""}</figure>`;
     }
     // Lange Ketten von links nach rechts werden im PDF winzig: ab 5 Pfeilen von oben nach unten
-    let code = v.mermaid.trim();
+    // Formeln in Knotenbeschriftungen lesbar machen („Folge a_n“ → „Folge aₙ“), Knoten-Ids bleiben unberührt
+    let code = v.mermaid.trim().replace(/(\[|\(|\{|\|)([^\]\)\}\|\n]*?[_^\\$][^\]\)\}\|\n]*?)(\]|\)|\}|\|)/g, (m, a, t, b) => `${a}${plain(t)}${b}`);
     if (/^(flowchart|graph)\s+(LR|RL)\b/i.test(code) && (code.match(/-->|---|==>|-\.->/g) || []).length >= 5) code = code.replace(/^(flowchart|graph)\s+(LR|RL)\b/i, "$1 TD");
     return `<figure class="visual"><pre class="mermaid">${esc(code)}</pre>${cap ? `<figcaption>${cap}</figcaption>` : ""}</figure>`;
   }
