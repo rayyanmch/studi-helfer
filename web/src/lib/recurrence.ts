@@ -49,7 +49,7 @@ function easter(year: number) {
 }
 
 const closedCache = new Map<number, Set<string>>();
-/** Tage ohne Lehre: Feiertage NRW, Weihnachtspause (24.12.–06.01.), Rosenmontag. */
+/** Tage ohne Lehre: Feiertage NRW, Weihnachtspause (23.12.–06.01., Uni Köln „Weihnachtsruhe“), Rosenmontag. */
 export function isClosedDay(isoDate: string) {
   const y = Number(isoDate.slice(0, 4));
   let set = closedCache.get(y);
@@ -59,7 +59,7 @@ export function isClosedDay(isoDate: string) {
       const e = easter(yy);
       for (const d of [new Date(yy, 0, 1), addDays(e, -2), addDays(e, 1), new Date(yy, 4, 1), addDays(e, 39), addDays(e, 50), addDays(e, 60), new Date(yy, 9, 3), new Date(yy, 10, 1), addDays(e, -48)])
         set.add(iso(d));
-      for (let d = new Date(yy, 11, 24); d <= new Date(yy + 1, 0, 6); d = addDays(d, 1)) set.add(iso(d));
+      for (let d = new Date(yy, 11, 23); d <= new Date(yy + 1, 0, 6); d = addDays(d, 1)) set.add(iso(d));
     }
     closedCache.set(y, set);
   }

@@ -74,7 +74,8 @@ function closedDays(years) {
       addDays(e, -48), // Rosenmontag
     ])
       full.add(iso(d));
-    for (let d = new Date(y, 11, 24); d <= new Date(y + 1, 0, 6); d = addDays(d, 1)) full.add(iso(d));
+    // Weihnachtsruhe der Uni Köln: 23.12.–06.01. (studierende.uni-koeln.de, Termine WS 26/27)
+    for (let d = new Date(y, 11, 23); d <= new Date(y + 1, 0, 6); d = addDays(d, 1)) full.add(iso(d));
     afternoon.add(iso(addDays(e, -52))); // Weiberfastnacht
   }
   return { full, afternoon };
