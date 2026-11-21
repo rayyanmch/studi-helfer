@@ -7,6 +7,8 @@ Gemeinsames Gedächtnis für alle KI-Agenten und Menschen im Projekt. Wird über
 
 Wer gerade woran arbeitet (Person, Aufgabe, betroffene Dateien). Eintragen beim Start, löschen wenn fertig.
 
+- 2026-11-21 abends, Rayyan (Agent): **Neuer Tab „Progress“ (Lern-Tracker)**: Stoffanteil je Modul diese Woche (ECTS + echte Stoffmenge), Wochen bis zur Klausur mit Fortschritt je Woche, „on track?“. Neue Dateien `web/src/components/ProgressView.tsx`, `web/src/lib/progress.ts`; klein in `Overview.tsx` (NavItem + Ansicht), `StudyHub.tsx`/`study.ts` (Sprung „Woche lernen“), `orga.py` + `backend.js` (ECTS aus Orga-Folien), `mock-data.ts` (optional `credits`).
+
 
 
 
