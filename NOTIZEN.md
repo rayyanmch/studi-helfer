@@ -33,6 +33,7 @@ Protokoll der Nacht 21./22.11. (Rayyans Agent, allein). Eine Zeile pro Durchgang
 - 21.11. 07:00: **4 Wochen: Kurs steht dran** (Befund 9): allgemeine Titel (Lecture, Exercise, Tutorial, Seminar …) bekommen in `MonthView` den Kurznamen davor („BWL Lecture“, „Mathe I Lecture“), Streifen haben `aria-label` mit Titel, Kurs, Zeit. Getestet mit Datenkopie (dunkel 1280×800, hell 1000×700). Offen (Mika/Module): „Softwaretechnik“ hat keinen Kurznamen, wird abgeschnitten; „SE“ wäre besser.
 - 21.11. 07:15: **Kein blauer Rahmen um Dialoge** (Befund 10): Ursache: die globale Regel `:focus-visible` in `globals.css` liegt außerhalb der Tailwind-Ebenen und schlägt deshalb `outline-none` an den Dialogen (Settings, Termin, Mensa-Großansicht). Neu: `[tabindex="-1"]:focus-visible { outline: none }` (nur Elemente, die per Skript den Fokus bekommen). Per CDP `forcePseudoState` geprüft: Dialog ohne Rahmen, Knöpfe darin behalten ihren Fokusrahmen. Getestet mit `next start` (Build) auf Port 3100, weil der fremde Dev-Server auf 3000 CSS-Änderungen nicht mehr übernahm.
 - 21.11. 07:30: **Mensa sagt, wenn heute zu ist** (Befund 11): `MensaView.tsx` zeigt unter dem Datum „The mensa is closed now. Here is the menu for Monday.“ (bzw. „tomorrow“), wenn automatisch ein späterer Tag gewählt wurde (Wochenende, Feiertag, nach 18:30); verschwindet, sobald man selbst einen Tag wählt. Getestet am Samstag mit Datenkopie (hell 1280×800, dunkel 1000×700).
+- 21.11. 07:40: **Ein Fokusrahmen statt zwei an Textfeldern** (Befund 12): gleiche Ursache wie bei den Dialogen; `globals.css`: `input.outline-none:focus-visible, textarea.outline-none:focus-visible { outline: none }`. Betrifft Suchfeld oben, Suche auf der Kursseite, Login, Termin-Dialog, Kalender-Felder in Settings (alle haben eigenen Rand). Auswahllisten (`select`) behalten den Rahmen. Per CDP `forcePseudoState` geprüft, Build auf Port 3100.
 
 ## Nachtschicht – Befunde
 
@@ -49,7 +50,7 @@ Priorisiert, oben zuerst. Status in Klammern.
 9. **4 Wochen: nur Farbe zeigt den Kurs** (`Overview.tsx`, `MonthView`): mehrere „Lecture“-Streifen am selben Tag, Kurs nur über Farbe erkennbar. Vorschlag: Kurzname im Tooltip/aria-label, ggf. „Lecture · BWL“. (erledigt)
 10. **Dialoge bekommen beim Öffnen einen blauen Rahmen** (Settings, Termin): Fokusrahmen auf dem ganzen Dialog wirkt wie ein Fehler. Vorschlag: Fokus auf den Dialog ohne sichtbaren Rahmen (Tastatur bleibt bedienbar). (erledigt)
 11. **Mensa am Wochenende** (`MensaView.tsx`): springt still auf Montag. Vorschlag: „Closed today. Showing Monday.“ (erledigt)
-12. **Suchfeld mit doppeltem Fokusrahmen** (`Overview.tsx`). (offen)
+12. **Suchfeld mit doppeltem Fokusrahmen** (`Overview.tsx`). (erledigt)
 13. **Termin-Dialog ohne „Mark as done“** für Abgaben (nur Kreis im Kasten). (offen, klein)
 
 ## Nachrichten

@@ -221,6 +221,13 @@ input {
   outline: none;
 }
 
+/* Textfelder mit eigenem Fokus-Rand (Schatten am Feld oder am Rahmen drumherum, Klasse outline-none):
+   sonst doppelter Rand, weil diese globale Regel Tailwind-Klassen schlägt. */
+input.outline-none:focus-visible,
+textarea.outline-none:focus-visible {
+  outline: none;
+}
+
 .scroll {
   overflow-y: auto;
   scrollbar-width: thin;
