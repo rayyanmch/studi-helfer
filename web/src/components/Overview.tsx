@@ -20,7 +20,7 @@ import {
   WifiOff,
   X,
 } from "lucide-react";
-import { Button, Notice, Spinner, Swatch, colorOf, nameOf, shortOf, tone } from "./ui";
+import { Button, Notice, Spinner, Swatch, colorOf, inDays, nameOf, shortOf, tone } from "./ui";
 import { CheckButton, FileRow, Highlight, displayName } from "./files";
 import { CoursesView } from "./CoursesView";
 import { ModuleView } from "./ModuleView";
@@ -645,6 +645,10 @@ function WeekView({
   );
   const first = [...open].sort((a, b) => a.date.localeCompare(b.date))[0];
   const kurse = new Set(open.map((d) => d.courseId)).size;
+  // Klausur-Countdown auf der Startseite: nächste Klausur in allen Kursen
+  const nextExam = deadlines
+    .filter((d) => d.kind === "klausur" && daysFromToday(d.date) >= 0 && courseById(d.courseId))
+    .sort((a, b) => a.date.localeCompare(b.date))[0];
   const in4 = deadlines.filter((d) => daysFromToday(d.date) >= 0 && daysFromToday(d.date) < 28);
   const openIn4 = in4.filter((d) => d.kind === "abgabe" && !done.includes(d.id)).length;
   const examsIn4 = in4.filter((d) => d.kind === "klausur").length;
@@ -673,6 +677,7 @@ function WeekView({
                   ? "All done. No open deadlines in the next 7 days."
                   : `${open.length} open ${open.length === 1 ? "deadline" : "deadlines"} in ${kurse} ${kurse === 1 ? "course" : "courses"}.`}
                 {first && ` Next up: ${bare(first.title)} on ${LONG[new Date(parseDay(first.date)).getUTCDay()]}.`}
+                {nextExam && ` Next exam: ${shortOf(courseById(nextExam.courseId)!)} ${inDays(daysFromToday(nextExam.date))}.`}
               </>
             )}
           </p>

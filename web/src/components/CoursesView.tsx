@@ -3,7 +3,7 @@
 // „Courses“: alle Module als Kacheln. Ein Klick öffnet die Modulseite.
 
 import { AlertTriangle, FolderOpen, Settings2 } from "lucide-react";
-import { Button, Swatch, colorOf, folderName, tone } from "./ui";
+import { Button, Swatch, colorOf, folderName, inDays, tone } from "./ui";
 import type { Course, Deadline } from "@/lib/mock-data";
 import * as store from "@/lib/app-store";
 import { realCourses, useApp } from "@/lib/app-store";
@@ -105,6 +105,11 @@ function CourseCard({
   const next = deadlines
     .filter((d) => d.courseId === course.id && d.kind !== "termin" && d.date >= today && !done.includes(d.id))
     .sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time))[0];
+  // Klausur-Countdown: nächste Klausur dieses Kurses, auch wenn vorher noch Abgaben kommen
+  const exam = deadlines
+    .filter((d) => d.courseId === course.id && d.kind === "klausur" && d.date >= today)
+    .sort((a, b) => a.date.localeCompare(b.date))[0];
+  const examDays = exam ? Math.round((Date.parse(exam.date) - Date.parse(today)) / 86_400_000) : null;
   const urgent = next && next.kind === "abgabe" && Math.round((Date.parse(next.date) - Date.parse(today)) / 86_400_000) <= 3;
   const showFull = course.fullName && course.fullName !== course.name;
 
@@ -136,10 +141,17 @@ function CourseCard({
             className={`mb-1.5 block truncate text-[13px] font-semibold ${urgent ? "text-danger" : ""}`}
             title={`${next.title}, ${next.time}`}
           >
-            {next.kind === "klausur" ? "Exam" : "Next"}: {next.title.replace(/^Submit /, "")} · {dayLabel(next.date, today)}
+            {next.kind === "klausur" && examDays != null
+              ? `Exam ${inDays(examDays)} · ${dayLabel(next.date, today)}`
+              : `Next: ${next.title.replace(/^Submit /, "")} · ${dayLabel(next.date, today)}`}
           </span>
         ) : (
           <span className="mb-1.5 block text-[13px] text-muted">No upcoming deadlines</span>
+        )}
+        {exam && next && next.id !== exam.id && examDays != null && (
+          <span className="mb-1.5 block truncate text-[12px] text-muted" title={`${exam.title}, ${exam.time}`}>
+            Exam {inDays(examDays)} · {dayLabel(exam.date, today)}
+          </span>
         )}
         <span className="flex items-center gap-2 text-[12px] text-muted">
           <Swatch color={color} size={8} />

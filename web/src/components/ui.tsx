@@ -115,3 +115,8 @@ export function folderPlace(dir: string): string {
   const name = folderName(dir);
   return /^~\/[^/]+\/?$/.test(dir) ? `the “${name}” folder in your home folder` : `the “${name}” folder`;
 }
+
+/** „today“, „tomorrow“, „in 82 days“ (für den Klausur-Countdown). */
+export function inDays(n: number): string {
+  return n <= 0 ? "today" : n === 1 ? "tomorrow" : `in ${n} days`;
+}
