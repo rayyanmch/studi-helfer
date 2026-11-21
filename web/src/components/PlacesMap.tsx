@@ -6,10 +6,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Minus, Plus } from "lucide-react";
-import { UNI, type Place, type PlaceKind } from "@/lib/places";
+import { UNI, type Place } from "@/lib/places";
 
 const TILE = 256;
-const KIND_COLOR: Record<PlaceKind, string> = { library: "var(--c-blue)", canteen: "var(--c-plum)" };
 
 /** Lage → Pixel in der ganzen Welt bei diesem Zoom (Web-Mercator, wie bei jeder Online-Karte). */
 function world(lat: number, lon: number, z: number) {
@@ -108,7 +107,7 @@ export function PlacesMap({
 
       <span
         aria-hidden
-        className="pointer-events-none absolute z-[1] size-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-[3px] border-white bg-[var(--accent)] shadow-[0_0_0_6px_rgba(22,32,42,0.18)]"
+        className="pointer-events-none absolute z-[1] size-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-[3px] border-[var(--accent)] bg-white shadow-[0_0_0_6px_rgba(22,32,42,0.15)]"
         style={{ left: ux, top: uy }}
         title={UNI.name}
       />
@@ -122,8 +121,8 @@ export function PlacesMap({
             onClick={() => onSelect(p.id)}
             title={p.name}
             aria-label={p.name}
-            className={`absolute -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white text-[10px] font-bold text-white shadow-[0_1px_4px_rgba(0,0,0,0.35)] transition-transform hover:scale-110 ${on ? "z-[3] size-[30px] shadow-[0_0_0_4px_rgba(22,32,42,0.28)]" : "z-[2] size-[22px]"}`}
-            style={{ left: x, top: y, background: KIND_COLOR[p.kind] }}
+            className={`absolute -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-accent text-[10px] font-bold text-on-accent shadow-[0_1px_4px_rgba(0,0,0,0.35)] transition-transform hover:scale-110 ${on ? "z-[3] size-[30px] shadow-[0_0_0_4px_rgba(22,32,42,0.28)]" : "z-[2] size-[22px]"}`}
+            style={{ left: x, top: y }}
           >
             {i + 1}
           </button>

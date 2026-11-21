@@ -443,12 +443,15 @@ label:has(> input[type="radio"]) {
   }
 }
 
-/* Kartenkacheln: bei dunklem Design die Karte abdunkeln (folgt dem Mac oder der Wahl in der App) */
+/* Kartenkacheln: schlicht grau statt bunt; bei dunklem Design abgedunkelt (folgt dem Mac oder der Wahl in der App) */
+.map-tile {
+  filter: grayscale(1) brightness(1.04) contrast(0.92);
+}
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) .map-tile {
-    filter: invert(1) hue-rotate(180deg) brightness(0.9) contrast(0.92) saturate(0.7);
+    filter: grayscale(1) invert(1) brightness(0.78) contrast(0.82);
   }
 }
 :root[data-theme="dark"] .map-tile {
-  filter: invert(1) hue-rotate(180deg) brightness(0.9) contrast(0.92) saturate(0.7);
+  filter: grayscale(1) invert(1) brightness(0.78) contrast(0.82);
 }

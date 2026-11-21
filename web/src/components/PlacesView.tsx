@@ -5,7 +5,7 @@
 // Live-Zahlen von der Uni und Meldungen von Studenten kommen später als eigene Quellen dazu.
 
 import { useEffect, useRef, useState } from "react";
-import { BookOpen, Clock, ExternalLink, Footprints, Heart, List, Map as MapIcon, Plug, Utensils, Wifi, X } from "lucide-react";
+import { BookOpen, Clock, ExternalLink, Footprints, Heart, Plug, Utensils, Wifi, X } from "lucide-react";
 import { Button, Spinner } from "./ui";
 import { RouteButton } from "./RouteButton";
 import { PlacesMap } from "./PlacesMap";
@@ -26,9 +26,9 @@ import {
 } from "@/lib/places";
 
 const FAV_KEY = "studi.placeFavs";
-const KIND_COLOR: Record<PlaceKind, string> = { library: "var(--c-blue)", canteen: "var(--c-plum)" };
 const KIND_ICON = { library: BookOpen, canteen: Utensils };
-const LEVEL_COLOR = { quiet: "var(--ok)", some: "var(--c-ochre)", busy: "var(--danger)" } as const;
+// Schlicht: nur Tinte, kein Ampel-Bunt (die Stufe steht als Wort daneben)
+const LEVEL_OPACITY = { quiet: 0.35, some: 0.65, busy: 1 } as const;
 
 type Filter = "open" | "wifi" | "library" | "canteen" | "fav";
 
@@ -48,8 +48,7 @@ export function PlacesView() {
   const [error, setError] = useState("");
   const [stale, setStale] = useState(false);
   const [filters, setFilters] = useState<Filter[]>([]);
-  const [view, setView] = useState<"list" | "map">("list");
-  const [selected, setSelected] = useState<string | null>(null);
+    const [selected, setSelected] = useState<string | null>(null);
   const [favs, setFavs] = useState<string[]>(loadFavs);
   const [limit, setLimit] = useState(24);
   const [now, setNow] = useState(() => new Date());
@@ -130,20 +129,6 @@ export function PlacesView() {
             {UNI.name} · {state === "ready" ? `${rows.length} ${rows.length === 1 ? "spot" : "spots"}` : "loading…"} within {RADIUS / 1000} km
           </p>
         </div>
-        <div role="tablist" aria-label="View" className="inline-flex rounded-[9px] bg-sunken p-[3px]">
-          {(["list", "map"] as const).map((v) => (
-            <button
-              key={v}
-              role="tab"
-              aria-selected={view === v}
-              onClick={() => setView(v)}
-              className={`flex h-7 items-center gap-1.5 rounded-[7px] px-3 transition-colors ${view === v ? "bg-surface font-semibold shadow-sm" : "text-muted hover:text-text"}`}
-            >
-              {v === "list" ? <List size={14} aria-hidden /> : <MapIcon size={14} aria-hidden />}
-              {v === "list" ? "List" : "Map"}
-            </button>
-          ))}
-        </div>
       </header>
 
       <div className="mt-4 flex flex-wrap gap-2" role="group" aria-label="Filters">
@@ -153,14 +138,6 @@ export function PlacesView() {
         {chip("canteen", "Mensa", <Utensils size={13} aria-hidden />)}
         {chip("fav", "Favorites", <Heart size={13} aria-hidden />)}
       </div>
-      <p className="mt-3 flex flex-wrap items-center gap-2 text-[12px] text-muted">
-        <b className="font-semibold text-text">How busy:</b>
-        <span className="inline-flex items-center gap-1 rounded-full bg-surface px-2 py-px font-semibold shadow-[inset_0_0_0_1px_var(--line)]">
-          <Clock size={11} aria-hidden /> typical for this time
-        </span>
-        <span>An estimate by type of place and time of day, not a live count.</span>
-      </p>
-
       {state === "loading" && (
         <p className="mt-8 flex items-center gap-2 text-muted">
           <Spinner /> Looking for libraries and Mensas around your uni…
@@ -180,47 +157,31 @@ export function PlacesView() {
       )}
 
       {state === "ready" && (
-        <div className={`mt-5 ${view === "map" ? "" : "flex flex-wrap items-start gap-5"}`}>
-          {view === "list" ? (
-            <>
-              <div className="min-w-[320px] flex-1">
-                {shown.length === 0 ? (
-                  <p className="rounded-[10px] bg-surface px-4 py-6 text-muted">
-                    {filters.includes("fav") ? "No favorites yet. Tap the heart on a spot." : "No spots match. Switch a filter off, for example “Open now”."}
-                  </p>
-                ) : (
-                  <ul className="grid grid-cols-1 gap-3 xl:grid-cols-2">
-                    {shown.map(({ p, st }, i) => (
-                      <li key={p.id}>
-                        <PlaceCard p={p} n={i + 1} st={st} now={now} fav={favs.includes(p.id)} active={selected === p.id} onFav={() => toggleFav(p.id)} onOpen={() => setSelected(p.id)} />
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                {rows.length > shown.length && (
-                  <div className="mt-4">
-                    <Button onClick={() => setLimit((l) => l + 24)}>Show more ({rows.length - shown.length})</Button>
-                  </div>
-                )}
-              </div>
-              <aside className="w-[300px] shrink-0 lg:sticky lg:top-4" aria-label="Map">
-                <p className="mb-1.5 text-[12px] text-muted">Near you</p>
-                <PlacesMap places={shown.map((r) => r.p)} selected={selected} onSelect={setSelected} height={300} />
-                <p className="mt-2 text-[12px] text-muted">Click “Map” above to see it large.</p>
-              </aside>
-            </>
-          ) : (
-            <div className="grid gap-5 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
-              <PlacesMap places={shown.map((r) => r.p)} selected={selected} onSelect={setSelected} height={560} zoom={15} controls />
+        <div className="mt-5 grid items-start gap-4 lg:grid-cols-[minmax(0,1.5fr)_minmax(320px,1fr)]">
+          <div className="lg:sticky lg:top-4">
+            <PlacesMap places={shown.map((r) => r.p)} selected={selected} onSelect={setSelected} height={580} zoom={15} controls />
+          </div>
+          <div>
+            {shown.length === 0 ? (
+              <p className="rounded-[10px] bg-surface px-4 py-6 text-muted">
+                {filters.includes("fav") ? "No favorites yet. Tap the heart on a spot." : "No spots match. Switch a filter off, for example “Open now”."}
+              </p>
+            ) : (
               <ul className="flex flex-col gap-2">
-                {shown.slice(0, 8).map(({ p, st }, i) => (
+                {shown.map(({ p, st }, i) => (
                   <li key={p.id}>
-                    <PlaceCard p={p} n={i + 1} st={st} now={now} fav={favs.includes(p.id)} active={selected === p.id} onFav={() => toggleFav(p.id)} onOpen={() => setSelected(p.id)} compact />
+                    <PlaceCard p={p} n={i + 1} st={st} now={now} fav={favs.includes(p.id)} active={selected === p.id} onFav={() => toggleFav(p.id)} onOpen={() => setSelected(p.id)} />
                   </li>
                 ))}
               </ul>
-            </div>
-          )}
+            )}
+            {rows.length > shown.length && (
+              <div className="mt-3">
+                <Button onClick={() => setLimit((l) => l + 24)}>Show more ({rows.length - shown.length})</Button>
+              </div>
+            )}
+            <p className="mt-3 text-[12px] text-muted">“Usually quiet / busy” is an estimate by type of place and time of day, not a live count.</p>
+          </div>
         </div>
       )}
 
@@ -232,68 +193,55 @@ export function PlacesView() {
 }
 
 function OpenLine({ st }: { st: ReturnType<typeof openState> }) {
-  if (st.open === true) return <span className="font-semibold text-[var(--c-green-ink)]">Open{st.until ? ` · until ${st.until}` : ""}</span>;
-  if (st.open === false) return <span className="text-muted"><b className="font-semibold text-text">Closed</b>{st.opens ? ` · opens ${st.opens}` : ""}</span>;
-  return <span className="text-muted">Hours not listed</span>;
+  if (st.open === true) return <span className="font-semibold text-text">Open{st.until ? ` · until ${st.until}` : ""}</span>;
+  if (st.open === false) return <span>Closed{st.opens ? ` · opens ${st.opens}` : ""}</span>;
+  return <span>Hours not listed</span>;
 }
 
-function BusyLine({ p, now }: { p: Place; now: Date }) {
+function PlaceCard({ p, n, st, now, fav, active, onFav, onOpen }: { p: Place; n: number; st: ReturnType<typeof openState>; now: Date; fav: boolean; active: boolean; onFav: () => void; onOpen: () => void }) {
   const day = (now.getDay() + 6) % 7;
   const pct = typicalBusy(p.kind, day, now.getHours() + now.getMinutes() / 60);
   const level = levelOf(pct);
   return (
-    <div className="flex items-center gap-2 text-[12px]">
-      <span aria-hidden className="h-[7px] w-[72px] overflow-hidden rounded-full bg-sunken">
-        <span className="block h-full rounded-full" style={{ width: `${pct}%`, background: LEVEL_COLOR[level] }} />
-      </span>
-      <b className="font-semibold" style={{ color: LEVEL_COLOR[level] }}>
-        {LEVEL_TEXT[level]}
-      </b>
-      <span className="inline-flex items-center gap-1 rounded-full bg-surface px-2 py-px text-[11px] font-bold text-muted shadow-[inset_0_0_0_1px_var(--line)]">
-        <Clock size={11} aria-hidden /> typical
-      </span>
-    </div>
-  );
-}
-
-function PlaceCard({ p, n, st, now, fav, active, onFav, onOpen, compact }: { p: Place; n: number; st: ReturnType<typeof openState>; now: Date; fav: boolean; active: boolean; onFav: () => void; onOpen: () => void; compact?: boolean }) {
-  const Icon = KIND_ICON[p.kind];
-  return (
-    <div className={`hit relative rounded-[12px] bg-surface p-3.5 ${active ? "shadow-[0_0_0_2px_var(--accent)]" : "shadow-[inset_0_0_0_1px_var(--line)]"}`} onClick={(e) => (e.target as HTMLElement).closest("button, a") === null && onOpen()}>
-      <div className="flex items-center gap-2.5">
-        <span aria-hidden className="flex size-7 shrink-0 items-center justify-center rounded-full text-[12px] font-bold text-white" style={{ background: KIND_COLOR[p.kind] }}>
+    <div className={`hit relative rounded-[12px] bg-surface px-3 py-2.5 ${active ? "shadow-[0_0_0_2px_var(--accent)]" : "shadow-[inset_0_0_0_1px_var(--line)]"}`} onClick={(e) => (e.target as HTMLElement).closest("button, a") === null && onOpen()}>
+      <div className="flex items-start gap-2.5">
+        <span aria-hidden className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-accent text-[12px] font-bold text-on-accent">
           {n}
         </span>
         <button onClick={onOpen} className="min-w-0 flex-1 text-left">
           <b className="block truncate font-semibold">{p.name}</b>
-          <span className="flex items-center gap-1.5 text-[12px] text-muted">
-            <Icon size={12} aria-hidden /> {KIND_LABEL[p.kind]} · <Footprints size={12} aria-hidden /> {p.walkMin} min
+          <span className="block truncate text-[12px] text-muted">
+            {KIND_LABEL[p.kind]} · <OpenLine st={st} />
+          </span>
+          <span className="mt-1.5 flex flex-wrap items-center gap-1">
+            {p.wifi && <Feature icon={<Wifi size={12} aria-hidden />}>Wi-Fi</Feature>}
+            {p.outlets && <Feature icon={<Plug size={12} aria-hidden />}>Outlets</Feature>}
+            {/* „Typisch“ sagt nur etwas, solange geöffnet ist */}
+            {st.open !== false && (
+              <Feature icon={<Clock size={12} aria-hidden />} title="Typical for this time, an estimate">
+                {LEVEL_TEXT[level]}
+              </Feature>
+            )}
           </span>
         </button>
-        <button onClick={onFav} aria-pressed={fav} aria-label={fav ? `Remove ${p.name} from favorites` : `Add ${p.name} to favorites`} className="press flex size-8 shrink-0 items-center justify-center rounded-lg text-muted hover:bg-hover">
-          <Heart size={16} aria-hidden fill={fav ? "var(--danger)" : "none"} style={fav ? { color: "var(--danger)" } : undefined} />
-        </button>
-      </div>
-      {/* Wie voll es „typisch“ ist, sagt nur etwas, solange geöffnet ist */}
-      {!compact && st.open !== false && (
-        <div className="mt-2.5 rounded-[9px] bg-bg px-2.5 py-2">
-          <BusyLine p={p} now={now} />
+        <div className="flex shrink-0 flex-col items-end gap-0.5">
+          <button onClick={onFav} aria-pressed={fav} aria-label={fav ? `Remove ${p.name} from favorites` : `Add ${p.name} to favorites`} className="press flex size-7 items-center justify-center rounded-lg text-muted hover:bg-hover">
+            <Heart size={15} aria-hidden fill={fav ? "currentColor" : "none"} style={fav ? { color: "var(--text)" } : undefined} />
+          </button>
+          <span className="flex items-center gap-1 text-[12px] text-muted">
+            <Footprints size={12} aria-hidden /> {p.walkMin} min
+          </span>
         </div>
-      )}
-      <div className="mt-2.5 flex flex-wrap items-center gap-1.5 text-[12px]">
-        {p.wifi && <Feature icon={<Wifi size={12} aria-hidden />}>Wi-Fi</Feature>}
-        {p.outlets && <Feature icon={<Plug size={12} aria-hidden />}>Outlets</Feature>}
-        <span className="flex-1" />
-        <OpenLine st={st} />
       </div>
     </div>
   );
 }
 
-function Feature({ icon, children, unknown }: { icon: React.ReactNode; children: React.ReactNode; unknown?: boolean }) {
+function Feature({ icon, children, unknown, title }: { icon: React.ReactNode; children: React.ReactNode; unknown?: boolean; title?: string }) {
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-full px-2 py-px text-[12px] font-semibold ${unknown ? "bg-surface text-muted shadow-[inset_0_0_0_1px_var(--line)]" : "bg-[var(--c-green-soft)] text-[var(--c-green-ink)]"}`}
+      title={title}
+      className={`inline-flex items-center gap-1 rounded-full px-2 py-px text-[12px] font-semibold ${unknown ? "text-muted shadow-[inset_0_0_0_1px_var(--line)]" : "bg-sunken text-text"}`}
     >
       {icon}
       {children}
@@ -325,7 +273,7 @@ function PlaceSheet({ p, now, fav, onFav, onClose }: { p: Place; now: Date; fav:
     <div className="no-drag fixed inset-0 z-50 flex items-start justify-center bg-black/25 p-6 pt-[7vh]" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div ref={ref} tabIndex={-1} role="dialog" aria-modal="true" aria-label={p.name} className="scroll max-h-[86vh] w-[480px] max-w-full rounded-[16px] bg-bg px-6 pb-5 pt-5 shadow-[0_0_0_1px_var(--line),0_24px_60px_rgba(0,0,0,0.25)] outline-none">
         <div className="flex items-start gap-3">
-          <span className="flex size-11 shrink-0 items-center justify-center rounded-xl text-white" style={{ background: KIND_COLOR[p.kind] }}>
+          <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-accent text-on-accent">
             <Icon size={22} aria-hidden />
           </span>
           <div className="min-w-0 flex-1">
@@ -335,14 +283,14 @@ function PlaceSheet({ p, now, fav, onFav, onClose }: { p: Place; now: Date; fav:
             </p>
           </div>
           <button onClick={onFav} aria-pressed={fav} aria-label={fav ? "Remove from favorites" : "Add to favorites"} className="press flex size-9 shrink-0 items-center justify-center rounded-lg shadow-[inset_0_0_0_1px_var(--line)] hover:bg-hover">
-            <Heart size={16} aria-hidden fill={fav ? "var(--danger)" : "none"} style={fav ? { color: "var(--danger)" } : undefined} />
+            <Heart size={16} aria-hidden fill={fav ? "currentColor" : "none"} />
           </button>
           <button onClick={onClose} aria-label="Close" className="flex size-9 shrink-0 items-center justify-center rounded-lg text-muted hover:bg-hover">
             <X size={16} aria-hidden />
           </button>
         </div>
 
-        <div className="mt-4 flex items-center gap-2 rounded-[10px] px-3.5 py-2.5 font-semibold" style={st.open === true ? { background: "var(--c-green-soft)", color: "var(--c-green-ink)" } : st.open === false ? { background: "var(--danger-soft)", color: "var(--danger)" } : { background: "var(--sunken)", color: "var(--muted)" }}>
+        <div className={`mt-4 flex items-center gap-2 rounded-[10px] bg-sunken px-3.5 py-2.5 font-semibold ${st.open === true ? "text-text" : "text-muted"}`}>
           <Clock size={16} aria-hidden />
           {st.open === true ? `Open now${st.until ? ` · closes at ${st.until}` : ""}` : st.open === false ? `Closed${st.opens ? ` · opens ${st.opens}` : ""}` : "Opening hours not listed on the map"}
         </div>
@@ -360,7 +308,7 @@ function PlaceSheet({ p, now, fav, onFav, onClose }: { p: Place; now: Date; fav:
 
         <p className="mt-4 font-bold">How busy is it usually?</p>
         <div className="mt-1.5 rounded-[10px] px-3.5 py-2.5" style={{ background: "var(--sunken)" }}>
-          <b style={{ color: LEVEL_COLOR[levelNow] }}>{LEVEL_TEXT[levelNow]} right now</b>
+          <b>{LEVEL_TEXT[levelNow]} right now</b>
           <p className="text-[12px] text-muted">
             Typical for {DAY_NAMES[day]} at {String(hour).padStart(2, "0")}:00. Busiest around {String(peak).padStart(2, "0")}:00. An estimate, not a live count.
           </p>
@@ -372,7 +320,7 @@ function PlaceSheet({ p, now, fav, onFav, onClose }: { p: Place; now: Date; fav:
             return (
               <div key={h} className="flex flex-1 flex-col items-center gap-1">
                 <div className="relative flex h-[70px] w-full items-end justify-center">
-                  <span className="w-full max-w-[14px] rounded-t-[3px]" style={{ height: `${v * 0.72}px`, background: LEVEL_COLOR[levelOf(v)], opacity: isNow ? 1 : 0.35 }} />
+                  <span className="w-full max-w-[14px] rounded-t-[3px]" style={{ height: `${v * 0.72}px`, background: "var(--accent)", opacity: isNow ? 1 : LEVEL_OPACITY[levelOf(v)] * 0.6 }} />
                   {isNow && <span className="absolute inset-x-[-1px] inset-y-[-3px] rounded-[5px] shadow-[0_0_0_2px_var(--text)]" />}
                 </div>
                 <span className={`text-[10px] ${isNow ? "font-bold text-text" : "text-muted"}`}>{String(h).padStart(2, "0")}</span>
