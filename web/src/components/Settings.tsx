@@ -194,8 +194,7 @@ function Calendars() {
       <h3 className="mb-2 text-[13px] font-semibold text-muted">Calendars</h3>
       <div className="rounded-[12px] bg-surface">
         <p className="px-4 pb-1 pt-3 text-[13px] text-muted">
-          ILIAS only knows dates your lecturers enter there. Add your timetable to see all lectures and tutorials: in KLIPS, open your calendar, choose
-          “Export / Subscribe” and copy the link. Google and Apple calendar links work too. Anything missing? Use “Add event” in the week view or on a course page.
+          Lectures or tutorials missing from your week? Add your timetable from KLIPS, or a Google or Apple calendar, and they show up by themselves.
         </p>
         <ul className="divide-y divide-[var(--line)]">
           {app.calendars.map((c) => (
@@ -219,10 +218,15 @@ function Calendars() {
             }}
             className="flex flex-col gap-2 border-t border-line px-4 py-3"
           >
+            <ol className="mb-1 list-decimal pl-5 text-[13px] text-muted">
+              <li>Open KLIPS and go to your timetable.</li>
+              <li>Click “Export / Subscribe” and copy the link.</li>
+              <li>Paste it below.</li>
+            </ol>
             <input
               value={url}
               onChange={(e) => setUrl(e.target.value)}
-              placeholder="https://… or webcal://…"
+              placeholder="Paste the calendar link here"
               aria-label="Calendar link"
               autoFocus
               className="h-9 rounded-lg bg-bg px-3 outline-none focus:shadow-[inset_0_0_0_2px_var(--focus)]"
@@ -232,6 +236,7 @@ function Calendars() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 aria-label="Name"
+                placeholder="Name, e.g. KLIPS timetable"
                 className="h-9 min-w-0 flex-1 rounded-lg bg-bg px-3 outline-none focus:shadow-[inset_0_0_0_2px_var(--focus)]"
               />
               <Button type="button" onClick={() => setAdding(false)}>
@@ -263,7 +268,7 @@ function Calendars() {
         {app.hiddenEvents.length > 0 && (
           <div className="flex items-center gap-3 border-t border-line px-4 py-2.5">
             <span className="min-w-0 flex-1 text-[13px] text-muted">
-              {app.hiddenEvents.length} hidden {app.hiddenEvents.length === 1 ? "event" : "events or series"}
+              {app.hiddenEvents.length} {app.hiddenEvents.length === 1 ? "event" : "events"} you hid
             </span>
             <Button onClick={() => void store.hideEvent("*", false)}>Show all again</Button>
           </div>
