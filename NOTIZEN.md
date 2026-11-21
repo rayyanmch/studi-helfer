@@ -31,6 +31,7 @@ Protokoll der Nacht 21./22.11. (Rayyans Agent, allein). Eine Zeile pro Durchgang
 - 21.11. 06:35: **Herkunft von Terminen verständlich** (Befund 7): `toDeadline` (`app-store.ts`) schreibt „Found in “0 Folien”“ statt „From 0 Folien“, Termin-Dialog „Found automatically in “0 Folien”.“, Wochenstreifen zeigt bei Klausuren den Raum nur, wenn es wirklich einer ist (sonst Kurs), Tooltip ohne falsches „Room:“. Dazu `ModuleView` Esc-Handler robust (`e.target` kann `document` sein → TypeError im Dev-Overlay). Getestet mit Datenkopie (BWL-Seite hell/dunkel, Dialog, Esc). Offen: Titel „1st date“/„2nd date“ (aus `sheets.py`) sagen ohne Kontext nicht „Exam“; Umbenennen ändert die Id, deshalb nicht nachts.
 - 21.11. 06:50: **Versteckte Funktionen sichtbar** (Befund 8, Aufgabe 6): Wochen-/Monatsansicht zeigt neben „Show classes and events“ „Click an entry to see details, change or hide it.“; Kursseite: Stift zum Umbenennen immer halb sichtbar (vorher nur bei Hover); Wahltermine „click the time you go to …“ bzw. „Click a time to change it.“ Dateien hatten schon Open/Show in Finder bei Hover. Getestet mit Datenkopie (hell 1000×700, dunkel 1280×800).
 - 21.11. 07:00: **4 Wochen: Kurs steht dran** (Befund 9): allgemeine Titel (Lecture, Exercise, Tutorial, Seminar …) bekommen in `MonthView` den Kurznamen davor („BWL Lecture“, „Mathe I Lecture“), Streifen haben `aria-label` mit Titel, Kurs, Zeit. Getestet mit Datenkopie (dunkel 1280×800, hell 1000×700). Offen (Mika/Module): „Softwaretechnik“ hat keinen Kurznamen, wird abgeschnitten; „SE“ wäre besser.
+- 21.11. 07:15: **Kein blauer Rahmen um Dialoge** (Befund 10): Ursache: die globale Regel `:focus-visible` in `globals.css` liegt außerhalb der Tailwind-Ebenen und schlägt deshalb `outline-none` an den Dialogen (Settings, Termin, Mensa-Großansicht). Neu: `[tabindex="-1"]:focus-visible { outline: none }` (nur Elemente, die per Skript den Fokus bekommen). Per CDP `forcePseudoState` geprüft: Dialog ohne Rahmen, Knöpfe darin behalten ihren Fokusrahmen. Getestet mit `next start` (Build) auf Port 3100, weil der fremde Dev-Server auf 3000 CSS-Änderungen nicht mehr übernahm.
 
 ## Nachtschicht – Befunde
 
@@ -45,7 +46,7 @@ Priorisiert, oben zuerst. Status in Klammern.
 7. **„From 0 Folien“** bei Klausurterminen auf der Kursseite (`ModuleView.tsx`): Quelle wirkt wie ein Fehler. Vorschlag: „Found in “0 Folien”“. (erledigt)
 8. **Versteckte Funktionen**: Dass man Termine anklicken (bearbeiten/ausblenden), Wahltermine antippen und Kurse per Doppelklick umbenennen kann, sieht man nicht. Vorschlag: kurze Hinweise („Tap a time to choose it“, Tooltip/Untertitel). (erledigt)
 9. **4 Wochen: nur Farbe zeigt den Kurs** (`Overview.tsx`, `MonthView`): mehrere „Lecture“-Streifen am selben Tag, Kurs nur über Farbe erkennbar. Vorschlag: Kurzname im Tooltip/aria-label, ggf. „Lecture · BWL“. (erledigt)
-10. **Dialoge bekommen beim Öffnen einen blauen Rahmen** (Settings, Termin): Fokusrahmen auf dem ganzen Dialog wirkt wie ein Fehler. Vorschlag: Fokus auf den Dialog ohne sichtbaren Rahmen (Tastatur bleibt bedienbar). (offen)
+10. **Dialoge bekommen beim Öffnen einen blauen Rahmen** (Settings, Termin): Fokusrahmen auf dem ganzen Dialog wirkt wie ein Fehler. Vorschlag: Fokus auf den Dialog ohne sichtbaren Rahmen (Tastatur bleibt bedienbar). (erledigt)
 11. **Mensa am Wochenende** (`MensaView.tsx`): springt still auf Montag. Vorschlag: „Closed today. Showing Monday.“ (offen)
 12. **Suchfeld mit doppeltem Fokusrahmen** (`Overview.tsx`). (offen)
 13. **Termin-Dialog ohne „Mark as done“** für Abgaben (nur Kreis im Kasten). (offen, klein)
@@ -272,6 +273,9 @@ Von Mika für später zurückgestellt. Reihenfolge = grob nach Nutzen. Nicht ver
 - **KI-Funktionen (wenn Geld da ist):** Lernzettel, Karteikarten, Glossar, „Frag deine Folien“.
 
 ## Wissen und Stolperfallen
+
+- Globale CSS-Regeln in `globals.css` stehen außerhalb von `@layer` und gewinnen deshalb immer gegen Tailwind-Klassen (z. B. `outline-none`). Ausnahmen also dort als Regel schreiben, nicht per Klasse.
+- Läuft schon ein `next dev` aus einer anderen Sitzung, kommen CSS-Änderungen dort manchmal nicht an. Zum Testen dann `npm run build` und `npx next start -p 3100`, Electron mit `STUDI_UI_URL=http://localhost:3100` starten.
 
 - PowerPoint-PDFs mit eingebetteter Calibri liefern über pypdf Zeichensalat („ϭϬ͗ϬϬ“ = „10:00“, „dŚƵƌƐĚĂǇ“ = „Thursday“). `studi_sync/textfix.py` übersetzt Ziffern, Satzzeichen und Kleinbuchstaben sicher zurück; Großbuchstaben sind je Schriftschnitt verschieden (ö = G oder K), deshalb werden bekannte Wörter (Wochentage, Group, Exam, Hörsaal) repariert. sheets.py und orga.py nutzen beide `normalize()`.
 - Zwei Claude-Sitzungen im selben Ordner: Die andere kann deine halbfertigen Dateien mitcommitten (2026-11-21 zweimal: `ModuleView.tsx`; und der Mensa-Commit `504546b` enthält die schon vorgemerkte Arbeit „Lösung neben dem Blatt / Sync-Intervall“). **Immer `git commit -- <eigene Dateien>` statt `git add` + `git commit`**, dann nimmt der Commit nur diese Pfade, egal was die andere Sitzung vorgemerkt hat.

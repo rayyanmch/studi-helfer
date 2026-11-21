@@ -215,6 +215,12 @@ input {
   outline-offset: 1px;
 }
 
+/* Dialoge bekommen beim Öffnen per Skript den Fokus (tabindex="-1"), damit Esc und Tab funktionieren.
+   Dafür kein blauer Rahmen um den ganzen Dialog; Knöpfe darin zeigen ihren Rahmen weiter. */
+[tabindex="-1"]:focus-visible {
+  outline: none;
+}
+
 .scroll {
   overflow-y: auto;
   scrollbar-width: thin;
