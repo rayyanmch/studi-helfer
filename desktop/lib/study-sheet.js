@@ -8,6 +8,7 @@ const os = require("node:os");
 const path = require("node:path");
 const { pathToFileURL } = require("node:url");
 const katex = require("katex");
+const V = require("./sheet-visuals");
 
 /** Bausteine, die der Nutzer an- und ausschalten kann (Reihenfolge = Reihenfolge im PDF). */
 const SECTIONS = {
@@ -23,6 +24,8 @@ const SECTIONS = {
   questions: "review questions (Kontrollfragen) a lecturer could ask in the exam",
   answers: "short model answers to the review questions",
   bigPicture: "at the end: the 3–6 core ideas that connect all parts",
+  visuals: "diagrams and plots (see VISUALS)",
+  figures: "slide pages as figures (see FIGURES)",
 };
 
 /** Bausteine für Mathe-Fächer (eigene Herangehensweise: Definitionen, Sätze, Formeln, Rezepte, Rechenwege). */
@@ -40,6 +43,8 @@ const MATH_SECTIONS = {
   practice: "practice problems of the same type as in the material",
   answers: "full solutions to the practice problems, step by step",
   bigPicture: "at the end: how the parts connect (3–6 points)",
+  visuals: "diagrams and plots (see VISUALS)",
+  figures: "slide pages as figures (see FIGURES)",
 };
 
 const MATH_RULES = [
@@ -87,9 +92,11 @@ const SCHEMA = {
         misconceptions: arr({ type: "object", properties: { myth: str, truth: str }, required: ["myth", "truth"], additionalProperties: false }),
         anecdotes: arr(str),
         questions: arr(qa),
+        visuals: arr(V.VISUAL),
+        callouts: arr(V.CALLOUT),
         sources: arr({ type: "object", properties: { file: { type: "integer" }, page: { type: "integer" } }, required: ["file", "page"], additionalProperties: false }),
       },
-      required: ["title", "summary", "beginner", "analogies", "examples", "tables", "terms", "mnemonics", "misconceptions", "anecdotes", "questions", "sources"],
+      required: ["title", "summary", "beginner", "analogies", "examples", "tables", "terms", "mnemonics", "misconceptions", "anecdotes", "questions", "visuals", "callouts", "sources"],
       additionalProperties: false,
     }),
     bigPicture: arr(lead),
@@ -128,9 +135,11 @@ const MATH_SCHEMA = {
         mistakes: arr({ type: "object", properties: { wrong: str, right: str }, required: ["wrong", "right"], additionalProperties: false }),
         proofs: arr(def),
         practice: arr(qa),
+        visuals: arr(V.VISUAL),
+        callouts: arr(V.CALLOUT),
         sources: arr({ type: "object", properties: { file: { type: "integer" }, page: { type: "integer" } }, required: ["file", "page"], additionalProperties: false }),
       },
-      required: ["title", "summary", "intuition", "definitions", "theorems", "formulas", "methods", "examples", "tasks", "mistakes", "proofs", "practice", "sources"],
+      required: ["title", "summary", "intuition", "definitions", "theorems", "formulas", "methods", "examples", "tasks", "mistakes", "proofs", "practice", "visuals", "callouts", "sources"],
       additionalProperties: false,
     }),
     bigPicture: arr(lead),
@@ -139,9 +148,9 @@ const MATH_SCHEMA = {
   additionalProperties: false,
 };
 
-function mathPrompt({ moduleName, count, include, length, focus, context }) {
-  const on = Object.entries(MATH_SECTIONS).filter(([k]) => include[k] && k !== "answers" && k !== "bigPicture");
-  const off = Object.keys(MATH_SECTIONS).filter((k) => !include[k] && !["answers", "bigPicture", "summary"].includes(k));
+function mathPrompt({ moduleName, count, include, length, focus, context, candidates }) {
+  const on = Object.entries(MATH_SECTIONS).filter(([k]) => include[k] && !["answers", "bigPicture", "visuals", "figures"].includes(k));
+  const off = Object.keys(MATH_SECTIONS).filter((k) => !include[k] && !["answers", "bigPicture", "summary", "visuals", "figures"].includes(k));
   return [
     `Course: ${moduleName || "unknown"}. Write a study guide for a math course from these ${count} file(s), marked F1…F${count}.`,
     context ? `The files belong to: ${context}. Start the title with it, e.g. "Woche 3–4: …" (in the language of the material).` : "",
@@ -151,6 +160,7 @@ function mathPrompt({ moduleName, count, include, length, focus, context }) {
     include.practice ? (include.answers ? "- In practice, 'a' is the full solution." : "- In practice, leave 'a' empty.") : "",
     off.length ? `Leave these arrays empty in every part: ${off.join(", ")}.` : "",
     include.bigPicture ? `- bigPicture: ${MATH_SECTIONS.bigPicture}` : "Leave bigPicture empty.",
+    include.visuals ? V.visualPrompt({ subject: "math", figures: include.figures, candidates }) : "Leave visuals empty in every part. CALLOUTS: 1–2 per part ('remember' for the key takeaway, 'warning' for traps).",
     "sources: the file numbers and pages a part is based on.",
     LENGTHS[length] || LENGTHS.normal,
     focus ? `Focus on: ${focus}.` : "",
@@ -159,9 +169,9 @@ function mathPrompt({ moduleName, count, include, length, focus, context }) {
     .join("\n");
 }
 
-function prompt({ moduleName, count, include, length, focus, context }) {
-  const on = Object.entries(SECTIONS).filter(([k]) => include[k] && k !== "answers");
-  const off = Object.keys(SECTIONS).filter((k) => !include[k] && k !== "answers" && k !== "bigPicture");
+function prompt({ moduleName, count, include, length, focus, context, subject, candidates }) {
+  const on = Object.entries(SECTIONS).filter(([k]) => include[k] && !["answers", "visuals", "figures"].includes(k));
+  const off = Object.keys(SECTIONS).filter((k) => !include[k] && !["answers", "bigPicture", "visuals", "figures"].includes(k));
   return [
     `Course: ${moduleName || "unknown"}. Write a study guide ("Lernhilfe") from these ${count} file(s), marked F1…F${count}.`,
     context ? `The files belong to: ${context}. Start the title with it, e.g. "Woche 3–4: …" (in the language of the material).` : "",
@@ -171,6 +181,7 @@ function prompt({ moduleName, count, include, length, focus, context }) {
     off.length ? `Leave these arrays empty in every part: ${off.join(", ")}.` : "",
     include.bigPicture ? `- bigPicture: ${SECTIONS.bigPicture}` : "Leave bigPicture empty.",
     "Use **bold** for key words inside texts. Tables only where they really help.",
+    include.visuals ? V.visualPrompt({ subject, figures: include.figures, candidates }) : "Leave visuals empty in every part. CALLOUTS: 1–2 per part ('remember' for the key takeaway, 'warning' for traps, 'tip' only for exam tips from the material).",
     "sources: the file numbers and pages a part is based on.",
     LENGTHS[length] || LENGTHS.normal,
     focus ? `Focus on: ${focus}.` : "",
@@ -310,9 +321,24 @@ function sheetHtml(sheet, { moduleName, accent = "#22325c" }) {
   const bullets = (list, f = rich) => (list?.length ? `<ul>${list.map((x) => `<li>${f(x)}</li>`).join("")}</ul>` : "");
   const numbered = (list, f) => (list?.length ? `<ol>${list.map((x) => `<li>${f(x)}</li>`).join("")}</ol>` : "");
 
+  const vctx = { rich, files: sheet.files || [], accent, labels: { source: L.sources.replace(/n$/, ""), page: L.page } };
+  const visualsOf = (p) => (p.visuals || []).map((v) => V.visualHtml(v, vctx)).join("");
+  const calloutsOf = (p) => (p.callouts || []).map((c) => V.calloutHtml(c, { rich, language: sheet.language })).join("");
+  // Quellen je Datei zusammenfassen: „09-System Modeling II S. 4, 5, 18“
+  const groupSources = (sources) => {
+    const byFile = new Map();
+    for (const x of sources || []) {
+      const name = fileName(x.file);
+      if (!name) continue;
+      const pages = byFile.get(name) ?? new Set();
+      if (x.page > 0) pages.add(x.page);
+      byFile.set(name, pages);
+    }
+    return [...byFile.entries()].map(([name, pages]) => `${esc(name)}${pages.size ? ` ${L.page} ${[...pages].sort((a, b) => a - b).join(", ")}` : ""}`);
+  };
   const sourcesOf = (p) => {
-    const list = (p.sources || []).filter((x) => fileName(x.file)).map((x) => `${esc(fileName(x.file))}${x.page > 0 ? ` ${L.page} ${x.page}` : ""}`);
-    return list.length ? `<p class="sources">${L.sources}: ${[...new Set(list)].join(" · ")}</p>` : "";
+    const list = groupSources(p.sources);
+    return list.length ? `<p class="sources">${L.sources}: ${list.join(" · ")}</p>` : "";
   };
 
   // „Satz (Re, Im)“ nicht als „Satz · Satz (Re, Im)“: steht die Art schon im Namen, nur den Namen zeigen
@@ -328,7 +354,9 @@ function sheetHtml(sheet, { moduleName, accent = "#22325c" }) {
     return `<section class="part" id="p${i}">
       <h2>${rich(p.title)}</h2>
       ${h("summary", leads(p.summary))}
+      ${calloutsOf(p)}
       ${h("intuition", bullets(p.intuition, rich))}
+      ${visualsOf(p)}
       ${h("definitions", (p.definitions || []).map((d) => `<div class="box def"><div class="box-h">${boxTitle(M.definition, d.name)}</div>${rich(d.text)}</div>`).join(""))}
       ${h("theorems", (p.theorems || []).map((t) => `<div class="box thm"><div class="box-h">${boxTitle(M.theorem, t.name)}</div>${rich(t.statement)}</div>`).join(""))}
       ${h(
@@ -367,12 +395,12 @@ function sheetHtml(sheet, { moduleName, accent = "#22325c" }) {
     const questions = p.questions?.length
       ? numbered(p.questions, (q) => `${rich(q.q)}${sheet.include?.answers && q.a ? `<div class="answer"><span>${L.answer}:</span> ${rich(q.a)}</div>` : ""}`)
       : "";
-    const sources = (p.sources || [])
-      .filter((s) => fileName(s.file))
-      .map((s) => `${esc(fileName(s.file))}${s.page > 0 ? ` ${L.page} ${s.page}` : ""}`);
+    const sources = groupSources(p.sources);
     return `<section class="part" id="p${i}">
       <h2>${rich(p.title)}</h2>
       ${h3("summary", leads(p.summary))}
+      ${visualsOf(p)}
+      ${calloutsOf(p)}
       ${h3("beginner", numbered(p.beginner, (x) => `<strong>${rich(x.q)}</strong> ${rich(x.a)}`))}
       ${h3("analogies", bullets(p.analogies, (x) => `<strong>${rich(leadText(x.lead))}</strong> ${rich(x.text)}`))}
       ${h3("examples", numbered(p.examples, rich))}
@@ -424,6 +452,7 @@ function sheetHtml(sheet, { moduleName, accent = "#22325c" }) {
   .result { margin-top: 2px; }
   .wrong { font-weight: 650; color: #b3261e; } .right { font-weight: 650; color: #2f7a46; }
   .katex { font-size: 1.04em; } .katex-display { margin: 6px 0; }
+  ${V.VISUAL_CSS}
 </style>${sheet.math ? `<link rel="stylesheet" href="${pathToFileURL(require.resolve("katex/dist/katex.min.css")).href}">` : ""}</head><body>
   <div class="meta"><span>${esc(moduleName || "")}</span><span>${esc(date)} · ${L.made}</span></div>
   ${parts.length > 1 ? `<nav class="toc"><p>${L.contents}</p><ol>${parts.map((p, i) => `<li><a href="#p${i}">${rich(p.title)}</a></li>`).join("")}${big ? `<li><a href="#big">${L.bigPicture}</a></li>` : ""}</ol></nav>` : ""}
@@ -431,7 +460,13 @@ function sheetHtml(sheet, { moduleName, accent = "#22325c" }) {
   <p class="intro">${rich(sheet.intro)}</p>
   ${parts.map(partHtml).join("")}
   ${big}
+  ${needsScript(sheet) ? V.pageScript() : ""}
 </body></html>`;
+}
+
+/** Braucht der Lernzettel das Skript im Druckfenster (Mermaid-Diagramme oder Folienseiten)? */
+function needsScript(sheet) {
+  return (sheet.parts || []).some((p) => (p.visuals || []).some((v) => (v.type === "diagram" && v.mermaid?.trim()) || (v.type === "figure" && v.figure?.page > 0)));
 }
 
 /** Alte Lernzettel (nur `sections`) in die neue Form bringen, damit sie auch als PDF gehen. */
@@ -456,9 +491,17 @@ async function renderPdf(BrowserWindow, sheet, { moduleName, accent, outFile }) 
   const html = sheetHtml(upgrade(sheet), { moduleName, accent }).replace(/<p><strong><\/strong> /g, "<p>");
   const tmp = path.join(os.tmpdir(), `studi-sheet-${sheet.id}.html`);
   fs.writeFileSync(tmp, html);
-  const win = new BrowserWindow({ show: false, width: 900, height: 1200, webPreferences: { javascript: false, sandbox: true } });
+  // JavaScript nur für Diagramme/Folienseiten; webSecurity aus, damit pdf.js die lokale PDF lesen darf (eigener Inhalt, kein Node)
+  const script = needsScript(upgrade(sheet));
+  const win = new BrowserWindow({ show: false, width: 900, height: 1200, webPreferences: { javascript: script, sandbox: true, webSecurity: !script, nodeIntegration: false, contextIsolation: true } });
   try {
     await win.loadFile(tmp);
+    if (script) {
+      for (let k = 0; k < 60; k++) {
+        if (await win.webContents.executeJavaScript("Boolean(window.__ready)").catch(() => false)) break;
+        await new Promise((r) => setTimeout(r, 500));
+      }
+    }
     const pdf = await win.webContents.printToPDF({
       pageSize: "A4",
       printBackground: true,
@@ -476,4 +519,4 @@ async function renderPdf(BrowserWindow, sheet, { moduleName, accent, outFile }) 
   }
 }
 
-module.exports = { SECTIONS, SCHEMA, MATH_SECTIONS, MATH_SCHEMA, MATH_RULES, cleanInclude, prompt, mathPrompt, sheetHtml, renderPdf, upgrade, richMath };
+module.exports = { SUBJECT_LABELS: V.SUBJECT_LABELS, SECTIONS, SCHEMA, MATH_SECTIONS, MATH_SCHEMA, MATH_RULES, cleanInclude, prompt, mathPrompt, sheetHtml, renderPdf, upgrade, richMath };

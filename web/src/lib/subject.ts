@@ -59,3 +59,25 @@ export function useMathMode(course: Pick<Course, "id" | "name" | "fullName"> | n
   const override = typeof window === "undefined" ? null : read(course.id);
   return { math: override ? override === "on" : auto, auto, override };
 }
+
+export type Subject = "business" | "math" | "cs" | "law" | "science" | "humanities";
+
+export const SUBJECTS: { id: Subject; label: string; hint: string }[] = [
+  { id: "business", label: "Business", hint: "Process flows, frameworks, matrices, calculations" },
+  { id: "math", label: "Math & stats", hint: "Definitions, theorems, formulas, graphs" },
+  { id: "cs", label: "Computer science", hint: "UML, state machines, algorithms, code" },
+  { id: "law", label: "Law", hint: "Prüfungsschema, definitions, cases" },
+  { id: "science", label: "Sciences", hint: "Processes, cycles, curves with units" },
+  { id: "humanities", label: "Humanities", hint: "Timelines, concept maps, theories" },
+];
+
+/** Fachrichtung eines Kurses für den Stil des Lernzettels (nur ein Vorschlag, im Baukasten änderbar). */
+export function subjectOf(course: Pick<Course, "name" | "fullName">, math: boolean): Subject {
+  const n = `${course.name} ${course.fullName ?? ""}`.toLowerCase();
+  if (math || NAME.test(n)) return "math";
+  if (/(informatik|software|programm|algorithm|daten|data|datenbank|database|informationssystem|information systems|ism\b|wirtschaftsinformatik|computer|netzwerk|visualisierung|web|machine learning|ki\b)/.test(n)) return "cs";
+  if (/(recht|jura|law|legal|verfassung|zivil|straf)/.test(n)) return "law";
+  if (/(bwl|vwl|betriebs|volkswirt|marketing|accounting|rechnungswesen|finanz|finance|management|ökonom|oekonom|economics|controlling|unternehmen)/.test(n)) return "business";
+  if (/(chemie|biologie|physik|medizin|anatomie|physiologie|biochem|geo|umwelt|neuro)/.test(n)) return "science";
+  return "humanities";
+}

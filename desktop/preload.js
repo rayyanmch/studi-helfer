@@ -93,6 +93,8 @@ contextBridge.exposeInMainWorld("studi", {
     openSheet: call("studi:study:openSheet"),
     sheetState: call("studi:study:sheetState"),
     weekTitles: call("studi:study:weekTitles"),
+    glossary: call("studi:study:glossary"),
+    saveGlossary: call("studi:study:saveGlossary"),
     suspend: call("studi:study:suspend"),
     exportAnki: call("studi:study:exportAnki"),
     onState(callback) {

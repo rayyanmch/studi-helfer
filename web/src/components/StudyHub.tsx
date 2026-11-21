@@ -25,9 +25,10 @@ import {
 import { Button, Spinner, Swatch, colorOf, inDays, tone } from "./ui";
 import { displayName } from "./files";
 import { ErrorNotice, NoClaude, Progress, Review, SummaryRow, TYPE_LABEL } from "./StudyView";
+import { GlossaryPanel, useGlossary } from "./Glossary";
 import { DOC_LABEL, isStudyDoc } from "@/lib/doctype";
 import { MathText } from "./MathText";
-import { setMathMode, useMathMode } from "@/lib/subject";
+import { type Subject, SUBJECTS, setMathMode, subjectOf, useMathMode } from "@/lib/subject";
 import type { Course, CourseColor, CourseFile } from "@/lib/mock-data";
 import { useApp } from "@/lib/app-store";
 import {
@@ -595,6 +596,10 @@ function CourseDeck({
   const hidden = useHiddenWeeks(course.id);
   const [showHidden, setShowHidden] = useState(false);
   const [browse, setBrowse] = useState(false);
+  const [view, setView] = useState<"weeks" | "terms" | "formulas">("weeks");
+  const glossary = useGlossary(course).items.filter((i) => !i.hidden);
+  const termCount = glossary.filter((i) => i.kind === "term").length;
+  const formulaCount = glossary.filter((i) => i.kind === "formula").length;
   const docs = studyDocs(course);
   const keyOfWeek = (w: Week) => new Set(w.files.map((x) => fileKey(x.file)));
   const visibleWeeks = weeks.filter((w) => !hidden.includes(w.key));
@@ -701,9 +706,23 @@ function CourseDeck({
         </section>
       )}
 
-      <section aria-label="Weeks" className="flex flex-col gap-2.5">
+      <div className="flex flex-wrap items-center gap-2">
+        <Segmented
+          value={view}
+          onChange={(v) => setView(v as typeof view)}
+          options={[
+            { value: "weeks", label: "By week" },
+            { value: "terms", label: `Glossary${termCount ? ` · ${termCount}` : ""}` },
+            ...(formulaCount || mathMode.math ? [{ value: "formulas", label: `Formulas${formulaCount ? ` · ${formulaCount}` : ""}` }] : []),
+          ]}
+        />
+      </div>
+
+      {view !== "weeks" && <GlossaryPanel course={course} color={color} kind={view === "terms" ? "term" : "formula"} math={mathMode.math} />}
+
+      <section aria-label="Weeks" className={`flex flex-col gap-2.5 ${view === "weeks" ? "" : "hidden"}`}>
         <div className="flex items-baseline gap-2">
-          <h2 className="flex-1 text-[17px] font-bold">By week</h2>
+          <h2 className="flex-1 text-[17px] font-bold sr-only">By week</h2>
           {missing.length > 0 && courseCards.length > 0 && !study.job.running && (
             <button onClick={() => void summarize(missing)} disabled={study.available === false} className="text-[13px] font-semibold hover:underline" style={{ color: tone(color, "ink") }}>
               Prepare the other {missing.length} files
@@ -1238,7 +1257,10 @@ function NewSheet({
   const color: CourseColor = course ? colorOf(course) : "blue";
   const [picked, setPicked] = useState<string[]>(initialPicked);
   const mathMode = useMathMode(course, course ? studyFiles(course).map((f) => study.files[fileKey(f)]) : []);
-  const math = mathMode.math;
+  const detected: Subject = course ? subjectOf(course, mathMode.math) : "business";
+  const [subjectPick, setSubjectPick] = useState<Subject | null>(null);
+  const subject = subjectPick ?? detected;
+  const math = subject === "math";
   const SECTIONS = math ? MATH_SECTIONS : SHEET_SECTIONS;
   const PRESET_LIST = math ? MATH_PRESETS : PRESETS;
   const [prefs] = useState(loadPrefs);
@@ -1272,7 +1294,7 @@ function NewSheet({
     const context = chosenWeeks
       .map((w) => (w.kind === "week" ? `Week ${w.n}${w.title ? ` (${w.title})` : ""}` : weekLabel(w)))
       .join(", ");
-    void createSheet({ moduleId: course.id, moduleName: course.name, paths: picked, focus: focus.trim() || undefined, include, length, context, math }).then((res) => {
+    void createSheet({ moduleId: course.id, moduleName: course.name, paths: picked, focus: focus.trim() || undefined, include, length, context, math, subject }).then((res) => {
       if (res.error) onError(res.error);
     });
     onStarted();
@@ -1315,17 +1337,25 @@ function NewSheet({
 
       <Step n={3} title="What should be in it?">
         {course && (
-          <p className="-mt-1 mb-3 flex flex-wrap items-center gap-2 text-[13px] text-muted">
-            <button
-              onClick={() => setMathMode(course.id, math ? (mathMode.auto ? "off" : null) : mathMode.auto ? null : "on")}
-              aria-pressed={math}
-              className={`inline-flex h-7 items-center gap-1.5 rounded-full px-3 font-semibold transition-colors ${math ? "" : "bg-sunken hover:text-text"}`}
-              style={math ? { background: tone(color, "soft"), color: tone(color, "ink") } : undefined}
-            >
-              <Sigma size={13} aria-hidden /> Math mode {math ? "on" : "off"}
-            </button>
-            {math ? "Formulas in LaTeX, definitions and theorems in boxes, worked examples step by step." : "For courses with formulas, turn on math mode."}
-          </p>
+          <div className="-mt-1 mb-4">
+            <p className="mb-1.5 text-[12px] font-semibold text-muted">Subject style · decides the kind of diagrams and sections</p>
+            <div className="flex flex-wrap gap-1.5">
+              {SUBJECTS.map((x) => (
+                <button
+                  key={x.id}
+                  onClick={() => setSubjectPick(x.id)}
+                  aria-pressed={subject === x.id}
+                  title={x.hint}
+                  className={`h-8 rounded-full px-3.5 text-[13px] font-medium transition-colors ${subject === x.id ? "" : "bg-sunken hover:bg-hover"}`}
+                  style={subject === x.id ? { background: tone(color, "soft"), color: tone(color, "ink"), boxShadow: `inset 0 0 0 1.5px ${tone(color)}` } : undefined}
+                >
+                  {x.label}
+                  {x.id === detected && subjectPick == null ? <span className="ml-1 opacity-60">auto</span> : null}
+                </button>
+              ))}
+            </div>
+            <p className="mt-1.5 text-[12px] text-muted">{SUBJECTS.find((x) => x.id === subject)?.hint}.</p>
+          </div>
         )}
         <div className="flex flex-wrap gap-1.5">
           {PRESET_LIST.map((p) => (

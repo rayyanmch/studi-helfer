@@ -22,6 +22,7 @@ export interface Analysis {
   keyPoints: { text: string; page: number }[];
   topics: string[];
   terms: { term: string; definition: string; page: number }[];
+  formulas?: { name: string; formula: string; meaning: string; page: number }[];
   cards: { q: string; a: string; page: number; type?: CardType; steps?: string[] }[];
   math?: boolean; // mit Formeln (LaTeX) und Mathe-Kartentypen ausgewertet
   kind?: "summary" | "help"; // help = Lernhilfe für Übungsblatt/Klausur
@@ -51,6 +52,8 @@ export const SHEET_SECTIONS = [
   { key: "questions", label: "Review questions", hint: "Questions like in the exam" },
   { key: "answers", label: "Answers", hint: "Model answers to the review questions", needs: "questions" },
   { key: "bigPicture", label: "Big picture", hint: "The core ideas that connect everything" },
+  { key: "visuals", label: "Diagrams & graphs", hint: "Flowcharts, models, UML, timelines, plots" },
+  { key: "figures", label: "Figures from slides", hint: "Important slides as pictures, with source" },
 ] as const;
 
 /** Bausteine für Mathe-Fächer (eigene Herangehensweise, siehe desktop/lib/study-sheet.js MATH_SECTIONS). */
@@ -68,6 +71,8 @@ export const MATH_SECTIONS = [
   { key: "practice", label: "Practice problems", hint: "New problems of the same type" },
   { key: "answers", label: "Solutions", hint: "Step-by-step solutions to the practice problems", needs: "practice" },
   { key: "bigPicture", label: "Big picture", hint: "How the parts connect" },
+  { key: "visuals", label: "Diagrams & graphs", hint: "Function graphs, points in the plane, solution paths" },
+  { key: "figures", label: "Figures from slides", hint: "Important slides as pictures, with source" },
 ] as const;
 
 export type SectionKey = (typeof SHEET_SECTIONS)[number]["key"] | (typeof MATH_SECTIONS)[number]["key"];
@@ -81,16 +86,16 @@ const onMath = (...keys: SectionKey[]): Include =>
 
 export const MATH_PRESETS: { id: string; label: string; include: Include }[] = [
   { id: "formulas", label: "Formula sheet", include: onMath("definitions", "theorems", "formulas") },
-  { id: "exam", label: "Exam prep", include: onMath("formulas", "methods", "examples", "tasks", "mistakes", "practice", "answers") },
-  { id: "understand", label: "Understand it", include: onMath("intuition", "definitions", "theorems", "examples", "proofs", "bigPicture") },
+  { id: "exam", label: "Exam prep", include: onMath("formulas", "methods", "examples", "tasks", "mistakes", "practice", "answers", "visuals") },
+  { id: "understand", label: "Understand it", include: onMath("intuition", "definitions", "theorems", "examples", "proofs", "bigPicture", "visuals", "figures") },
   { id: "all", label: "Everything", include: onMath(...MATH_SECTIONS.map((s) => s.key)) },
 ];
 
 export const PRESETS: { id: string; label: string; include: Include }[] = [
-  { id: "guide", label: "Study guide", include: on("beginner", "analogies", "examples", "tables", "misconceptions", "questions", "bigPicture") },
-  { id: "exam", label: "Exam prep", include: on("tables", "terms", "misconceptions", "questions", "answers", "bigPicture") },
-  { id: "quick", label: "Quick review", include: on("terms", "questions") },
-  { id: "beginner", label: "Beginner-friendly", include: on("beginner", "analogies", "examples", "mnemonics", "anecdotes") },
+  { id: "guide", label: "Study guide", include: on("beginner", "analogies", "examples", "tables", "misconceptions", "questions", "bigPicture", "visuals", "figures") },
+  { id: "exam", label: "Exam prep", include: on("tables", "terms", "misconceptions", "questions", "answers", "bigPicture", "visuals") },
+  { id: "quick", label: "Quick review", include: on("terms", "questions", "visuals") },
+  { id: "beginner", label: "Beginner-friendly", include: on("beginner", "analogies", "examples", "mnemonics", "anecdotes", "visuals", "figures") },
   { id: "all", label: "Everything", include: on(...SHEET_SECTIONS.map((s) => s.key)) },
 ];
 
@@ -141,6 +146,8 @@ export interface StudyApi {
     weekTitles: Record<string, Record<string, string>>;
   }>;
   weekTitles(moduleId: string, moduleName: string, weeks: { key: string; title: string; hints: string[] }[]): Promise<Ok<{ titles: Record<string, string> }> | Fail>;
+  glossary(moduleId: string): Promise<GlossaryData>;
+  saveGlossary(moduleId: string, data: GlossaryData): Promise<Ok | Fail>;
   analyze(paths: string[], moduleName: string, opts?: { math?: boolean; help?: string[]; context?: string }): Promise<Ok | Fail>;
   cancel(): Promise<Ok>;
   review(cardId: string, knew: boolean, practice?: boolean): Promise<Ok<{ card: CardState; stats: StudyStats }> | Fail>;
@@ -157,6 +164,7 @@ export interface StudyApi {
     accent?: string;
     context?: string;
     math?: boolean;
+    subject?: string;
   }): Promise<Ok<{ sheet: Sheet }> | Fail>;
   openSheet(id: string, reveal?: boolean): Promise<Ok<{ path: string }> | Fail>;
   deleteSheet(id: string): Promise<Ok>;
@@ -170,6 +178,66 @@ export interface SheetRun {
   startedAt?: number;
   step?: "reading" | "writing" | "pdf";
   title?: string; // nur Oberfläche
+}
+
+/** Eigene Einträge und Änderungen an automatischen Einträgen (Glossar/Formelsammlung, je Modul). */
+export interface GlossaryEntry {
+  id: string;
+  kind: "term" | "formula";
+  term: string; // Begriff bzw. Name der Formel
+  definition: string; // Erklärung bzw. Formel (LaTeX erlaubt)
+  note?: string; // bei Formeln: Bedeutung der Symbole
+  at: number;
+}
+export interface GlossaryData {
+  custom: GlossaryEntry[];
+  edits: Record<string, { term?: string; definition?: string; hidden?: boolean }>;
+}
+
+const glossaryCache: Record<string, GlossaryData> = {};
+const glossaryListeners = new Set<() => void>();
+let glossaryVersion = 0;
+
+export function useGlossaryData(moduleId: string): GlossaryData {
+  useSyncExternalStore(
+    (l) => {
+      glossaryListeners.add(l);
+      return () => glossaryListeners.delete(l);
+    },
+    () => glossaryVersion,
+    () => 0,
+  );
+  useEffect(() => {
+    if (glossaryCache[moduleId]) return;
+    const a = api();
+    const fromLocal = () => {
+      try {
+        return JSON.parse(localStorage.getItem(`studi.glossary.${moduleId}`) ?? "null");
+      } catch {
+        return null;
+      }
+    };
+    void (a ? a.glossary(moduleId) : Promise.resolve(fromLocal())).then((d) => {
+      glossaryCache[moduleId] = d && Array.isArray(d.custom) ? d : { custom: [], edits: {} };
+      glossaryVersion += 1;
+      for (const l of glossaryListeners) l();
+    });
+  }, [moduleId]);
+  return glossaryCache[moduleId] ?? { custom: [], edits: {} };
+}
+
+export async function saveGlossary(moduleId: string, data: GlossaryData) {
+  glossaryCache[moduleId] = data;
+  glossaryVersion += 1;
+  for (const l of glossaryListeners) l();
+  const a = api();
+  if (a) await a.saveGlossary(moduleId, data);
+  else
+    try {
+      localStorage.setItem(`studi.glossary.${moduleId}`, JSON.stringify(data));
+    } catch {
+      // egal
+    }
 }
 
 /** Karte mit Herkunft (für Abfrage, Kästen und Export). */
@@ -407,6 +475,7 @@ export async function createSheet(opts: {
   accent?: string;
   context?: string;
   math?: boolean;
+  subject?: string;
 }): Promise<{ sheet?: Sheet; error?: string }> {
   const a = api();
   if (!a) return { error: "Study sheets work in the Mac app." };

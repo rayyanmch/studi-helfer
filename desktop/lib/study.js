@@ -23,6 +23,7 @@ const SHEETS = path.join(DIR, "sheets.json"); // { sheets: Sheet[] }
 const CARDS = path.join(DIR, "cards.json"); // { [cardId]: { box, due, reviews, suspended? } }
 const UNREADABLE = path.join(DIR, "unreadable.json"); // { [hash]: { name, at } } Dateien ohne Text (Scans, Handschrift)
 const LOG = path.join(DIR, "log.json");
+const GLOSSARY = path.join(DIR, "glossary.json"); // { [moduleId]: { custom: Entry[], edits: { [autoKey]: { term?, definition?, hidden? } } } }
 const WEEK_TITLES = path.join(DIR, "week-titles.json"); // { [moduleId]: { sig, titles: { [weekKey]: Titel } } }
 const TITLE_MODEL = process.env.STUDI_TITLE_MODEL || "haiku"; // kleine Aufgabe → kleines Modell // { days: { "YYYY-MM-DD": Anzahl Abfragen } }
 
@@ -218,6 +219,10 @@ const FILE_SCHEMA = obj({
   keyPoints: list(obj({ text: { type: "string" }, page }), "5–10 short points a student must know"),
   topics: list({ type: "string" }, "2–6 short topic names"),
   terms: list(obj({ term: { type: "string" }, definition: { type: "string" }, page }), "Up to 12 key terms with a one-sentence definition"),
+  formulas: list(
+    obj({ name: { type: "string" }, formula: { type: "string" }, meaning: { type: "string" }, page }),
+    "Formulas from this file (for the course's formula collection): name, the formula, what the symbols mean; empty if the file has none",
+  ),
   cards: list(
     obj({
       q: { type: "string" },
@@ -303,13 +308,13 @@ function createStudy({ packaged, broadcast, ...deps }) {
 
   const push = () => broadcast("studi:study:state", jobState());
 
-  async function analyzeOne(p, moduleName, math = false, help = false, context = "") {
+  async function analyzeOne(p, moduleName, math = false, help = false, context = "", force = false) {
     const hashes = readJson(HASHES, {});
     const hash = hashOf(p, hashes);
     writeJson(HASHES, hashes);
     const cached = readJson(ANALYSES, {})[hash];
     // Mathe-Modus: ältere Auswertungen ohne Formeln werden einmal neu gemacht
-    if (cached && (!math || cached.math) && Boolean(cached.kind === "help") === help) return { ok: true, cached: true };
+    if (!force && cached && (!math || cached.math) && Boolean(cached.kind === "help") === help) return { ok: true, cached: true };
     if (readJson(UNREADABLE, {})[hash]) return fail("no_text", "This file is handwritten or scanned, so it can't be read yet.");
     const text = await fileText(packaged(), p, FILE_CHARS);
     if (!text.ok) {
@@ -352,6 +357,7 @@ function createStudy({ packaged, broadcast, ...deps }) {
     const math = Boolean(opts && opts.math);
     const helpSet = new Set(Array.isArray(opts?.help) ? opts.help : []);
     const context = typeof opts?.context === "string" ? opts.context : "";
+    const force = Boolean(opts?.force);
     const todo = [...new Set((Array.isArray(paths) ? paths : []).filter(allowedPath))];
     if (job.running) {
       // laufender Auftrag: nur noch Fehlendes hinten anhängen
@@ -371,7 +377,7 @@ function createStudy({ packaged, broadcast, ...deps }) {
         const t0 = Date.now();
         let res;
         try {
-          res = await analyzeOne(p, moduleName, math, helpSet.has(p), context);
+          res = await analyzeOne(p, moduleName, math, helpSet.has(p), context, force);
         } catch (e) {
           console.error("[study]", e);
           res = fail("ai_error", "Something went wrong. Please try again.");
@@ -527,7 +533,17 @@ function createStudy({ packaged, broadcast, ...deps }) {
     }
     if (total <= SHEET_CHARS) {
       const parts = files.map((p, i) => (texts[i].ok ? `=== F${i + 1}: ${path.basename(p)} ===\n${texts[i].text}` : null)).filter(Boolean);
-      return parts.length ? { ok: true, input: parts.join("\n\n") } : texts[0];
+      // Seiten mit wenig Text sind oft Grafiken (Modelle, Diagramme): Hinweis für Abbildungen
+      const candidates = [];
+      files.forEach((p, i) => {
+        if (!texts[i].ok || !/\.pdf$/i.test(p)) return;
+        for (const block of texts[i].text.split(/--- Page (\d+) ---\n/).reduce((acc, cur, k, a) => (k % 2 ? [...acc, [Number(cur), a[k + 1] || ""]] : acc), [])) {
+          const [page, body] = block;
+          const len = body.replace(/\s+/g, " ").trim().length;
+          if (page > 1 && len >= 10 && len <= 260) candidates.push(`F${i + 1} p.${page} (“${body.replace(/\s+/g, " ").trim().slice(0, 50)}”)`);
+        }
+      });
+      return parts.length ? { ok: true, input: parts.join("\n\n"), candidates: candidates.slice(0, 30).join("; ") } : texts[0];
     }
     const hashes = readJson(HASHES, {});
     const parts = [];
@@ -546,8 +562,9 @@ function createStudy({ packaged, broadcast, ...deps }) {
     return parts.length ? { ok: true, input: parts.join("\n\n") } : fail("ai_error", "These files couldn't be read.");
   }
 
-  async function createSheet({ moduleId, moduleName, paths, focus, include, length, accent, context, math }) {
+  async function createSheet({ moduleId, moduleName, paths, focus, include, length, accent, context, math, subject }) {
     math = Boolean(math);
+    subject = ["business", "math", "cs", "law", "science", "humanities"].includes(subject) ? subject : math ? "math" : "business";
     if (sheetRunning) return fail("busy", "A study sheet is already being written.");
     const files = [...new Set((Array.isArray(paths) ? paths : []).filter(allowedPath))].slice(0, 30);
     if (!files.length) return fail("invalid", "Choose at least one file.");
@@ -568,10 +585,12 @@ function createStudy({ packaged, broadcast, ...deps }) {
           length: len,
           focus: focusText,
           context: typeof context === "string" ? context.slice(0, 400) : "",
+          subject,
+          candidates: src.candidates || "",
         }),
         input: src.input,
         schema: math ? sheetLib.MATH_SCHEMA : sheetLib.SCHEMA,
-        timeoutMs: 600_000,
+        timeoutMs: 900_000,
       });
       if (!res.ok) return res;
       sheetProgress.step = "pdf";
@@ -583,6 +602,7 @@ function createStudy({ packaged, broadcast, ...deps }) {
         focus: focusText,
         context: typeof context === "string" ? context.slice(0, 120) : null,
         math,
+        subject,
         include: inc,
         length: len,
         files: files.map((p) => ({ path: p, name: path.basename(p) })),
@@ -698,6 +718,40 @@ function createStudy({ packaged, broadcast, ...deps }) {
     }
   }
 
+  // ---------------------------------------------------------------- Glossar und Formelsammlung (eigene Einträge, Änderungen)
+
+  /** Automatische Einträge entstehen in der Oberfläche aus den Auswertungen; hier liegen nur eigene und geänderte. */
+  function glossaryGet(moduleId) {
+    const all = readJson(GLOSSARY, {});
+    const g = all[moduleId] || {};
+    return { custom: Array.isArray(g.custom) ? g.custom : [], edits: g.edits && typeof g.edits === "object" ? g.edits : {} };
+  }
+
+  function glossarySave(moduleId, data) {
+    if (!moduleId || typeof moduleId !== "string") return fail("invalid", "Unknown course.");
+    const clean = (x, n) => String(x ?? "").slice(0, n);
+    const custom = (Array.isArray(data?.custom) ? data.custom : []).slice(0, 2000).map((e) => ({
+      id: clean(e.id, 64) || crypto.randomUUID(),
+      kind: e.kind === "formula" ? "formula" : "term",
+      term: clean(e.term, 300),
+      definition: clean(e.definition, 4000),
+      note: clean(e.note, 1000),
+      at: Number(e.at) || Date.now(),
+    }));
+    const edits = {};
+    for (const [k, v] of Object.entries(data?.edits && typeof data.edits === "object" ? data.edits : {}).slice(0, 5000)) {
+      edits[clean(k, 400)] = {
+        ...(v?.term != null ? { term: clean(v.term, 300) } : {}),
+        ...(v?.definition != null ? { definition: clean(v.definition, 4000) } : {}),
+        ...(v?.hidden ? { hidden: true } : {}),
+      };
+    }
+    const all = readJson(GLOSSARY, {});
+    all[moduleId] = { custom, edits };
+    writeJson(GLOSSARY, all);
+    return { ok: true };
+  }
+
   /** Gespeicherte Wochentitel aller Module (sofort, ohne KI). */
   function cachedWeekTitles() {
     const store = readJson(WEEK_TITLES, {});
@@ -713,7 +767,7 @@ function createStudy({ packaged, broadcast, ...deps }) {
     return { available: Boolean(bin), provider: "claude-code", model: MODEL };
   }
 
-  return { status, analyze, cancel, get, review, suspend, stats, resetCards, listSheets, createSheet, openSheet, deleteSheet, sheetState, jobState, weekTitles, cachedWeekTitles };
+  return { status, analyze, cancel, get, review, suspend, stats, resetCards, listSheets, createSheet, openSheet, deleteSheet, sheetState, jobState, weekTitles, cachedWeekTitles, glossaryGet, glossarySave };
 }
 
 // ------------------------------------------------------------------ Anki-Export
@@ -756,6 +810,8 @@ function register(handle, { packaged, windows, dialog, BrowserWindow, shell }) {
   handle("studi:study:deleteSheet", (id) => study.deleteSheet(String(id)));
   handle("studi:study:openSheet", (id, reveal) => study.openSheet(String(id), Boolean(reveal)));
   handle("studi:study:sheetState", () => study.sheetState());
+  handle("studi:study:glossary", (moduleId) => study.glossaryGet(String(moduleId || "")));
+  handle("studi:study:saveGlossary", (moduleId, data) => study.glossarySave(String(moduleId || ""), data));
   handle("studi:study:weekTitles", (moduleId, moduleName, weeks) => study.weekTitles(String(moduleId || ""), String(moduleName || ""), weeks));
   handle("studi:study:exportAnki", async (name, cards) => {
     const safe = String(name || "Flashcards").replace(/[/\\:*?"<>|]/g, "-").slice(0, 80);
