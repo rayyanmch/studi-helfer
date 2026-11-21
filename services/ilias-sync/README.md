@@ -15,6 +15,7 @@ Alle Ausgaben sind JSON-Zeilen (`{"type":"result",…}` oder `{"type":"error","c
 .venv/bin/python -m studi_sync courses [--dump]            # eigene Kurse (--dump speichert die HTML-Seiten zur Fehlersuche)
 .venv/bin/python -m studi_sync deadlines                  # Fristen: ILIAS-Kalender + Übungsblätter per Regeln
 .venv/bin/python -m studi_sync sheet-deadlines            # nur Übungsblätter per Regeln (lokal, ohne Netz)
+.venv/bin/python -m studi_sync orga                       # Stundenplan aus Orga-Folien per Regeln (lokal, ohne Netz)
 .venv/bin/python -m studi_sync sync [--auto]               # ein Sync-Lauf
 .venv/bin/python -m studi_sync logout --username KENNUNG
 ```
@@ -27,6 +28,7 @@ Alle Ausgaben sind JSON-Zeilen (`{"type":"result",…}` oder `{"type":"error","c
 - **Köln-Korrekturen für PFERD** (`pferd_run.py`): werden zur Laufzeit eingesetzt, nicht in die installierten Dateien geschrieben (ILIAS unter `/ilias`, Link-Auflösung bei `links = ignore`, nie interaktiv nachfragen, alte Fassung sichern).
 - **Fristen** (`deadlines.py`): Abo-Kalender von ILIAS (ICS), Abgaben aus Übungen, Sitzungen, Anmeldeschlüsse; Kurs über die Brotkrumen-Navigation des Objekts. Wird nach jedem Sync mit aktualisiert.
 - **Fristen aus PDFs** (`sheets.py`): alle PDFs der Kurse (außer Lösungen), erste 8 Seiten, per Regeln: Fristwort + Datum in einer Zeile, mehrere Daten pro Zeile, Erscheinungsdaten ignoriert. Titel aus der Textstelle. Cache pro Datei-Hash (`RULES_VERSION`).
+- **Stundenplan** (`orga.py`, Textreparatur in `textfix.py`): Wochentermine, Räume, Gruppen, Beginn, Ausfälle und Einzeltermine aus Orga-Folien und ersten Vorlesungen → `orga-events.json`; Electron (`desktop/lib/schedule.js`) macht daraus Termine im Semester. Befehl `orga`, läuft nach jedem Sync.
 - **Weitere Kalender** (`calendars.py`): iCal-Links aus `config.calendars` (KLIPS, Google, Apple), Serien aufgelöst → `calendar-events.json`. Befehle `calendars`, `calendar-test --url`.
 - **Geschwindigkeit:** PFERD mit 2 parallelen Anfragen, Lernmodul-Seiten übersprungen; Restzeit (`etaSeconds`) in `state.json`.
 - **Täglicher Lauf**: launchd-Job `de.studihelfer.sync` (richtet die App ein) startet `sync --auto`: Zufallsverzögerung, wartet auf Netz, bis zu 3 Versuche, Mitteilung bei neuen Dateien.
