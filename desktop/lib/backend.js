@@ -12,6 +12,7 @@ const path = require("node:path");
 const { createAiDeadlines } = require("./ai-deadlines");
 const { buildModules, categoryOf, unitNumber, matchModule, CATEGORY_ORDER, CATEGORY_LABEL } = require("./modules");
 const { buildSchedule, overlaps } = require("./schedule");
+const { uniDates } = require("./uni-dates");
 
 // STUDI_DATA_DIR nur für Tests (z. B. Ordner-Umzug in einem Temp-Ordner ausprobieren)
 const DATA_DIR = process.env.STUDI_DATA_DIR || path.join(os.homedir(), "Library", "Application Support", "Studi-Helfer");
@@ -706,6 +707,7 @@ function getDeadlines() {
     usable(readJson(SHEET_DEADLINES, { deadlines: [] }).deadlines),
     usable(fromCalendars),
     usable(aiDeadlines.list()),
+    usable(uniDates()),
   ];
   for (const list of sources) {
     for (const d0 of list) {

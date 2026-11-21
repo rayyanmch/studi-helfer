@@ -446,7 +446,7 @@ function reminderItems() {
   const list = backend
     .getDeadlines()
     .deadlines.filter((d) => wanted(d) && !d.done && !hidden.has(d.id) && !(d.seriesId && hidden.has(d.seriesId)))
-    .map((d) => ({ id: d.id, kind: d.kind, title: d.title, date: d.date, time: d.time, course: name(d.moduleId) }));
+    .map((d) => ({ id: d.id, kind: d.kind, title: d.title, date: d.date, time: d.time, course: name(d.moduleId), early: d.category === "uni" }));
   // Eigene Abgaben/Klausuren ohne Wiederholung (Wiederholungen löst nur die Oberfläche auf)
   for (const ev of custom.events) {
     if (!ev || !wanted(ev) || (ev.repeat && ev.repeat !== "none")) continue;

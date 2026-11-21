@@ -37,7 +37,7 @@ function daysBefore(date, n) {
 
 /**
  * Alle Erinnerungen zu einer Liste von Fristen.
- * @param {{id: string, kind: string, title: string, date: string, time?: string, course?: string}[]} items
+ * @param {{id: string, kind: string, title: string, date: string, time?: string, course?: string, early?: boolean}[]} items
  * @returns {{key: string, fireAt: number, until: number, title: string, body: string}[]}
  */
 function remindersFor(items) {
@@ -49,8 +49,11 @@ function remindersFor(items) {
     if (d.kind === "abgabe") {
       const due = at(d.date, t ?? "23:59");
       const by = t ? `, by ${t}` : "";
+      // Frühe Erinnerung eine Woche vorher, wo man Vorlauf braucht (Semesterbeitrag: Überweisung dauert)
+      if (d.early) out.push({ key: `${d.id}|7d`, fireAt: at(daysBefore(d.date, 7), "09:00"), until: due, title: "Due in one week", body: `${d.title}${course}${by}` });
       out.push({ key: `${d.id}|1d`, fireAt: at(dayBefore(d.date), "18:00"), until: due, title: "Due tomorrow", body: `${d.title}${course}${by}` });
-      out.push({ key: `${d.id}|3h`, fireAt: due - 3 * HOUR, until: due, title: "Due in 3 hours", body: `${d.title}${course}${by}` });
+      // „In 3 Stunden“ nur mit echter Uhrzeit (bei ganztägigen wie dem Semesterbeitrag hilft es abends nicht mehr)
+      if (t) out.push({ key: `${d.id}|3h`, fireAt: due - 3 * HOUR, until: due, title: "Due in 3 hours", body: `${d.title}${course}${by}` });
     } else if (d.kind === "klausur") {
       const start = at(d.date, t ?? "09:00");
       const when = t ? ` at ${t}` : "";

@@ -154,7 +154,7 @@ export interface DesktopDeadline extends Deadline {
   // ai = von der KI in einem Übungsblatt gefunden (nur mit Schlüssel; source "AI: <Datei>")
   // calendar = aus einem eingefügten Kalender (KLIPS-Stundenplan o. Ä.), moduleId per Namensabgleich (kann null sein)
   // schedule = Wochentermin aus den Orga-Folien (Vorlesung, eigene Gruppe, ausgewählter Wahltermin), source "Course info: <Datei>"
-  category: "exercise" | "session" | "registration" | "sheet" | "calendar" | "ai" | "schedule";
+  category: "exercise" | "session" | "registration" | "sheet" | "calendar" | "ai" | "schedule" | "uni";
   moduleId: string | null; // Modul, zu dem der Termin gehört
   start: string; // ISO-Zeitpunkt, z. B. "2026-11-23T10:00:00+01:00"
   url: string | null; // ILIAS-Seite (Übung/Sitzung), z. B. für „In ILIAS öffnen“

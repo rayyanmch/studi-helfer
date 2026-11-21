@@ -282,7 +282,9 @@ const OTHER_ID = "other";
 function toDeadline(d: DesktopDeadline): Deadline {
   // In der Oberfläche heißt source „wo“: Raum bei Terminen/Klausuren, Datei bei Fristen aus Übungsblättern.
   const fromFile = d.file ? `Found in “${displayName(d.file.split("/").pop() ?? "")}”` : undefined; // „Found in “0 Folien”“: klar eine Datei
-  const source = d.location ?? (d.category === "sheet" || d.category === "ai" || d.category === "schedule" ? fromFile : undefined);
+  const source =
+    d.location ??
+    (d.category === "uni" ? "Found in “University dates”" : d.category === "sheet" || d.category === "ai" || d.category === "schedule" ? fromFile : undefined);
   // ILIAS-Sitzungen einer Reihe („ISM - Vorlesung“, jeden Donnerstag 10:00) lassen sich zusammen ausblenden
   const seriesId =
     d.category === "session" ? `sess|${d.moduleId ?? OTHER_ID}|${d.title.toLowerCase()}|${new Date(`${d.date}T12:00:00`).getDay()}|${d.time}` : undefined;

@@ -228,7 +228,9 @@ function Details({ deadline: d, onOpenCourse }: { deadline: Deadline; onOpenCour
             </p>
           )}
           <p className="mt-3 text-[12px] text-muted">
-            Found automatically{from ? ` in ${from.slice("Found in ".length)}` : ""}. Edit it to fix the time or room, or hide it if it is wrong.
+            {d.id.startsWith("uni|")
+              ? "From the University of Cologne’s semester dates. Hide it if you don’t need it."
+              : `Found automatically${from ? ` in ${from.slice("Found in ".length)}` : ""}. Edit it to fix the time or room, or hide it if it is wrong.`}
           </p>
         </div>
         {d.kind === "klausur" && <ExamRegistration deadline={d} />}
