@@ -5,13 +5,12 @@
 // Dann Dateien nach Art („Lecture slides“, „Exercises“ …) mit Filter, Suche und Sortierung.
 
 import { useEffect, useRef, useState } from "react";
-import { CalendarPlus, Check, ChevronDown, ChevronLeft, ChevronRight, ExternalLink, FolderOpen, Pencil, RotateCcw, Search, X } from "lucide-react";
+import { CalendarPlus, Check, GraduationCap, ChevronDown, ChevronLeft, ChevronRight, ExternalLink, FolderOpen, Pencil, RotateCcw, Search, X } from "lucide-react";
 import { Button, Swatch, colorOf, examPart, tone } from "./ui";
 import { CheckButton, DocTile, FileRow, FolderBadge, displayName } from "./files";
 import { linkSolutions } from "@/lib/solutions";
 import { openEvent, openNewEvent } from "./EventDialog";
-import { StudyPanel } from "./StudyView";
-import { useWeeks } from "@/lib/study";
+import { openStudy, useWeeks } from "@/lib/study";
 import { type Role, type Week, weekLabel } from "@/lib/weeks";
 import type { ClassSlot, Course, CourseColor, CourseFile, Deadline } from "@/lib/mock-data";
 import * as store from "@/lib/app-store";
@@ -43,7 +42,6 @@ export function ModuleView({
   const color = colorOf(course);
   const files = course.folders.flatMap((f) => f.files);
   const fresh = files.filter((f) => f.isNew || f.changeNote);
-  const [tab, setTab] = useState<"overview" | "study">("overview");
 
   // Esc führt zurück zur Kursübersicht (außer beim Tippen in einem Feld oder bei offenem Dialog)
   useEffect(() => {
@@ -82,6 +80,11 @@ export function ModuleView({
           )}
         </div>
         <div className="flex flex-wrap gap-2">
+          {course.id !== "other" && (
+            <Button variant="primary" onClick={() => openStudy({ screen: "deck", moduleId: course.id })} title="Flashcards, summaries and study sheets for this course">
+              <GraduationCap size={14} aria-hidden /> Study
+            </Button>
+          )}
           <Button onClick={() => openNewEvent({ moduleId: course.id === "other" ? null : course.id })}>
             <CalendarPlus size={14} aria-hidden /> Add event
           </Button>
@@ -96,30 +99,9 @@ export function ModuleView({
         </div>
       </header>
 
-      <div role="tablist" aria-label="Course sections" className="mt-6 flex gap-1 border-b border-line">
-        {(["overview", "study"] as const).map((t) => (
-          <button
-            key={t}
-            role="tab"
-            aria-selected={tab === t}
-            onClick={() => setTab(t)}
-            className={`-mb-px border-b-2 px-3 pb-2 pt-1 text-[14px] font-semibold transition-colors ${tab === t ? "text-text" : "border-transparent text-muted hover:text-text"}`}
-            style={tab === t ? { borderColor: tone(color) } : undefined}
-          >
-            {t === "overview" ? "Overview" : "Study"}
-          </button>
-        ))}
-      </div>
+      <ComingUp course={course} deadlines={deadlines} done={done} onToggle={onToggle} today={app.today} />
 
-      {tab === "overview" ? (
-        <>
-          <ComingUp course={course} deadlines={deadlines} done={done} onToggle={onToggle} today={app.today} />
-
-          <Files course={course} files={files} freshIds={fresh.map((f) => f.id)} />
-        </>
-      ) : (
-        <StudyPanel course={course} />
-      )}
+      <Files course={course} files={files} freshIds={fresh.map((f) => f.id)} />
     </>
   );
 }
@@ -642,14 +624,7 @@ function Files({ course, files, freshIds }: { course: Course; files: CourseFile[
   );
 }
 
-// Dateien nach Themenwochen (lib/weeks.ts): neueste Woche oben, diese und letzte Woche offen.
-const BUCKETS: [string, Role[]][] = [
-  ["Lectures", ["lecture"]],
-  ["Exercises & solutions", ["exercise", "solution"]],
-  ["Reading & self-study", ["reading", "selfstudy"]],
-  ["Videos & more", ["recording", "other", "info", "exam"]],
-];
-
+// Dateien nach Themenwochen (lib/weeks.ts): neueste Woche oben, diese und letzte Woche offen; die Art steht als Tag an jeder Datei.
 function WeekFiles({ course, links }: { course: Course; links: ReturnType<typeof linkSolutions> }) {
   const color = colorOf(course);
   const weeks = useWeeks(course);
@@ -684,22 +659,11 @@ function WeekFiles({ course, links }: { course: Course; links: ReturnType<typeof
               {open ? <ChevronDown size={16} className="shrink-0 text-muted" aria-hidden /> : <ChevronRight size={16} className="shrink-0 text-muted" aria-hidden />}
             </button>
             {open && (
-              <div className="flex flex-col gap-2 px-2.5 pb-3">
-                {BUCKETS.map(([label, roles]) => {
-                  const list = w.files.filter((x) => roles.includes(x.role));
-                  if (!list.length) return null;
-                  return (
-                    <div key={label}>
-                      {w.kind === "week" && <p className="px-2 pb-0.5 pt-1 text-[12px] font-semibold text-muted">{label}</p>}
-                      <ul>
-                        {list.map((x) => (
-                          <FileRow key={x.file.id} file={x.file} color={color} solutions={links.solutionsOf.get(x.file.id)} sheet={links.sheetOf.get(x.file.id)} />
-                        ))}
-                      </ul>
-                    </div>
-                  );
-                })}
-              </div>
+              <ul className="px-1.5 pb-2">
+                {w.files.map((x) => (
+                  <FileRow key={x.file.id} file={x.file} folder={x.folder} color={color} solutions={links.solutionsOf.get(x.file.id)} sheet={links.sheetOf.get(x.file.id)} />
+                ))}
+              </ul>
             )}
           </section>
         );

@@ -4,7 +4,8 @@
 
 import { BookOpen, Check, CircleCheck, ClipboardList, Folder, GraduationCap, Info, PencilLine, Presentation, Video, type LucideIcon } from "lucide-react";
 import { Button, FileIcon, colorOf, tone } from "./ui";
-import type { CourseColor, CourseFile, FileKind } from "@/lib/mock-data";
+import type { CourseColor, CourseFile, FileKind, Folder as FolderData } from "@/lib/mock-data";
+import { DocTag } from "./DocTag";
 import * as store from "@/lib/app-store";
 import { appStore } from "@/lib/app-store";
 import { displayName, shortWhere } from "@/lib/names";
@@ -92,8 +93,12 @@ export function FileRow({
   highlight,
   solutions,
   sheet,
+  folder,
+  noTag,
 }: {
   file: CourseFile;
+  folder?: Pick<FolderData, "category" | "name">; // für die Art (Tag); fehlt er, wird er in den Kursen gesucht
+  noTag?: boolean;
   sub?: string; // eigene Unterzeile; sonst Teil + Ordner
   courseId?: string; // Datei-Symbol in der Farbe dieses Kurses (in Listen über mehrere Kurse)
   color?: CourseColor; // Datei-Symbol in dieser Farbe (Modulseite)
@@ -121,6 +126,7 @@ export function FileRow({
           <span className="truncate" title={file.name}>
             <Highlight text={displayName(file.name)} q={highlight} />
           </span>
+          {!noTag && <DocTag file={file} folder={folder ?? folderOf(file)} />}
           {changed && <span className="shrink-0 rounded-full bg-warn-soft px-1.5 py-px text-[11px] font-semibold text-warn">updated</span>}
           {!changed && file.isNew && <span className="shrink-0 rounded-full bg-[var(--c-green-soft)] px-1.5 py-px text-[11px] font-semibold text-[var(--c-green-ink)]">new</span>}
           {solutions?.map((s, i) => (
@@ -144,6 +150,12 @@ export function FileRow({
       {!compact && <span className="w-[56px] shrink-0 text-right text-[12px] tabular-nums text-muted">{file.size}</span>}
     </li>
   );
+}
+
+/** Ordner einer Datei in den geladenen Kursen (für die Art, wenn der Aufrufer ihn nicht kennt). */
+function folderOf(file: CourseFile): FolderData | undefined {
+  for (const c of appStore.get().courses) for (const f of c.folders) if (f.files.some((x) => x.id === file.id)) return f;
+  return undefined;
 }
 
 /** Kleiner Knopf neben dem Blatt: öffnet die passende Lösung. */

@@ -9,6 +9,7 @@ import { useApp } from "./app-store";
 import { getDesktop, type Fail, type Ok } from "./desktop";
 import type { Course } from "./mock-data";
 import { type Week, weekLabel, weeksOf } from "./weeks";
+import { docTypeOf, isStudyDoc, isTaskDoc } from "./doctype";
 
 export interface Analysis {
   id: string; // erste 16 Zeichen des Datei-Hashes
@@ -23,6 +24,8 @@ export interface Analysis {
   terms: { term: string; definition: string; page: number }[];
   cards: { q: string; a: string; page: number; type?: CardType; steps?: string[] }[];
   math?: boolean; // mit Formeln (LaTeX) und Mathe-Kartentypen ausgewertet
+  kind?: "summary" | "help"; // help = Lernhilfe für Übungsblatt/Klausur
+  tasks?: { label: string; topic: string; method: string; hint: string; lookup: string; page: number }[];
 }
 
 export type CardType = "concept" | "definition" | "theorem" | "formula" | "strategy" | "compute" | "truefalse" | "proof";
@@ -138,7 +141,7 @@ export interface StudyApi {
     weekTitles: Record<string, Record<string, string>>;
   }>;
   weekTitles(moduleId: string, moduleName: string, weeks: { key: string; title: string; hints: string[] }[]): Promise<Ok<{ titles: Record<string, string> }> | Fail>;
-  analyze(paths: string[], moduleName: string, opts?: { math?: boolean }): Promise<Ok | Fail>;
+  analyze(paths: string[], moduleName: string, opts?: { math?: boolean; help?: string[]; context?: string }): Promise<Ok | Fail>;
   cancel(): Promise<Ok>;
   review(cardId: string, knew: boolean, practice?: boolean): Promise<Ok<{ card: CardState; stats: StudyStats }> | Fail>;
   suspend(cardId: string, on: boolean): Promise<Ok<{ card: CardState }> | Fail>;
@@ -320,11 +323,29 @@ export function takeTarget(): StudyTarget | null {
 
 // ------------------------------------------------------------------ Aktionen
 
-export async function analyze(paths: string[], moduleName: string, math = false): Promise<string | null> {
+export async function analyze(paths: string[], moduleName: string, math = false, course?: Course): Promise<string | null> {
   const a = api();
   if (!a) return "Summaries work in the Mac app.";
-  const res = await a.analyze(paths, moduleName, { math });
+  // Übungsblätter und Klausuren bekommen eine Lernhilfe, mit den Vorlesungen des Kurses als Kontext („wo nachlesen“)
+  const help: string[] = [];
+  let context = "";
+  if (course) {
+    const entries = course.folders.flatMap((folder) => folder.files.map((file) => ({ file, type: docTypeOf(file, folder) })));
+    for (const e of entries) if (isTaskDoc(e.type) && paths.includes(fileKey(e.file))) help.push(fileKey(e.file));
+    context = entries
+      .filter((e) => ["lecture", "notes", "exslides", "reading", "selfstudy"].includes(e.type))
+      .map((e) => ({ e, an: state.files[fileKey(e.file)] }))
+      .filter((x) => x.an && x.an.kind !== "help")
+      .map(({ e, an }) => `${e.file.name.replace(/\.[a-z0-9]+$/i, "")}: ${an!.topics.join(", ")} | ${an!.keyPoints.slice(0, 2).map((k) => `${k.text.slice(0, 90)} (S. ${k.page})`).join("; ")}`)
+      .join("\n");
+  }
+  const res = await a.analyze(paths, moduleName, { math, help, context });
   return res.ok ? null : res.message;
+}
+
+/** Dateien, die Lernstoff liefern (keine Orga, Videos, Daten). */
+export function studyDocs(course: Course) {
+  return course.folders.flatMap((folder) => folder.files.filter((f) => STUDY_FILE.test(f.name) && isStudyDoc(docTypeOf(f, folder))));
 }
 
 export async function cancelAnalyze() {
@@ -446,8 +467,11 @@ export function cardsOf(paths: string[], s: Pick<StudyState, "files" | "cards">,
 }
 
 /** Karten aller Module (für Kästen und den gemischten Kasten). */
-export function allCards(courses: Course[], s: Pick<StudyState, "files" | "cards">): Card[] {
-  return courses.flatMap((c) => cardsOf(studyFiles(c).map(fileKey), s, c.id));
+export function allCards(courses: Course[], s: Pick<StudyState, "files" | "cards" | "today">): Card[] {
+  return courses.flatMap((c) => {
+    const hidden = hiddenKeys(c, s.today);
+    return cardsOf(studyFiles(c).map(fileKey).filter((k) => !hidden.has(k)), s, c.id);
+  });
 }
 
 export const active = (c: Card) => !c.state?.suspended;
@@ -501,6 +525,81 @@ export function interleave(cards: Card[], seed = 1, shuffle = true): Card[] {
   const lists = [...groups.values()];
   while (lists.some((l) => l.length)) for (const l of lists) if (l.length) out.push(l.shift()!);
   return out;
+}
+
+// ------------------------------------------------------------------ Ausgeblendete Wochen (Study-Tab, „⋯“ → Hide week)
+
+const HIDDEN_KEY = "studi.hiddenWeeks";
+let hiddenWeeks: Record<string, string[]> | null = null;
+const hiddenListeners = new Set<() => void>();
+let hiddenVersion = 0;
+
+function loadHidden(): Record<string, string[]> {
+  if (hiddenWeeks) return hiddenWeeks;
+  try {
+    hiddenWeeks = JSON.parse((typeof localStorage !== "undefined" && localStorage.getItem(HIDDEN_KEY)) || "{}") ?? {};
+  } catch {
+    hiddenWeeks = {};
+  }
+  return hiddenWeeks!;
+}
+
+export function hiddenWeeksOf(courseId: string): string[] {
+  return loadHidden()[courseId] ?? [];
+}
+
+export function setWeekHidden(courseId: string, key: string, hidden: boolean) {
+  const cur = loadHidden();
+  const list = new Set(cur[courseId] ?? []);
+  if (hidden) list.add(key);
+  else list.delete(key);
+  hiddenWeeks = { ...cur, [courseId]: [...list] };
+  try {
+    localStorage.setItem(HIDDEN_KEY, JSON.stringify(hiddenWeeks));
+  } catch {
+    // egal
+  }
+  hiddenVersion += 1;
+  for (const l of hiddenListeners) l();
+}
+
+export function useHiddenWeeks(courseId: string | null): string[] {
+  useSyncExternalStore(
+    (l) => {
+      hiddenListeners.add(l);
+      return () => hiddenListeners.delete(l);
+    },
+    () => hiddenVersion,
+    () => 0,
+  );
+  return courseId ? hiddenWeeksOf(courseId) : [];
+}
+
+/** Dateien in ausgeblendeten Wochen (ihre Karten zählen nicht für „heute“ und den gemischten Kasten). */
+function hiddenKeys(course: Course, today: string): Set<string> {
+  const hidden = hiddenWeeksOf(course.id);
+  if (!hidden.length) return new Set();
+  const weeks = weeksOf(course, { today: today || localToday() });
+  return new Set(weeks.filter((w) => hidden.includes(w.key)).flatMap((w) => w.files.map((x) => fileKey(x.file))));
+}
+
+// ------------------------------------------------------------------ Heute dran (eine Menge für die ganze App)
+
+/** Kurse dieses Semesters mit lernbaren Dateien (Study-Tab, Zähler). */
+export function useStudyCourses(): Course[] {
+  const app = useApp();
+  return useMemo(() => app.courses.filter((c) => c.id !== "other" && c.semester !== "past" && studyFiles(c).length > 0), [app.courses]);
+}
+
+/**
+ * Karten für heute über alle Kurse: fällige Wiederholungen + neue Karten bis zum Tageslimit (reihum aus den Kursen).
+ * Kurs-Kacheln, Kurs-Seite und Wochen zeigen jeweils ihren Anteil daran, damit die Zahlen überall zusammenpassen.
+ */
+export function useTodayCards(): Card[] {
+  const s = useStudy();
+  const courses = useStudyCourses();
+  useHiddenWeeks(null);
+  return todaysSet(allCards(courses, s), s.today, s.stats).all;
 }
 
 // ------------------------------------------------------------------ Themenwochen

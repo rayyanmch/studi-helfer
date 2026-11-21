@@ -230,6 +230,36 @@ const FILE_SCHEMA = obj({
   ),
 });
 
+/** Übungsblätter und Klausuren: Lernhilfe statt Zusammenfassung (Aufgaben müssen gemacht werden, nicht gelesen). */
+const HELP_SCHEMA = {
+  ...FILE_SCHEMA,
+  properties: {
+    ...FILE_SCHEMA.properties,
+    tasks: list(
+      obj({
+        label: { type: "string", description: "e.g. 'Aufgabe 1' or 'Task 2b'" },
+        topic: { type: "string", description: "What the task is about, 2–6 words" },
+        method: { type: "string", description: "Which method or approach to use" },
+        hint: { type: "string", description: "A nudge for getting started, never the full solution" },
+        lookup: { type: "string", description: "Where to read up, e.g. '05_KomplexeZahlen, S. 12' from the course context, or empty" },
+        page,
+      }),
+      "One entry per task on the sheet, in order",
+    ),
+  },
+  required: [...FILE_SCHEMA.required, "tasks"],
+};
+
+const HELP_PROMPT = [
+  "This file is an exercise sheet or an old exam. Do NOT summarize it; help the student solve it on their own.",
+  "summary: 1–2 sentences on what this sheet practices and what you need for it.",
+  "tasks: one entry per task with topic, method, a hint (a nudge, never the full solution) and where to read up (use the course context below if it fits, otherwise leave lookup empty).",
+  "keyPoints: 3–6 things to know before starting (definitions, formulas, rules), each with the page of this file if it applies, else 0.",
+  "terms: the terms the tasks need, with short definitions.",
+  "cards: 6–10 cards that train what the sheet needs: mostly 'strategy' (task type → method and first step), plus definition/formula/compute cards for the needed tools. Never a card that just repeats a task.",
+  "topics: 2–5 topics of the sheet.",
+].join(" ");
+
 /** Anweisung für Mathe-Fächer (Konzept: kleine Karten, verschiedene Kartentypen, Rechenwege Schritt für Schritt). */
 const MATH_FILE_PROMPT = [
   "This is a mathematics course.",
@@ -273,13 +303,13 @@ function createStudy({ packaged, broadcast, ...deps }) {
 
   const push = () => broadcast("studi:study:state", jobState());
 
-  async function analyzeOne(p, moduleName, math = false) {
+  async function analyzeOne(p, moduleName, math = false, help = false, context = "") {
     const hashes = readJson(HASHES, {});
     const hash = hashOf(p, hashes);
     writeJson(HASHES, hashes);
     const cached = readJson(ANALYSES, {})[hash];
     // Mathe-Modus: ältere Auswertungen ohne Formeln werden einmal neu gemacht
-    if (cached && (!math || cached.math)) return { ok: true, cached: true };
+    if (cached && (!math || cached.math) && Boolean(cached.kind === "help") === help) return { ok: true, cached: true };
     if (readJson(UNREADABLE, {})[hash]) return fail("no_text", "This file is handwritten or scanned, so it can't be read yet.");
     const text = await fileText(packaged(), p, FILE_CHARS);
     if (!text.ok) {
@@ -293,11 +323,13 @@ function createStudy({ packaged, broadcast, ...deps }) {
     const name = path.basename(p);
     const res = await askClaude({
       system: SYSTEM,
-      prompt: `Course: ${moduleName || "unknown"}. File: ${name}${text.partial ? ` (only pages 1–${text.pagesIncluded} of ${text.pages})` : ""}. Create the study aids for this file.${
-        math ? `\n${MATH_FILE_PROMPT}` : " Card types here are mostly concept or definition; steps stay empty."
+      prompt: `Course: ${moduleName || "unknown"}. File: ${name}${text.partial ? ` (only pages 1–${text.pagesIncluded} of ${text.pages})` : ""}. ${
+        help ? HELP_PROMPT : "Create the study aids for this file."
+      }${math ? `\n${MATH_FILE_PROMPT}` : help ? "" : " Card types here are mostly concept or definition; steps stay empty."}${
+        help && context ? `\nCourse context (lectures of this course with their topics):\n${String(context).slice(0, 6000)}` : ""
       }`,
       input: text.text,
-      schema: FILE_SCHEMA,
+      schema: help ? HELP_SCHEMA : FILE_SCHEMA,
     });
     if (!res.ok) return res;
     const analyses = readJson(ANALYSES, {});
@@ -308,6 +340,7 @@ function createStudy({ packaged, broadcast, ...deps }) {
       pages: text.pages,
       partial: text.partial ? text.pagesIncluded : null,
       math: Boolean(math),
+      kind: help ? "help" : "summary",
       ...res.data,
     };
     writeJson(ANALYSES, analyses);
@@ -317,6 +350,8 @@ function createStudy({ packaged, broadcast, ...deps }) {
   /** Startet die Auswertung im Hintergrund; Fortschritt kommt über "studi:study:state". */
   function analyze(paths, moduleName, opts = {}) {
     const math = Boolean(opts && opts.math);
+    const helpSet = new Set(Array.isArray(opts?.help) ? opts.help : []);
+    const context = typeof opts?.context === "string" ? opts.context : "";
     const todo = [...new Set((Array.isArray(paths) ? paths : []).filter(allowedPath))];
     if (job.running) {
       // laufender Auftrag: nur noch Fehlendes hinten anhängen
@@ -336,7 +371,7 @@ function createStudy({ packaged, broadcast, ...deps }) {
         const t0 = Date.now();
         let res;
         try {
-          res = await analyzeOne(p, moduleName, math);
+          res = await analyzeOne(p, moduleName, math, helpSet.has(p), context);
         } catch (e) {
           console.error("[study]", e);
           res = fail("ai_error", "Something went wrong. Please try again.");

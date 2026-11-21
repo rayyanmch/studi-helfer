@@ -8,6 +8,9 @@ import { AlertTriangle, ArrowRight, Check, ChevronDown, ChevronRight, EyeOff, Fi
 import { Button, Notice, Spinner, colorOf, tone } from "./ui";
 import { DocTile, displayName } from "./files";
 import { MathText } from "./MathText";
+import { DocTag, useDocTypes } from "./DocTag";
+import { docTypeOf, isStudyDoc, isTaskDoc } from "@/lib/doctype";
+import type { Folder } from "@/lib/mock-data";
 import type { Course, CourseColor, CourseFile } from "@/lib/mock-data";
 import * as store from "@/lib/app-store";
 import { useApp } from "@/lib/app-store";
@@ -55,7 +58,7 @@ export function StudyPanel({ course }: { course: Course }) {
   const { math } = useMathMode(course, files.map((f) => study.files[fileKey(f)]));
   const startAnalyze = async (list: CourseFile[]) => {
     setError(null);
-    const msg = await analyze(list.map(fileKey), course.name, math);
+    const msg = await analyze(list.map(fileKey), course.name, math, course);
     if (msg) setError(msg);
   };
 
@@ -109,7 +112,7 @@ export function SummaryList({ course, color, onSummarize }: { course: Course; co
   const study = useStudy();
   const weeks = useWeeks(course);
   const groups = weeks
-    .map((w) => ({ w, files: w.files.map((x) => x.file).filter((f) => STUDY_FILE.test(f.name)) }))
+    .map((w) => ({ w, files: w.files.filter((x) => STUDY_FILE.test(x.file.name)) }))
     .filter((g) => g.files.length);
   if (groups.length === 0) return <p className="rounded-[10px] bg-surface px-4 py-5 text-muted">No PDFs in this course yet.</p>;
   const ordered = [...groups.filter((g) => g.w.kind === "week").reverse(), ...groups.filter((g) => g.w.kind !== "week")];
@@ -127,10 +130,11 @@ export function SummaryList({ course, color, onSummarize }: { course: Course; co
             {w.range && <span className="text-[12px] font-normal text-muted">{w.range}</span>}
           </h3>
           <ul className="rounded-[10px] bg-surface px-1.5 py-1">
-            {files.map((f) => (
+            {files.map(({ file: f, folder }) => (
               <SummaryRow
                 key={f.id}
                 file={f}
+                folder={folder}
                 analysis={study.files[fileKey(f)] ?? null}
                 unreadable={Boolean(study.unreadable[fileKey(f)])}
                 color={color}
@@ -420,6 +424,7 @@ export function Kbd({ children }: { children: React.ReactNode }) {
 
 export function SummaryRow({
   file,
+  folder,
   analysis,
   unreadable,
   color,
@@ -428,6 +433,7 @@ export function SummaryRow({
   disabled,
 }: {
   file: CourseFile;
+  folder?: Pick<Folder, "category" | "name">;
   analysis: Analysis | null;
   unreadable?: boolean;
   color: CourseColor;
@@ -436,7 +442,12 @@ export function SummaryRow({
   disabled: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  const [hints, setHints] = useState<number[]>([]);
   const study = useStudy();
+  useDocTypes();
+  const type = docTypeOf(file, folder);
+  const task = isTaskDoc(type);
+  const isHelp = analysis?.kind === "help";
   const ids = analysis ? analysis.cards.map((_, i) => `${analysis.id}:${i}`) : [];
   const learned = ids.filter((id) => (study.cards[id]?.box ?? 0) >= 3).length;
 
@@ -447,18 +458,20 @@ export function SummaryRow({
         <button
           onClick={() => (analysis ? setOpen(!open) : store.openFile(file.path, file.id))}
           aria-expanded={analysis ? open : undefined}
-          className="min-w-0 flex-1 truncate text-left font-medium"
-          title={analysis ? "Show summary" : `Open ${file.name}`}
+          className="min-w-0 truncate text-left font-medium"
+          title={analysis ? (isHelp ? "Show study help" : "Show summary") : `Open ${file.name}`}
         >
           {displayName(file.name)}
         </button>
+        <DocTag file={file} folder={folder} />
+        <span className="flex-1" />
         {busy ? (
           <span className="flex items-center gap-1.5 text-[12px] text-muted">
-            <Spinner size={12} /> Summarizing…
+            <Spinner size={12} /> {task ? "Preparing help…" : "Summarizing…"}
           </span>
         ) : analysis ? (
           <button onClick={() => setOpen(!open)} className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[12px] font-medium hover:bg-hover" style={{ color: tone(color, "ink") }}>
-            Summary · {ids.length} cards{learned ? ` · ${learned} learned` : ""}
+            {isHelp ? "Study help" : "Summary"} · {ids.length} cards{learned ? ` · ${learned} learned` : ""}
             {analysis.math && <span className="text-muted"> · formulas</span>}
             {open ? <ChevronDown size={13} aria-hidden /> : <ChevronRight size={13} aria-hidden />}
           </button>
@@ -466,14 +479,81 @@ export function SummaryRow({
           <span className="text-[12px] text-muted" title="This file has no text (handwritten notes or scanned pages). Claude can’t read it yet.">
             Handwritten or scanned
           </span>
-        ) : (
-          <Button variant="plain" className="h-7 text-[12px]" onClick={onSummarize} disabled={disabled}>
-            Summarize
+        ) : !isStudyDoc(type) ? null : (
+          <Button variant="plain" className="h-7 text-[12px]" onClick={onSummarize} disabled={disabled} title={task ? "Hints, methods and where to read up for each task. No solutions." : undefined}>
+            {task ? "Get help" : "Summarize"}
           </Button>
         )}
       </div>
-      {open && analysis && (
+      {open && analysis && isHelp && (
         <div className="px-3 pb-4 pl-[50px] text-[14px] leading-relaxed">
+          <p>
+            <MathText text={analysis.summary} math={analysis.math} />
+          </p>
+          {analysis.keyPoints.length > 0 && (
+            <>
+              <h4 className="mb-1 mt-4 text-[13px] font-bold">Before you start</h4>
+              <ul className="flex flex-col gap-1">
+                {analysis.keyPoints.map((k, i) => (
+                  <li key={i} className="flex gap-2">
+                    <span className="mt-[9px] size-1.5 shrink-0 rounded-full" style={{ background: tone(color) }} aria-hidden />
+                    <span>
+                      <MathText text={k.text} math={analysis.math} />
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+          <h4 className="mb-1.5 mt-4 text-[13px] font-bold">Task by task</h4>
+          <ol className="flex flex-col gap-2">
+            {(analysis.tasks ?? []).map((t, i) => {
+              const shown = hints.includes(i);
+              return (
+                <li key={i} className="rounded-[10px] bg-sunken/60 px-3 py-2">
+                  <p className="flex flex-wrap items-baseline gap-x-2">
+                    <strong className="font-semibold">{t.label}</strong>
+                    <span className="text-muted">
+                      <MathText text={t.topic} math={analysis.math} />
+                    </span>
+                  </p>
+                  <p className="text-[13px]">
+                    <span className="text-muted">Method: </span>
+                    <MathText text={t.method} math={analysis.math} />
+                  </p>
+                  {shown ? (
+                    <p className="mt-1 text-[13px]">
+                      <span className="font-semibold" style={{ color: tone(color, "ink") }}>
+                        Hint:{" "}
+                      </span>
+                      <MathText text={t.hint} math={analysis.math} />
+                    </p>
+                  ) : (
+                    <button onClick={() => setHints((h) => [...h, i])} className="mt-1 text-[12px] font-semibold hover:underline" style={{ color: tone(color, "ink") }}>
+                      Show hint
+                    </button>
+                  )}
+                  {t.lookup && <p className="mt-0.5 text-[12px] text-muted">Read up: {t.lookup}</p>}
+                </li>
+              );
+            })}
+          </ol>
+          <p className="mt-2 text-[12px] text-muted">Hints only, no solutions: you learn most by solving it yourself.</p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Button onClick={() => store.openFile(file.path, file.id)}>Open sheet</Button>
+          </div>
+        </div>
+      )}
+      {open && analysis && !isHelp && (
+        <div className="px-3 pb-4 pl-[50px] text-[14px] leading-relaxed">
+          {task && (
+            <p className="mb-3 rounded-[8px] bg-sunken/60 px-3 py-2 text-[13px]">
+              This is an exercise sheet. A study help with hints for each task is more useful than a summary.{" "}
+              <button onClick={onSummarize} className="font-semibold hover:underline" style={{ color: tone(color, "ink") }}>
+                Make a study help instead
+              </button>
+            </p>
+          )}
           <p>
             <MathText text={analysis.summary} math={analysis.math} />
           </p>

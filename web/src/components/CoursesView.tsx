@@ -7,6 +7,7 @@ import { Button, Swatch, colorOf, folderName, inDays, tone } from "./ui";
 import type { Course, Deadline } from "@/lib/mock-data";
 import * as store from "@/lib/app-store";
 import { realCourses, useApp } from "@/lib/app-store";
+import { useTodayCards, useWeeks } from "@/lib/study";
 
 const WD = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -112,6 +113,10 @@ function CourseCard({
   const examDays = exam ? Math.round((Date.parse(exam.date) - Date.parse(today)) / 86_400_000) : null;
   const urgent = next && next.kind === "abgabe" && Math.round((Date.parse(next.date) - Date.parse(today)) / 86_400_000) <= 3;
   const showFull = course.fullName && course.fullName !== course.name;
+  // Verbindung zum Lernen: aktuelle Themenwoche und Karten für heute
+  const weeks = useWeeks(course);
+  const thisWeek = weeks.find((w) => w.current && w.kind === "week");
+  const todayCards = useTodayCards().filter((c) => c.moduleId === course.id).length;
 
   return (
     <button
@@ -133,6 +138,14 @@ function CourseCard({
               {p.label}
             </span>
           ))}
+        </span>
+      )}
+      {thisWeek && (
+        <span className="mt-2 block truncate text-[13px]" title={thisWeek.title}>
+          <span className="text-muted">This week: </span>
+          <span className="font-semibold" style={{ color: tone(color, "ink") }}>
+            {thisWeek.title || `Week ${thisWeek.n}`}
+          </span>
         </span>
       )}
       <span className="mt-auto pt-4">
@@ -157,6 +170,7 @@ function CourseCard({
           <Swatch color={color} size={8} />
           {files.length} {files.length === 1 ? "file" : "files"}
           {fresh > 0 && <span className="font-semibold text-ok">· {fresh} new</span>}
+          {todayCards > 0 && <span>· {todayCards} cards to learn today</span>}
         </span>
       </span>
     </button>

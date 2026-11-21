@@ -4,12 +4,11 @@
 // gezielt einzelne Vorlesungen oder Themen lernen, Lernzettel als PDF mit wählbaren Bausteinen.
 // Daten aus @/lib/study (Mac-App: desktop/lib/study.js), Abfrage und Zusammenfassungen aus StudyView.tsx.
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
-  ArrowRight,
   Check,
   ChevronLeft,
-  Download,
+  ChevronRight,
   Eye,
   EyeOff,
   FileText,
@@ -17,6 +16,7 @@ import {
   FolderOpen,
   GraduationCap,
   Layers,
+  MoreHorizontal,
   NotebookPen,
   Shuffle,
   Sigma,
@@ -24,11 +24,12 @@ import {
 } from "lucide-react";
 import { Button, Spinner, Swatch, colorOf, inDays, tone } from "./ui";
 import { displayName } from "./files";
-import { ErrorNotice, NoClaude, Progress, Review, SummaryList, TYPE_LABEL } from "./StudyView";
+import { ErrorNotice, NoClaude, Progress, Review, SummaryRow, TYPE_LABEL } from "./StudyView";
+import { DOC_LABEL, isStudyDoc } from "@/lib/doctype";
 import { MathText } from "./MathText";
 import { setMathMode, useMathMode } from "@/lib/subject";
 import type { Course, CourseColor, CourseFile } from "@/lib/mock-data";
-import { realCourses, useApp } from "@/lib/app-store";
+import { useApp } from "@/lib/app-store";
 import {
   type Card,
   type Include,
@@ -42,6 +43,7 @@ import {
   allCards,
   analyze,
   boxes,
+  cardsOf,
   createSheet,
   deleteSheet,
   exportAnki,
@@ -60,37 +62,35 @@ import {
   useWeeks,
   weeksText,
   STUDY_FILE,
+  setWeekHidden,
+  studyDocs,
+  useHiddenWeeks,
+  useStudyCourses,
+  useTodayCards,
 } from "@/lib/study";
-import { type Week, ROLE_LABEL, weekLabel } from "@/lib/weeks";
-
-/** Module dieses Semesters mit lernbaren Dateien. */
-function useStudyCourses() {
-  const app = useApp();
-  return useMemo(() => realCourses(app.courses).filter((c) => c.semester !== "past" && studyFiles(c).length > 0), [app.courses]);
-}
+import { type Week, ROLE_LABEL, weekLabel, weeksOf } from "@/lib/weeks";
 
 /** Anzahl fälliger Karten für die Seitenleiste (lädt den Lernstand einmal beim Start). */
 export function useStudyDue() {
-  const study = useStudy();
   const courses = useStudyCourses();
   const key = courses.flatMap((c) => studyFiles(c).map(fileKey)).join("\n");
   useEffect(() => {
     if (key) void loadStudy(key.split("\n"));
   }, [key]);
-  return todaysSet(allCards(courses, study), study.today, study.stats).all.length;
+  return useTodayCards().length;
 }
 
 type Screen =
   | { kind: "home" }
   | { kind: "deck"; moduleId: string } // "all" = alle Module gemischt
   | { kind: "review"; cards: Card[]; rest: Card[]; practice: boolean; title: string; back: Screen }
-  | { kind: "new-sheet"; moduleId?: string };
+  | { kind: "new-sheet"; moduleId?: string; weeks?: string[] };
 
-const SESSION_SIZES = [10, 20, 50, 0] as const; // 0 = alle
 
 export function StudyHub() {
   const study = useStudy();
   const courses = useStudyCourses();
+  useHiddenWeeks(null);
   const pathsKey = courses.flatMap((c) => studyFiles(c).map(fileKey)).join("\n");
   const [screen, setScreen] = useState<Screen>(() => {
     const t = takeTarget();
@@ -176,7 +176,7 @@ export function StudyHub() {
           cards={cards}
           onBack={() => setScreen({ kind: "home" })}
           onStart={(pool, opts) => startReview(pool, { ...opts, back: screen })}
-          onNewSheet={(moduleId) => setScreen({ kind: "new-sheet", moduleId })}
+          onNewSheet={(moduleId, weeks) => setScreen({ kind: "new-sheet", moduleId, weeks })}
           onError={setError}
         />
       )}
@@ -184,6 +184,16 @@ export function StudyHub() {
         <NewSheet
           courses={courses}
           initialModule={screen.moduleId}
+          initialPicked={(() => {
+            // „Study sheet for this week…“: Dateien dieser Woche schon ausgewählt
+            const c = courses.find((x) => x.id === screen.moduleId);
+            if (!c || !screen.weeks?.length) return [];
+            return weeksOf(c, { today: study.today || new Date().toISOString().slice(0, 10) })
+              .filter((w) => screen.weeks!.includes(w.key))
+              .flatMap((w) => w.files.map((x) => x.file))
+              .filter((f) => STUDY_FILE.test(f.name) && !study.unreadable[fileKey(f)])
+              .map(fileKey);
+          })()}
           onBack={() => setScreen({ kind: "home" })}
           onStarted={() => setScreen({ kind: "home" })}
           onError={setError}
@@ -422,126 +432,174 @@ function BoxTile({
   );
 }
 
-// --- Ein Kasten (Modul oder alle) ------------------------------------------------
+// --- Ein Kasten: Kurs (nach Themenwochen) oder alle Kurse gemischt ----------------------
 
-function Deck({
-  moduleId,
-  courses,
-  cards,
+type StartOpts = { practice: boolean; size: number; title: string; mixed?: boolean };
+
+function Deck(props: {
+  moduleId: string;
+  courses: Course[];
+  cards: Card[];
+  onBack: () => void;
+  onStart: (pool: Card[], opts: StartOpts) => void;
+  onNewSheet: (moduleId?: string, weekKeys?: string[]) => void;
+  onError: (m: string | null) => void;
+}) {
+  if (props.moduleId === "all") return <MixedDeck {...props} />;
+  const course = props.courses.find((c) => c.id === props.moduleId);
+  return course ? <CourseDeck {...props} course={course} /> : <MixedDeck {...props} />;
+}
+
+function BackToStudy({ onBack }: { onBack: () => void }) {
+  return (
+    <button onClick={onBack} className="-ml-2 -mb-3 flex w-fit items-center gap-0.5 rounded-md px-2 py-1 text-[13px] font-semibold text-muted hover:bg-hover hover:text-text">
+      <ChevronLeft size={15} aria-hidden /> Study
+    </button>
+  );
+}
+
+/** Alle Kurse gemischt: heute fällige Karten oder alles üben, Kurse an-/abwählen. */
+function MixedDeck({ courses, cards, onBack, onStart }: { courses: Course[]; cards: Card[]; onBack: () => void; onStart: (pool: Card[], opts: StartOpts) => void }) {
+  const study = useStudy();
+  const [picked, setPicked] = useState<string[]>(() => courses.map((c) => c.id));
+  const inScope = cards.filter((c) => picked.includes(c.moduleId ?? ""));
+  const todays = todaysSet(inScope, study.today, study.stats).all;
+  return (
+    <>
+      <BackToStudy onBack={onBack} />
+      <header>
+        <h1 className="text-[30px] font-bold leading-tight tracking-[-0.02em]">All courses</h1>
+        <p className="mt-1 text-muted">Cards from all your courses, mixed. Mixing helps you remember which method fits where.</p>
+      </header>
+      {cards.length === 0 ? (
+        <div className="rounded-[12px] bg-surface px-5 py-6">
+          <h2 className="text-[15px] font-bold">No cards yet</h2>
+          <p className="mt-1 text-[13px] text-muted">Open a course and let Claude summarize its files. Their cards show up here mixed.</p>
+          <Button className="mt-4" onClick={onBack}>
+            <ChevronLeft size={14} aria-hidden /> Back to the courses
+          </Button>
+        </div>
+      ) : (
+        <section className="rounded-[14px] bg-surface p-5">
+          <h2 className="text-[15px] font-bold">Which courses?</h2>
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            {courses.map((c) => {
+              const on = picked.includes(c.id);
+              const n = cards.filter((x) => x.moduleId === c.id && active(x)).length;
+              return (
+                <ToggleChip key={c.id} on={on} color={colorOf(c)} disabled={n === 0} onClick={() => setPicked((p) => (on ? p.filter((x) => x !== c.id) : [...p, c.id]))}>
+                  {c.name} <span className="opacity-60">{n}</span>
+                </ToggleChip>
+              );
+            })}
+          </div>
+          <div className="mt-5 flex flex-wrap gap-2">
+            <Button variant="primary" className="h-10 px-4 text-[14px]" disabled={!todays.length} onClick={() => onStart(todays, { practice: false, size: 20, title: "All courses · today", mixed: true })}>
+              {todays.length ? `Learn today · ${todays.length}` : "Nothing left for today"}
+            </Button>
+            <Button className="h-10 px-4 text-[14px]" disabled={!inScope.some(active)} onClick={() => onStart(inScope.filter(active), { practice: true, size: 20, title: "All courses · practice", mixed: true })}>
+              Practice all
+            </Button>
+          </div>
+        </section>
+      )}
+    </>
+  );
+}
+
+/** Ein Kurs, geordnet nach Themenwochen: je Woche lernen, Lernzettel, fehlende Dateien, ausblenden. */
+function CourseDeck({
+  course,
   onBack,
   onStart,
   onNewSheet,
   onError,
 }: {
-  moduleId: string;
-  courses: Course[];
-  cards: Card[];
+  course: Course;
   onBack: () => void;
-  onStart: (pool: Card[], opts: { practice: boolean; size: number; title: string; mixed?: boolean }) => void;
-  onNewSheet: (moduleId?: string) => void;
+  onStart: (pool: Card[], opts: StartOpts) => void;
+  onNewSheet: (moduleId?: string, weekKeys?: string[]) => void;
   onError: (m: string | null) => void;
 }) {
   const app = useApp();
   const study = useStudy();
-  const all = moduleId === "all";
-  const course = all ? null : courses.find((c) => c.id === moduleId) ?? null;
-  const color: CourseColor = course ? colorOf(course) : "blue";
-  const deckCards = all ? cards : cards.filter((c) => c.moduleId === moduleId);
-  const files = course ? studyFiles(course) : [];
+  const color = colorOf(course);
   const weeks = useWeeks(course);
-
-  // Auswahl: alle Module/Dateien oder nur bestimmte
-  const [scope, setScope] = useState<"everything" | "choose">("everything");
-  const [pickedFiles, setPickedFiles] = useState<string[]>([]);
-  const [pickedCourses, setPickedCourses] = useState<string[]>(() => courses.map((c) => c.id));
-  const [mode, setMode] = useState<"due" | "practice">("due");
-  const [size, setSize] = useState<number>(20);
+  const hidden = useHiddenWeeks(course.id);
+  const [showHidden, setShowHidden] = useState(false);
   const [browse, setBrowse] = useState(false);
+  const docs = studyDocs(course);
+  const keyOfWeek = (w: Week) => new Set(w.files.map((x) => fileKey(x.file)));
+  const visibleWeeks = weeks.filter((w) => !hidden.includes(w.key));
+  const visibleKeys = new Set(visibleWeeks.flatMap((w) => [...keyOfWeek(w)]));
+  const courseCards = cardsOf(studyFiles(course).map(fileKey), study, course.id);
+  const deckCards = courseCards.filter((c) => visibleKeys.has(c.path));
+  const todayAll = useTodayCards();
+  const todays = todayAll.filter((c) => c.moduleId === course.id);
+  const exam = examIn(course.id, app.deadlines, app.today);
+  const mathMode = useMathMode(course, docs.map((f) => study.files[fileKey(f)]));
+  const missing = docs.filter((f) => !study.files[fileKey(f)] && !study.unreadable[fileKey(f)]);
+  const withoutFormulas = mathMode.math ? docs.filter((f) => study.files[fileKey(f)] && !study.files[fileKey(f)]?.math) : [];
 
-  const inScope = deckCards.filter((c) => {
-    if (scope === "everything") return true;
-    return all ? pickedCourses.includes(c.moduleId ?? "") : pickedFiles.includes(c.path);
-  });
-  const todays = todaysSet(inScope, study.today, study.stats).all;
-  const pool = mode === "due" ? todays : inScope.filter(active);
-  const exam = course ? examIn(course.id, app.deadlines, app.today) : null;
-  const missing = files.filter((f) => !study.files[fileKey(f)] && !study.unreadable[fileKey(f)]);
-
-  const mathMode = useMathMode(course, files.map((f) => study.files[fileKey(f)]));
-  const withoutFormulas = mathMode.math ? files.filter((f) => study.files[fileKey(f)] && !study.files[fileKey(f)]?.math) : [];
   const summarize = async (list: CourseFile[]) => {
     onError(null);
-    const msg = await analyze(list.map(fileKey), course?.name ?? "", mathMode.math);
+    const msg = await analyze(list.map(fileKey), course.name, mathMode.math, course);
     if (msg) onError(msg);
   };
+  const ordered = [...weeks.filter((w) => w.kind === "week").reverse(), ...weeks.filter((w) => w.kind !== "week")];
+  const shown = ordered.filter((w) => showHidden || !hidden.includes(w.key));
 
   return (
     <>
-      <button onClick={onBack} className="-ml-2 -mb-3 flex w-fit items-center gap-0.5 rounded-md px-2 py-1 text-[13px] font-semibold text-muted hover:bg-hover hover:text-text">
-        <ChevronLeft size={15} aria-hidden /> Study
-      </button>
+      <BackToStudy onBack={onBack} />
       <header className="flex flex-wrap items-center gap-4">
-        {course ? <Swatch color={color} size={16} /> : <Shuffle size={20} aria-hidden />}
+        <Swatch color={color} size={16} />
         <div className="min-w-0 flex-1">
-          <h1 className="truncate text-[30px] font-bold leading-tight tracking-[-0.02em]">{course ? course.name : "All courses"}</h1>
+          <h1 className="truncate text-[30px] font-bold leading-tight tracking-[-0.02em]">{course.name}</h1>
           <p className="mt-1 text-muted">
-            {deckCards.length === 0
-              ? [course?.fullName && course.fullName !== course.name ? course.fullName : null, exam != null ? `exam ${inDays(exam)}` : null].filter(Boolean).join(" · ") ||
-                "No cards yet"
-              : [
-              `${deckCards.filter(active).length} cards`,
-              `${todaysSet(deckCards, study.today, study.stats).all.length} for today`,
-              `${Math.round(mastery(deckCards) * 100)}% learned`,
-              exam != null ? `exam ${inDays(exam)}` : null,
-                ]
+            {deckCards.length
+              ? [`${deckCards.filter(active).length} cards`, `${todays.length} for today`, `${Math.round(mastery(deckCards) * 100)}% learned`, exam != null ? `exam ${inDays(exam)}` : null]
                   .filter(Boolean)
-                  .join(" · ")}
+                  .join(" · ")
+              : [course.fullName && course.fullName !== course.name ? course.fullName : null, exam != null ? `exam ${inDays(exam)}` : null].filter(Boolean).join(" · ") || "No cards yet"}
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Button
-            disabled={deckCards.length === 0}
-            onClick={async () => {
-              const msg = await exportAnki(course?.name ?? "All courses", inScope.filter(active));
-              if (msg) onError(msg);
-            }}
-            title="Saves a text file that Anki can import (File → Import)"
-          >
-            <Download size={14} aria-hidden /> Export for Anki
+        <div className="flex items-center gap-2">
+          <Button variant="primary" className="h-9 px-4" disabled={!todays.length} onClick={() => onStart(todays, { practice: false, size: 20, title: `${course.name} · today` })}>
+            {todays.length ? `Learn today · ${todays.length}` : deckCards.length ? "All done for today" : "Learn today"}
           </Button>
-          <Button onClick={() => onNewSheet(course?.id)} disabled={study.available === false}>
-            <NotebookPen size={14} aria-hidden /> Study sheet
-          </Button>
+          <Menu
+            label={`More for ${course.name}`}
+            items={[
+              { label: "Practice all cards", disabled: !deckCards.some(active), onClick: () => onStart(deckCards.filter(active), { practice: true, size: 20, title: `${course.name} · practice` }) },
+              { label: "New study sheet…", disabled: study.available === false, onClick: () => onNewSheet(course.id) },
+              {
+                label: "Export cards for Anki",
+                disabled: !deckCards.length,
+                onClick: async () => {
+                  const msg = await exportAnki(course.name, deckCards.filter(active));
+                  if (msg) onError(msg);
+                },
+              },
+              { label: browse ? "Hide card list" : "Show all cards", disabled: !deckCards.length, onClick: () => setBrowse(!browse) },
+              "sep",
+              {
+                label: `Math mode: ${mathMode.math ? "on" : "off"}`,
+                hint: "Formulas in LaTeX, math card types",
+                onClick: () => setMathMode(course.id, mathMode.math ? (mathMode.auto ? "off" : null) : mathMode.auto ? null : "on"),
+              },
+              ...(hidden.length ? [{ label: showHidden ? "Don’t show hidden weeks" : `Show hidden weeks (${hidden.length})`, onClick: () => setShowHidden(!showHidden) }] : []),
+            ]}
+          />
         </div>
       </header>
-
-      {course && (
-        <div className="-mt-2 flex flex-wrap items-center gap-2 text-[13px]">
-          <button
-            onClick={() => setMathMode(course.id, mathMode.math ? (mathMode.auto ? "off" : null) : mathMode.auto ? null : "on")}
-            aria-pressed={mathMode.math}
-            className={`inline-flex h-7 items-center gap-1.5 rounded-full px-3 font-semibold transition-colors ${mathMode.math ? "" : "bg-sunken text-muted hover:text-text"}`}
-            style={mathMode.math ? { background: tone(color, "soft"), color: tone(color, "ink") } : undefined}
-            title="Math mode writes formulas in LaTeX and makes cards for definitions, theorems, formulas, methods and calculations."
-          >
-            <Sigma size={13} aria-hidden /> Math mode {mathMode.math ? "on" : "off"}
-          </button>
-          <span className="text-muted">
-            {mathMode.math
-              ? "Formulas, definitions, theorems and step-by-step calculations."
-              : mathMode.auto
-                ? "Turned off for this course."
-                : "Turn on for courses with formulas and calculations."}
-          </span>
-        </div>
-      )}
 
       {withoutFormulas.length > 0 && !study.job.running && (
         <div className="flex flex-wrap items-center gap-3 rounded-[12px] bg-surface px-4 py-3 text-[13px]">
           <Sigma size={16} className="shrink-0" style={{ color: tone(color, "ink") }} aria-hidden />
           <span className="min-w-0 flex-1">
-            <strong className="font-semibold">{withoutFormulas.length} {withoutFormulas.length === 1 ? "file was" : "files were"} summarized without math mode.</strong>{" "}
-            <span className="text-muted">Redo them for formulas and math cards (about {Math.max(1, Math.round((withoutFormulas.length * 55) / 2 / 60))} min). Your progress on the old cards is reset.</span>
+            <strong className="font-semibold">{withoutFormulas.length} {withoutFormulas.length === 1 ? "file was" : "files were"} made without math mode.</strong>{" "}
+            <span className="text-muted">Redo them for formulas and math cards (about {Math.max(1, Math.round((withoutFormulas.length * 55) / 2 / 60))} min).</span>
           </span>
           <Button onClick={() => void summarize(withoutFormulas)} disabled={study.available === false}>
             Redo with formulas
@@ -551,155 +609,231 @@ function Deck({
 
       <Progress color={color} />
 
-      {deckCards.length === 0 && !course ? (
+      {courseCards.length === 0 && docs.length > 0 && (
         <div className="rounded-[12px] bg-surface px-5 py-6">
-          <h2 className="text-[15px] font-bold">No cards yet</h2>
-          <p className="mt-1 text-[13px] text-muted">This box mixes the cards of all your courses. Open a course box first and let Claude summarize its files.</p>
-          <Button className="mt-4" onClick={onBack}>
-            <ChevronLeft size={14} aria-hidden /> Back to the boxes
-          </Button>
-        </div>
-      ) : deckCards.length === 0 && course ? (
-        <div className="rounded-[12px] bg-surface px-5 py-6">
-          <h2 className="text-[15px] font-bold">No cards in this box yet</h2>
+          <h2 className="text-[15px] font-bold">No cards in this course yet</h2>
           <p className="mt-1 text-[13px] text-muted">
-            Claude reads each file once and writes a summary and about 10 flashcards. {files.length} files take about {Math.max(1, Math.round((files.length * 17) / 2 / 60))} min.
-            You can keep using the app meanwhile.
+            Claude reads each file once: lectures become a summary with flashcards, exercise sheets get hints for every task. {docs.length} files take about{" "}
+            {Math.max(1, Math.round((docs.length * (mathMode.math ? 55 : 20)) / 2 / 60))} min. You can keep using the app meanwhile.
           </p>
           <Button variant="primary" className="mt-4" onClick={() => void summarize(missing)} disabled={study.available === false || study.job.running}>
-            <FileText size={14} aria-hidden /> Summarize {files.length} files
+            <FileText size={14} aria-hidden /> Prepare {missing.length} files
           </Button>
         </div>
-      ) : (
-        <section aria-label="Start a round" className="rounded-[14px] bg-surface p-5">
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1.4fr_1fr]">
-            {/* Was */}
-            <div>
-              <h2 className="text-[15px] font-bold">What do you want to learn?</h2>
-              <Segmented
-                className="mt-3"
-                value={scope}
-                onChange={(v) => setScope(v as typeof scope)}
-                options={[
-                  { value: "everything", label: all ? "All courses" : "The whole course" },
-                  { value: "choose", label: all ? "Choose courses" : "Choose weeks" },
-                ]}
-              />
-              {scope === "choose" &&
-                (all ? (
-                  <div className="mt-3 flex flex-wrap gap-1.5">
-                    {courses.map((c) => {
-                      const onIt = pickedCourses.includes(c.id);
-                      const n = cards.filter((x) => x.moduleId === c.id && active(x)).length;
-                      return (
-                        <ToggleChip
-                          key={c.id}
-                          on={onIt}
-                          color={colorOf(c)}
-                          onClick={() => setPickedCourses((p) => (onIt ? p.filter((x) => x !== c.id) : [...p, c.id]))}
-                          disabled={n === 0}
-                        >
-                          {c.name} <span className="opacity-60">{n}</span>
-                        </ToggleChip>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  course && <WeekPicker course={course} weeks={weeks} cards={deckCards} picked={pickedFiles} onChange={setPickedFiles} mode="cards" />
-                ))}
-            </div>
+      )}
 
-            {/* Wie */}
-            <div className="flex flex-col">
-              <h2 className="text-[15px] font-bold">How?</h2>
-              <div className="mt-3 flex flex-col gap-2">
-                <ModeOption
-                  on={mode === "due"}
-                  onClick={() => setMode("due")}
-                  title="Today’s cards"
-                  text={`What’s due plus up to ${NEW_PER_DAY} new cards a day. Best as a daily habit.`}
-                  count={todays.length}
-                />
-                <ModeOption
-                  on={mode === "practice"}
-                  onClick={() => setMode("practice")}
-                  title="Practice all"
-                  text="Every card in your choice. Good before an exam."
-                  count={inScope.filter(active).length}
-                />
-              </div>
-              <label className="mt-3 flex items-center gap-2 text-[13px]">
-                <span className="text-muted">Cards per round</span>
-                <select
-                  value={size}
-                  onChange={(e) => setSize(Number(e.target.value))}
-                  className="h-8 rounded-lg bg-sunken px-2 text-[13px] outline-none"
-                >
-                  {SESSION_SIZES.map((n) => (
-                    <option key={n} value={n}>
-                      {n === 0 ? "All" : n}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <Button
-                variant="primary"
-                className="mt-4 h-10 text-[14px]"
-                disabled={pool.length === 0}
-                onClick={() =>
-                  onStart(pool, {
-                    practice: mode === "practice",
-                    size,
-                    title: `${course?.name ?? "All courses"}${
-                      scope === "choose" ? ` · ${all ? "your choice" : weeksText(weeks.filter((w) => w.files.some((x) => pickedFiles.includes(fileKey(x.file)))))}` : ""
-                    }${mode === "practice" ? " · practice" : ""}`,
-                    mixed: all,
-                  })
-                }
-              >
-                {pool.length === 0 ? "Nothing to review" : `Start ${size && size < pool.length ? size : pool.length} cards`} {pool.length > 0 && <ArrowRight size={15} aria-hidden />}
-              </Button>
-              {pool.length === 0 && (
-                <p className="mt-2 text-center text-[12px] text-muted">
-                  {scope === "choose" && inScope.length === 0
-                    ? all
-                      ? "Pick at least one course."
-                      : "Pick at least one lecture."
-                    : mode === "due"
-                      ? "Nothing left for today in your choice. Try “Practice all”."
-                      : "No cards in your choice."}
-                </p>
-              )}
-            </div>
-          </div>
+      {browse && deckCards.length > 0 && (
+        <section aria-label="All cards">
+          <h2 className="mb-1 text-[15px] font-bold">All cards</h2>
+          <CardList cards={deckCards} colorOf={() => color} />
         </section>
       )}
 
-      {/* Karten ansehen und ausblenden */}
-      {deckCards.length > 0 && (
-        <section aria-label="Cards">
-          <button onClick={() => setBrowse(!browse)} aria-expanded={browse} className="-ml-1.5 flex items-center gap-2 rounded-md px-1.5 py-1 text-[15px] font-bold hover:bg-hover">
-            Cards in this box <span className="text-[13px] font-normal text-muted">{inScope.length}</span>
-            <ChevronLeft size={14} className={`text-muted transition-transform ${browse ? "-rotate-90" : "rotate-180"}`} aria-hidden />
+      <section aria-label="Weeks" className="flex flex-col gap-2.5">
+        <div className="flex items-baseline gap-2">
+          <h2 className="flex-1 text-[17px] font-bold">By week</h2>
+          {missing.length > 0 && courseCards.length > 0 && !study.job.running && (
+            <button onClick={() => void summarize(missing)} disabled={study.available === false} className="text-[13px] font-semibold hover:underline" style={{ color: tone(color, "ink") }}>
+              Prepare the other {missing.length} files
+            </button>
+          )}
+        </div>
+        {shown.map((w) => (
+          <WeekCard
+            key={w.key}
+            week={w}
+            course={course}
+            color={color}
+            cards={courseCards.filter((c) => keyOfWeek(w).has(c.path))}
+            todays={todays.filter((c) => keyOfWeek(w).has(c.path))}
+            hidden={hidden.includes(w.key)}
+            onLearn={(pool, practice) => onStart(pool, { practice, size: 20, title: `${course.name} · ${weekLabel(w, false)}${practice ? " · practice" : ""}` })}
+            onSheet={() => onNewSheet(course.id, [w.key])}
+            onSummarize={(files) => void summarize(files)}
+          />
+        ))}
+        {hidden.length > 0 && !showHidden && (
+          <button onClick={() => setShowHidden(true)} className="self-start rounded-md px-1 text-[13px] text-muted hover:text-text">
+            {hidden.length} hidden {hidden.length === 1 ? "week" : "weeks"} · Show
           </button>
-          {browse && <CardList cards={inScope} colorOf={(c) => (c.moduleId ? colorOf(courses.find((x) => x.id === c.moduleId) ?? { id: "x" }) : color)} />}
-        </section>
-      )}
-
-      {course && (
-        <section aria-label="Summaries">
-          <div className="mb-2 flex flex-wrap items-center gap-2">
-            <h2 className="flex-1 text-[15px] font-bold">Summaries</h2>
-            {missing.length > 0 && deckCards.length > 0 && !study.job.running && (
-              <Button onClick={() => void summarize(missing)} disabled={study.available === false}>
-                <FileText size={14} aria-hidden /> Summarize the other {missing.length}
-              </Button>
-            )}
-          </div>
-          <SummaryList course={course} color={color} onSummarize={(f) => void summarize([f])} />
-        </section>
-      )}
+        )}
+      </section>
     </>
+  );
+}
+
+/** Eine Woche im Study-Tab: Kopf mit Fortschritt und „Learn“, darunter die Dokumente mit Tag und Zusammenfassung/Lernhilfe. */
+function WeekCard({
+  week,
+  course,
+  color,
+  cards,
+  todays,
+  hidden,
+  onLearn,
+  onSheet,
+  onSummarize,
+}: {
+  week: Week;
+  course: Course;
+  color: CourseColor;
+  cards: Card[];
+  todays: Card[];
+  hidden: boolean;
+  onLearn: (pool: Card[], practice: boolean) => void;
+  onSheet: () => void;
+  onSummarize: (files: CourseFile[]) => void;
+}) {
+  const study = useStudy();
+  const [open, setOpen] = useState(week.current);
+  const files = week.files.filter((x) => STUDY_FILE.test(x.file.name));
+  const docs = files.filter((x) => isStudyDoc(x.type));
+  const missing = docs.filter((x) => !study.files[fileKey(x.file)] && !study.unreadable[fileKey(x.file)]).map((x) => x.file);
+  const act = cards.filter(active);
+  const pct = Math.round(mastery(cards) * 100);
+  const counts = new Map<string, number>();
+  for (const x of docs) counts.set(DOC_LABEL[x.type], (counts.get(DOC_LABEL[x.type]) ?? 0) + 1);
+  const plural = (l: string, n: number) => {
+    const low = l.toLowerCase();
+    return n === 1 || /(notes|info|data|study)$/.test(low) ? low : `${low}s`;
+  };
+  const what = [...counts.entries()].map(([l, n]) => `${n} ${plural(l, n)}`).join(", ");
+  const started = act.some((c) => c.state?.box);
+
+  return (
+    <article className={`rounded-[12px] bg-surface ${hidden ? "opacity-60" : ""}`} style={week.current ? { boxShadow: `inset 3px 0 0 ${tone(color)}` } : undefined}>
+      <div className="flex items-center gap-3 px-4 py-3">
+        <button onClick={() => setOpen(!open)} aria-expanded={open} className="flex min-w-0 flex-1 items-center gap-3 text-left">
+          <ChevronRight size={16} className={`shrink-0 text-muted transition-transform ${open ? "rotate-90" : ""}`} aria-hidden />
+          <span className="min-w-0">
+            <span className="flex flex-wrap items-baseline gap-x-2">
+              <span className="text-[15px] font-bold">{week.kind === "week" ? `Week ${week.n}` : weekLabel(week)}</span>
+              {week.kind === "week" && week.title && (
+                <span className="min-w-0 truncate text-[15px] font-semibold" style={{ color: tone(color, "ink") }}>
+                  {week.title}
+                </span>
+              )}
+              {week.current && (
+                <span className="rounded-full px-2 py-px text-[11px] font-bold" style={{ background: tone(color), color: "var(--on-solid)" }}>
+                  This week
+                </span>
+              )}
+              {hidden && <span className="text-[12px] font-semibold text-muted">hidden</span>}
+            </span>
+            <span className="block truncate text-[12px] text-muted">
+              {[week.range, what || `${files.length} files`, act.length ? `${act.length} cards` : null].filter(Boolean).join(" · ")}
+            </span>
+          </span>
+        </button>
+        {started && (
+          <span className="hidden w-[90px] shrink-0 sm:block" title={`${pct}% learned`}>
+            <span className="block h-1.5 overflow-hidden rounded-full bg-sunken">
+              <span className="block h-full rounded-full" style={{ width: `${Math.max(pct, 3)}%`, background: tone(color) }} />
+            </span>
+            <span className="mt-0.5 block text-right text-[11px] text-muted">{pct}% learned</span>
+          </span>
+        )}
+        {act.length > 0 ? (
+          <Button className="h-8" onClick={() => (todays.length ? onLearn(todays, false) : onLearn(act, true))} title={todays.length ? "Today’s cards of this week" : "Nothing due, practice anyway"}>
+            {todays.length ? `Learn · ${todays.length}` : "Practice"}
+          </Button>
+        ) : missing.length > 0 ? (
+          <Button className="h-8" onClick={() => onSummarize(missing)} disabled={study.available === false || study.job.running}>
+            Prepare
+          </Button>
+        ) : null}
+        <Menu
+          label={`More for ${weekLabel(week, false)}`}
+          items={[
+            { label: "Practice all cards of this week", disabled: !act.length, onClick: () => onLearn(act, true) },
+            { label: "Study sheet for this week…", disabled: study.available === false || !docs.length, onClick: onSheet },
+            { label: missing.length ? `Prepare ${missing.length} missing ${missing.length === 1 ? "file" : "files"}` : "All files prepared", disabled: !missing.length || study.job.running, onClick: () => onSummarize(missing) },
+            "sep",
+            hidden
+              ? { label: "Show this week again", onClick: () => setWeekHidden(course.id, week.key, false) }
+              : { label: "Hide this week", hint: "Its cards stop showing up in your reviews", onClick: () => setWeekHidden(course.id, week.key, true) },
+          ]}
+        />
+      </div>
+      {open && (
+        <ul className="border-t border-line-soft px-1.5 py-1">
+          {files.map(({ file: f, folder }) => (
+            <SummaryRow
+              key={f.id}
+              file={f}
+              folder={folder}
+              analysis={study.files[fileKey(f)] ?? null}
+              unreadable={Boolean(study.unreadable[fileKey(f)])}
+              color={color}
+              busy={study.job.current.includes(f.name)}
+              onSummarize={() => onSummarize([f])}
+              disabled={study.available === false}
+            />
+          ))}
+          {!files.length && <li className="px-3 py-2 text-[13px] text-muted">No PDFs this week.</li>}
+        </ul>
+      )}
+    </article>
+  );
+}
+
+type MenuItem = { label: string; hint?: string; disabled?: boolean; onClick: () => void } | "sep";
+
+/** „⋯“-Menü: weitere Aktionen, ohne die Oberfläche voll zu machen. */
+function Menu({ items, label }: { items: MenuItem[]; label: string }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent | KeyboardEvent) => {
+      if (e instanceof KeyboardEvent ? e.key === "Escape" : !ref.current?.contains(e.target as Node)) {
+        if (e instanceof KeyboardEvent) e.stopImmediatePropagation();
+        setOpen(false);
+      }
+    };
+    window.addEventListener("mousedown", close);
+    window.addEventListener("keydown", close, true);
+    return () => {
+      window.removeEventListener("mousedown", close);
+      window.removeEventListener("keydown", close, true);
+    };
+  }, [open]);
+  return (
+    <div ref={ref} className="relative shrink-0">
+      <button
+        onClick={() => setOpen(!open)}
+        aria-label={label}
+        title={label}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        className="grid size-8 place-items-center rounded-lg text-muted hover:bg-hover hover:text-text"
+      >
+        <MoreHorizontal size={17} aria-hidden />
+      </button>
+      {open && (
+        <div role="menu" className="absolute right-0 top-9 z-30 w-[250px] rounded-[10px] bg-surface p-1 shadow-[0_8px_30px_rgba(0,0,0,0.18),0_0_0_1px_var(--line)]">
+          {items.map((it, i) =>
+            it === "sep" ? (
+              <div key={`sep${i}`} className="my-1 h-px bg-line-soft" />
+            ) : (
+              <button
+                key={it.label}
+                role="menuitem"
+                disabled={it.disabled}
+                onClick={() => {
+                  setOpen(false);
+                  it.onClick();
+                }}
+                className="block w-full rounded-[7px] px-2.5 py-1.5 text-left text-[13px] hover:bg-hover disabled:opacity-40 disabled:hover:bg-transparent"
+              >
+                <span className="block font-medium">{it.label}</span>
+                {it.hint && <span className="block text-[11px] text-muted">{it.hint}</span>}
+              </button>
+            ),
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -1014,12 +1148,14 @@ function loadPrefs(): { include: Include; includeMath: Include; length: SheetLen
 function NewSheet({
   courses,
   initialModule,
+  initialPicked = [],
   onBack,
   onStarted,
   onError,
 }: {
   courses: Course[];
   initialModule?: string;
+  initialPicked?: string[];
   onBack: () => void;
   onStarted: () => void;
   onError: (m: string | null) => void;
@@ -1028,7 +1164,7 @@ function NewSheet({
   const [moduleId, setModuleId] = useState(initialModule ?? courses[0]?.id ?? "");
   const course = courses.find((c) => c.id === moduleId) ?? null;
   const color: CourseColor = course ? colorOf(course) : "blue";
-  const [picked, setPicked] = useState<string[]>([]);
+  const [picked, setPicked] = useState<string[]>(initialPicked);
   const mathMode = useMathMode(course, course ? studyFiles(course).map((f) => study.files[fileKey(f)]) : []);
   const math = mathMode.math;
   const SECTIONS = math ? MATH_SECTIONS : SHEET_SECTIONS;
@@ -1280,22 +1416,3 @@ function ToggleChip({
   );
 }
 
-function ModeOption({ on, onClick, title, text, count }: { on: boolean; onClick: () => void; title: string; text: string; count: number }) {
-  return (
-    <button
-      role="radio"
-      aria-checked={on}
-      onClick={onClick}
-      className={`flex items-start gap-3 rounded-[10px] px-3 py-2.5 text-left transition-colors ${on ? "bg-sunken shadow-[inset_0_0_0_1.5px_var(--text)]" : "hover:bg-hover"}`}
-    >
-      <span className={`mt-1 grid size-3.5 shrink-0 place-items-center rounded-full ${on ? "bg-text" : "shadow-[inset_0_0_0_1.5px_var(--muted)]"}`} aria-hidden>
-        {on && <span className="size-1.5 rounded-full bg-surface" />}
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="block text-[13px] font-semibold">{title}</span>
-        <span className="block text-[12px] text-muted">{text}</span>
-      </span>
-      <span className="shrink-0 text-[13px] font-semibold tabular-nums">{count}</span>
-    </button>
-  );
-}

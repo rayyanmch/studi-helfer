@@ -11,6 +11,7 @@
 // Bewusst ohne Abhängigkeiten, damit es auch in Node getestet werden kann.
 
 import type { Course, CourseFile, Folder } from "./mock-data";
+import { type DocType, docTypeOf } from "./doctype";
 
 export type Role = "lecture" | "exercise" | "solution" | "reading" | "selfstudy" | "recording" | "info" | "exam" | "other";
 
@@ -18,6 +19,7 @@ export interface WeekFile {
   file: CourseFile;
   folder: Folder;
   role: Role;
+  type: DocType; // Art für den Tag (Lecture, Exercise sheet …), vom Nutzer änderbar
   how: "ilias" | "name" | "topic" | "session" | "date" | "group";
 }
 
@@ -100,25 +102,22 @@ function isoWeekMonday(year: number, kw: number) {
 // ------------------------------------------------------------------ Art der Datei
 
 const WEEK_RE = /\b(woche|week|wk)\s*[-_ ]?\s*(\d{1,2})\b/i;
-const SOLUTION = /(lösung|loesung|losung|solution|musterl)/i;
-const INFO = /(organisator|(?:^|[^a-zäöü])orga(?:[^a-zäöü]|$)|modulinfo|modul-?information|allgemeines|general information|course info|syllabus)/i;
-/** ILIAS-Ordner für Allgemeines („Grundlegende Informationen zum Modul“, „Organisatorisches“ …). */
-const INFO_FOLDER = /^(grundlegende informationen|allgemein|organisator|orga\b|course info|course information|general|modul ?info|informationen zum modul|info\b)/i;
-const EXAM = /(altklausur|klausur|exam|prüfung|pruefung|probeklausur)/i;
 
-function roleOf(file: CourseFile, folder: Folder): Role {
-  const cat = folder.category ?? "";
-  const name = file.name;
-  if (cat === "exams" || (EXAM.test(name) && !/(übung|uebung|exercise)/i.test(name))) return "exam";
-  if (SOLUTION.test(name) || cat === "solutions") return "solution";
-  if (cat === "info" || INFO.test(name) || (INFO_FOLDER.test(file.where ?? "") && !WEEK_RE.test(file.where ?? ""))) return "info";
-  if (cat === "lectures") return "lecture";
-  if (cat === "exercises") return "exercise";
-  if (cat === "readings") return "reading";
-  if (cat === "selfstudy") return "selfstudy";
-  if (cat === "recordings" || /\.(mp4|mov|avi|m4v|webm|mkv)$/i.test(name)) return "recording";
-  return "other";
-}
+const ROLE_OF: Record<DocType, Role> = {
+  lecture: "lecture",
+  notes: "lecture",
+  sheet: "exercise",
+  exslides: "exercise",
+  tutorial: "exercise",
+  solution: "solution",
+  reading: "reading",
+  selfstudy: "selfstudy",
+  exam: "exam",
+  info: "info",
+  video: "recording",
+  data: "other",
+  other: "other",
+};
 
 // ------------------------------------------------------------------ Hinweise aus Namen und ILIAS-Ordnern
 
@@ -214,7 +213,12 @@ function courseWordsOf(course: Course, files: CourseFile[]): Set<string> {
 // ------------------------------------------------------------------ Zuordnung
 
 export function weeksOf(course: Course, opts: WeekOptions): Week[] {
-  const all = course.folders.flatMap((folder) => folder.files.map((file) => ({ file, folder, role: roleOf(file, folder) })));
+  const all = course.folders.flatMap((folder) =>
+    folder.files.map((file) => {
+      const type = docTypeOf(file, folder);
+      return { file, folder, type, role: ROLE_OF[type] };
+    }),
+  );
   // Semester aus den Dateien selbst (Kurse aus dem letzten Semester), sonst aus „heute“
   const dates = all.map((x) => x.file.modifiedAt).filter((t): t is number => Boolean(t)).sort((a, b) => a - b);
   const median = dates.length ? new Date(dates[Math.floor(dates.length / 2)]) : null;
@@ -313,7 +317,7 @@ export function weeksOf(course: Course, opts: WeekOptions): Week[] {
   for (const x of all) {
     const p = placed.get(x.file.id)!;
     const w = get(p.n);
-    w.files.push({ file: x.file, folder: x.folder, role: x.role, how: p.how });
+    w.files.push({ file: x.file, folder: x.folder, role: x.role, type: x.type, how: p.how });
     if (p.title) {
       const m = iliasTitles.get(w.key) ?? new Map<string, number>();
       m.set(p.title, (m.get(p.title) ?? 0) + 1);
