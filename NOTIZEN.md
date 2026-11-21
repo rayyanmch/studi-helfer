@@ -7,6 +7,7 @@ Gemeinsames Gedächtnis für alle KI-Agenten und Menschen im Projekt. Wird über
 
 Wer gerade woran arbeitet (Person, Aufgabe, betroffene Dateien). Eintragen beim Start, löschen wenn fertig.
 
+- Mika (Agent): **Google-Anmeldung, Kalender und Gmail** im Mac-Teil. Neue Dateien: `desktop/lib/google.js`, `web/src/lib/google.ts`; geändert: `desktop/main.js` und `desktop/preload.js` (nur neue Kanäle `studi:google:*`), `web/src/lib/mail-data.ts`, `Accounts.tsx`. **Rayyan bitte nicht parallel bauen**, melde dich, wenn du Fragen hast. Uni-Mail (IMAP) bleibt bei dir.
 - **Rayyans Agent: eigene Termine und editierbarer Kalender** (2026-11-21). Neu: `web/src/components/EventDialog.tsx`, `web/src/lib/recurrence.ts`, Speicher in `desktop/lib/backend.js` (`custom-events.json`). Klein geändert: `app-store.ts`, `desktop.ts`, `mock-data.ts` (nur optionale Felder), `ModuleView.tsx` („+ Add“ bei Classes & events), `Overview.tsx` nur minimal (Klick auf Termin öffnet Dialog, Knopf „Add event“). **Mika: Kalender-Tab und Google-Haken sind deine, ich fasse die Wochenansicht sonst nicht an.**
 
 
