@@ -26,19 +26,19 @@
   --c-blue: #3a6ea5;
   --c-blue-soft: #e9f0f8;
   --c-blue-ink: #2c5683;
-  --c-orange: #c76b33;
+  --c-orange: #b15f2d; /* dunkler für Kontrast ≥ 4,5:1 mit weißer Schrift (Nachtschicht) */
   --c-orange-soft: #f8ece3;
   --c-orange-ink: #8f4a1f;
-  --c-green: #3f8a58;
+  --c-green: #3b8152; /* dunkler für Kontrast ≥ 4,5:1 mit weißer Schrift (Nachtschicht) */
   --c-green-soft: #e6f2ea;
   --c-green-ink: #2b6640;
   --c-plum: #9a4f86;
   --c-plum-soft: #f4e9f1;
   --c-plum-ink: #7a3a69;
-  --c-ochre: #a8862a;
+  --c-ochre: #8d7123; /* dunkler für Kontrast ≥ 4,5:1 mit weißer Schrift (Nachtschicht) */
   --c-ochre-soft: #f6f0dc;
   --c-ochre-ink: #765d14;
-  --c-teal: #2f8a8a;
+  --c-teal: #2c8080; /* dunkler für Kontrast ≥ 4,5:1 mit weißer Schrift (Nachtschicht) */
   --c-teal-soft: #e2f2f1;
   --c-teal-ink: #1f6363;
   --c-rose: #b84a5a;
