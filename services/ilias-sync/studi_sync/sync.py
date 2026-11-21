@@ -453,8 +453,12 @@ def sync(auto: bool) -> dict[str, Any]:
         n = len(run.added)
         if status == "login":
             notify("Your ILIAS sign-in expired. Please sign in again in Studi-Helfer.")
+        elif status == "offline":
+            # Kein Netz beim Aufwachen ist normal; keine Mitteilung ohne Handlungsmöglichkeit.
+            # Der nächste Lauf (oder der Start der App) holt es nach, die App zeigt den Stand.
+            pass
         elif status != "ok":
-            notify("Can't reach ILIAS" if status == "offline" else "Sync failed, details in Studi-Helfer")
+            notify("Couldn't check for new files. Open Studi-Helfer for details.")
         elif n:
             notify(f"{n} new file{'s' if n != 1 else ''} from ILIAS")
 
