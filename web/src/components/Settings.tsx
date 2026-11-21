@@ -101,7 +101,7 @@ export function Settings({ onClose, onEditCourses, onLogout }: { onClose: () => 
           </Section>
 
           <Section title="Account">
-            <Row label={app.user ? `Signed in as ${app.user}` : "Not signed in"} hint="University of Cologne · Your password is saved only on this Mac.">
+            <Row label={app.user ? `Signed in as ${app.user}` : "Not signed in"} hint="University of Cologne">
               <div className="flex gap-2">
                 <Button
                   onClick={() => {
@@ -123,6 +123,14 @@ export function Settings({ onClose, onEditCourses, onLogout }: { onClose: () => 
               </div>
             </Row>
           </Section>
+
+          {/* Was wo bleibt, in einfachen Worten (Vertrauen für alle, nicht nur für Technikinteressierte) */}
+          <Section title="Privacy">
+            <Row label="Your password" hint="Saved only on this Mac. Used only to sign in to ILIAS (and your uni mail, if you connect it)." />
+            <Row label="Your files" hint="Saved in your Uni folder on this Mac. Nothing is uploaded." />
+            <Row label="No AI" hint="Deadlines and summaries are found with simple rules on your Mac. Nothing is sent to an AI." />
+            <Row label="Mensa" hint="The menu is public. The app sends nothing about you." />
+          </Section>
         </div>
       </div>
     </div>
@@ -143,7 +151,7 @@ function Row({ label, hint, children }: { label: string; hint?: string; children
     <div className="flex items-center gap-4 px-4 py-3">
       <span className="min-w-0 flex-1">
         <span className="block font-semibold">{label}</span>
-        {hint && <span className="block truncate text-[12px] text-muted">{hint}</span>}
+        {hint && <span className={`block text-[12px] text-muted ${children ? "truncate" : ""}`}>{hint}</span>}
       </span>
       {children}
     </div>
