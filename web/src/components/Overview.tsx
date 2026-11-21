@@ -660,7 +660,8 @@ function WeekView({
       ...items.map((d) => ({ key: d.id, at: startMinutes(d.time), d, ev: null as GoogleEvent | null })),
       ...events.map((ev) => ({ key: `g-${ev.id}`, at: startMinutes(ev.time), d: null as Deadline | null, ev })),
     ].sort((a, b) => a.at - b.at);
-    return { iso, num: d.getUTCDate(), wd: d.getUTCDay(), items, events, entries, wide: entries.length > 0, today: i === 0 };
+    const clashes = new Map(entries.map((e) => [e.key, clashWith(entries, e)]));
+    return { iso, num: d.getUTCDate(), wd: d.getUTCDay(), items, events, entries, clashes, wide: entries.length > 0, today: i === 0 };
   });
 
   const open = deadlines.filter(
@@ -771,9 +772,10 @@ function WeekView({
                     done={done.includes(e.d.id)}
                     onToggle={() => onToggle(e.d!.id)}
                     onOpen={() => openEvent(e.d!, { onOpenCourse: () => onOpen(e.d!.courseId) })}
+                    clash={day.clashes.get(e.key) ?? null}
                   />
                 ) : (
-                  <GoogleBlock key={e.key} ev={e.ev!} />
+                  <GoogleBlock key={e.key} ev={e.ev!} clash={day.clashes.get(e.key) ?? null} />
                 ),
               )}
             </div>
@@ -883,7 +885,7 @@ function MonthView({ deadlines, events, done, onOpen }: { deadlines: Deadline[];
                       key={e.key}
                       title={`${e.ev.title}, ${e.ev.time}`}
                       className="truncate rounded-[5px] px-1.5 py-0.5 text-left text-[11px] font-semibold text-muted"
-                      style={{ border: "1.5px dashed var(--muted)" }}
+                      style={{ border: `1.5px dashed ${e.ev.color ?? "var(--muted)"}` }}
                     >
                       {abbrTitle(e.ev.title)}
                     </span>
@@ -955,6 +957,24 @@ function startMinutes(time: string): number {
   return m ? +m[1] * 60 + +m[2] : -1;
 }
 
+/** Von–bis in Minuten, wenn die Zeit „10:00 to 11:30“ lautet. */
+function timeRange(time: string): [number, number] | null {
+  const m = /(\d{1,2}):(\d{2})\s*to\s*(\d{1,2}):(\d{2})/.exec(time);
+  return m ? [+m[1] * 60 + +m[2], +m[3] * 60 + +m[4]] : null;
+}
+
+/** Name des Termins, mit dem sich dieser überschneidet (gleiche Zeit zählt nicht: das ist meist derselbe Termin). */
+function clashWith<T extends { key: string; d: Deadline | null; ev: GoogleEvent | null }>(all: T[], one: T): string | null {
+  const a = timeRange(one.d?.time ?? one.ev?.time ?? "");
+  if (!a) return null;
+  for (const other of all) {
+    if (other.key === one.key) continue;
+    const b = timeRange(other.d?.time ?? other.ev?.time ?? "");
+    if (b && a[0] < b[1] && b[0] < a[1] && !(a[0] === b[0] && a[1] === b[1])) return other.d?.title ?? other.ev?.title ?? "another event";
+  }
+  return null;
+}
+
 /** Kürzel für die enge Monatsansicht: „Mathe Vorlesung“ → „Mathe VL“, zu lange Titel werden gekürzt. */
 const ABBREVIATIONS: [RegExp, string][] = [
   [/\bvorlesung(en)?\b/gi, "VL"],
@@ -976,12 +996,27 @@ function abbrTitle(title: string, max = 17): string {
 }
 
 // Termin aus dem Google Kalender: gestrichelter Rand, kein Kreis (Termine hakt man nicht ab).
-function GoogleBlock({ ev }: { ev: GoogleEvent }) {
+function GoogleBlock({ ev, clash = null }: { ev: GoogleEvent; clash?: string | null }) {
+  const color = ev.color ?? "var(--muted)";
   return (
-    <div className="rounded-[7px] px-2 py-1.5" style={{ border: "1.5px dashed var(--muted)" }}>
-      <span className="block truncate text-[12px] font-semibold text-muted">{ev.time}</span>
-      <span className="block text-[13px] font-semibold leading-snug">{ev.title}</span>
+    <div
+      className="relative rounded-[7px] bg-surface px-2 py-2"
+      style={{ border: `1.5px dashed ${color}` }}
+      title={[ev.title, ev.calendar ? `Google Calendar: ${ev.calendar}` : "Google Calendar"].join(" · ")}
+    >
+      <span
+        aria-hidden
+        className="absolute right-1.5 top-1.5 flex size-4 items-center justify-center rounded-[5px] bg-bg text-[10px] font-bold shadow-[inset_0_0_0_1.5px_var(--line)]"
+        style={{ color: "#4285f4" }}
+      >
+        G
+      </span>
+      <span className="inline-block max-w-full truncate rounded-full px-2 text-[12px] font-semibold text-text" style={{ background: `color-mix(in srgb, ${color} 24%, var(--surface))` }}>
+        {ev.time.replace(" to ", "–")}
+      </span>
+      <span className="mt-1 block pr-[18px] text-[13px] font-semibold leading-snug">{ev.title}</span>
       {ev.location && <span className="block truncate text-[12px] text-muted">{ev.location}</span>}
+      {clash && <ClashTag other={clash} />}
     </div>
   );
 }
@@ -1022,7 +1057,19 @@ function DayHead({ day }: { day: { num: number; wd: number; wide: boolean; today
   );
 }
 
-function DeadlineBlock({ d, done, onToggle, onOpen }: { d: Deadline; done: boolean; onToggle: () => void; onOpen: () => void }) {
+function ClashTag({ other }: { other: string }) {
+  return (
+    <span
+      title={`Overlaps with ${other}`}
+      className="mt-1 inline-flex items-center gap-1 rounded-full px-1.5 text-[11px] font-bold leading-[17px]"
+      style={{ background: tone("ochre", "soft"), color: tone("ochre", "ink") }}
+    >
+      <AlertTriangle size={10} aria-hidden /> Overlaps
+    </span>
+  );
+}
+
+function DeadlineBlock({ d, done, onToggle, onOpen, clash = null }: { d: Deadline; done: boolean; onToggle: () => void; onOpen: () => void; clash?: string | null }) {
   const course = courseById(d.courseId);
   if (!course) return null;
   const c = d.color ?? colorOf(course);
@@ -1062,6 +1109,7 @@ function DeadlineBlock({ d, done, onToggle, onOpen }: { d: Deadline; done: boole
         </span>
         <span className={`block text-[13px] font-semibold leading-snug ${isDone ? "line-through" : ""}`}>{title}</span>
         {below && <span className={`block truncate text-[12px] ${solid ? "opacity-85" : isDone ? "" : "text-muted"}`}>{below}</span>}
+        {clash && !isDone && <ClashTag other={clash} />}
       </button>
       {checkable && (
         <span style={isDone || solid ? undefined : { color: tone(c) }}>

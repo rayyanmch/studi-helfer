@@ -62,6 +62,8 @@ export interface GoogleEvent {
   date: string; // "2026-11-23"
   time: string; // "18:00", "09:00 to 15:00" oder "all day"
   location?: string;
+  color?: string; // Farbe in Google Kalender ("#039be5"): eigene Terminfarbe, sonst die des Kalenders
+  calendar?: string; // Name des Kalenders in Google (nur zur Anzeige)
 }
 
 export interface CalendarToggles {
@@ -211,11 +213,12 @@ const MESSAGES: MailMessage[] = [
 ];
 
 const EVENTS: GoogleEvent[] = [
-  { id: "e1", title: "Gym", date: "2026-11-23", time: "18:00" },
-  { id: "e2", title: "Work, café", date: "2026-11-24", time: "09:00 to 15:00", location: "Café Central" },
-  { id: "e3", title: "Dinner with Anna", date: "2026-11-26", time: "19:30" },
-  { id: "e4", title: "Dentist", date: "2026-11-27", time: "08:30" },
-  { id: "e5", title: "Birthday party", date: "2026-11-28", time: "all day" },
+  { id: "e1", title: "Gym", date: "2026-11-23", time: "18:00 to 19:30", color: "#33b679", calendar: "Personal" },
+  { id: "e2", title: "Work, café", date: "2026-11-24", time: "09:00 to 15:00", location: "Café Central", color: "#f4511e", calendar: "Work" },
+  { id: "e3", title: "Dinner with Anna", date: "2026-11-26", time: "19:30 to 21:30", color: "#8e24aa", calendar: "Personal" },
+  { id: "e4", title: "Dentist", date: "2026-11-27", time: "08:30 to 09:30", color: "#039be5", calendar: "Personal" },
+  { id: "e5", title: "Birthday party", date: "2026-11-28", time: "all day", color: "#e67c73", calendar: "Personal" },
+  { id: "e6", title: "Study group", date: "2026-11-24", time: "10:30 to 12:00", color: "#3f51b5", calendar: "Uni" },
 ];
 
 // --- Speicher -------------------------------------------------------------------

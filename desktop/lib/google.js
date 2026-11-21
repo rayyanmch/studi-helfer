@@ -25,7 +25,6 @@ const CLIENT_FILES = [path.join(backend.DATA_DIR, "google-client.json"), path.jo
 const AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
 const TOKEN_URL = "https://oauth2.googleapis.com/token";
 const GMAIL = "https://gmail.googleapis.com/gmail/v1/users/me";
-const CALENDAR = "https://www.googleapis.com/calendar/v3/calendars/primary/events";
 
 /** @typedef {{ ok: false, code: string, message: string }} Fail */
 const fail = (code, message) => ({ ok: false, code, message });
@@ -282,6 +281,12 @@ function toEvent(e) {
   return { id: e.id, title: e.summary || "(No title)", date, time, ...(e.location ? { location: e.location } : {}) };
 }
 
+// Farben der Termine in Google Kalender (colorId 1–11), sonst gilt die Farbe des Kalenders
+const EVENT_COLORS = {
+  1: "#7986cb", 2: "#33b679", 3: "#8e24aa", 4: "#e67c73", 5: "#f6bf26", 6: "#f4511e",
+  7: "#039be5", 8: "#616161", 9: "#3f51b5", 10: "#0b8043", 11: "#d50000",
+};
+
 async function events(days = 35) {
   const from = new Date();
   from.setHours(0, 0, 0, 0);
@@ -293,10 +298,33 @@ async function events(days = 35) {
     orderBy: "startTime",
     maxResults: "250",
   });
-  const r = await api(`${CALENDAR}?${params}`);
-  if (!r.ok) return r;
-  const list = (r.data.items || []).filter((e) => e.status !== "cancelled").map(toEvent).filter(Boolean);
-  return { ok: true, events: list };
+
+  // Alle Kalender, die in Google eingeblendet sind (mit deren Farbe); klappt das nicht, gilt nur der Hauptkalender
+  let calendars = [{ id: "primary", color: "", name: "" }];
+  const cl = await api(`https://www.googleapis.com/calendar/v3/users/me/calendarList?minAccessRole=reader&maxResults=20`);
+  if (cl.ok) {
+    const shown = (cl.data.items || []).filter((c) => c.selected !== false && !c.deleted && !c.hidden).slice(0, 8);
+    if (shown.length > 0) calendars = shown.map((c) => ({ id: c.id, color: c.backgroundColor || "", name: c.summaryOverride || c.summary || "" }));
+  }
+
+  const out = [];
+  let failed = null;
+  await pool(calendars, 4, async (cal) => {
+    const r = await api(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(cal.id)}/events?${params}`);
+    if (!r.ok) {
+      if (cal.id === "primary" || calendars.length === 1) failed = r;
+      return;
+    }
+    for (const e of (r.data.items || []).filter((x) => x.status !== "cancelled")) {
+      const ev = toEvent(e);
+      if (!ev) continue;
+      const color = EVENT_COLORS[e.colorId] || cal.color;
+      out.push({ ...ev, id: calendars.length > 1 ? `${cal.id}:${ev.id}` : ev.id, ...(color ? { color } : {}), ...(cal.name ? { calendar: cal.name } : {}) });
+    }
+  });
+  if (failed) return failed;
+  out.sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
+  return { ok: true, events: out };
 }
 
 // ------------------------------------------------------------------ Gmail
