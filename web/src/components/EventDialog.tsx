@@ -9,7 +9,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { CalendarDays, Check, Clock, EyeOff, MapPin, Pencil, Repeat, RotateCcw, Trash2, X } from "lucide-react";
 import { Button, Swatch, colorOf, nameOf, tone } from "./ui";
 import * as store from "@/lib/app-store";
-import { COURSE_COLORS, realCourses, useApp } from "@/lib/app-store";
+import { COURSE_COLORS, appStore, realCourses, useApp } from "@/lib/app-store";
 import type { CourseColor, CustomEvent, Deadline } from "@/lib/mock-data";
 import { lecturePeriod, newEventId, occurrences, parseIso, parseTimeLabel, timeLabel, weekdayOf } from "@/lib/recurrence";
 
@@ -25,6 +25,18 @@ const listeners = new Set<() => void>();
 function setDialog(next: DialogState) {
   dialog = next;
   for (const l of listeners) l();
+}
+
+// Kleine Leiste „Event hidden · Undo“ nach Ausblenden/Löschen (8 s), damit nichts aus Versehen verloren geht.
+type Undo = { text: string; run: () => void } | null;
+let undo: Undo = null;
+let undoTimer: ReturnType<typeof setTimeout> | undefined;
+const undoListeners = new Set<() => void>();
+function setUndo(next: Undo) {
+  undo = next;
+  clearTimeout(undoTimer);
+  if (next) undoTimer = setTimeout(() => setUndo(null), 8000);
+  for (const l of undoListeners) l();
 }
 
 function blank(prefill: Partial<CustomEvent>): CustomEvent {
@@ -68,6 +80,13 @@ function close() {
 }
 
 /** Erkannten Termin als eigenen übernehmen (Serie → wöchentlich ab diesem Tag). */
+/** Eigenen Termin löschen, mit „Undo“ (legt die gespeicherte Fassung wieder an). */
+function deleteWithUndo(id: string) {
+  const original = appStore.get().customEvents.find((e) => e.id === id);
+  void store.deleteEvent(id);
+  if (original) setUndo({ text: "Event deleted.", run: () => void store.saveEvent(original) });
+}
+
 function fromDeadline(d: Deadline): CustomEvent {
   const { start, end } = parseTimeLabel(d.time);
   const series = Boolean(d.seriesId);
@@ -93,9 +112,38 @@ function subscribe(l: () => void) {
   };
 }
 
+function subscribeUndo(l: () => void) {
+  undoListeners.add(l);
+  return () => {
+    undoListeners.delete(l);
+  };
+}
+
+function UndoBar() {
+  const u = useSyncExternalStore(subscribeUndo, () => undo, () => undo);
+  if (!u) return null;
+  return (
+    <div
+      role="status"
+      className="fixed bottom-6 left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 rounded-[10px] bg-accent py-2 pl-4 pr-2 text-[13px] text-on-accent shadow-[0_8px_30px_rgba(0,0,0,0.25)]"
+    >
+      {u.text}
+      <button
+        onClick={() => {
+          u.run();
+          setUndo(null);
+        }}
+        className="h-7 rounded-md px-2.5 font-semibold underline-offset-2 hover:underline"
+      >
+        Undo
+      </button>
+    </div>
+  );
+}
+
 export function EventDialogHost() {
   const state = useSyncExternalStore(subscribe, () => dialog, () => dialog);
-  if (state.mode === "closed") return null;
+  if (state.mode === "closed") return <UndoBar />;
   return (
     <Modal label={state.mode === "edit" ? (state.isNew ? "New event" : "Edit event") : "Event"}>
       {state.mode === "edit" ? <Editor key={state.draft.id} state={state} /> : <Details deadline={state.deadline} onOpenCourse={state.onOpenCourse} />}
@@ -200,14 +248,17 @@ function Details({ deadline: d, onOpenCourse }: { deadline: Deadline; onOpenCour
                 onClick={() => {
                   void store.hideEvent(d.id);
                   close();
+                  setUndo({ text: "Event hidden.", run: () => void store.hideEvent(d.id, false) });
                 }}
               >
                 <EyeOff size={13} aria-hidden /> Hide this one
               </Button>
               <Button
                 onClick={() => {
-                  void store.hideEvent(d.seriesId!);
+                  const key = d.seriesId!;
+                  void store.hideEvent(key);
                   close();
+                  setUndo({ text: "Hidden every week.", run: () => void store.hideEvent(key, false) });
                 }}
               >
                 Hide every week
@@ -218,6 +269,7 @@ function Details({ deadline: d, onOpenCourse }: { deadline: Deadline; onOpenCour
               onClick={() => {
                 void store.hideEvent(d.id);
                 close();
+                setUndo({ text: "Event hidden.", run: () => void store.hideEvent(d.id, false) });
               }}
             >
               <EyeOff size={13} aria-hidden /> Hide
@@ -489,8 +541,10 @@ function Editor({ state }: { state: Extract<DialogState, { mode: "edit" }> }) {
                   type="button"
                   className="text-danger"
                   onClick={() => {
+                    const original = appStore.get().customEvents.find((e) => e.id === ev.id);
                     void store.skipOccurrence(ev.id, state.day!);
                     close();
+                    if (original) setUndo({ text: "Date removed.", run: () => void store.saveEvent(original) });
                   }}
                 >
                   Only {fmtShort(state.day)}
@@ -499,7 +553,7 @@ function Editor({ state }: { state: Extract<DialogState, { mode: "edit" }> }) {
                   type="button"
                   className="text-danger"
                   onClick={() => {
-                    void store.deleteEvent(ev.id);
+                    deleteWithUndo(ev.id);
                     close();
                   }}
                 >
@@ -513,7 +567,7 @@ function Editor({ state }: { state: Extract<DialogState, { mode: "edit" }> }) {
                 onClick={() => {
                   if (repeating && state.day) setAskDelete(true);
                   else {
-                    void store.deleteEvent(ev.id);
+                    deleteWithUndo(ev.id);
                     close();
                   }
                 }}
