@@ -73,7 +73,7 @@ const b64url = (buf) => Buffer.from(buf).toString("base64url");
 let connecting = false;
 
 function resultPage(ok, text) {
-  return `<!doctype html><meta charset="utf-8"><title>Studi-Helfer</title>
+  return `<!doctype html><meta charset="utf-8"><title>Ordo</title>
 <body style="font:16px -apple-system,Helvetica,sans-serif;background:#f2f4f7;color:#16202a;display:flex;align-items:center;justify-content:center;height:100vh;margin:0">
 <div style="text-align:center;max-width:380px;padding:24px"><div style="font-size:40px">${ok ? "✓" : "!"}</div>
 <h1 style="font-size:22px;margin:8px 0">${ok ? "You're connected" : "Not connected"}</h1><p style="color:#5b6774">${text}</p></div>`;
@@ -94,7 +94,7 @@ function waitForCode(server, expectedState) {
       const okState = u.searchParams.get("state") === expectedState;
       res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
       if (code && okState) {
-        res.end(resultPage(true, "You can close this tab and go back to Studi-Helfer."));
+        res.end(resultPage(true, "You can close this tab and go back to Ordo."));
         clearTimeout(timer);
         resolve(code);
       } else {
@@ -154,7 +154,7 @@ async function connect() {
     });
     const tok = await res.json();
     if (!res.ok || !tok.access_token) return fail("failed", "Google did not accept the login. Please try again.");
-    if (!tok.refresh_token) return fail("failed", "Google did not give long-term access. Remove Studi-Helfer in your Google account security settings and try again.");
+    if (!tok.refresh_token) return fail("failed", "Google did not give long-term access. Remove this app’s access in your Google account security settings and try again.");
 
     const tokens = {
       access: tok.access_token,

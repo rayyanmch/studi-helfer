@@ -48,7 +48,7 @@ def _cfg_value(value: str) -> str:
 
 def write_pferd_config(cfg: dict[str, Any], courses: list[dict[str, Any]]) -> None:
     lines = [
-        "# Automatisch erzeugt von Studi-Helfer. Änderungen werden beim nächsten Sync überschrieben.",
+        "# Automatisch erzeugt von Ordo. Änderungen werden beim nächsten Sync überschrieben.",
         "[DEFAULT]",
         f"working_dir = {_cfg_value(cfg['targetDir'])}",
         "check_for_updates = no",
@@ -105,7 +105,7 @@ def wait_for_network(timeout_s: int, log: Any) -> bool:
 
 def notify(text: str) -> None:
     text = text.replace('"', "'")
-    subprocess.run(["osascript", "-e", f'display notification "{text}" with title "Studi-Helfer"'],
+    subprocess.run(["osascript", "-e", f'display notification "{text}" with title "Ordo"'],
                    capture_output=True)
 
 
@@ -505,13 +505,13 @@ def sync(auto: bool) -> dict[str, Any]:
     if auto and status != "cancelled" and cfg.get("notifications", True) and not app_running():
         n = len(run.added)
         if status == "login":
-            notify("Your ILIAS sign-in expired. Please sign in again in Studi-Helfer.")
+            notify("Your ILIAS sign-in expired. Please sign in again in Ordo.")
         elif status == "offline":
             # Kein Netz beim Aufwachen ist normal; keine Mitteilung ohne Handlungsmöglichkeit.
             # Der nächste Lauf (oder der Start der App) holt es nach, die App zeigt den Stand.
             pass
         elif status != "ok":
-            notify("Couldn't check for new files. Open Studi-Helfer for details.")
+            notify("Couldn't check for new files. Open Ordo for details.")
         elif n:
             notify(f"{n} new file{'s' if n != 1 else ''} from ILIAS")
         try:

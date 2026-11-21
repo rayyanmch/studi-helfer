@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Baut die fertige Mac-App: dist/mac-arm64/Studi-Helfer.app und dist/Studi-Helfer-<version>-arm64.dmg
+# Baut die fertige Mac-App: dist/mac-arm64/Ordo.app und dist/Ordo-<version>-arm64.dmg
 # 1. Python-Helfer als Programm (services/ilias-sync/build.sh)
 # 2. Oberfläche als Next-Standalone-Server (web: next build)
 # 3. electron-builder packt beides als Resources/studi-sync und Resources/ui ins .app

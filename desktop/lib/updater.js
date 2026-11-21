@@ -1,7 +1,7 @@
 // Update-Knopf für Tester (Rayyan, Mika): holt die neueste Fassung der App von GitHub.
 //
 // GitHub Actions (.github/workflows/app-build.yml) baut bei jedem Push auf main die App und legt sie in das
-// Release „latest“: Studi-Helfer-arm64.zip (das .app) und latest.json (Commit, Zeit, Nachricht).
+// Release „latest“: Ordo-arm64.zip (das .app) und latest.json (Commit, Zeit, Nachricht).
 // Die App kennt ihren eigenen Stand aus Resources/build-info.json (schreibt scripts/after-pack.js).
 //
 // Ablauf beim Update: zip herunterladen (mit Fortschritt und Restzeit) → neben das laufende .app entpacken →
@@ -82,7 +82,7 @@ function setState(patch) {
   }
 }
 
-/** Pfad des laufenden .app (…/Studi-Helfer.app), aus …/Contents/MacOS/Studi-Helfer. */
+/** Pfad des laufenden .app (…/Ordo.app), aus …/Contents/MacOS/Ordo. */
 function bundlePath() {
   return path.resolve(process.execPath, "..", "..", "..");
 }
@@ -90,7 +90,7 @@ function bundlePath() {
 /** Warum sich das .app an seinem Ort nicht austauschen lässt (oder null). */
 function installProblem() {
   const bundle = bundlePath();
-  const move = "Move Studi-Helfer to your Applications folder, open it from there and try again.";
+  const move = "Move Ordo to your Applications folder, open it from there and try again.";
   if (!bundle.endsWith(".app")) return "Can't find the app on disk.";
   if (bundle.startsWith("/Volumes/") || bundle.includes("/AppTranslocation/")) return move;
   try {
@@ -270,20 +270,29 @@ async function install() {
     fs.writeFileSync(
       script,
       `#!/bin/bash
-# Wartet, bis Studi-Helfer beendet ist, tauscht das .app aus und startet es neu. Schritte landen im Update-Protokoll.
-PID="$1"; NEW="$2"; OLD="$3"; STAGING="$4"; LOG="$5"
+# Wartet, bis Ordo beendet ist, tauscht das .app aus und startet es neu. Schritte landen im Update-Protokoll.
+# TARGET = Ort des neuen .app mit seinem eigenen Namen (nach der Umbenennung wird aus Studi-Helfer.app so Ordo.app).
+PID="$1"; NEW="$2"; OLD="$3"; STAGING="$4"; LOG="$5"; TARGET="$6"
+[ -n "$TARGET" ] || TARGET="$OLD"
 log() { echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) swap: $*" >> "$LOG"; }
 for _ in $(seq 1 120); do kill -0 "$PID" 2>/dev/null || break; sleep 0.5; done
 kill -0 "$PID" 2>/dev/null && log "App läuft nach 60 s noch, tausche trotzdem"
 /usr/bin/xattr -cr "$NEW" 2>/dev/null
 BACKUP="$OLD.old-$$"
+ASIDE="$TARGET.old-$$"
 if ERR=$(mv "$OLD" "$BACKUP" 2>&1); then
-  if ERR=$(mv "$NEW" "$OLD" 2>&1); then rm -rf "$BACKUP"; log "ok"; else log "neues .app nicht verschoben: $ERR"; mv "$BACKUP" "$OLD"; fi
+  # Liegt unter dem neuen Namen schon eine ältere Kopie, weicht sie.
+  [ "$TARGET" != "$OLD" ] && [ -e "$TARGET" ] && mv "$TARGET" "$ASIDE"
+  if ERR=$(mv "$NEW" "$TARGET" 2>&1); then
+    rm -rf "$BACKUP" "$ASIDE"; log "ok ($TARGET)"
+  else
+    log "neues .app nicht verschoben: $ERR"; mv "$BACKUP" "$OLD"; [ -e "$ASIDE" ] && mv "$ASIDE" "$TARGET"; TARGET="$OLD"
+  fi
 else
-  log "altes .app nicht verschoben: $ERR"
+  log "altes .app nicht verschoben: $ERR"; TARGET="$OLD"
 fi
 rm -rf "$STAGING"
-/usr/bin/open "$OLD" || log "öffnen fehlgeschlagen"
+/usr/bin/open "$TARGET" || log "öffnen fehlgeschlagen"
 `,
       { mode: 0o755 },
     );
@@ -293,7 +302,8 @@ rm -rf "$STAGING"
       // nur für die Meldung nach dem Neustart
     }
     log(`tausche aus: ${state.current?.sha?.slice(0, 7) ?? "?"} → ${info.sha.slice(0, 7)}`);
-    const child = spawn("/bin/bash", [script, String(process.pid), freshApp, bundle, staging, logFile()], {
+    const target = path.join(parent, path.basename(freshApp));
+    const child = spawn("/bin/bash", [script, String(process.pid), freshApp, bundle, staging, logFile(), target], {
       detached: true,
       stdio: "ignore",
     });

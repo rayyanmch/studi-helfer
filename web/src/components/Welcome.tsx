@@ -38,7 +38,7 @@ export function Welcome({ onMensa }: { onMensa: () => void }) {
     <section aria-labelledby="welcome-title" className="mb-7 rounded-[10px] bg-surface px-5 pb-5 pt-4">
       <div className="flex items-center gap-3">
         <h2 id="welcome-title" className="min-w-0 flex-1 text-[17px] font-semibold">
-          Here’s what Studi-Helfer does for you
+          Here’s what Ordo does for you
         </h2>
         <button onClick={close} className="h-8 shrink-0 rounded-lg bg-accent px-3.5 text-[13px] font-semibold text-on-accent hover:opacity-90">
           Got it

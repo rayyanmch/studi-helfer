@@ -1,6 +1,6 @@
 # Desktop (Electron)
 
-Mac-App-Hülle für Studi-Helfer. Zeigt die Oberfläche aus `web/` und stellt ihr über `window.studi` den Hintergrundteil bereit: ILIAS-Login (Schlüsselbund), Kurssuche, Sync, Dateien. Typen: `web/src/lib/desktop.ts`.
+Mac-App-Hülle für Ordo (früher Studi-Helfer). Zeigt die Oberfläche aus `web/` und stellt ihr über `window.studi` den Hintergrundteil bereit: ILIAS-Login (Schlüsselbund), Kurssuche, Sync, Dateien. Typen: `web/src/lib/desktop.ts`.
 
 ```bash
 ../services/ilias-sync/setup.sh   # einmal: Python-Umgebung mit PFERD
@@ -13,7 +13,7 @@ STUDI_DEBUG=1 npm run test-window  # Konsolenausgabe des Fensters im Terminal
 ## Fertige App bauen
 
 ```bash
-npm run pack   # → dist/Studi-Helfer-<version>-arm64.dmg und dist/mac-arm64/Studi-Helfer.app
+npm run pack   # → dist/Ordo-<version>-arm64.dmg und dist/mac-arm64/Ordo.app
 ```
 
 `scripts/pack.sh` baut den Python-Helfer (`services/ilias-sync/build.sh`, PyInstaller) und die Oberfläche (`next build` mit `output: "standalone"`), legt beides nach `build-resources/` und ruft electron-builder auf. `scripts/after-pack.js` kopiert den UI-Server samt `node_modules` ins `.app`. In der fertigen App startet `lib/ui-server.js` diesen Server auf `127.0.0.1` mit freiem Port. Keine `.env`-Dateien im Paket. Unsigniert: auf anderen Macs beim ersten Öffnen Rechtsklick → Öffnen.

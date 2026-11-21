@@ -312,7 +312,7 @@ function VpnDialog({ onClose }: { onClose: () => void }) {
               <p className="mt-3 text-[13px] text-muted">
                 You connect in {vpn.client} yourself.{" "}
                 <button onClick={backToAuto} className="font-semibold text-text underline underline-offset-2">
-                  Let Studi-Helfer do it
+                  Let Ordo do it
                 </button>
               </p>
             )}
@@ -365,7 +365,7 @@ function VpnDialog({ onClose }: { onClose: () => void }) {
           )}
           {!daily && vpn.canAuto && !connected && !running && (
             <button onClick={manual ? backToAuto : setUpByHand} className="text-[12px] text-muted underline underline-offset-2 hover:text-text">
-              {manual ? "Let Studi-Helfer connect for me" : "Set up by hand instead"}
+              {manual ? "Let Ordo connect for me" : "Set up by hand instead"}
             </button>
           )}
           <span className="flex-1" />
@@ -378,7 +378,7 @@ function VpnDialog({ onClose }: { onClose: () => void }) {
   );
 }
 
-/** Einmal fragen: Darf Studi-Helfer Cisco für dich bedienen? */
+/** Einmal fragen: Darf Ordo Cisco für dich bedienen? */
 function AccessCard({ vpn, onUseCisco }: { vpn: VpnStatus; onUseCisco: () => void }) {
   const factor = vpn.secondFactor;
   return (
@@ -388,9 +388,9 @@ function AccessCard({ vpn, onUseCisco }: { vpn: VpnStatus; onUseCisco: () => voi
           <Plug size={13} />
         </span>
         <span className="min-w-0 flex-1">
-          <b className="block font-semibold">Let Studi-Helfer handle Cisco</b>
+          <b className="block font-semibold">Let Ordo handle Cisco</b>
           <span className="text-[13px] text-muted">
-            Then you never open Cisco yourself: you sign in in your browser{factor ? ` and confirm on ${factor}` : ""}, and Studi-Helfer closes the sign-in tab once you’re connected. Your Mac asks once: switch on “{vpn.axName ?? "Studi-Helfer"}” under Accessibility.
+            Then you never open Cisco yourself: you sign in in your browser{factor ? ` and confirm on ${factor}` : ""}, and Ordo closes the sign-in tab once you’re connected. Your Mac asks once: switch on “{vpn.axName ?? "Ordo"}” under Accessibility.
           </span>
         </span>
       </div>
@@ -402,7 +402,7 @@ function AccessCard({ vpn, onUseCisco }: { vpn: VpnStatus; onUseCisco: () => voi
           Use Cisco myself instead
         </button>
       </div>
-      <p className="mt-2 pl-[38px] text-[12px] text-muted">Studi-Helfer only clicks in Cisco and closes the tab. Your password never goes through it.</p>
+      <p className="mt-2 pl-[38px] text-[12px] text-muted">Ordo only clicks in Cisco and closes the tab. Your password never goes through it.</p>
     </div>
   );
 }
@@ -414,7 +414,7 @@ function AutoSteps({ vpn }: { vpn: VpnStatus }) {
   const started = stage === "browser" || stage === "connecting";
   return (
     <>
-      <Phase done={started} now={!started} title={`Starting ${vpn.client}`} sub="Studi-Helfer clicks “Connect” for you." busy={!started} />
+      <Phase done={started} now={!started} title={`Starting ${vpn.client}`} sub="Ordo clicks “Connect” for you." busy={!started} />
       <Phase
         done={stage === "connecting"}
         now={stage === "browser"}
@@ -427,7 +427,7 @@ function AutoSteps({ vpn }: { vpn: VpnStatus }) {
   );
 }
 
-/** Einrichtung, wenn die App selbst verbindet: installieren, Cisco erlauben, Studi-Helfer erlauben, verbinden. */
+/** Einrichtung, wenn die App selbst verbindet: installieren, Cisco erlauben, Ordo erlauben, verbinden. */
 function AutoSetupSteps({
   vpn,
   connected,
@@ -457,11 +457,11 @@ function AutoSetupSteps({
         n={2 + base}
         done={vpn.axTrusted}
         now={current === 1 + base}
-        title={vpn.axTrusted ? `Studi-Helfer handles ${vpn.client}` : `Let Studi-Helfer handle ${vpn.client}`}
+        title={vpn.axTrusted ? `Ordo handles ${vpn.client}` : `Let Ordo handle ${vpn.client}`}
         sub={
           vpn.axTrusted
             ? `It clicks “Connect” for you and closes the sign-in tab afterwards.`
-            : `Then you never open ${vpn.client} yourself. Your Mac asks once: switch on “${vpn.axName ?? "Studi-Helfer"}” under Accessibility.`
+            : `Then you never open ${vpn.client} yourself. Your Mac asks once: switch on “${vpn.axName ?? "Ordo"}” under Accessibility.`
         }
         right={
           !vpn.axTrusted ? (

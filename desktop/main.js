@@ -1,4 +1,4 @@
-// Studi-Helfer: Electron-Hauptprozess.
+// Ordo (früher Studi-Helfer): Electron-Hauptprozess.
 //
 //   npm start            lädt die Oberfläche aus web/ (Next-Dev-Server, Standard http://localhost:3000,
 //                        anders per STUDI_UI_URL). Läuft der nicht, öffnet sich das Testfenster.
@@ -30,7 +30,11 @@ let uiServer = null;
 const TEST_MODE = process.argv.includes("--test");
 const TEST_PAGE = path.join(__dirname, "test", "index.html");
 
+// Sichtbarer Name ist „Ordo“ (Menü, Fenster, Bundle über build.productName). Der interne Name bleibt
+// „Studi-Helfer“: Daran hängen der Schlüssel für safeStorage im Schlüsselbund (Google-Token) und ältere Pfade.
+const APP_NAME = "Ordo";
 app.setName("Studi-Helfer");
+app.setAboutPanelOptions({ applicationName: APP_NAME });
 // Chromium-Daten (Cache usw.) in einen Unterordner, damit sie nicht zwischen config.json & Co. liegen.
 app.setPath("userData", path.join(backend.DATA_DIR, "Electron"));
 
@@ -43,7 +47,7 @@ function createWindow() {
     height: 800,
     minWidth: 1000,
     minHeight: 700,
-    title: "Studi-Helfer",
+    title: APP_NAME,
     titleBarStyle: "hiddenInset",
     trafficLightPosition: { x: 16, y: 18 },
     backgroundColor: "#f6f5f3",
@@ -487,17 +491,17 @@ function buildMenu() {
   };
   const template = [
     {
-      label: app.name,
+      label: APP_NAME,
       submenu: [
-        { role: "about" },
+        { role: "about", label: `About ${APP_NAME}` },
         { type: "separator" },
         { label: "Settings…", accelerator: "CmdOrCtrl+,", click: send("settings") },
         { type: "separator" },
-        { role: "hide" },
+        { role: "hide", label: `Hide ${APP_NAME}` },
         { role: "hideOthers" },
         { role: "unhide" },
         { type: "separator" },
-        { role: "quit" },
+        { role: "quit", label: `Quit ${APP_NAME}` },
       ],
     },
     { role: "editMenu" },

@@ -8,7 +8,7 @@ async function fetchOverpass(query) {
   for (const url of ENDPOINTS) {
     try {
       const res = await fetch(`${url}?data=${encodeURIComponent(query)}`, {
-        headers: { "User-Agent": "StudiHelfer/0.1 (student project; github.com/rayyanmch/studi-helfer)", Accept: "application/json" },
+        headers: { "User-Agent": "Ordo/0.1 (student project; github.com/rayyanmch/studi-helfer)", Accept: "application/json" },
         signal: AbortSignal.timeout(12_000),
       });
       if (!res.ok) continue;

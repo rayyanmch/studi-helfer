@@ -58,7 +58,7 @@ function runHelper(isPackaged, args, { stdin, timeoutMs = 120_000, onProgress, o
       helper = helperCommand(isPackaged);
     } catch (e) {
       console.error("[helper]", e.message);
-      resolve({ type: "error", code: "setup", message: "Studi-Helfer could not start one of its parts. Please restart the app." });
+      resolve({ type: "error", code: "setup", message: "Ordo could not start one of its parts. Please restart the app." });
       return;
     }
     fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -91,7 +91,7 @@ function runHelper(isPackaged, args, { stdin, timeoutMs = 120_000, onProgress, o
     child.on("error", (e) => {
       clearTimeout(timer);
       console.error("[helper] start failed:", e.message);
-      resolve({ type: "error", code: "setup", message: "Studi-Helfer could not start one of its parts. Please restart the app." });
+      resolve({ type: "error", code: "setup", message: "Ordo could not start one of its parts. Please restart the app." });
     });
     child.on("close", (code) => {
       clearTimeout(timer);

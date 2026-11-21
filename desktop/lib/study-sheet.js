@@ -336,7 +336,7 @@ const LABELS = {
     bigPicture: "Übergreifende Struktur: Die Kernideen",
     sources: "Quellen",
     page: "S.",
-    made: "Erstellt mit Studi-Helfer",
+    made: "Erstellt mit Ordo",
   },
   en: {
     contents: "Contents",
@@ -355,7 +355,7 @@ const LABELS = {
     bigPicture: "The big picture: core ideas",
     sources: "Sources",
     page: "p.",
-    made: "Made with Studi-Helfer",
+    made: "Made with Ordo",
   },
 };
 

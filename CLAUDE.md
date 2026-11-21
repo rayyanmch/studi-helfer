@@ -1,4 +1,4 @@
-# Studi-Helfer – Regeln für KI-Agenten
+# Ordo (Repo: studi-helfer) – Regeln für KI-Agenten
 
 Hackathon-Projekt, zwei Leute vibecoden parallel (Rayyan, Mika). Deadline Sonntag Mittag: lieber eine Funktion, die in der Demo sicher läuft, als drei halbe.
 

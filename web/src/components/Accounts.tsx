@@ -105,7 +105,7 @@ export function Accounts({ onClose }: { onClose: () => void }) {
               }
             />
           </ul>
-          {busy === "gmail" && desktop && <p className="mt-3 text-[12px] text-muted">Your browser opened. Sign in with Google there and allow access. Google may warn that the app is not verified: choose “Advanced”, then “Go to Studi-Helfer”.</p>}
+          {busy === "gmail" && desktop && <p className="mt-3 text-[12px] text-muted">Your browser opened. Sign in with Google there and allow access. Google may warn that the app is not verified: choose “Advanced”, then the “Go to …” link at the bottom.</p>}
           {error && <p role="alert" className="mt-3 text-[13px] font-medium text-danger">{error}</p>}
           {desktop && !mail.google.available && <p className="mt-3 text-[12px] text-muted">The Google access file is missing on this Mac (google-client.json).</p>}
           <p className="mt-4 flex items-start gap-2 text-[12px] text-muted">

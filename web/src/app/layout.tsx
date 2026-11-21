@@ -11,7 +11,7 @@ const instrument = Instrument_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Studi-Helfer",
+  title: "Ordo",
   description: "All your university files in one place",
 };
 

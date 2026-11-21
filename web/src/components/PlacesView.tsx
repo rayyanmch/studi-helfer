@@ -353,7 +353,7 @@ function PlaceSheet({ p, now, fav, onFav, onClose }: { p: Place; now: Date; fav:
             </a>
           )}
         </div>
-        <p className="mt-3 text-[11px] text-muted">Source: OpenStreetMap contributors. “Open now” is worked out by Studi-Helfer from the entered hours.</p>
+        <p className="mt-3 text-[11px] text-muted">Source: OpenStreetMap contributors. “Open now” is worked out by Ordo from the entered hours.</p>
       </div>
     </div>
   );

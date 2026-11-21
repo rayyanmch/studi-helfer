@@ -64,7 +64,7 @@ export function Login({ result, onSuccess }: { result: LoginResult; onSuccess: (
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/brand/logo-256.png" alt="" width={72} height={72} className="mx-auto size-[72px]" draggable={false} />
           <h1 className="mt-5 text-[26px] font-bold leading-tight tracking-[-0.02em]">Sign in with your uni login</h1>
-          <p className="mt-1.5 text-balance text-muted">Studi-Helfer gets your course files and deadlines from ILIAS for you.</p>
+          <p className="mt-1.5 text-balance text-muted">Ordo gets your course files and deadlines from ILIAS for you.</p>
 
           <form onSubmit={submit} className="mt-7 flex flex-col gap-2.5 text-left" noValidate>
             <label className="sr-only" htmlFor="kennung">

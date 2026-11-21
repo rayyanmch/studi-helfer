@@ -69,7 +69,7 @@ let isPackaged = () => app.isPackaged; // setzt register()
 
 /**
  * Darf der Helfer die Bedienungshilfen nutzen? Gefragt wird der Helfer selbst: In der fertigen App rechnet macOS
- * ihn nicht Studi-Helfer zu (eigener Eintrag „studi-sync“), Electrons eigene Erlaubnis sagt darüber nichts.
+ * ihn nicht Ordo zu (eigener Eintrag „studi-sync“), Electrons eigene Erlaubnis sagt darüber nichts.
  * Gepuffert: erlaubt 60 s, sonst 3 s (damit ein frisch erteilter Haken schnell ankommt).
  */
 async function axTrusted() {
@@ -144,7 +144,7 @@ async function status() {
 async function connectAuto(packaged) {
   if (auto?.running) return { ok: false, code: "busy", message: "Already connecting." };
   forget("ax");
-  if (!(await axTrusted())) return { ok: false, code: "no_permission", message: "Studi-Helfer needs permission to operate Cisco for you." };
+  if (!(await axTrusted())) return { ok: false, code: "no_permission", message: "Ordo needs permission to operate Cisco for you." };
   auto = { running: true, stage: "starting", since: Date.now(), error: null, child: null, cancelled: false };
   const run = auto;
   const res = await backend.runHelper(packaged(), ["vpn-connect"], {

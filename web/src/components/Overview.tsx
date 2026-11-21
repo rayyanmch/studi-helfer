@@ -379,7 +379,7 @@ function ProfileMenu({
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/brand/logo-64.png" alt="" width={32} height={32} className="size-8 shrink-0" draggable={false} />
         <span className="min-w-0 flex-1">
-          <span className="block truncate font-bold leading-tight">Studi-Helfer</span>
+          <span className="block truncate font-bold leading-tight">Ordo</span>
           <span className="block truncate text-[12px] text-muted">{user}, Uni Cologne</span>
         </span>
         <ChevronDown size={14} className={`shrink-0 text-muted transition-transform ${open ? "rotate-180" : ""}`} aria-hidden />

@@ -24,7 +24,7 @@ ILIAS_HOST = "www.ilias.uni-koeln.de"
 # Name des Eintrags im macOS-Schlüsselbund (Konto = Uni-Kennung). Das Passwort liegt nur dort.
 KEYCHAIN_SERVICE = "Studi-Helfer ILIAS"
 
-USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Studi-Helfer"
+USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Ordo"
 
 
 # Fehlertexte für die Oberfläche: ein Satz, was los ist, und was man tun kann. Technik nur ins Log (stderr).

@@ -115,7 +115,7 @@ export function UpdateNotice() {
           <p className="flex items-center gap-2 font-semibold">
             <Spinner /> Installing…
           </p>
-          <p className="mt-1 text-[13px] text-muted">Studi-Helfer restarts in a moment.</p>
+          <p className="mt-1 text-[13px] text-muted">Ordo restarts in a moment.</p>
         </>
       )}
     </div>

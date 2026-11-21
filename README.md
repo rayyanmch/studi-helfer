@@ -1,6 +1,6 @@
-# Studi-Helfer
+# Ordo
 
-Eine Mac-App für Studierende der Uni Köln: App öffnen und sofort sehen, was diese Woche wichtig ist. Hackathon-Projekt (Demo: Sonntag Mittag).
+Eine Mac-App für Studierende der Uni Köln (früher „Studi-Helfer“; Repo und interne Namen heißen weiter so): App öffnen und sofort sehen, was diese Woche wichtig ist. Hackathon-Projekt (Demo: Sonntag Mittag).
 
 Die Oberfläche ist englisch, damit alle sie nutzen können; Doku und Notizen sind deutsch.
 
@@ -23,7 +23,7 @@ Die Oberfläche ist englisch, damit alle sie nutzen können; Doku und Notizen si
 
 ## Installieren (Testversion)
 
-Bei jedem Push auf `main` baut GitHub Actions die App ins Release [„latest“](https://github.com/rayyanmch/studi-helfer/releases/tag/latest): `Studi-Helfer-arm64.dmg` laden, App in „Programme“ ziehen und einmal öffnen. Weil die App noch nicht signiert ist (nur Apple Silicon), meldet macOS „kann nicht überprüft werden“: „Fertig“ klicken, dann Systemeinstellungen → Datenschutz & Sicherheit → unten „Dennoch öffnen“ und mit dem Mac-Passwort bestätigen (seit macOS 15 reicht Rechtsklick → Öffnen nicht mehr). Beim ersten Abruf und nach Updates fragt der Schlüsselbund einmal nach dem Mac-Passwort: „Immer erlauben“. Updates holt die App selbst („Check for updates“ im Menü oben links).
+Bei jedem Push auf `main` baut GitHub Actions die App ins Release [„latest“](https://github.com/rayyanmch/studi-helfer/releases/tag/latest): `Ordo-arm64.dmg` laden, App in „Programme“ ziehen und einmal öffnen. Weil die App noch nicht signiert ist (nur Apple Silicon), meldet macOS „kann nicht überprüft werden“: „Fertig“ klicken, dann Systemeinstellungen → Datenschutz & Sicherheit → unten „Dennoch öffnen“ und mit dem Mac-Passwort bestätigen (seit macOS 15 reicht Rechtsklick → Öffnen nicht mehr). Beim ersten Abruf und nach Updates fragt der Schlüsselbund einmal nach dem Mac-Passwort: „Immer erlauben“. Updates holt die App selbst („Check for updates“ im Menü oben links).
 
 ## Entwickeln
 

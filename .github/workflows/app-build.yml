@@ -1,6 +1,6 @@
 # Baut bei jedem Push auf main die Mac-App und legt sie ins Release „latest“.
 # Der Update-Knopf in der App (desktop/lib/updater.js) holt sie von dort.
-# Erstinstallation: https://github.com/rayyanmch/studi-helfer/releases/tag/latest → Studi-Helfer-arm64.dmg
+# Erstinstallation: https://github.com/rayyanmch/studi-helfer/releases/tag/latest → Ordo-arm64.dmg
 name: Mac-App bauen
 
 on:
@@ -55,8 +55,8 @@ jobs:
         run: |
           set -euo pipefail
           cd desktop/dist
-          ditto -c -k --sequesterRsrc --keepParent mac-arm64/Studi-Helfer.app Studi-Helfer-arm64.zip
-          cp Studi-Helfer-*-arm64.dmg Studi-Helfer-arm64.dmg
+          ditto -c -k --sequesterRsrc --keepParent mac-arm64/Ordo.app Ordo-arm64.zip
+          cp Ordo-*-arm64.dmg Ordo-arm64.dmg
           node -e '
             const fs = require("fs");
             const { execFileSync } = require("child_process");
@@ -65,8 +65,8 @@ jobs:
               sha: process.env.GITHUB_SHA,
               committedAt: git("log", "-1", "--format=%cI"),
               message: git("log", "-1", "--format=%s"),
-              zip: "Studi-Helfer-arm64.zip",
-              size: fs.statSync("Studi-Helfer-arm64.zip").size,
+              zip: "Ordo-arm64.zip",
+              size: fs.statSync("Ordo-arm64.zip").size,
               builtAt: new Date().toISOString(),
             }, null, 2));
           '
@@ -81,9 +81,11 @@ jobs:
           gh release view latest >/dev/null 2>&1 || gh release create latest --prerelease --target "$GITHUB_SHA" \
             --title "Neueste Testversion" --notes "Wird bei jedem Push auf main neu gebaut."
           # Erst die App, dann latest.json: So zeigt latest.json nie auf eine Datei, die es noch nicht gibt.
-          gh release upload latest Studi-Helfer-arm64.zip Studi-Helfer-arm64.dmg --clobber
+          gh release upload latest Ordo-arm64.zip Ordo-arm64.dmg --clobber
           gh release upload latest latest.json --clobber
+          # Bis 21.11. hießen die Dateien Studi-Helfer-arm64.*; ältere Apps lesen den Namen aus latest.json, die alten Dateien können weg.
+          for old in Studi-Helfer-arm64.zip Studi-Helfer-arm64.dmg; do gh release delete-asset latest "$old" -y >/dev/null 2>&1 || true; done
           gh release edit latest --notes "Stand: $(git log -1 --format='%h %s') ($(git log -1 --format=%cI))
 
-          Erstinstallation: Studi-Helfer-arm64.dmg laden, App in „Programme“ ziehen, beim ersten Öffnen Rechtsklick → Öffnen.
+          Erstinstallation: Ordo-arm64.dmg laden, App in „Programme“ ziehen, beim ersten Öffnen Rechtsklick → Öffnen.
           Danach aktualisiert sich die App über „Check for updates“ im Menü oben links."

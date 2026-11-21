@@ -1,4 +1,4 @@
-"""Uni-VPN über Studi-Helfer verbinden (Cisco Secure Client, Uni Köln): Die App übernimmt den Cisco-Schritt,
+"""Uni-VPN über Ordo verbinden (Cisco Secure Client, Uni Köln): Die App übernimmt den Cisco-Schritt,
 die Anmeldung im Browser macht der Student selbst.
 
 Hintergrund: Den Tunnel baut nur Cisco auf, und Ciscos Befehlszeile kann die SAML-Anmeldung der Uni nicht. Cisco 5
@@ -201,7 +201,7 @@ def walk(root: El, limit: int = 400) -> list[tuple[El, str]]:
 
 def trusted(prompt: bool = False) -> bool:
     """Darf dieser Prozess die Bedienungshilfen nutzen? In der fertigen App rechnet macOS den Helfer nicht
-    Studi-Helfer zu, er braucht einen eigenen Eintrag („studi-sync“). prompt=True: macOS fragt nach und trägt
+    Ordo zu, er braucht einen eigenen Eintrag („studi-sync“). prompt=True: macOS fragt nach und trägt
     den Helfer in die Liste unter Datenschutz & Sicherheit → Bedienungshilfen ein."""
     try:
         if not prompt:
@@ -444,7 +444,7 @@ class _Stop(Exception):
 
 def connect(server: str, timeout: float = 300.0) -> dict:
     if not trusted():
-        raise AppError("no_permission", "Studi-Helfer needs permission to operate Cisco for you.")
+        raise AppError("no_permission", "Ordo needs permission to operate Cisco for you.")
     if not _cli() or not any(os.path.exists(p) for p in GUI_APPS):
         raise AppError("not_installed", "Cisco Secure Client is not installed yet.")
 
