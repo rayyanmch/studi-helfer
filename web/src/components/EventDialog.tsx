@@ -93,7 +93,7 @@ function fromDeadline(d: Deadline): CustomEvent {
   const series = Boolean(d.seriesId);
   return blank({
     title: d.title,
-    moduleId: d.courseId === "other" ? null : d.courseId,
+    moduleId: d.courseId === "other" || d.courseId === "uni" ? null : d.courseId,
     kind: d.kind,
     date: d.date,
     start,
@@ -279,7 +279,7 @@ function Details({ deadline: d, onOpenCourse }: { deadline: Deadline; onOpenCour
               <EyeOff size={13} aria-hidden /> Hide
             </Button>
           )}
-          {onOpenCourse && course && (
+          {onOpenCourse && course && course.id !== "uni" && (
             <Button
               variant="plain"
               className="ml-auto"

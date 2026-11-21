@@ -280,6 +280,7 @@ function toSetupModule(m: SetupModule): Course {
 }
 
 const OTHER_ID = "other";
+const UNI_ID = "uni"; // Uni-Termine für alle (Semesterbeitrag, KLIPS-Belegung …, desktop/lib/uni-dates.js)
 
 function toDeadline(d: DesktopDeadline): Deadline {
   // In der Oberfläche heißt source „wo“: Raum bei Terminen/Klausuren, Datei bei Fristen aus Übungsblättern.
@@ -291,7 +292,7 @@ function toDeadline(d: DesktopDeadline): Deadline {
   const seriesId =
     d.category === "session" ? `sess|${d.moduleId ?? OTHER_ID}|${d.title.toLowerCase()}|${new Date(`${d.date}T12:00:00`).getDay()}|${d.time}` : undefined;
   const title = d.kind === "klausur" ? examTitle(d.title) : d.title; // nur Anzeige, die Id bleibt
-  return { id: d.id, courseId: d.moduleId ?? OTHER_ID, title, date: d.date, time: d.time, kind: d.kind, source, seriesId, location: d.location ?? undefined };
+  return { id: d.id, courseId: d.category === "uni" ? UNI_ID : d.moduleId ?? OTHER_ID, title, date: d.date, time: d.time, kind: d.kind, source, seriesId, location: d.location ?? undefined };
 }
 
 const ORDINAL: Record<string, string> = { first: "1st", second: "2nd", third: "3rd" };
@@ -308,8 +309,10 @@ function applyCalendar(patch: Partial<Pick<AppState, "autoDeadlines" | "customEv
   const list = composeDeadlines(next.autoDeadlines, next.customEvents, next.hiddenEvents, parseIso(next.today || localIso()));
   // Termine ohne passendes Modul (Kalender-Abo, eigene ohne Kurs) landen unter „Other“
   const hasOther = list.some((x) => x.courseId === OTHER_ID);
-  const courses = next.courses.filter((c) => c.id !== OTHER_ID);
+  const hasUni = list.some((x) => x.courseId === UNI_ID);
+  const courses = next.courses.filter((c) => c.id !== OTHER_ID && c.id !== UNI_ID);
   if (hasOther) courses.push({ id: OTHER_ID, name: "Other", short: "Other", lecturer: "", total: 0, folders: [], color: "indigo", semester: "current" });
+  if (hasUni) courses.push({ id: UNI_ID, name: "University", short: "Uni", lecturer: "", total: 0, folders: [], color: "indigo", semester: "current" });
   set({ ...patch, courses, deadlines: list, digests: buildDigests(courses, list, next.done, next.today || localIso()) });
 }
 
@@ -486,7 +489,7 @@ export async function hideEvent(key: string, hidden = true) {
 
 /** Module, die in der Kursübersicht erscheinen (ohne Sammelmodul „Other“). */
 export function realCourses(courses: Course[]) {
-  return courses.filter((c) => c.id !== OTHER_ID);
+  return courses.filter((c) => c.id !== OTHER_ID && c.id !== UNI_ID);
 }
 
 // ------------------------------------------------------------------ Sync-Fortschritt
@@ -628,7 +631,7 @@ export async function startImport(videos: boolean): Promise<{ ok: boolean; messa
     })),
   });
   if (!saved.ok) return { ok: false, message: saved.message };
-  importing = state.courses.filter((c) => c.id !== OTHER_ID).length === 0;
+  importing = state.courses.filter((c) => c.id !== OTHER_ID && c.id !== UNI_ID).length === 0;
   await refresh();
   const started = await d.startSync();
   return started.ok || started.code === "busy" ? { ok: true } : { ok: false, message: started.message };
