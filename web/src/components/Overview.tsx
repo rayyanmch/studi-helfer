@@ -39,7 +39,7 @@ import { VpnDialogHost, VpnLine, openVpnDialog } from "./VpnPanel";
 import { GoogleEventHost, openGoogleEvent } from "./GoogleEventDialog";
 import { CalendarView } from "./CalendarView";
 import { PlacesView } from "./PlacesView";
-import { CalendarChip, ClashTag, GoogleBlock, abbrTitle, mergeTwins, overlapRows, sharedZones, startMinutes, type DayEntry, type TimedEntry } from "./calendar-bits";
+import { CalendarChip, ClashTag, GoogleBlock, abbrTitle, mergeTwins, overlapRows, sharedZones, startMinutes, withCourse, type DayEntry, type TimedEntry } from "./calendar-bits";
 import { Accounts } from "./Accounts";
 import { Settings } from "./Settings";
 import { ImportPanel, jobProgress, useJob, useTick, type Job } from "./ImportJob";
@@ -933,9 +933,14 @@ function OverlapGroup({ items, onOpen }: { items: TimedEntry[]; onOpen: (id: str
           const course = it.d ? courseById(it.d.courseId) : undefined;
           const c = it.d && course ? (it.d.color ?? colorOf(course)) : null;
           const gColor = it.ev?.color ?? "var(--muted)";
-          const title = it.d ? (it.d.kind === "klausur" && course ? examLabel(it.d.title, course) : bare(it.d.title)) : it.ev!.title;
+          const title = it.d ? (it.d.kind === "klausur" && course ? examLabel(it.d.title, course) : course ? withCourse(bare(it.d.title), course) : bare(it.d.title)) : it.ev!.title;
           const sub = it.d ? (it.d.location || (course ? shortOf(course) : "")) : (it.ev!.location ?? "");
-          const body = squeezed ? null : open ? (
+          const body = squeezed ? (
+            // Schmaler Nachbar eines aufgeklappten Termins: Titel senkrecht lesbar statt leerer Kasten
+            <span aria-hidden className="block h-full overflow-hidden whitespace-nowrap text-[11px] font-semibold text-ellipsis" style={{ writingMode: "vertical-rl" }}>
+              {title}
+            </span>
+          ) : open ? (
             <span key="open" className="answer-in block">
               <span className="block truncate text-[11px] font-semibold" style={c ? { color: tone(c, "ink") } : undefined}>
                 {hhmm(it.start)}–{hhmm(it.end)}
@@ -1022,8 +1027,9 @@ function DeadlineBlock({
         : { background: tone(c, "soft") };
   // Klausur: Schild „Exam“ steht schon drüber, also „BWL · 1st date“; der Kurs steht dann im Titel, darunter nur der Raum
   const examBits = exam ? examPart(d.title) : null;
-  const title = examBits ? `${shortOf(course)}${examBits.rest ? ` · ${examBits.rest}` : ""}` : bare(d.title);
-  const below = exam && d.location ? d.location : examBits ? null : shortOf(course);
+  const title = examBits ? `${shortOf(course)}${examBits.rest ? ` · ${examBits.rest}` : ""}` : withCourse(bare(d.title), course);
+  // „Lecture“ allein sagt nicht, welcher Kurs: der Kurzname steht im Titel, darunter der Raum
+  const below = exam && d.location ? d.location : examBits ? null : title !== bare(d.title) ? d.location || null : shortOf(course);
 
   return (
     <div className="hit flex items-start gap-1.5 rounded-[7px] py-1.5 pl-2 pr-1.5" style={style}>
