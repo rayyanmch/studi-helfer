@@ -150,7 +150,7 @@ export function StudyHub() {
             startReview(practice ? cards.filter(active) : todaysSet(cards, study.today, study.stats).all, {
               practice,
               size: 20,
-              title: practice ? "All courses · practice" : "All courses · due today",
+              title: practice ? "All courses · practice" : "All courses · today",
               back: { kind: "home" },
               mixed: true,
             })
@@ -258,7 +258,7 @@ function Home({
                 ? `All courses mixed. Up to ${NEW_PER_DAY} new cards a day, so it never piles up.`
                 : anyCards
                   ? "Nothing is due. Come back tomorrow, or practice anyway."
-                  : "Open a course box below and summarize its files. Each file gives you a set of flashcards."}
+                  : "Pick a course below. Claude reads your slides once and turns them into a summary and flashcards."}
             </p>
             {dueBy.length > 0 && (
               <p className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[12px]">
@@ -284,6 +284,8 @@ function Home({
           )}
         </div>
       </section>
+
+      {!anyCards && <HowItWorks />}
 
       {/* Karteikästen */}
       <section aria-label="Card boxes">
@@ -471,14 +473,17 @@ function Deck({
         <div className="min-w-0 flex-1">
           <h1 className="truncate text-[30px] font-bold leading-tight tracking-[-0.02em]">{course ? course.name : "All courses"}</h1>
           <p className="mt-1 text-muted">
-            {[
+            {deckCards.length === 0
+              ? [course?.fullName && course.fullName !== course.name ? course.fullName : null, exam != null ? `exam ${inDays(exam)}` : null].filter(Boolean).join(" · ") ||
+                "No cards yet"
+              : [
               `${deckCards.filter(active).length} cards`,
               `${todaysSet(deckCards, study.today, study.stats).all.length} for today`,
               `${Math.round(mastery(deckCards) * 100)}% learned`,
               exam != null ? `exam ${inDays(exam)}` : null,
-            ]
-              .filter(Boolean)
-              .join(" · ")}
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -500,7 +505,15 @@ function Deck({
 
       <Progress color={color} />
 
-      {deckCards.length === 0 && course ? (
+      {deckCards.length === 0 && !course ? (
+        <div className="rounded-[12px] bg-surface px-5 py-6">
+          <h2 className="text-[15px] font-bold">No cards yet</h2>
+          <p className="mt-1 text-[13px] text-muted">This box mixes the cards of all your courses. Open a course box first and let Claude summarize its files.</p>
+          <Button className="mt-4" onClick={onBack}>
+            <ChevronLeft size={14} aria-hidden /> Back to the boxes
+          </Button>
+        </div>
+      ) : deckCards.length === 0 && course ? (
         <div className="rounded-[12px] bg-surface px-5 py-6">
           <h2 className="text-[15px] font-bold">No cards in this box yet</h2>
           <p className="mt-1 text-[13px] text-muted">
@@ -1081,6 +1094,27 @@ function NewSheet({
         </Button>
       </div>
     </>
+  );
+}
+
+function HowItWorks() {
+  const steps = [
+    { icon: <FileText size={16} aria-hidden />, title: "Claude reads your slides", text: "Pick a course. Each file becomes a short summary and about 10 flashcards. Takes a few minutes, once." },
+    { icon: <Layers size={16} aria-hidden />, title: "Learn a little every day", text: `Up to ${NEW_PER_DAY} new cards a day. Cards you know come back later, the others again today.` },
+    { icon: <NotebookPen size={16} aria-hidden />, title: "Before the exam", text: "Practice only some lectures, or make a PDF study sheet with exactly the parts you want." },
+  ];
+  return (
+    <section aria-label="How it works" className="grid grid-cols-1 gap-3 md:grid-cols-3">
+      {steps.map((s, i) => (
+        <div key={s.title} className="rounded-[12px] bg-surface p-4">
+          <p className="flex items-center gap-2 text-[13px] font-bold">
+            <span className="grid size-7 place-items-center rounded-full bg-sunken text-muted">{s.icon}</span>
+            {i + 1}. {s.title}
+          </p>
+          <p className="mt-1.5 text-[13px] text-muted">{s.text}</p>
+        </div>
+      ))}
+    </section>
   );
 }
 

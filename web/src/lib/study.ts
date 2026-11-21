@@ -405,7 +405,9 @@ export const isDue = (c: Card, today: string) => active(c) && !isNew(c) && (!c.s
 export function todaysSet(cards: Card[], today: string, stats: StudyStats) {
   const reviews = cards.filter((c) => isDue(c, today));
   const budget = Math.max(0, NEW_PER_DAY - stats.newToday);
-  const fresh = cards.filter((c) => active(c) && isNew(c)).slice(0, budget);
+  // Neue Karten reihum aus allen Modulen, je Modul in Vorlesungsreihenfolge
+  const seed = 1;
+  const fresh = interleave(cards.filter((c) => active(c) && isNew(c)), seed, false).slice(0, budget);
   return { reviews, fresh, all: [...reviews, ...fresh] };
 }
 
@@ -423,12 +425,21 @@ export function mastery(cards: Card[]) {
   return act.filter((c) => (c.state?.box ?? 0) >= 3).length / act.length;
 }
 
-/** Mischen, aber Module abwechselnd (Interleaving), damit der gemischte Kasten wirklich gemischt ist. */
-export function interleave(cards: Card[], seed = 1): Card[] {
-  let x = seed;
+/**
+ * Module abwechselnd (Interleaving), damit der gemischte Kasten wirklich gemischt ist.
+ * shuffle = false behält die Reihenfolge innerhalb eines Moduls (neue Karten: Vorlesung 1 vor Vorlesung 6).
+ */
+export function interleave(cards: Card[], seed = 1, shuffle = true): Card[] {
+  let x = seed % 233280;
   const rand = () => ((x = (x * 9301 + 49297) % 233280) / 233280);
+  const list = [...cards];
+  if (shuffle)
+    for (let i = list.length - 1; i > 0; i--) {
+      const j = Math.floor(rand() * (i + 1));
+      [list[i], list[j]] = [list[j], list[i]];
+    }
   const groups = new Map<string, Card[]>();
-  for (const c of [...cards].sort(() => rand() - 0.5)) {
+  for (const c of list) {
     const k = c.moduleId ?? "";
     groups.set(k, [...(groups.get(k) ?? []), c]);
   }
