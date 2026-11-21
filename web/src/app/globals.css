@@ -370,6 +370,254 @@ textarea.outline-none:focus-visible {
   animation: fade-in 120ms var(--ease-out);
 }
 
+/* ---------------------------------------------------------------- Bewegung 2 (Rayyans Agent, 2026-11-21)
+   Gleiche Regeln wie oben. Neu: gestaffeltes Erscheinen, wachsende Balken, Seitenleiste mit gleitender
+   Markierung und einklappbaren Gruppen, Karteikarten (umdrehen, wegfliegen, Stapel), Rundenabschluss. */
+
+@keyframes lift-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+@keyframes grow-x {
+  from {
+    transform: scaleX(0);
+  }
+}
+@keyframes grow-y {
+  from {
+    transform: scaleY(0);
+  }
+}
+@keyframes bump {
+  40% {
+    transform: scale(1.14);
+  }
+}
+
+/* Kacheln und Listen erscheinen nacheinander, nur beim ersten Zeigen (Versatz höchstens 0,32 s).
+   sibling-index() kennt Chromium ab 138; ohne erscheinen alle gleichzeitig. Füllung nur „backwards“,
+   damit Hover-Bewegungen (transform) danach wieder greifen. */
+.stagger > * {
+  animation: lift-in 340ms var(--ease-out) backwards;
+  animation-delay: min(calc((sibling-index() - 1) * 40ms), 320ms);
+}
+
+/* Balken wachsen beim Erscheinen von links (Fortschritt, gelernt) bzw. von unten (Tage) */
+.grow-x {
+  transform-origin: left center;
+  animation: grow-x 700ms var(--ease-out) backwards;
+  animation-delay: var(--delay, 120ms);
+}
+.grow-y {
+  transform-origin: center bottom;
+  animation: grow-y 600ms var(--ease-out) backwards;
+  animation-delay: var(--delay, 100ms);
+}
+.bump {
+  animation: bump 260ms var(--ease-out);
+}
+
+/* Anklickbare Kacheln heben sich beim Überfahren leicht an */
+.lift {
+  transition:
+    transform 220ms var(--ease-out),
+    box-shadow 220ms var(--ease-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  .lift:hover {
+    transform: translateY(-2px);
+  }
+}
+.lift:active {
+  transform: scale(0.99);
+}
+
+/* Auf- und Zuklappen mit echter Höhe (Seitenleisten-Gruppen, Wochen im Study-Tab) */
+.expand {
+  interpolate-size: allow-keywords;
+  overflow: clip;
+  overflow-clip-margin: 4px;
+  height: auto;
+  transition:
+    height 240ms var(--ease-out),
+    opacity 200ms var(--ease-out);
+}
+.expand[data-open="false"] {
+  height: 0;
+  opacity: 0;
+}
+@starting-style {
+  .expand[data-open="true"] {
+    height: 0;
+    opacity: 0;
+  }
+}
+
+/* Seitenleiste: die dunkle Markierung gleitet zum neuen Eintrag (Bewegung per Skript in Overview.tsx) */
+.nav-pill {
+  position: absolute;
+  inset: 0;
+  border-radius: 8px;
+  background: var(--accent);
+  opacity: 0;
+  pointer-events: none;
+}
+[aria-current="page"] > .nav-pill {
+  opacity: 1;
+}
+
+/* Umschalter (Segmented): die helle Fläche gleitet unter die Wahl */
+.seg-thumb {
+  position: absolute;
+  left: 0;
+  top: 0;
+  border-radius: 7px;
+  background: var(--surface);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+  pointer-events: none;
+  transition:
+    transform 260ms var(--ease-out),
+    width 260ms var(--ease-out),
+    height 260ms var(--ease-out);
+}
+
+/* Karteikarten: Stapel dahinter, die nächste Karte rückt nach vorn, die alte fliegt je nach Antwort weg */
+.fc-stack {
+  perspective: 1800px;
+}
+.fc-behind {
+  position: absolute;
+  inset: 0;
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow:
+    0 0 0 1px var(--line),
+    0 4px 14px rgba(0, 0, 0, 0.06);
+  pointer-events: none;
+  transition:
+    transform 300ms var(--ease-out),
+    opacity 300ms var(--ease-out);
+}
+@keyframes fc-forward {
+  from {
+    opacity: 0.6;
+    transform: translateY(13px) scale(0.96);
+  }
+}
+.fc-enter {
+  animation: fc-forward 300ms var(--ease-out) backwards;
+}
+@keyframes fc-knew {
+  to {
+    opacity: 0;
+    transform: translate(44%, -16px) rotate(7deg);
+  }
+}
+@keyframes fc-again {
+  to {
+    opacity: 0;
+    transform: translate(-44%, -16px) rotate(-7deg);
+  }
+}
+@keyframes fc-skip {
+  to {
+    opacity: 0;
+    transform: translateY(28px) scale(0.96);
+  }
+}
+@keyframes fc-hide {
+  to {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+}
+.fc-out {
+  position: absolute;
+  inset: 0 0 auto 0;
+  z-index: 3;
+  pointer-events: none;
+  animation: fc-knew 300ms cubic-bezier(0.25, 0.55, 0.4, 1) forwards;
+}
+.fc-out[data-dir="again"] {
+  animation-name: fc-again;
+}
+.fc-out[data-dir="skip"] {
+  animation-name: fc-skip;
+  animation-duration: 260ms;
+}
+.fc-out[data-dir="hide"] {
+  animation-name: fc-hide;
+  animation-duration: 240ms;
+}
+@keyframes stamp-in {
+  from {
+    opacity: 0;
+    transform: scale(0.4) rotate(-14deg);
+  }
+}
+.fc-stamp {
+  animation: stamp-in 200ms var(--ease-out) both;
+}
+/* Fortschritt in Abschnitten: der eben beantwortete springt kurz auf */
+@keyframes seg-pop {
+  40% {
+    transform: scaleY(1.9);
+  }
+}
+.seg-pop {
+  animation: seg-pop 380ms var(--ease-out);
+}
+
+/* Rundenabschluss: Ring füllt sich, ein paar Punkte in Kursfarben springen heraus */
+@keyframes ring-fill {
+  from {
+    stroke-dashoffset: var(--ring-len);
+  }
+}
+.ring-fill {
+  animation: ring-fill 1000ms var(--ease-out) backwards;
+  animation-delay: 150ms;
+}
+@keyframes burst {
+  0% {
+    opacity: 0;
+    transform: rotate(var(--a)) translateY(-30px) scale(0.4);
+  }
+  15%,
+  60% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: rotate(var(--a)) translateY(calc(-1 * var(--d))) scale(1);
+  }
+}
+.burst > i {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 7px;
+  height: 7px;
+  margin: -3.5px;
+  border-radius: 2px;
+  background: var(--c);
+  animation: burst 1000ms var(--ease-out) both;
+  animation-delay: calc(600ms + var(--k) * 14ms);
+}
+
+/* Study: der kleine Kartenstapel fächert sich beim Überfahren auf */
+.deck-fan > * {
+  transform: translate(var(--x, 0), var(--y, 0)) rotate(var(--r, 0deg));
+  transition: transform 320ms var(--ease-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  .fan-host:hover .deck-fan > * {
+    transform: translate(var(--xh, 0), var(--yh, 0)) rotate(var(--rh, 0deg));
+  }
+}
+
 
 /* Alles Anklickbare zeigt die Hand (Tailwind macht Knöpfe sonst zum Pfeil), außer es ist gesperrt */
 button:not(:disabled),
@@ -441,8 +689,29 @@ label:has(> input[type="radio"]) {
     animation-name: fade-in !important;
   }
   .check-pop,
-  .answer-in {
+  .answer-in,
+  .grow-x,
+  .grow-y,
+  .bump,
+  .seg-pop,
+  .fc-stamp,
+  .ring-fill,
+  .burst {
     animation: none !important;
+  }
+  .stagger > *,
+  .fc-enter,
+  .fc-out {
+    animation-name: fade-in !important;
+    animation-delay: 0ms !important;
+  }
+  .fc-out {
+    animation-direction: reverse !important;
+  }
+  .lift:hover,
+  .lift:active,
+  .fan-host:hover .deck-fan > * {
+    transform: none;
   }
   .press:not(:disabled):active,
   .hit:active {

@@ -23,6 +23,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { Button, Spinner, Swatch, colorOf, inDays, tone } from "./ui";
+import { CountUp, useCountUp, useSlidingThumb } from "./motion";
 import { displayName } from "./files";
 import { ErrorNotice, NoClaude, Progress, Review, SummaryRow, TYPE_LABEL } from "./StudyView";
 import { GlossaryPanel, useGlossary } from "./Glossary";
@@ -165,7 +166,7 @@ export function StudyHub() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="stagger flex flex-col gap-6">
       {study.available === false && <NoClaude />}
       {error && <ErrorNotice message={error} onClose={() => setError(null)} />}
       {screen.kind === "home" && (
@@ -296,57 +297,13 @@ function Home({
                 : "Nothing left for today"
               : "Flashcards and study sheets from your course files"}
           </span>
-          {study.stats.today > 0 && <span>· {study.stats.today} reviewed today</span>}
-          {study.stats.streak > 1 && (
-            <span className="inline-flex items-center gap-1 font-semibold text-[var(--c-orange-ink)]">
-              <Flame size={14} aria-hidden /> {study.stats.streak}-day streak
-            </span>
-          )}
         </p>
       </header>
 
       <Progress color="blue" />
       <SheetRunning />
 
-      {/* Heute */}
-      <section aria-label="Today" className="overflow-hidden rounded-[14px] bg-surface">
-        <div className="flex flex-wrap items-center gap-5 p-5">
-          <div className="grid size-14 shrink-0 place-items-center rounded-[12px] bg-accent text-on-accent">
-            <Shuffle size={24} aria-hidden />
-          </div>
-          <div className="min-w-0 flex-1">
-            <h2 className="text-[17px] font-bold">{due.length ? "Your review for today" : anyCards ? "All caught up" : "Get your first cards"}</h2>
-            <p className="mt-0.5 text-[13px] text-muted">
-              {due.length
-                ? `All courses mixed. Up to ${NEW_PER_DAY} new cards a day, so it never piles up.`
-                : anyCards
-                  ? "Nothing is due. Come back tomorrow, or practice anyway."
-                  : "Pick a course below. Claude reads your slides once and turns them into a summary and flashcards."}
-            </p>
-            {dueBy.length > 0 && (
-              <p className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[12px]">
-                {dueBy.map(({ c, n }) => (
-                  <span key={c.id} className="inline-flex items-center gap-1.5">
-                    <Swatch color={colorOf(c)} size={8} />
-                    {c.name} <span className="text-muted">{n}</span>
-                  </span>
-                ))}
-              </p>
-            )}
-          </div>
-          {due.length > 0 ? (
-            <Button variant="primary" className="h-10 px-4 text-[14px]" onClick={() => onReviewAll(false)}>
-              Start review <span className="opacity-70">{Math.min(due.length, 20)}</span>
-            </Button>
-          ) : (
-            anyCards && (
-              <Button className="h-10 px-4 text-[14px]" onClick={() => onReviewAll(true)}>
-                Practice anyway
-              </Button>
-            )
-          )}
-        </div>
-      </section>
+      <TodayHero courses={courses} cards={cards} due={due} dueBy={dueBy} onReviewAll={onReviewAll} />
 
       {!anyCards && <HowItWorks />}
 
@@ -360,7 +317,7 @@ function Home({
           <h2 className="flex-1 text-[17px] font-bold">Card boxes</h2>
           <span className="text-[12px] text-muted">Open a box to learn single weeks</span>
         </div>
-        <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <ul className="stagger grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
           <li>
             <BoxTile
               title="All courses"
@@ -399,6 +356,174 @@ function Home({
   );
 }
 
+/** „Heute“: Kartenstapel (fächert beim Überfahren auf), Tagesring, Start-Knopf, darunter die letzten 7 Tage und die Serie. */
+function TodayHero({
+  courses,
+  cards,
+  due,
+  dueBy,
+  onReviewAll,
+}: {
+  courses: Course[];
+  cards: Card[];
+  due: Card[];
+  dueBy: { c: Course; n: number }[];
+  onReviewAll: (practice: boolean) => void;
+}) {
+  const study = useStudy();
+  const app = useApp();
+  const anyCards = cards.length > 0;
+  const done = study.stats.today;
+  const goal = done + due.length;
+  const share = goal ? done / goal : 0;
+  const dueShown = useCountUp(Math.min(due.length, 99));
+  const fan = (dueBy.length ? dueBy.map((x) => colorOf(x.c)) : courses.map(colorOf)).slice(0, 3);
+  while (fan.length < 3) fan.push(fan[fan.length - 1] ?? "blue");
+  const week = study.stats.week ?? [0, 0, 0, 0, 0, 0, study.stats.today];
+  const max = Math.max(4, ...week);
+  const base = Date.parse(`${study.today || app.today}T12:00:00`);
+  const dayName = (k: number) => (Number.isNaN(base) ? "" : new Date(base - (6 - k) * 86_400_000).toLocaleDateString("en-US", { weekday: "narrow" }));
+  const R = 19;
+  const len = 2 * Math.PI * R;
+  return (
+    <section aria-label="Today" className="fan-host overflow-hidden rounded-[14px] bg-surface">
+      <div className="flex flex-wrap items-center gap-5 p-5">
+        <div className="deck-fan relative h-[64px] w-[66px] shrink-0" aria-hidden>
+          {[0, 1, 2].map((k) => {
+            const pose = [
+              { r: "-11deg", x: "-7px", y: "3px", rh: "-22deg", xh: "-16px", yh: "6px" },
+              { r: "8deg", x: "6px", y: "1px", rh: "17deg", xh: "15px", yh: "3px" },
+              { r: "-2deg", x: "0px", y: "0px", rh: "0deg", xh: "0px", yh: "-5px" },
+            ][k];
+            const front = k === 2;
+            return (
+              <span
+                key={k}
+                className="absolute left-[12px] top-[4px] grid h-[56px] w-[42px] place-items-center rounded-[7px]"
+                style={
+                  {
+                    "--r": pose.r,
+                    "--x": pose.x,
+                    "--y": pose.y,
+                    "--rh": pose.rh,
+                    "--xh": pose.xh,
+                    "--yh": pose.yh,
+                    background: front ? "var(--surface)" : tone(fan[k], "soft"),
+                    boxShadow: front
+                      ? `0 0 0 1px var(--line), 0 3px 8px rgba(0,0,0,0.10), inset 0 3px 0 ${tone(fan[2])}`
+                      : `0 0 0 1px color-mix(in srgb, ${tone(fan[k])} 35%, transparent)`,
+                  } as React.CSSProperties
+                }
+              >
+                {front &&
+                  (due.length ? (
+                    <span className="text-[17px] font-bold tabular-nums">{dueShown}</span>
+                  ) : (
+                    <Check size={18} strokeWidth={3} style={{ color: anyCards ? "var(--ok)" : "var(--muted)" }} />
+                  ))}
+              </span>
+            );
+          })}
+        </div>
+        <div className="min-w-0 flex-1">
+          <h2 className="text-[17px] font-bold">{due.length ? "Your review for today" : anyCards ? "All caught up" : "Get your first cards"}</h2>
+          <p className="mt-0.5 text-[13px] text-muted">
+            {due.length
+              ? `All courses mixed. Up to ${NEW_PER_DAY} new cards a day, so it never piles up.`
+              : anyCards
+                ? "Nothing is due. Come back tomorrow, or practice anyway."
+                : "Pick a course below. Claude reads your slides once and turns them into a summary and flashcards."}
+          </p>
+          {dueBy.length > 0 && (
+            <p className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[12px]">
+              {dueBy.map(({ c, n }) => (
+                <span key={c.id} className="inline-flex items-center gap-1.5">
+                  <Swatch color={colorOf(c)} size={8} />
+                  {c.name} <span className="text-muted">{n}</span>
+                </span>
+              ))}
+            </p>
+          )}
+        </div>
+        {anyCards && goal > 0 && (
+          <div className="flex items-center gap-2.5" title={`${done} of ${goal} cards for today done`}>
+            <svg viewBox="0 0 48 48" className="size-11 -rotate-90" aria-hidden>
+              <circle cx="24" cy="24" r={R} fill="none" stroke="var(--sunken)" strokeWidth="5" />
+              {share > 0 && (
+                <circle
+                  className="ring-fill"
+                  cx="24"
+                  cy="24"
+                  r={R}
+                  fill="none"
+                  stroke={share >= 1 ? "var(--ok)" : "var(--text)"}
+                  strokeWidth="5"
+                  strokeLinecap="round"
+                  strokeDasharray={len}
+                  strokeDashoffset={len * (1 - share)}
+                  style={{ "--ring-len": len, transition: "stroke-dashoffset 600ms var(--ease-out)" } as React.CSSProperties}
+                />
+              )}
+            </svg>
+            <span className="text-[12px] leading-tight">
+              <strong className="block text-[15px] font-bold tabular-nums">
+                <CountUp value={done} />
+                <span className="font-semibold text-muted"> / {goal}</span>
+              </strong>
+              <span className="text-muted">done today</span>
+            </span>
+          </div>
+        )}
+        {due.length > 0 ? (
+          <Button variant="primary" className="h-10 px-4 text-[14px]" onClick={() => onReviewAll(false)}>
+            Start review <span className="opacity-70">{Math.min(due.length, 20)}</span>
+          </Button>
+        ) : (
+          anyCards && (
+            <Button className="h-10 px-4 text-[14px]" onClick={() => onReviewAll(true)}>
+              Practice anyway
+            </Button>
+          )
+        )}
+      </div>
+      {anyCards && (
+        <div className="flex flex-wrap items-end gap-x-6 gap-y-2 border-t border-line-soft px-5 py-3">
+          <div className="flex items-end gap-1.5" aria-label={`Cards per day this week: ${week.join(", ")}`}>
+            {week.map((n, k) => (
+              <span key={k} className="flex w-[18px] flex-col items-center gap-1">
+                <span className="flex h-[26px] w-[8px] items-end">
+                  <span
+                    className="grow-y block w-full rounded-full"
+                    style={
+                      {
+                        height: n ? `${Math.max(18, (n / max) * 100)}%` : "8px",
+                        background: n ? (k === 6 ? "var(--text)" : "color-mix(in srgb, var(--text) 32%, transparent)") : "var(--sunken)",
+                        "--delay": `${150 + k * 45}ms`,
+                      } as React.CSSProperties
+                    }
+                    title={`${n} ${n === 1 ? "card" : "cards"}`}
+                  />
+                </span>
+                <span className={`text-[10px] font-semibold ${k === 6 ? "text-text" : "text-muted"}`}>{dayName(k)}</span>
+              </span>
+            ))}
+          </div>
+          <p className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 pb-0.5 text-[12px] text-muted">
+            {study.stats.streak > 1 ? (
+              <span className="inline-flex items-center gap-1 font-semibold text-[var(--c-orange-ink)]">
+                <Flame size={13} aria-hidden /> {study.stats.streak}-day streak
+              </span>
+            ) : (
+              <span>{done ? "Day 1 of your streak. See you tomorrow." : "Learn a few cards today to start a streak."}</span>
+            )}
+            <span>{week.filter(Boolean).length} of the last 7 days</span>
+          </p>
+        </div>
+      )}
+    </section>
+  );
+}
+
 /** „This week on one page“: je Kurs ein Klick für den Einseiter der aktuellen Woche (oder öffnen, wenn es ihn schon gibt). */
 function ThisWeekSheets({ courses, onError }: { courses: Course[]; onError: (m: string | null) => void }) {
   return (
@@ -407,7 +532,7 @@ function ThisWeekSheets({ courses, onError }: { courses: Course[]; onError: (m: 
         <h2 className="flex-1 text-[15px] font-bold">This week on one page</h2>
         <span className="text-[12px] text-muted">The exam-relevant essentials of each course, as a PDF</span>
       </div>
-      <ul className="flex flex-col">
+      <ul className="stagger flex flex-col">
         {courses.map((c) => (
           <QuickWeekRow key={c.id} course={c} onError={onError} />
         ))}
@@ -545,12 +670,12 @@ function BoxTile({
   return (
     <button
       onClick={onOpen}
-      className="group flex h-full w-full flex-col rounded-[12px] bg-surface p-4 text-left transition-[box-shadow,transform] hover:shadow-[inset_0_0_0_1.5px_var(--ring)] active:scale-[0.99]"
+      className="lift group flex h-full w-full flex-col rounded-[12px] bg-surface p-4 text-left hover:shadow-[inset_0_0_0_1.5px_var(--ring),0_8px_22px_rgba(0,0,0,0.07)]"
       style={{ "--ring": mixed ? "var(--text)" : tone(color) } as React.CSSProperties}
     >
       <div className="flex items-start gap-3">
         <span
-          className="grid size-10 shrink-0 place-items-center rounded-[10px]"
+          className="grid size-10 shrink-0 place-items-center rounded-[10px] transition-transform duration-300 ease-[var(--ease-out)] group-hover:-rotate-6 group-hover:scale-105"
           style={
             mixed
               ? { background: `conic-gradient(${colors.map((c, i) => `${tone(c)} ${(i / colors.length) * 360}deg ${((i + 1) / colors.length) * 360}deg`).join(",")})`, color: "white" }
@@ -564,7 +689,7 @@ function BoxTile({
           <span className="block truncate text-[12px] text-muted">{subtitle ?? (act.length ? `${act.length} cards` : "")}</span>
         </span>
         {due > 0 && (
-          <span className="rounded-full px-2 py-0.5 text-[12px] font-bold" style={{ background: mixed ? "var(--accent)" : tone(color), color: mixed ? "var(--on-accent)" : "var(--on-solid)" }}>
+          <span key={due} className="bump rounded-full px-2 py-0.5 text-[12px] font-bold" style={{ background: mixed ? "var(--accent)" : tone(color), color: mixed ? "var(--on-accent)" : "var(--on-solid)" }}>
             {due} due
           </span>
         )}
@@ -572,13 +697,17 @@ function BoxTile({
 
       {act.length > 0 ? (
         <>
-          <div className="mt-4 flex h-1.5 overflow-hidden rounded-full bg-sunken" aria-hidden>
-            {counts.slice(1).map((n, i) =>
-              n ? <div key={i} style={{ width: `${(n / act.length) * 100}%`, background: mixed ? "var(--text)" : tone(color), opacity: 0.25 + i * 0.18 }} /> : null,
-            )}
+          <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-sunken" aria-hidden>
+            <div className="grow-x flex h-full" style={{ "--delay": "250ms" } as React.CSSProperties}>
+              {counts.slice(1).map((n, i) =>
+                n ? <div key={i} style={{ width: `${(n / act.length) * 100}%`, background: mixed ? "var(--text)" : tone(color), opacity: 0.25 + i * 0.18 }} /> : null,
+              )}
+            </div>
           </div>
           <p className="mt-2 flex items-center gap-2 text-[12px] text-muted">
-            <span>{pct}% learned</span>
+            <span>
+              <CountUp value={pct} suffix="%" /> learned
+            </span>
             {counts[0] > 0 && <span>· {counts[0]} new</span>}
             <span className="flex-1" />
             {exam != null && (
@@ -659,6 +788,11 @@ function MixedDeck({ courses, cards, onBack, onStart }: { courses: Course[]; car
               );
             })}
           </div>
+          {inScope.some(active) && (
+            <div className="mt-5">
+              <BoxLadder cards={inScope} color={null} flat />
+            </div>
+          )}
           <div className="mt-5 flex flex-wrap gap-2">
             <Button variant="primary" className="h-10 px-4 text-[14px]" disabled={!todays.length} onClick={() => onStart(todays, { practice: false, size: 20, title: "All courses · today", mixed: true })}>
               {todays.length ? `Learn today · ${todays.length}` : "Nothing left for today"}
@@ -812,6 +946,8 @@ function CourseDeck({
         </section>
       )}
 
+      {deckCards.some(active) && <BoxLadder cards={deckCards} color={color} />}
+
       <CourseSheets course={course} weeks={visibleWeeks} math={mathMode.math} onError={onError} />
 
       <div className="flex flex-wrap items-center gap-2">
@@ -828,7 +964,7 @@ function CourseDeck({
 
       {view !== "weeks" && <GlossaryPanel course={course} color={color} kind={view === "terms" ? "term" : "formula"} math={mathMode.math} />}
 
-      <section aria-label="Weeks" className={`flex flex-col gap-2.5 ${view === "weeks" ? "" : "hidden"}`}>
+      <section aria-label="Weeks" className={`stagger flex flex-col gap-2.5 ${view === "weeks" ? "" : "hidden"}`}>
         <div className="flex items-baseline gap-2">
           <h2 className="flex-1 text-[17px] font-bold sr-only">By week</h2>
           {missing.length > 0 && courseCards.length > 0 && !study.job.running && (
@@ -861,6 +997,53 @@ function CourseDeck({
   );
 }
 
+/** Wo die Karten liegen: Neu und Fach 1–5 als Säulen (wächst beim Lernen nach rechts), ab Fach 3 „gelernt“. */
+function BoxLadder({ cards, color, flat }: { cards: Card[]; color: CourseColor | null; flat?: boolean }) {
+  const counts = boxes(cards);
+  const total = counts.reduce((a, b) => a + b, 0);
+  const max = Math.max(1, ...counts.slice(1)); // Fächer untereinander vergleichen; „Neu“ ist ein voller Stapel
+  const learned = counts[3] + counts[4] + counts[5];
+  const shown = useCountUp(learned);
+  const solid = color ? tone(color) : "var(--text)";
+  const labels = ["New", "Box 1", "Box 2", "Box 3", "Box 4", "Box 5"];
+  const when = ["Not seen yet", "Comes back today", "Comes back in 1 day", "Comes back in 3 days", "Comes back in a week", "Comes back in 2 weeks"];
+  return (
+    <section aria-label="Where your cards are" className={`flex flex-wrap items-end gap-x-8 gap-y-3 ${flat ? "" : "rounded-[12px] bg-surface px-5 py-4"}`}>
+      <div className="min-w-[180px] flex-1">
+        <h2 className="text-[15px] font-bold">
+          <span className="tabular-nums">{shown}</span> of {total} cards learned
+        </h2>
+        <p className="mt-0.5 max-w-[320px] text-[12px] text-muted">
+          Each card moves up a box when you know it, and back to box 1 when you don’t. From box 3 on it counts as learned.
+        </p>
+      </div>
+      <div className="flex items-end gap-2" role="list">
+        {counts.map((n, k) => (
+          <div key={k} role="listitem" className="flex w-[46px] flex-col items-center gap-1" title={`${labels[k]}: ${n} ${n === 1 ? "card" : "cards"}. ${when[k]}.`}>
+            <span className="text-[12px] font-semibold tabular-nums">{n}</span>
+            <span className="flex h-[48px] w-full items-end rounded-[6px] bg-sunken">
+              <span
+                className="grow-y block w-full rounded-[6px] transition-[height] duration-500"
+                style={
+                  {
+                    // Wurzel-Skala, damit auch ein paar Karten in einem Fach sichtbar sind
+                    height: !n ? "0%" : k === 0 ? "100%" : `${Math.max(12, Math.sqrt(n / max) * 100)}%`,
+                    background: k === 0 ? `repeating-linear-gradient(135deg, color-mix(in srgb, ${solid} 22%, transparent) 0 4px, transparent 4px 8px)` : solid,
+                    opacity: k === 0 ? 1 : k < 3 ? 0.35 + k * 0.1 : 0.7 + (k - 3) * 0.15,
+                    "--delay": `${120 + k * 60}ms`,
+                  } as React.CSSProperties
+                }
+              />
+            </span>
+            <span className={`text-[11px] ${k >= 3 ? "font-semibold" : "text-muted"}`}>{labels[k]}</span>
+          </div>
+        ))}
+      </div>
+      <span className="sr-only">{total} cards</span>
+    </section>
+  );
+}
+
 /** Eine Woche im Study-Tab: Kopf mit Fortschritt und „Learn“, darunter die Dokumente mit Tag und Zusammenfassung/Lernhilfe. */
 function WeekCard({
   week,
@@ -885,6 +1068,7 @@ function WeekCard({
 }) {
   const study = useStudy();
   const [open, setOpen] = useState(week.current);
+  const [seen, setSeen] = useState(week.current); // erst nach dem ersten Aufklappen rendern, danach auf- und zuklappen
   const files = week.files.filter((x) => STUDY_FILE.test(x.file.name));
   const docs = files.filter((x) => isStudyDoc(x.type));
   const missing = docs.filter((x) => !study.files[fileKey(x.file)] && !study.unreadable[fileKey(x.file)]).map((x) => x.file);
@@ -902,8 +1086,15 @@ function WeekCard({
   return (
     <article className={`rounded-[12px] bg-surface ${hidden ? "opacity-60" : ""}`} style={week.current ? { boxShadow: `inset 3px 0 0 ${tone(color)}` } : undefined}>
       <div className="flex items-center gap-3 px-4 py-3">
-        <button onClick={() => setOpen(!open)} aria-expanded={open} className="flex min-w-0 flex-1 items-center gap-3 text-left">
-          <ChevronRight size={16} className={`shrink-0 text-muted transition-transform ${open ? "rotate-90" : ""}`} aria-hidden />
+        <button
+          onClick={() => {
+            setOpen(!open);
+            setSeen(true);
+          }}
+          aria-expanded={open}
+          className="flex min-w-0 flex-1 items-center gap-3 text-left"
+        >
+          <ChevronRight size={16} className={`shrink-0 text-muted transition-transform duration-200 ${open ? "rotate-90" : ""}`} aria-hidden />
           <span className="min-w-0">
             <span className="flex flex-wrap items-baseline gap-x-2">
               <span className="text-[15px] font-bold">{week.kind === "week" ? `Week ${week.n}` : weekLabel(week)}</span>
@@ -927,7 +1118,7 @@ function WeekCard({
         {started && (
           <span className="hidden w-[90px] shrink-0 sm:block" title={`${pct}% learned`}>
             <span className="block h-1.5 overflow-hidden rounded-full bg-sunken">
-              <span className="block h-full rounded-full" style={{ width: `${Math.max(pct, 3)}%`, background: tone(color) }} />
+              <span className="grow-x block h-full rounded-full transition-[width] duration-500" style={{ width: `${Math.max(pct, 3)}%`, background: tone(color), "--delay": "200ms" } as React.CSSProperties} />
             </span>
             <span className="mt-0.5 block text-right text-[11px] text-muted">{pct}% learned</span>
           </span>
@@ -955,7 +1146,8 @@ function WeekCard({
           ]}
         />
       </div>
-      {open && (
+      {seen && (
+        <div className="expand" data-open={open} inert={!open}>
         <ul className="border-t border-line-soft px-1.5 py-1">
           {files.map(({ file: f, folder }) => (
             <SummaryRow
@@ -972,6 +1164,7 @@ function WeekCard({
           ))}
           {!files.length && <li className="px-3 py-2 text-[13px] text-muted">No PDFs this week.</li>}
         </ul>
+        </div>
       )}
     </article>
   );
@@ -1346,7 +1539,7 @@ function Sheets({ courses, onNew, onError }: { courses: Course[]; onNew: () => v
           </span>
         </button>
       ) : (
-        <ul className="rounded-[12px] bg-surface px-1.5 py-1">
+        <ul className="stagger rounded-[12px] bg-surface px-1.5 py-1">
           {study.sheets.map((s) => {
             const c = byId.get(s.moduleId);
             const color: CourseColor = c ? colorOf(c) : "blue";
@@ -1920,15 +2113,17 @@ function Step({ n, title, children }: { n: number; title: string; children: Reac
 }
 
 function Segmented({ value, onChange, options, className = "" }: { value: string; onChange: (v: string) => void; options: { value: string; label: string }[]; className?: string }) {
+  const { host, thumb } = useSlidingThumb([value, options.map((o) => o.label).join("|")], '[aria-checked="true"]');
   return (
-    <div role="radiogroup" className={`inline-flex flex-wrap gap-1 rounded-[10px] bg-sunken p-1 ${className}`}>
+    <div ref={host} role="radiogroup" className={`relative inline-flex flex-wrap gap-1 rounded-[10px] bg-sunken p-1 ${className}`}>
+      <span ref={thumb} className="seg-thumb" aria-hidden />
       {options.map((o) => (
         <button
           key={o.value}
           role="radio"
           aria-checked={value === o.value}
           onClick={() => onChange(o.value)}
-          className={`h-7 rounded-[7px] px-3 text-[13px] font-medium transition-colors ${value === o.value ? "bg-surface shadow-[0_1px_2px_rgba(0,0,0,0.08)]" : "text-muted hover:text-text"}`}
+          className={`relative h-7 rounded-[7px] px-3 text-[13px] font-medium transition-colors ${value === o.value ? "" : "text-muted hover:text-text"}`}
         >
           {o.label}
         </button>

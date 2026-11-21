@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import {
   AlertTriangle,
   CalendarDays,
@@ -8,6 +8,7 @@ import {
   CalendarPlus,
   ChartPie,
   ChevronDown,
+  ChevronRight,
   GraduationCap,
   Inbox,
   Library,
@@ -32,6 +33,7 @@ import { openEvent, openNewEvent } from "./EventDialog";
 import { MensaView } from "./MensaView";
 import { StudyHub, useStudyDue } from "./StudyHub";
 import { ProgressView } from "./ProgressView";
+import { reducedMotion } from "./motion";
 import { Welcome } from "./Welcome";
 import { MensaToday } from "./MensaToday";
 import { matches, searchTerms } from "@/lib/search";
@@ -201,24 +203,46 @@ export function Overview({
   const mine = useRoomChanged(app.deadlines.filter((d) => courseIds.includes(d.courseId)));
   const searching = query.trim().length > 0;
 
+  // Seitenleiste: welcher Eintrag ist markiert? Die dunkle Markierung gleitet vom alten zum neuen Eintrag.
+  const activeNav = view === "mail" ? "mail" : searching ? null : course ? "courses" : view;
+  const navRef = useRef<HTMLElement>(null);
+  const prevNav = useRef<string | null>(activeNav);
+  useLayoutEffect(() => {
+    const prev = prevNav.current;
+    prevNav.current = activeNav;
+    const nav = navRef.current;
+    if (!nav || !activeNav || !prev || prev === activeNav || reducedMotion()) return;
+    const to = nav.querySelector<HTMLElement>(`[data-nav="${activeNav}"] > .nav-pill`);
+    const from = nav.querySelector<HTMLElement>(`[data-nav="${prev}"] > .nav-pill`);
+    if (!to || !from) return;
+    const a = from.getBoundingClientRect();
+    const b = to.getBoundingClientRect();
+    if (!a.height || !b.height || from.closest('[data-open="false"]')) return;
+    to.animate([{ transform: `translateY(${a.top - b.top}px) scaleY(${a.height / b.height})` }, { transform: "none" }], {
+      duration: 300,
+      easing: "cubic-bezier(0.23, 1, 0.32, 1)",
+    });
+  }, [activeNav]);
+
   return (
     <div className="flex h-full bg-bg">
       <aside className="flex w-[236px] shrink-0 flex-col border-r border-line bg-sidebar">
         <div className="drag h-[44px] shrink-0" />
         <ProfileMenu user={user} onEditCourses={onEditCourses} onLogout={onLogout} onSettings={() => setSettingsOpen(true)} onAccounts={() => setAccountsOpen(true)} />
-        <nav className="scroll flex-1 px-3 pb-3 pt-3" aria-label="Navigation">
+        <nav ref={navRef} className="scroll flex-1 px-3 pb-3 pt-3" aria-label="Navigation">
           <div className="flex flex-col gap-0.5">
-            <NavItem active={!searching && view === "week"} onClick={() => open("week")} icon={<CalendarDays size={15} aria-hidden />}>
+            <NavItem id="week" active={activeNav === "week"} onClick={() => open("week")} icon={<CalendarDays size={15} aria-hidden />}>
               Next 4 days
             </NavItem>
-            <NavItem active={!searching && view === "calendar"} onClick={() => open("calendar")} icon={<CalendarRange size={15} aria-hidden />}>
+            <NavItem id="calendar" active={activeNav === "calendar"} onClick={() => open("calendar")} icon={<CalendarRange size={15} aria-hidden />}>
               Calendar
             </NavItem>
-            <NavItem active={!searching && view === "new"} onClick={() => open("new")} icon={<Inbox size={15} aria-hidden />} count={newCount} countHint={`${newCount} new ${newCount === 1 ? "file" : "files"} you haven’t opened`}>
+            <NavItem id="new" active={activeNav === "new"} onClick={() => open("new")} icon={<Inbox size={15} aria-hidden />} count={newCount} countHint={`${newCount} new ${newCount === 1 ? "file" : "files"} you haven’t opened`}>
               New
             </NavItem>
             <NavItem
-              active={!searching && (view === "courses" || Boolean(course))}
+              id="courses"
+              active={activeNav === "courses"}
               onClick={() => open("courses")}
               icon={<Library size={15} aria-hidden />}
               count={modules.length}
@@ -227,22 +251,26 @@ export function Overview({
             >
               Courses
             </NavItem>
-            <NavItem active={!searching && view === "study"} onClick={() => open("study")} icon={<GraduationCap size={15} aria-hidden />} count={studyDue} countHint={`${studyDue} ${studyDue === 1 ? "card" : "cards"} to learn today`}>
-              Study
-            </NavItem>
-            <NavItem active={!searching && view === "progress"} onClick={() => open("progress")} icon={<ChartPie size={15} aria-hidden />}>
-              Progress
-            </NavItem>
-            <NavItem active={!searching && view === "places"} onClick={() => open("places")} icon={<MapPin size={15} aria-hidden />}>
-              Places
-            </NavItem>
-            <NavItem active={view === "mail"} onClick={() => open("mail")} icon={<Mail size={15} aria-hidden />} count={mailUnread} countHint={`${mailUnread} unread`}>
+            <NavItem id="mail" active={activeNav === "mail"} onClick={() => open("mail")} icon={<Mail size={15} aria-hidden />} count={mailUnread} countHint={`${mailUnread} unread`}>
               Mail
             </NavItem>
-            <NavItem active={!searching && view === "mensa"} onClick={() => open("mensa")} icon={<UtensilsCrossed size={15} aria-hidden />}>
+          </div>
+          <NavGroup id="learn" label="Learn" holdsActive={activeNav === "study" || activeNav === "progress"} count={studyDue} countHint={`${studyDue} ${studyDue === 1 ? "card" : "cards"} to learn today`}>
+            <NavItem id="study" active={activeNav === "study"} onClick={() => open("study")} icon={<GraduationCap size={15} aria-hidden />} count={studyDue} countHint={`${studyDue} ${studyDue === 1 ? "card" : "cards"} to learn today`}>
+              Study
+            </NavItem>
+            <NavItem id="progress" active={activeNav === "progress"} onClick={() => open("progress")} icon={<ChartPie size={15} aria-hidden />}>
+              Progress
+            </NavItem>
+          </NavGroup>
+          <NavGroup id="campus" label="Campus" holdsActive={activeNav === "places" || activeNav === "mensa"}>
+            <NavItem id="places" active={activeNav === "places"} onClick={() => open("places")} icon={<MapPin size={15} aria-hidden />}>
+              Places
+            </NavItem>
+            <NavItem id="mensa" active={activeNav === "mensa"} onClick={() => open("mensa")} icon={<UtensilsCrossed size={15} aria-hidden />}>
               Mensa
             </NavItem>
-          </div>
+          </NavGroup>
         </nav>
         <VpnLine />
         <SyncStatus problem={problem} job={job} lastSync={lastSync} failed={failedIds.length} onSync={sync} onStop={stop} />
@@ -477,7 +505,81 @@ function ProfileMenu({
   );
 }
 
+// Gruppen in der Seitenleiste (Learn, Campus): einklappbar, gemerkt im Browser-Speicher
+const NAV_GROUPS_KEY = "studi.navClosed";
+const navListeners = new Set<() => void>();
+function readClosed(): string {
+  try {
+    return localStorage.getItem(NAV_GROUPS_KEY) ?? "[]";
+  } catch {
+    return "[]";
+  }
+}
+function toggleGroup(id: string) {
+  let list: string[] = [];
+  try {
+    list = JSON.parse(readClosed());
+  } catch {
+    list = [];
+  }
+  list = list.includes(id) ? list.filter((x) => x !== id) : [...list, id];
+  try {
+    localStorage.setItem(NAV_GROUPS_KEY, JSON.stringify(list));
+  } catch {
+    // Speicher gesperrt: bleibt bis zum Neustart so
+  }
+  navListeners.forEach((f) => f());
+}
+
+function NavGroup({
+  id,
+  label,
+  holdsActive,
+  count = 0,
+  countHint,
+  children,
+}: {
+  id: string;
+  label: string;
+  holdsActive: boolean; // der markierte Eintrag liegt in dieser Gruppe
+  count?: number;
+  countHint?: string;
+  children: React.ReactNode;
+}) {
+  const closedRaw = useSyncExternalStore(
+    (f) => {
+      navListeners.add(f);
+      return () => navListeners.delete(f);
+    },
+    readClosed,
+    () => "[]",
+  );
+  const open = !closedRaw.includes(`"${id}"`);
+  return (
+    <div className="mt-3">
+      <button
+        onClick={() => toggleGroup(id)}
+        aria-expanded={open}
+        className="group flex h-7 w-full items-center gap-1.5 rounded-md px-2.5 text-left text-[12px] font-semibold text-muted transition-colors hover:text-text"
+      >
+        <span className="flex-1">{label}</span>
+        {!open && holdsActive && <span className="size-1.5 rounded-full bg-accent" aria-label="Current page is in this group" />}
+        {!open && count > 0 && (
+          <span className="tabular-nums" title={countHint} aria-label={countHint}>
+            {count}
+          </span>
+        )}
+        <ChevronRight size={13} className={`transition-[transform,opacity] duration-200 ${open ? "rotate-90 opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100" : ""}`} aria-hidden />
+      </button>
+      <div className="expand" data-open={open} inert={!open}>
+        <div className="flex flex-col gap-0.5 pt-0.5">{children}</div>
+      </div>
+    </div>
+  );
+}
+
 function NavItem({
+  id,
   active,
   onClick,
   icon,
@@ -486,6 +588,7 @@ function NavItem({
   warn,
   children,
 }: {
+  id: string;
   active: boolean;
   onClick: () => void;
   icon: React.ReactNode;
@@ -497,18 +600,20 @@ function NavItem({
   return (
     <button
       onClick={onClick}
+      data-nav={id}
       aria-current={active ? "page" : undefined}
-      className={`flex min-h-[34px] w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left leading-snug transition-colors ${
-        active ? "bg-accent font-semibold text-on-accent" : "hover:bg-hover"
+      className={`relative flex min-h-[34px] w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left leading-snug transition-colors duration-200 ${
+        active ? "font-semibold text-on-accent" : "hover:bg-hover"
       }`}
     >
-      <span className="flex w-4 shrink-0 justify-center">{icon}</span>
-      <span className="line-clamp-2 min-w-0 flex-1">{children}</span>
+      <span className="nav-pill origin-top" aria-hidden />
+      <span className="relative flex w-4 shrink-0 justify-center">{icon}</span>
+      <span className="relative line-clamp-2 min-w-0 flex-1">{children}</span>
       {warn ? (
-        <AlertTriangle size={13} className={active ? "" : "text-danger"} aria-label="Problem getting new files" />
+        <AlertTriangle size={13} className={`relative ${active ? "" : "text-danger"}`} aria-label="Problem getting new files" />
       ) : (
         count > 0 && (
-          <span className={`text-[12px] tabular-nums ${active ? "opacity-80" : "text-muted"}`} title={countHint} aria-label={countHint}>
+          <span key={count} className={`bump relative text-[12px] tabular-nums ${active ? "opacity-80" : "text-muted"}`} title={countHint} aria-label={countHint}>
             {count}
           </span>
         )

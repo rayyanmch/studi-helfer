@@ -453,7 +453,8 @@ function createStudy({ packaged, broadcast, ...deps }) {
       d -= 1;
     }
     const fresh = readJson(LOG, { newDays: {} }).newDays || {};
-    return { today: days[today()] || 0, streak, newToday: fresh[today()] || 0 };
+    const week = Array.from({ length: 7 }, (_, k) => days[today(k - 6)] || 0); // letzte 7 Tage, heute zuletzt
+    return { today: days[today()] || 0, streak, newToday: fresh[today()] || 0, week };
   }
 
   /**

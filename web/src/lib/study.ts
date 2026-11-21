@@ -176,6 +176,7 @@ export interface StudyStats {
   today: number; // heute abgefragt
   streak: number; // Tage am Stück
   newToday: number; // heute zum ersten Mal gesehene Karten
+  week?: number[]; // Abfragen der letzten 7 Tage, heute zuletzt (ältere Mac-App: fehlt)
 }
 
 /** Neue Karten pro Tag (wie bei Anki), damit es nicht erschlägt. */
@@ -503,7 +504,12 @@ export async function review(cardId: string, knew: boolean, practice = false) {
     const fresh = !cur.box ? 1 : 0;
     set({
       cards: { ...state.cards, [cardId]: next },
-      stats: { today: state.stats.today + 1, streak: Math.max(1, state.stats.streak), newToday: state.stats.newToday + fresh },
+      stats: {
+        today: state.stats.today + 1,
+        streak: Math.max(1, state.stats.streak),
+        newToday: state.stats.newToday + fresh,
+        week: [...(state.stats.week ?? [0, 0, 0, 0, 0, 0, 0]).slice(0, 6), state.stats.today + 1],
+      },
     });
     return;
   }

@@ -75,7 +75,7 @@ function Grid(props: {
 }) {
   if (props.list.length === 0) return null;
   return (
-    <ul className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3" aria-label="Courses">
+    <ul className="stagger mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3" aria-label="Courses">
       {props.list.map((c) => (
         <li key={c.id}>
           <CourseCard course={c} {...props} />
@@ -121,9 +121,9 @@ function CourseCard({
   return (
     <button
       onClick={() => onOpen(course.id)}
-      className="group relative flex h-full min-h-[150px] w-full flex-col overflow-hidden rounded-[12px] bg-surface p-4 pl-5 text-left transition-shadow hover:shadow-[0_0_0_1px_var(--line),0_6px_18px_rgba(0,0,0,0.07)]"
+      className="lift group relative flex h-full min-h-[150px] w-full flex-col overflow-hidden rounded-[12px] bg-surface p-4 pl-5 text-left hover:shadow-[0_0_0_1px_var(--line),0_8px_22px_rgba(0,0,0,0.08)]"
     >
-      <span aria-hidden className="absolute inset-y-0 left-0 w-[5px]" style={{ background: tone(color) }} />
+      <span aria-hidden className="absolute inset-y-0 left-0 w-[5px] transition-[width] duration-200 group-hover:w-[7px]" style={{ background: tone(color) }} />
       <span className="flex items-start gap-2">
         <span className="min-w-0 flex-1">
           <span className="block text-[17px] font-bold leading-snug">{course.name}</span>

@@ -364,7 +364,7 @@ function SmallList({ title, dishes, price, onZoom }: { title: string; dishes: Di
   return (
     <section aria-label={title}>
       <h2 className="mb-2 text-[17px] font-bold">{title}</h2>
-      <ul className="flex flex-col divide-y divide-[var(--line)] rounded-[14px] bg-surface">
+      <ul className="stagger flex flex-col divide-y divide-[var(--line)] rounded-[14px] bg-surface">
         {dishes.map((d) => (
           <li key={d.id} className={`flex items-center gap-3 px-3 py-2 ${d.soldOut ? "opacity-55" : ""}`}>
             <Visual dish={d} size={38} onClick={() => onZoom(d.id)} />

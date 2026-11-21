@@ -3,8 +3,10 @@
 // Lern-Bausteine, die Kursseite und Study-Tab teilen: Abfrage (Review), Zeile mit Zusammenfassung, Fortschritt.
 // Dazu der Reiter „Study“ auf der Kursseite (Zusammenfassungen + Sprung in den Study-Tab).
 
-import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, ArrowRight, Check, ChevronDown, ChevronRight, EyeOff, FileText, Layers, NotebookPen, RotateCcw, Square, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { flushSync } from "react-dom";
+import { AlertTriangle, ArrowRight, Check, ChevronDown, ChevronRight, EyeOff, FileText, Flame, Layers, NotebookPen, RotateCcw, Square, X } from "lucide-react";
+import { reducedMotion, useCountUp } from "./motion";
 import { Button, Notice, Spinner, colorOf, tone } from "./ui";
 import { DocTile, displayName } from "./files";
 import { MathText } from "./MathText";
@@ -30,6 +32,7 @@ import {
   studyFiles,
   suspendCard,
   useStudy,
+  useTodayCards,
   useWeeks,
   STUDY_FILE,
 } from "@/lib/study";
@@ -228,6 +231,13 @@ export function Progress({ color }: { color: CourseColor }) {
 
 // --- Abfrage --------------------------------------------------------------------
 
+type Outcome = "knew" | "again" | "skip" | "hide";
+
+/**
+ * Abfrage: Karten liegen als Stapel, Leertaste/Klick dreht die Karte um, „gewusst“ fliegt nach rechts,
+ * „nicht gewusst“ nach links, die nächste rückt aus dem Stapel nach vorn. Fortschritt in Abschnitten
+ * (grün gewusst, orange nochmal), am Ende Ring mit Anteil und Serie. Alles bricht ab, sobald man weiterdrückt.
+ */
 export function Review({
   cards,
   practice,
@@ -248,31 +258,81 @@ export function Review({
   const [i, setI] = useState(0);
   const [shown, setShown] = useState(false);
   const [stepsShown, setStepsShown] = useState(0); // Rechenweg Schritt für Schritt aufdecken
-  const [result, setResult] = useState({ knew: 0, again: 0 });
+  const [results, setResults] = useState<Outcome[]>([]);
+  const [combo, setCombo] = useState(0);
+  const [leaving, setLeaving] = useState<{ id: number; card: Card; dir: Outcome; shown: boolean; stepsShown: number } | null>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
+  const flipping = useRef(false);
   const card = cards[i];
   const finished = i >= cards.length;
   const color: CourseColor = card ? colorOfCard(card) : cards[0] ? colorOfCard(cards[0]) : "blue";
+  const steps = card?.steps ?? [];
+  const knew = results.filter((r) => r === "knew").length;
+  const again = results.filter((r) => r === "again").length;
 
-  const next = () => {
+  const advance = (dir: Outcome) => {
+    if (!card) return;
+    flipping.current = false;
+    setLeaving({ id: Date.now() + Math.random(), card, dir, shown, stepsShown });
+    setResults((r) => {
+      const n = [...r];
+      n[i] = dir;
+      return n;
+    });
     setShown(false);
     setStepsShown(0);
     setI((n) => n + 1);
   };
-  const steps = card?.steps ?? [];
-  const nextStep = () => setStepsShown((n) => Math.min(steps.length, n + 1));
-  const answer = (knew: boolean) => {
+  const answer = (k: boolean) => {
     if (!card) return;
-    void review(card.id, knew, practice);
-    setResult((r) => (knew ? { ...r, knew: r.knew + 1 } : { ...r, again: r.again + 1 }));
-    next();
+    void review(card.id, k, practice);
+    setCombo((c) => (k ? c + 1 : 0));
+    advance(k ? "knew" : "again");
   };
   const hide = () => {
     if (!card) return;
     void suspendCard(card.id, true);
-    next();
+    advance("hide");
+  };
+  const nextStep = () => setStepsShown((n) => Math.min(steps.length, n + 1));
+
+  // Umdrehen: erste Hälfte bis hochkant, dann Antwort zeigen (Höhensprung unsichtbar), zweite Hälfte zurück
+  const reveal = () => {
+    if (shown || flipping.current || !card) return;
+    const el = cardRef.current;
+    if (!el || typeof el.animate !== "function" || reducedMotion()) {
+      setShown(true);
+      return;
+    }
+    flipping.current = true;
+    // Sicherheitsnetz: läuft die Animation nicht (Fenster im Hintergrund), trotzdem umdrehen
+    const safety = window.setTimeout(() => {
+      if (!flipping.current) return;
+      first.cancel();
+      flipping.current = false;
+      setShown(true);
+    }, 600);
+    const first = el.animate([{ transform: "rotateY(0deg)" }, { transform: "rotateY(-90deg)" }], {
+      duration: 130,
+      easing: "cubic-bezier(0.55, 0, 1, 0.45)",
+      fill: "forwards",
+    });
+    first.onfinish = () => {
+      window.clearTimeout(safety);
+      if (!flipping.current) return first.cancel();
+      flushSync(() => setShown(true));
+      const second = el.animate([{ transform: "rotateY(90deg)" }, { transform: "rotateY(0deg)" }], {
+        duration: 260,
+        easing: "cubic-bezier(0.23, 1, 0.32, 1)",
+      });
+      first.cancel();
+      second.onfinish = () => {
+        flipping.current = false;
+      };
+    };
   };
 
-  // Leertaste = Antwort zeigen, 1 = nicht gewusst, 2 = gewusst, Esc = beenden (vor der Seite abfangen)
+  // Leertaste = umdrehen, 1 = nicht gewusst, 2 = gewusst, N = nächster Schritt, Esc = beenden (vor der Seite abfangen)
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
@@ -280,9 +340,12 @@ export function Review({
       if (e.key === "Escape") {
         e.stopImmediatePropagation(); // nicht auch noch die Seite schließen
         onClose();
+      } else if (finished && e.key === "Enter") {
+        e.preventDefault();
+        onClose();
       } else if (!finished && (e.key === " " || e.key === "Enter") && !shown) {
         e.preventDefault();
-        setShown(true);
+        reveal();
       } else if (!finished && !shown && (e.key === "n" || e.key === "N") && stepsShown < steps.length) {
         nextStep();
       } else if (!finished && shown && e.key === "1") answer(false);
@@ -292,113 +355,353 @@ export function Review({
     return () => window.removeEventListener("keydown", onKey, true);
   });
 
+  // Weggeflogene Kopie spätestens nach 0,6 s entfernen (falls animationend ausbleibt)
+  useEffect(() => {
+    if (!leaving) return;
+    const id = leaving.id;
+    const t = window.setTimeout(() => setLeaving((l) => (l?.id === id ? null : l)), 600);
+    return () => window.clearTimeout(t);
+  }, [leaving]);
+
+  const behind = Math.min(2, cards.length - i - 1);
+  const segmented = cards.length <= 40;
+
   return (
     <section aria-label="Review flashcards" className="mx-auto max-w-[760px]">
-      <div className="mb-4 flex items-center gap-3">
+      <div className="mb-5 flex items-center gap-3">
         <Button variant="plain" onClick={onClose} className="-ml-2">
           <X size={14} aria-hidden /> End
         </Button>
         <span className="truncate text-[13px] font-semibold">{title}</span>
-        <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-sunken" aria-hidden>
-          <div className="h-full rounded-full transition-[width] duration-300" style={{ width: `${(Math.min(i, cards.length) / cards.length) * 100}%`, background: tone(color) }} />
-        </div>
-        <span className="text-[13px] tabular-nums text-muted">
+        {segmented ? (
+          <div className="flex h-1.5 min-w-[80px] flex-1 gap-[3px]" aria-hidden>
+            {cards.map((c, k) => {
+              const r = results[k];
+              const bg =
+                r === "knew"
+                  ? "var(--ok)"
+                  : r === "again"
+                    ? "var(--c-orange)"
+                    : r
+                      ? "var(--line)"
+                      : k === i
+                        ? `color-mix(in srgb, ${tone(color)} 40%, var(--sunken))`
+                        : "var(--sunken)";
+              return <span key={c.id} className={`h-full flex-1 rounded-full transition-colors duration-300 ${r && k === i - 1 ? "seg-pop" : ""}`} style={{ background: bg }} />;
+            })}
+          </div>
+        ) : (
+          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-sunken" aria-hidden>
+            <div className="h-full rounded-full transition-[width] duration-300" style={{ width: `${(Math.min(i, cards.length) / cards.length) * 100}%`, background: tone(color) }} />
+          </div>
+        )}
+        {combo >= 3 && !finished && (
+          <span
+            key={combo}
+            className="bump inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[12px] font-bold tabular-nums"
+            style={{ background: tone(color, "soft"), color: tone(color, "ink") }}
+            title="Cards you knew in a row"
+          >
+            <Flame size={12} aria-hidden /> {combo} in a row
+          </span>
+        )}
+        <span className="shrink-0 text-[13px] tabular-nums text-muted">
           {Math.min(i + 1, cards.length)} / {cards.length}
         </span>
       </div>
 
-      {finished ? (
-        <div className="rounded-[14px] bg-surface px-6 py-12 text-center">
-          <span className="mx-auto grid size-12 place-items-center rounded-full" style={{ background: tone(color, "soft"), color: tone(color, "ink") }}>
-            <Check size={22} aria-hidden />
-          </span>
-          <h2 className="mt-3 text-[19px] font-bold">Nice, that’s it for now</h2>
-          <p className="mt-1 text-muted">
-            You knew {result.knew} of {result.knew + result.again}.
-            {result.again > 0 ? ` ${result.again} ${result.again === 1 ? "card comes" : "cards come"} back in your next round.` : ""}
-          </p>
-          <div className="mt-6 flex justify-center gap-2">
-            {onMore && <Button onClick={onMore}>Keep going</Button>}
-            <Button variant="primary" onClick={onClose}>
-              Done
-            </Button>
+      <div className="relative">
+        {finished ? (
+          <RoundDone
+            knew={knew}
+            again={again}
+            color={color}
+            colors={[...new Set(cards.map(colorOfCard))]}
+            onMore={onMore}
+            onClose={onClose}
+          />
+        ) : (
+          <div className="fc-stack relative mb-9">
+              <div
+                className="fc-behind"
+                style={{ transform: behind >= 2 ? "translateY(26px) scale(0.92)" : "translateY(0) scale(1)", opacity: behind >= 2 ? 0.45 : 0 }}
+                aria-hidden
+              />
+              <div
+                className="fc-behind"
+                style={{ transform: behind >= 1 ? "translateY(13px) scale(0.96)" : "translateY(0) scale(1)", opacity: behind >= 1 ? 0.8 : 0 }}
+                aria-hidden
+              />
+              <div
+                key={card.id}
+                ref={cardRef}
+                onClick={(e) => {
+                  if (!shown && !(e.target as HTMLElement).closest("button, a")) reveal();
+                }}
+                title={shown ? undefined : "Click or press Space to flip"}
+                className={`fc-enter relative z-[2] rounded-[14px] bg-surface px-7 py-8 shadow-[0_1px_0_var(--line),0_6px_20px_rgba(0,0,0,0.05)] ${shown ? "" : "cursor-pointer"}`}
+                style={{ borderTop: `4px solid ${tone(color)}` }}
+              >
+                <CardFace
+                  card={card}
+                  color={color}
+                  course={courseOfCard?.(card) ?? null}
+                  shown={shown}
+                  stepsShown={stepsShown}
+                  onReveal={reveal}
+                  onAnswer={answer}
+                  onHide={hide}
+                  onSkip={() => advance("skip")}
+                  onNextStep={nextStep}
+                />
+              </div>
           </div>
-        </div>
-      ) : (
-        <div key={card.id} className="card-in rounded-[14px] bg-surface px-7 py-8 shadow-[0_1px_0_var(--line)]" style={{ borderTop: `4px solid ${tone(color)}` }}>
-          <p className="flex flex-wrap items-center gap-x-2 text-[12px] text-muted">
-            {courseOfCard?.(card) && (
-              <span className="rounded-full px-2 py-px font-semibold" style={{ background: tone(color, "soft"), color: tone(color, "ink") }}>
-                {courseOfCard(card)}
+        )}
+        {leaving && (
+          <div
+            key={leaving.id}
+            className="fc-out rounded-[14px] bg-surface px-7 py-8 shadow-[0_14px_40px_rgba(0,0,0,0.14)]"
+            data-dir={leaving.dir}
+            onAnimationEnd={(e) => {
+              if (e.target === e.currentTarget) setLeaving((l) => (l?.id === leaving.id ? null : l));
+            }}
+            style={{
+              borderTop: `4px solid ${tone(colorOfCard(leaving.card))}`,
+              outline: leaving.dir === "knew" ? "2px solid var(--ok)" : leaving.dir === "again" ? "2px solid var(--c-orange)" : undefined,
+              outlineOffset: -2,
+            }}
+            inert
+            aria-hidden
+          >
+            <CardFace
+              card={leaving.card}
+              color={colorOfCard(leaving.card)}
+              course={courseOfCard?.(leaving.card) ?? null}
+              shown={leaving.shown}
+              stepsShown={leaving.stepsShown}
+            />
+            {(leaving.dir === "knew" || leaving.dir === "again") && (
+              <span
+                className="fc-stamp absolute right-5 top-5 grid size-11 place-items-center rounded-full text-white shadow-[0_4px_12px_rgba(0,0,0,0.18)]"
+                style={{ background: leaving.dir === "knew" ? "var(--ok)" : "var(--c-orange)" }}
+              >
+                {leaving.dir === "knew" ? <Check size={22} strokeWidth={3} /> : <RotateCcw size={20} strokeWidth={2.5} />}
               </span>
             )}
-            <button onClick={() => store.openFile(card.path)} className="rounded hover:text-text hover:underline" title="Open the file">
-              {displayName(card.file)}
-              {card.page > 0 ? `, page ${card.page}` : ""}
-            </button>
-            {isNewCard(card) && <span className="font-semibold text-[var(--c-green-ink)]">new</span>}
-          </p>
-          {card.type && card.type !== "concept" && (
-            <p className="mt-4 text-[12px] font-semibold" style={{ color: tone(color, "ink") }}>
-              {TYPE_LABEL[card.type]}
-            </p>
-          )}
-          <p className={`${card.type && card.type !== "concept" ? "mt-1" : "mt-4"} min-h-[56px] text-[20px] font-semibold leading-snug`}>
-            <MathText text={card.q} math={card.math} />
-          </p>
-          {steps.length > 0 && (shown || stepsShown > 0) && (
-            <ol className="mt-4 flex flex-col gap-1.5 border-l-2 pl-4 text-[15px]" style={{ borderColor: tone(color, "soft") }}>
-              {steps.slice(0, shown ? steps.length : stepsShown).map((st, k) => (
-                <li key={k} className="leading-relaxed">
-                  <span className="mr-2 text-[12px] font-semibold text-muted">{k + 1}.</span>
-                  <MathText text={st} math={card.math} />
-                </li>
-              ))}
-            </ol>
-          )}
-          {shown ? (
-            <>
-              <div className="my-5 h-px bg-line" />
-              <p className="answer-in whitespace-pre-line text-[15px] leading-relaxed">
-                <MathText text={card.a} math={card.math} />
-              </p>
-              <div className="mt-8 flex flex-wrap items-center gap-2">
-                <Button onClick={() => answer(false)}>
-                  <RotateCcw size={14} aria-hidden /> Didn’t know <Kbd>1</Kbd>
-                </Button>
-                <Button variant="primary" onClick={() => answer(true)}>
-                  <Check size={14} aria-hidden /> Knew it <Kbd>2</Kbd>
-                </Button>
-                <span className="flex-1" />
-                <Button variant="plain" className="text-[12px] text-muted" onClick={hide} title="This card won’t come up again. You can bring it back in the card list.">
-                  <EyeOff size={13} aria-hidden /> Hide card
-                </Button>
-              </div>
-            </>
-          ) : (
-            <div className="mt-8 flex flex-wrap items-center gap-2">
-              {steps.length > 0 && stepsShown < steps.length && (
-                <Button onClick={nextStep} title="Try the next step yourself first, then check it">
-                  {stepsShown === 0 ? "Show first step" : "Next step"} <Kbd>N</Kbd>
-                </Button>
-              )}
-              <Button variant="primary" onClick={() => setShown(true)}>
-                Show answer <Kbd>Space</Kbd>
-              </Button>
-              <span className="flex-1" />
-              <Button variant="plain" className="text-[12px] text-muted" onClick={next}>
-                Skip
-              </Button>
-            </div>
-          )}
-        </div>
-      )}
+          </div>
+        )}
+      </div>
       {!finished && (
-        <p className="mt-3 text-center text-[12px] text-muted">
+        <p className="mt-1 text-center text-[12px] text-muted">
           {practice ? "Practice: cards you know keep their schedule." : "Cards you know come back later, the others again today."}
         </p>
       )}
     </section>
+  );
+}
+
+/** Inhalt einer Karte (aktive Karte und die wegfliegende Kopie). Ohne Handler = nur Anzeige. */
+function CardFace({
+  card,
+  color,
+  course,
+  shown,
+  stepsShown,
+  onReveal,
+  onAnswer,
+  onHide,
+  onSkip,
+  onNextStep,
+}: {
+  card: Card;
+  color: CourseColor;
+  course: string | null;
+  shown: boolean;
+  stepsShown: number;
+  onReveal?: () => void;
+  onAnswer?: (knew: boolean) => void;
+  onHide?: () => void;
+  onSkip?: () => void;
+  onNextStep?: () => void;
+}) {
+  const steps = card.steps ?? [];
+  const typed = card.type && card.type !== "concept";
+  return (
+    <>
+      <p className="flex flex-wrap items-center gap-x-2 text-[12px] text-muted">
+        {course && (
+          <span className="rounded-full px-2 py-px font-semibold" style={{ background: tone(color, "soft"), color: tone(color, "ink") }}>
+            {course}
+          </span>
+        )}
+        <button onClick={() => store.openFile(card.path)} className="rounded hover:text-text hover:underline" title="Open the file">
+          {displayName(card.file)}
+          {card.page > 0 ? `, page ${card.page}` : ""}
+        </button>
+        {isNewCard(card) && <span className="font-semibold text-[var(--c-green-ink)]">new</span>}
+      </p>
+      {typed && (
+        <p className="mt-4 text-[12px] font-semibold" style={{ color: tone(color, "ink") }}>
+          {TYPE_LABEL[card.type!]}
+        </p>
+      )}
+      <p className={`${typed ? "mt-1" : "mt-4"} min-h-[56px] text-[20px] font-semibold leading-snug`}>
+        <MathText text={card.q} math={card.math} />
+      </p>
+      {steps.length > 0 && (shown || stepsShown > 0) && (
+        <ol className="mt-4 flex flex-col gap-1.5 border-l-2 pl-4 text-[15px]" style={{ borderColor: tone(color, "soft") }}>
+          {steps.slice(0, shown ? steps.length : stepsShown).map((st, k) => (
+            <li key={k} className="answer-in leading-relaxed">
+              <span className="mr-2 text-[12px] font-semibold text-muted">{k + 1}.</span>
+              <MathText text={st} math={card.math} />
+            </li>
+          ))}
+        </ol>
+      )}
+      {shown ? (
+        <>
+          <div className="my-5 h-px bg-line" />
+          <p className="whitespace-pre-line text-[15px] leading-relaxed">
+            <MathText text={card.a} math={card.math} />
+          </p>
+          <div className="mt-8 flex flex-wrap items-center gap-2">
+            <Button onClick={() => onAnswer?.(false)}>
+              <RotateCcw size={14} aria-hidden /> Didn’t know <Kbd>1</Kbd>
+            </Button>
+            <Button variant="primary" onClick={() => onAnswer?.(true)}>
+              <Check size={14} aria-hidden /> Knew it <Kbd>2</Kbd>
+            </Button>
+            <span className="flex-1" />
+            <Button variant="plain" className="text-[12px] text-muted" onClick={onHide} title="This card won’t come up again. You can bring it back in the card list.">
+              <EyeOff size={13} aria-hidden /> Hide card
+            </Button>
+          </div>
+        </>
+      ) : (
+        <div className="mt-8 flex flex-wrap items-center gap-2">
+          {steps.length > 0 && stepsShown < steps.length && (
+            <Button onClick={onNextStep} title="Try the next step yourself first, then check it">
+              {stepsShown === 0 ? "Show first step" : "Next step"} <Kbd>N</Kbd>
+            </Button>
+          )}
+          <Button variant="primary" onClick={onReveal}>
+            Show answer <Kbd>Space</Kbd>
+          </Button>
+          <span className="flex-1" />
+          <Button variant="plain" className="text-[12px] text-muted" onClick={onSkip}>
+            Skip
+          </Button>
+        </div>
+      )}
+    </>
+  );
+}
+
+/** Ende einer Runde: Ring füllt sich auf den Anteil „gewusst“, ein paar Punkte springen heraus, Serie und Tagesstand. */
+function RoundDone({
+  knew,
+  again,
+  color,
+  colors,
+  onMore,
+  onClose,
+}: {
+  knew: number;
+  again: number;
+  color: CourseColor;
+  colors: CourseColor[];
+  onMore?: () => void;
+  onClose: () => void;
+}) {
+  const study = useStudy();
+  const leftToday = useTodayCards().length;
+  const answered = knew + again;
+  const share = answered ? knew / answered : 0;
+  const pct = useCountUp(Math.round(share * 100), { duration: 1000, delay: 150 });
+  const R = 48;
+  const len = 2 * Math.PI * R;
+  const ringColor = colors.length > 1 ? "var(--text)" : tone(color);
+  const dots = [...colors.map((c) => tone(c)), "var(--ok)"];
+  const headline = !answered ? "Round finished" : share >= 0.9 ? "Excellent round" : share >= 0.6 ? "Nice work" : "Good start";
+  return (
+    <div className="stagger flex flex-col items-center rounded-[14px] bg-surface px-6 pb-9 pt-10 text-center">
+      <div className="relative size-[124px]">
+        {knew > 0 && (
+          <div className="burst absolute inset-0" aria-hidden>
+            {Array.from({ length: 16 }, (_, k) => (
+              <i
+                key={k}
+                style={
+                  {
+                    "--a": `${(k * 360) / 16 + (k % 2) * 8}deg`,
+                    "--d": `${82 + (k % 3) * 16}px`,
+                    "--k": k,
+                    "--c": dots[k % dots.length],
+                  } as React.CSSProperties
+                }
+              />
+            ))}
+          </div>
+        )}
+        <svg viewBox="0 0 124 124" className="size-full -rotate-90" aria-hidden>
+          <circle cx="62" cy="62" r={R} fill="none" stroke="var(--sunken)" strokeWidth="10" />
+          {share > 0 && (
+            <circle
+              className="ring-fill"
+              cx="62"
+              cy="62"
+              r={R}
+              fill="none"
+              stroke={ringColor}
+              strokeWidth="10"
+              strokeLinecap="round"
+              strokeDasharray={len}
+              strokeDashoffset={len * (1 - share)}
+              style={{ "--ring-len": len } as React.CSSProperties}
+            />
+          )}
+        </svg>
+        <span className="absolute inset-0 grid place-items-center">
+          <span>
+            <span className="block text-[28px] font-bold leading-none tabular-nums">{answered ? `${pct}%` : "–"}</span>
+            <span className="mt-1 block text-[11px] font-semibold text-muted">knew it</span>
+          </span>
+        </span>
+      </div>
+      <h2 className="mt-5 text-[21px] font-bold">{headline}</h2>
+      <p className="mt-1 text-muted">
+        {answered
+          ? `You knew ${knew} of ${answered}.${again > 0 ? ` ${again} ${again === 1 ? "card comes" : "cards come"} back in your next round.` : ""}`
+          : "You skipped every card."}
+      </p>
+      <div className="mt-5 flex flex-wrap justify-center gap-2 text-[13px]">
+        <Stat dot="var(--ok)" n={knew} label="knew" />
+        <Stat dot="var(--c-orange)" n={again} label="again" />
+        {study.stats.streak > 1 && (
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-sunken px-3 py-1 font-semibold text-[var(--c-orange-ink)]">
+            <Flame size={13} aria-hidden /> {study.stats.streak}-day streak
+          </span>
+        )}
+        {study.stats.today > 0 && <span className="inline-flex items-center rounded-full bg-sunken px-3 py-1 text-muted">{study.stats.today} cards today</span>}
+      </div>
+      <p className="mt-4 text-[13px] text-muted">{leftToday ? `${leftToday} more ${leftToday === 1 ? "card" : "cards"} for today.` : "That’s everything for today."}</p>
+      <div className="mt-6 flex justify-center gap-2">
+        {onMore && <Button onClick={onMore}>Keep going</Button>}
+        <Button variant="primary" onClick={onClose}>
+          Done <Kbd>↵</Kbd>
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function Stat({ dot, n, label }: { dot: string; n: number; label: string }) {
+  const v = useCountUp(n, { duration: 600, delay: 300 });
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-full bg-sunken px-3 py-1">
+      <span className="size-2 rounded-full" style={{ background: dot }} />
+      <strong className="font-semibold tabular-nums">{v}</strong> <span className="text-muted">{label}</span>
+    </span>
   );
 }
 

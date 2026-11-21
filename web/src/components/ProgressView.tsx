@@ -8,6 +8,7 @@
 import { type ReactNode, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ArrowRight, CalendarPlus, ChevronDown, FileText, Flag, GraduationCap, Minus, NotebookPen, Plus } from "lucide-react";
 import { Button, Swatch, colorOf, tone } from "./ui";
+import { reducedMotion } from "./motion";
 import { openNewEvent } from "./EventDialog";
 import type { CourseColor } from "@/lib/mock-data";
 import type { DocType } from "@/lib/doctype";
@@ -203,7 +204,7 @@ function ThisWeek({ model, onWeek, onEcts }: { model: ProgressModel; onWeek: (m:
           })}
       </div>
 
-      <ul className="mt-3">
+      <ul className="stagger mt-3">
         {sorted.map((r) => (
           <ShareRow key={r.m.course.id} module={r.m} week={r.w} pct={pct[rows.indexOf(r)]} hours={r.hours} onWeek={onWeek} onEcts={onEcts} />
         ))}
@@ -357,7 +358,7 @@ function Track({ model, onWeek }: { model: ProgressModel; onWeek: (m: ModulePlan
         </div>
         <Legend />
       </div>
-      <ul className="mt-2">
+      <ul className="stagger mt-2">
         {model.modules.map((m) => (
           <TrackRow key={m.course.id} model={model} module={m} onWeek={onWeek} />
         ))}
@@ -898,6 +899,16 @@ function BallButton({ module: m, week: w, size, onClick }: { module: ModulePlan;
   const color = colorOf(m.course);
   const value = w.progress;
   const label = w.level != null ? LEVELS[w.level].label : w.source === "reviewed" ? "Done" : w.source === "cards" ? `${LEVELS[Math.round(w.auto * 4)].label}, from your cards` : "Not rated";
+  // Neue Einstufung: Kreis springt kurz auf (nicht beim ersten Zeigen)
+  const q = Math.round(value * 4);
+  const ball = useRef<HTMLSpanElement>(null);
+  const seen = useRef(q);
+  useEffect(() => {
+    if (seen.current === q) return;
+    seen.current = q;
+    if (!reducedMotion())
+      ball.current?.animate([{ transform: "scale(1)" }, { transform: "scale(1.3)" }, { transform: "scale(1)" }], { duration: 340, easing: "cubic-bezier(0.23, 1, 0.32, 1)" });
+  }, [q]);
   return (
     <button
       onClick={(e) => onClick(anchorOf(e))}
@@ -907,7 +918,9 @@ function BallButton({ module: m, week: w, size, onClick }: { module: ModulePlan;
       className="press grid shrink-0 place-items-center rounded-full p-[3px] hover:bg-hover"
       style={w.current ? { boxShadow: `0 0 0 1.5px ${tone(color, "ink")}` } : undefined}
     >
-      <Harvey value={value} color={color} size={size} auto={w.source === "cards"} dim={!w.past && !w.current && value === 0} />
+      <span ref={ball} className="grid">
+        <Harvey value={value} color={color} size={size} auto={w.source === "cards"} dim={!w.past && !w.current && value === 0} />
+      </span>
     </button>
   );
 }
