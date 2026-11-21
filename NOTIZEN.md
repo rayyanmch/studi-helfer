@@ -7,6 +7,7 @@ Gemeinsames Gedächtnis für alle KI-Agenten und Menschen im Projekt. Wird über
 
 Wer gerade woran arbeitet (Person, Aufgabe, betroffene Dateien). Eintragen beim Start, löschen wenn fertig.
 
+- **Rayyans Agent (2. Sitzung): Lösung neben dem Blatt + Sync-Intervall** (2026-11-21). Neu: `web/src/lib/solutions.ts`. Klein geändert: `files.tsx` (FileRow zeigt „Solution“-Chip), `ModuleView.tsx` (Dateilisten), `mock-data.ts` (zwei Beispiel-Lösungen), `Settings.tsx` (Intervall-Auswahl), `app-store.ts`/`desktop.ts` (`schedule.every`), `desktop/lib/backend.js` (launchd `StartInterval`), `desktop/main.js` (nur `setSchedule`), `studi_sync/sync.py` (keine Zufallsverzögerung bei kurzen Intervallen).
 - **Rayyans Agent: Mensa-Tab** (2026-11-21). Neu: `web/src/lib/mensa.ts` (Abruf von CloudMensa, Zwischenspeicher), `web/src/components/MensaView.tsx`. Klein geändert: `Overview.tsx` (Eintrag „Mensa“ in der Seitenleiste + Ansicht), ggf. Menübefehl in `desktop/main.js` (nur eine Zeile). Kein Eingriff in Mikas Google-/Mail-Dateien.
 
 
