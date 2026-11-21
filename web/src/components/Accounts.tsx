@@ -80,7 +80,7 @@ export function Accounts({ onClose }: { onClose: () => void }) {
             <Row
               icon={<AccountChip id="uni" size={34} />}
               title="University mail"
-              sub={uni?.connected ? uni.address : "Your student mailbox at the University of Cologne"}
+              sub={uni?.connected ? uni.address : "Uses your ILIAS login, no extra password needed"}
               right={
                 uni?.connected ? (
                   <div className="flex items-center gap-3">
