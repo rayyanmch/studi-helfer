@@ -43,6 +43,14 @@ export interface Course {
   renamed?: boolean; // Name selbst vergeben
   iliasUrl?: string | null; // Kursseite in ILIAS
   slots?: ClassSlot[]; // Wochenplan aus den Orga-Folien (nur Mac-App); Wahltermine lassen sich auswählen
+  credits?: CourseCredits | null; // Leistungspunkte aus den Orga-Folien; fehlt = unbekannt (Progress-Tab fragt nach)
+}
+
+/** Leistungspunkte (ECTS) eines Moduls mit Fundstelle („12 Leistungspunkte“ in „BWL26_0_Folien.pdf“). */
+export interface CourseCredits {
+  value: number;
+  source: string; // Dateiname
+  evidence: string; // Textstelle
 }
 
 /**
@@ -110,6 +118,7 @@ export const TARGET_FOLDER = "~/Uni";
 export const courses: Course[] = [
   {
     id: "softwaretechnik",
+    credits: { value: 9, source: "01 Introduction.pdf", evidence: "Credits: 9 ECTS (90 + 180h)" },
     name: "Software Engineering",
     short: "SE",
     lecturer: "Prof. Dr. Wagner",
@@ -160,6 +169,7 @@ export const courses: Course[] = [
   },
   {
     id: "bwl",
+    credits: { value: 12, source: "BWL Orga.pdf", evidence: "12 Leistungspunkte" },
     name: "Business Administration",
     short: "BA",
     lecturer: "Prof. Dr. Brandt",

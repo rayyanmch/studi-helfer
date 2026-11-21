@@ -10,7 +10,7 @@
 // Alle Texte, die von hier kommen (message, time, title, updated), sind englisch.
 // Das Uni-Passwort geht nur an login() und landet im macOS-Schlüsselbund. Nie speichern oder loggen.
 
-import type { ClassSlot, Course, CourseColor, CourseFile, CustomEvent, Deadline, Folder } from "./mock-data";
+import type { ClassSlot, Course, CourseColor, CourseCredits, CourseFile, CustomEvent, Deadline, Folder } from "./mock-data";
 
 /** Fehlercodes, die die Oberfläche übersetzen sollte. */
 export type DesktopErrorCode =
@@ -140,6 +140,7 @@ export interface DesktopCourse extends Omit<Course, "folders" | "color" | "semes
   iliasUrl: string | null;
   parts: { courseId: string; label: string; folder: string | null }[];
   slots: ClassSlot[]; // Wochenplan aus den Orga-Folien (leer, wenn nichts gefunden)
+  credits?: CourseCredits | null; // Leistungspunkte aus den Orga-Folien (orga.py), null = nicht gefunden
   folders: DesktopFolder[]; // lecturer ist leer, total = Anzahl lokaler Dateien
 }
 

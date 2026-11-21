@@ -318,12 +318,14 @@ interface StudyState {
   job: StudyJob;
   stats: StudyStats;
   sheetRun: SheetRun;
-  target: StudyTarget | null; // Sprungziel aus der Kursseite
   unreadable: Record<string, boolean>; // Dateien ohne Text (Handschrift, Scans)
   weekTitles: Record<string, Record<string, string>>; // Modul → Wochen-Key → KI-Titel
 }
 
-export type StudyTarget = { screen: "deck"; moduleId: string } | { screen: "new-sheet"; moduleId?: string };
+export type StudyTarget =
+  | { screen: "deck"; moduleId: string }
+  | { screen: "new-sheet"; moduleId?: string; weeks?: string[] }
+  | { screen: "week"; moduleId: string; weekKey: string }; // Karten einer Woche lernen (aus dem Progress-Tab)
 
 const IDLE: StudyJob = { running: false, total: 0, done: 0, current: [], failed: [], etaSeconds: null };
 
@@ -341,7 +343,6 @@ let state: StudyState = {
   job: IDLE,
   stats: { today: 0, streak: 0, newToday: 0 },
   sheetRun: { running: false },
-  target: null,
   unreadable: {},
   weekTitles: {},
 };
@@ -432,14 +433,18 @@ async function refresh() {
 
 // ------------------------------------------------------------------ Navigation (Kursseite → Study-Tab)
 
+// Das Sprungziel liegt bewusst außerhalb des Speichers: StudyHub holt es beim ersten Rendern ab, und ein Speicher-Update
+// mitten im Rendern löst bei React „Cannot update a component while rendering a different component“ aus.
+let pendingTarget: StudyTarget | null = null;
+
 export function openStudy(target: StudyTarget) {
-  set({ target });
+  pendingTarget = target;
   if (typeof window !== "undefined") window.dispatchEvent(new Event("studi:open-study"));
 }
 
 export function takeTarget(): StudyTarget | null {
-  const t = state.target;
-  if (t) set({ target: null });
+  const t = pendingTarget;
+  pendingTarget = null;
   return t;
 }
 

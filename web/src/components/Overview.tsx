@@ -6,6 +6,7 @@ import {
   CalendarDays,
   CalendarRange,
   CalendarPlus,
+  ChartPie,
   ChevronDown,
   GraduationCap,
   Inbox,
@@ -30,6 +31,7 @@ import { ModuleView } from "./ModuleView";
 import { openEvent, openNewEvent } from "./EventDialog";
 import { MensaView } from "./MensaView";
 import { StudyHub, useStudyDue } from "./StudyHub";
+import { ProgressView } from "./ProgressView";
 import { Welcome } from "./Welcome";
 import { MensaToday } from "./MensaToday";
 import { matches, searchTerms } from "@/lib/search";
@@ -60,7 +62,7 @@ const LONG = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", 
 // Titel ohne „Submit “ vorne, für enge Stellen
 const bare = (t: string) => t.replace(/^Submit /, "");
 
-type View = "week" | "calendar" | "places" | "new" | "courses" | "mail" | "mensa" | "study" | string; // string = Modul-Id
+type View = "week" | "calendar" | "places" | "new" | "courses" | "mail" | "mensa" | "study" | "progress" | string; // string = Modul-Id
 
 function parseDay(iso: string) {
   const [y, m, d] = iso.split("-").map(Number);
@@ -180,8 +182,16 @@ export function Overview({
       setQuery("");
       setView("study");
     };
+    const goProgress = () => {
+      setQuery("");
+      setView("progress");
+    };
     window.addEventListener("studi:open-study", go);
-    return () => window.removeEventListener("studi:open-study", go);
+    window.addEventListener("studi:open-progress", goProgress);
+    return () => {
+      window.removeEventListener("studi:open-study", go);
+      window.removeEventListener("studi:open-progress", goProgress);
+    };
   }, []);
 
   const course = list.find((c) => c.id === view);
@@ -219,6 +229,9 @@ export function Overview({
             </NavItem>
             <NavItem active={!searching && view === "study"} onClick={() => open("study")} icon={<GraduationCap size={15} aria-hidden />} count={studyDue} countHint={`${studyDue} ${studyDue === 1 ? "card" : "cards"} to learn today`}>
               Study
+            </NavItem>
+            <NavItem active={!searching && view === "progress"} onClick={() => open("progress")} icon={<ChartPie size={15} aria-hidden />}>
+              Progress
             </NavItem>
             <NavItem active={!searching && view === "places"} onClick={() => open("places")} icon={<MapPin size={15} aria-hidden />}>
               Places
@@ -303,6 +316,7 @@ export function Overview({
                 {view === "courses" && <CoursesView onOpen={open} onEditCourses={onEditCourses} />}
                 {view === "mensa" && <MensaView />}
                 {view === "study" && <StudyHub />}
+                {view === "progress" && <ProgressView onOpenCourse={open} />}
                 {course && (
                   <ModuleView
                     key={course.id}

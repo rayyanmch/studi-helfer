@@ -8,6 +8,7 @@ Findet in den ersten Dateien eines Kurses (Organisatorisches, Modulinformationen
   - Beginn („Beginn: Donnerstag, 15.10.2026“, „Übungen beginnen in der zweiten Woche“),
   - Ausfälle („Die Vorlesung am 24.11. entfällt“) und Einzeltermine („Am Freitag, 16.10. findet zudem von 12 bis
     13:30 Uhr eine Veranstaltung statt“, Probeklausur, Klausureinsicht).
+Außerdem die Leistungspunkte des Moduls („12 Leistungspunkte“, „6 ECTS“, „ECTS: 9“) für den Progress-Tab.
 Dazu die eigenen ILIAS-Gruppen („Group 3“, „Gruppe 6: Donnerstag 14:00 - 15:30“): Nummer und, falls im Titel, Zeit.
 Klausuren und Abgaben mit Datum findet sheets.py (gleiche Textreparatur).
 
@@ -27,7 +28,7 @@ from .deadlines import PARENTS
 from .sheets import DEADLINE_WORDS, EVENT_WORDS, SOLUTION, _find_dates, _pdf_text
 from .textfix import WEEKDAY_RE, fix_year, normalize, weekday_before, weekday_of
 
-RULES_VERSION = 2  # 2: Überschrift „ROOM“ ist kein Raum, „start in lecture week 3“ gilt für die genannte Art
+RULES_VERSION = 4  # 2: Überschrift „ROOM“ ist kein Raum, „start in lecture week 3“ gilt für die genannte Art; 3: Leistungspunkte (credits); 4: beides zusammen
 CACHE = DATA_DIR / "orga-cache.json"
 OUTPUT = DATA_DIR / "orga-events.json"
 MAX_PAGES = 25  # Orga-Folien: Zeiten stehen meist auf den ersten 5–15 Folien
@@ -344,6 +345,42 @@ def find_markers(lines: list[str], ref: date) -> dict[str, Any]:
     return {"starts": starts, "weekOffsets": week_offsets, "cancellations": cancellations}
 
 
+# Leistungspunkte: „12 Leistungspunkte“, „6 ECTS“, „9 CP“, „ECTS: 6“, „Credits: 7,5“
+CREDITS_AFTER = re.compile(
+    r"(?<![\d.,])(\d{1,2}(?:[.,]5)?)\s*(?:ECTS(?:[- ]?(?:Punkte|Credits?|points?))?|Leistungspunkte?n?|LP\b|CP\b|credit ?points?|credits?\b)",
+    re.I)
+CREDITS_BEFORE = re.compile(r"\b(?:ECTS(?:[- ]?Punkte)?|Leistungspunkte|LP|CP|Credits?)\s*[:=]\s*(\d{1,2}(?:[.,]5)?)(?![\d.,])", re.I)
+# Zeilen über andere Veranstaltungen oder den ganzen Studiengang („Requirements Engineering (9 ECTS, Master)“, „30 ECTS pro Semester“)
+CREDITS_SKIP = re.compile(r"\b(master|bachelorarbeit|masterarbeit|thesis|studiengang|insgesamt|gesamt|pro semester|per semester|je semester|wahlpflicht|summer term|sommersemester)\b", re.I)
+
+
+def _plain(text: str) -> str:
+    return re.sub(r"[\x00-\x1f\x7f-\x9f]", "", text).strip()[:160]
+
+
+def find_credits(lines: list[str]) -> list[dict[str, Any]]:
+    """Leistungspunkte mit Fundstelle; labelled = steht unter/hinter „Credits:“ (sicherer als Fließtext)."""
+    out = []
+    for i, line in enumerate(lines):
+        nxt = lines[i + 1] if i + 1 < len(lines) else ""
+        prev = lines[i - 1] if i else ""
+        # Folien brechen mitten im Satz um: „Software Engineering (9“ / „ECTS, Bachelor)“
+        joined = f"{line} {nxt}" if line.count("(") > line.count(")") or re.search(r"\d$", line) else line
+        if CREDITS_SKIP.search(joined):
+            continue
+        label = bool(re.search(r"\b(credits?|leistungspunkte|ects)\s*:?\s*$", prev, re.I))
+        for m in CREDITS_AFTER.finditer(joined):
+            if m.start() < len(line):
+                value = float(m.group(1).replace(",", "."))
+                if 2 <= value <= 20:
+                    out.append({"value": value, "labelled": label, "evidence": _plain(joined)})
+        for m in CREDITS_BEFORE.finditer(joined):
+            value = float(m.group(1).replace(",", "."))
+            if 2 <= value <= 20 and m.start() < len(line):
+                out.append({"value": value, "labelled": True, "evidence": _plain(joined)})
+    return out
+
+
 def find_extras(lines: list[str], ref: date) -> list[dict[str, Any]]:
     """Einzeltermine mit Datum und Uhrzeit, die keine Abgabe/Klausur sind (die findet sheets.py)."""
     out = []
@@ -425,7 +462,7 @@ def analyze_file(path: Path) -> dict[str, Any]:
     lines = [normalize(raw) for raw in text.splitlines()]
     lines = [ln for ln in lines if ln]
     default = "exercise" if re.search(r"(übung|uebung|exercise|ub_?\d|tutor)", path.stem, re.I) else "lecture"
-    return {"slots": find_slots(lines, default), **find_markers(lines, ref), "extras": find_extras(lines, ref)}
+    return {"slots": find_slots(lines, default), **find_markers(lines, ref), "extras": find_extras(lines, ref), "credits": find_credits(lines)}
 
 
 def _clean(slot: dict[str, Any]) -> dict[str, Any]:
@@ -437,10 +474,10 @@ def refresh() -> dict[str, Any]:
     cache: dict[str, Any] = read_json(CACHE, {})
     courses: dict[str, dict[str, Any]] = {}
     seen: set[str] = set()
-    empty = {"slots": [], "starts": {}, "weekOffsets": {}, "cancellations": [], "extras": []}
+    empty = {"slots": [], "starts": {}, "weekOffsets": {}, "cancellations": [], "extras": [], "credits": []}
 
     def bucket(cid: str) -> dict[str, Any]:
-        return courses.setdefault(cid, {"slots": [], "starts": {}, "weekOffsets": {}, "cancellations": [], "extras": [], "files": []})
+        return courses.setdefault(cid, {"slots": [], "starts": {}, "weekOffsets": {}, "cancellations": [], "extras": [], "credits": [], "files": []})
 
     for course, path in candidates(cfg):
         try:
@@ -470,6 +507,7 @@ def refresh() -> dict[str, Any]:
         b["weekOffsets"].update(entry["weekOffsets"])
         b["cancellations"] += entry["cancellations"]
         b["extras"] += [{**x, "source": path.name, "file": str(path)} for x in entry["extras"]]
+        b["credits"] += [{**x, "source": path.name} for x in entry.get("credits", [])]
 
     for b in courses.values():
         b["slots"] = [{k: v for k, v in _clean(s).items() if k != "conf"} for s in _merge(b["slots"])]

@@ -500,6 +500,7 @@ async function listFiles() {
   const names = Object.fromEntries([...perCourse].map(([id, v]) => [id, v.files.map((f) => path.basename(f.rel))]));
   const { modules, moduleOfCourse } = currentModules(cfg, names);
   const { slotsByModule } = scheduleFor(cfg, modules, moduleOfCourse);
+  const credits = creditsByModule(modules);
 
   return modules.map((m) => {
     const cats = new Map();
@@ -567,6 +568,7 @@ async function listFiles() {
       iliasUrl: main ? `https://www.ilias.uni-koeln.de/ilias/goto.php/${main.kind}/${main.refId}` : null,
       parts: m.parts.map((p) => ({ courseId: p.courseId, label: p.label, folder: perCourse.get(p.courseId)?.root ?? null })),
       slots: slotsByModule.get(m.id) || [],
+      credits: credits.get(m.id) ?? null,
       folders,
     };
   });
@@ -580,6 +582,28 @@ const SHEET_DEADLINES = path.join(DATA_DIR, "sheet-deadlines.json");
 const ORGA_EVENTS = path.join(DATA_DIR, "orga-events.json");
 
 /** Stundenplan aus den Orga-Folien (Wochentermine, eigene Gruppe, gewählte Wahltermine). */
+/**
+ * Leistungspunkte je Modul aus den Orga-Folien (orga.py, „12 Leistungspunkte“, „Credits: 9 ECTS“).
+ * Fundstellen unter „Credits:“ gewinnen, sonst der häufigste Wert; der Hauptkurs zählt vor Übung/Gruppe.
+ */
+function creditsByModule(modules) {
+  const orga = readJson(ORGA_EVENTS, null);
+  const out = new Map();
+  if (!orga || !orga.courses) return out;
+  for (const m of modules) {
+    const ids = [m.mainCourseId, ...m.parts.map((p) => p.courseId)].filter((id, i, a) => id && a.indexOf(id) === i);
+    const hits = ids.flatMap((id) => orga.courses[id]?.credits || []);
+    if (!hits.length) continue;
+    const pool = hits.some((h) => h.labelled) ? hits.filter((h) => h.labelled) : hits;
+    const count = new Map();
+    for (const h of pool) count.set(h.value, (count.get(h.value) || 0) + 1);
+    const value = [...count.entries()].sort((a, b) => b[1] - a[1])[0][0];
+    const hit = pool.find((h) => h.value === value);
+    out.set(m.id, { value, source: hit.source, evidence: hit.evidence });
+  }
+  return out;
+}
+
 function scheduleFor(cfg, modules, moduleOfCourse) {
   const moduleOf = (courseId) => (String(courseId).startsWith("mod-") ? courseId : moduleOfCourse.get(courseId));
   return buildSchedule({ orga: readJson(ORGA_EVENTS, null), cfg, moduleOf, modules });

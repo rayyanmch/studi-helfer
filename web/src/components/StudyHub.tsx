@@ -36,6 +36,7 @@ import {
   type Include,
   type SheetDepth,
   type SheetTone,
+  type StudyTarget,
   TONES,
   QUICK_INCLUDE,
   QUICK_INCLUDE_MATH,
@@ -111,7 +112,7 @@ export function StudyHub() {
   const pathsKey = courses.flatMap((c) => studyFiles(c).map(fileKey)).join("\n");
   const [screen, setScreen] = useState<Screen>(() => {
     const t = takeTarget();
-    return t ? (t.screen === "deck" ? { kind: "deck", moduleId: t.moduleId } : { kind: "new-sheet", moduleId: t.moduleId }) : { kind: "home" };
+    return t ? screenFor(t, courses, study) : { kind: "home" };
   });
   const [error, setError] = useState<string | null>(null);
 
@@ -119,15 +120,15 @@ export function StudyHub() {
     void loadStudy(pathsKey ? pathsKey.split("\n") : []);
   }, [pathsKey]);
 
-  // Sprung aus der Kursseite, während der Tab schon offen ist
+  // Sprung aus der Kursseite oder dem Progress-Tab, während der Tab schon offen ist
   useEffect(() => {
     const onOpen = () => {
       const t = takeTarget();
-      if (t) setScreen(t.screen === "deck" ? { kind: "deck", moduleId: t.moduleId } : { kind: "new-sheet", moduleId: t.moduleId });
+      if (t) setScreen(screenFor(t, courses, study));
     };
     window.addEventListener("studi:open-study", onOpen);
     return () => window.removeEventListener("studi:open-study", onOpen);
-  }, []);
+  }, [courses, study]);
 
   const cards = allCards(courses, study);
   const byId = new Map(courses.map((c) => [c.id, c]));
@@ -218,6 +219,31 @@ export function StudyHub() {
       )}
     </div>
   );
+}
+
+/** Sprungziel → Ansicht. „week“ startet gleich die Karten dieser Woche (heute fällige, sonst alle zum Üben). */
+function screenFor(t: StudyTarget, courses: Course[], study: ReturnType<typeof useStudy>): Screen {
+  if (t.screen === "deck") return { kind: "deck", moduleId: t.moduleId };
+  if (t.screen === "new-sheet") return { kind: "new-sheet", moduleId: t.moduleId, weeks: t.weeks };
+  const course = courses.find((c) => c.id === t.moduleId);
+  if (!course) return { kind: "home" };
+  const back: Screen = { kind: "deck", moduleId: course.id };
+  const week = weeksOf(course, { today: study.today || new Date().toISOString().slice(0, 10) }).find((w) => w.key === t.weekKey);
+  if (!week) return back;
+  const keys = new Set(week.files.map((x) => fileKey(x.file)));
+  const pool = cardsOf([...keys], study, course.id).filter(active);
+  if (!pool.length) return back;
+  const todays = todaysSet(allCards(courses, study), study.today, study.stats).all.filter((c) => c.moduleId === course.id && keys.has(c.path));
+  const practice = todays.length === 0;
+  const ordered = newLast(practice ? pool : todays);
+  return {
+    kind: "review",
+    cards: ordered.slice(0, 20),
+    rest: ordered.slice(20),
+    practice,
+    title: `${course.name} · ${weekLabel(week, false)}${practice ? " · practice" : ""}`,
+    back,
+  };
 }
 
 /** Neue Karten ans Ende, damit Wiederholungen zuerst drankommen. */

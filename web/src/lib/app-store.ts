@@ -234,6 +234,7 @@ function toCourse(c: DesktopCourse): Course {
     semester: c.semester === "past" ? "past" : "current",
     parts: c.parts.map((p) => ({ id: p.courseId, label: p.label })),
     slots: c.slots ?? [],
+    credits: c.credits ?? null,
     folders: c.folders.map((f) => ({
       id: f.id,
       name: f.name,

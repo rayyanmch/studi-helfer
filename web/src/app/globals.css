@@ -329,6 +329,12 @@ textarea.outline-none:focus-visible {
   animation: menu-in 160ms var(--ease-out);
 }
 
+/* Kleine Fenster am Knopf (Progress-Tab): gehen vom Knopf aus auf */
+[role="dialog"].popover {
+  transform-origin: var(--menu-origin, top center);
+  animation: menu-in 160ms var(--ease-out);
+}
+
 /* Meldungen unten links: gleiten herein, ohne neu zu starten, wenn sich der Text ändert */
 .toast {
   transition:
@@ -430,6 +436,7 @@ label:has(> input[type="radio"]) {
   .card-in,
   [role="dialog"][aria-modal="true"],
   [role="dialog"].sheet-in,
+  [role="dialog"].popover,
   [role="menu"] {
     animation-name: fade-in !important;
   }
