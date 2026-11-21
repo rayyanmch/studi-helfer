@@ -6,6 +6,7 @@ Gemeinsames Gedächtnis für alle KI-Agenten und Menschen im Projekt. Wird über
 ## In Arbeit
 
 Wer gerade woran arbeitet (Person, Aufgabe, betroffene Dateien). Eintragen beim Start, löschen wenn fertig.
+- 2026-11-21 abends, Rayyan (Agent 2): **App heißt jetzt „Ordo“** (statt Studi-Helfer). Nur sichtbare Texte: `layout.tsx`, `Login`, `Overview` (Seitenleiste), `Welcome`, `UpdateNotice`, `VpnPanel`, `Accounts`, `PlacesView`, `desktop/main.js` (Menü/Fenster), `updater.js`, `google.js`, `vpn.js`, `study-sheet.js`, `places.js`, `sync.py`, `vpnauto.py`, `package.json` (`build.productName`), `app-build.yml`, READMEs. Interne Kennungen (Schlüsselbund, Datenordner, launchd, appId) bleiben.
 
 - 2026-11-21 abends, Rayyan (Agent): **Neuer Tab „Progress“ (Lern-Tracker)**: Stoffanteil je Modul diese Woche (ECTS + echte Stoffmenge), Wochen bis zur Klausur mit Fortschritt je Woche, „on track?“. Neue Dateien `web/src/components/ProgressView.tsx`, `web/src/lib/progress.ts`; klein in `Overview.tsx` (NavItem + Ansicht), `StudyHub.tsx`/`study.ts` (Sprung „Woche lernen“), `orga.py` + `backend.js` (ECTS aus Orga-Folien), `mock-data.ts` (optional `credits`).
 
