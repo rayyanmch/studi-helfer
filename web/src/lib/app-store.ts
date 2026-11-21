@@ -206,11 +206,22 @@ export function etaLabel(job: StoreJob | null, now = Date.now()): string | null 
   return `About ${h} h ${min % 60} min left`;
 }
 
+// Kurzform nur für enge Stellen (Wochenstreifen, 4 Wochen). Der Name selbst (und damit der Ordner in ~/Uni) bleibt.
+const ABBREVIATIONS: [RegExp, string][] = [
+  [/\bSoftwaretechnik\b/i, "SE"],
+  [/\bSoftware Engineering\b/i, "SE"],
+];
+function abbreviate(name: string): string {
+  let n = name;
+  for (const [re, short] of ABBREVIATIONS) n = n.replace(re, short);
+  return n;
+}
+
 function toCourse(c: DesktopCourse): Course {
   return {
     id: c.id,
     name: c.name,
-    short: c.name,
+    short: c.renamed ? c.name : abbreviate(c.name), // selbst gewählter Name gilt überall
     fullName: c.fullName,
     renamed: c.renamed,
     lecturer: "",
@@ -275,7 +286,16 @@ function toDeadline(d: DesktopDeadline): Deadline {
   // ILIAS-Sitzungen einer Reihe („ISM - Vorlesung“, jeden Donnerstag 10:00) lassen sich zusammen ausblenden
   const seriesId =
     d.category === "session" ? `sess|${d.moduleId ?? OTHER_ID}|${d.title.toLowerCase()}|${new Date(`${d.date}T12:00:00`).getDay()}|${d.time}` : undefined;
-  return { id: d.id, courseId: d.moduleId ?? OTHER_ID, title: d.title, date: d.date, time: d.time, kind: d.kind, source, seriesId, location: d.location ?? undefined };
+  const title = d.kind === "klausur" ? examTitle(d.title) : d.title; // nur Anzeige, die Id bleibt
+  return { id: d.id, courseId: d.moduleId ?? OTHER_ID, title, date: d.date, time: d.time, kind: d.kind, source, seriesId, location: d.location ?? undefined };
+}
+
+const ORDINAL: Record<string, string> = { first: "1st", second: "2nd", third: "3rd" };
+/** „1st date“, „First exam“, „Exam (2nd date)“ → „Exam · 1st date“; allein sagten sie nicht, dass es um die Klausur geht. */
+function examTitle(title: string): string {
+  const m = title.trim().match(/^(?:exam\s*\(\s*)?(first|second|third|\d+(?:st|nd|rd|th))\s+(?:date|exam|attempt)\s*\)?$/i);
+  if (!m) return title;
+  return `Exam · ${ORDINAL[m[1].toLowerCase()] ?? m[1].toLowerCase()} date`;
 }
 
 /** Kalender neu zusammensetzen (erkannte − ausgeblendete + eigene Termine), Sammelmodul „Other“ und Digest anpassen. */
@@ -309,7 +329,8 @@ function buildDigests(courses: Course[], deadlines: Deadline[], done: string[], 
       const when =
         days === 0 ? "today" : days === 1 ? "tomorrow" : days < 7 ? WEEKDAYS[d.getDay()] : d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
       const time = next.time === "all day" ? "" : ` ${next.time}`;
-      text += `${text ? " " : ""}${next.kind === "klausur" ? "Exam" : "Next up"}: ${next.title}, ${when}${time}.`;
+      const label = next.kind === "klausur" ? (/^exam\b/i.test(next.title) ? next.title : `Exam: ${next.title}`) : `Next up: ${next.title}`;
+      text += `${text ? " " : ""}${label}, ${when}${time}.`;
     }
     if (text) out[c.id] = text;
   }

@@ -20,7 +20,7 @@ import {
   WifiOff,
   X,
 } from "lucide-react";
-import { Button, Notice, Spinner, Swatch, colorOf, inDays, nameOf, shortOf, tone } from "./ui";
+import { Button, Notice, Spinner, Swatch, colorOf, examLabel, examPart, inDays, nameOf, shortOf, tone } from "./ui";
 import { CheckButton, FileRow, Highlight, displayName } from "./files";
 import { CoursesView } from "./CoursesView";
 import { ModuleView } from "./ModuleView";
@@ -677,8 +677,8 @@ function WeekView({
                   : open.length === 0
                   ? "All done. No open deadlines in the next 7 days."
                   : `${open.length} open ${open.length === 1 ? "deadline" : "deadlines"} in ${kurse} ${kurse === 1 ? "course" : "courses"}.`}
-                {first && ` Next up: ${bare(first.title)} ${daysFromToday(first.date) === 0 ? "today" : daysFromToday(first.date) === 1 ? "tomorrow" : `on ${LONG[new Date(parseDay(first.date)).getUTCDay()]}`}.`}
-                {nextExam && ` Next exam: ${shortOf(courseById(nextExam.courseId)!)} ${inDays(daysFromToday(nextExam.date))}.`}
+                {first && ` Next up: ${first.kind === "klausur" ? examLabel(first.title, courseById(first.courseId) ?? { name: "" }) : bare(first.title)} ${daysFromToday(first.date) === 0 ? "today" : daysFromToday(first.date) === 1 ? "tomorrow" : `on ${LONG[new Date(parseDay(first.date)).getUTCDay()]}`}.`}
+                {nextExam && ` Next exam: ${nameOf(courseById(nextExam.courseId)!)} ${inDays(daysFromToday(nextExam.date))}.`}
               </>
             )}
           </p>
@@ -860,7 +860,7 @@ function MonthView({ deadlines, events, done, onOpen }: { deadlines: Deadline[];
                 const plain = bare(d.title);
                 // „Lecture“, „Exercise · Group 3“ … sagen allein nicht, welcher Kurs: Kurzname davor (nicht nur Farbe)
                 const label =
-                  exam && d.title === "Exam" ? `Exam ${shortOf(course)}` : /^(lecture|exercise|tutorial|seminar|lab|class)\b/i.test(plain) ? `${shortOf(course)} ${plain}` : plain;
+                  exam ? examLabel(d.title, course) : /^(lecture|exercise|tutorial|seminar|lab|class)\b/i.test(plain) ? `${shortOf(course)} ${plain}` : plain;
                 return (
                   <button
                     key={d.id}
@@ -986,7 +986,10 @@ function DeadlineBlock({ d, done, onToggle, onOpen }: { d: Deadline; done: boole
       : solid
         ? { background: tone(c), color: "var(--on-solid)" }
         : { background: tone(c, "soft") };
-  const title = exam && d.title === "Exam" ? shortOf(course) : bare(d.title);
+  // Klausur: Schild „Exam“ steht schon drüber, also „BWL · 1st date“; der Kurs steht dann im Titel, darunter nur der Raum
+  const examBits = exam ? examPart(d.title) : null;
+  const title = examBits ? `${shortOf(course)}${examBits.rest ? ` · ${examBits.rest}` : ""}` : bare(d.title);
+  const below = exam && d.location ? d.location : examBits ? null : shortOf(course);
 
   return (
     <div className="flex items-start gap-1.5 rounded-[7px] py-1.5 pl-2 pr-1.5 transition-colors" style={style}>
@@ -1007,9 +1010,7 @@ function DeadlineBlock({ d, done, onToggle, onOpen }: { d: Deadline; done: boole
           {isDone ? "done" : d.time}
         </span>
         <span className={`block text-[13px] font-semibold leading-snug ${isDone ? "line-through" : ""}`}>{title}</span>
-        <span className={`block truncate text-[12px] ${solid ? "opacity-85" : isDone ? "" : "text-muted"}`}>
-          {exam && d.location ? d.location : shortOf(course)}
-        </span>
+        {below && <span className={`block truncate text-[12px] ${solid ? "opacity-85" : isDone ? "" : "text-muted"}`}>{below}</span>}
       </button>
       {checkable && (
         <span style={isDone || solid ? undefined : { color: tone(c) }}>

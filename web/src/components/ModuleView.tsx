@@ -6,7 +6,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { CalendarPlus, Check, ChevronDown, ChevronLeft, ChevronRight, ExternalLink, FolderOpen, Pencil, RotateCcw, Search, X } from "lucide-react";
-import { Button, Swatch, colorOf, tone } from "./ui";
+import { Button, Swatch, colorOf, examPart, tone } from "./ui";
 import { CheckButton, DocTile, FileRow, FolderBadge, displayName } from "./files";
 import { linkSolutions } from "@/lib/solutions";
 import { openEvent, openNewEvent } from "./EventDialog";
@@ -317,7 +317,8 @@ function ComingUp({
                   <button type="button" onClick={() => openEvent(d)} className="min-w-0 flex-1 text-left">
                     <span className={`block truncate font-semibold ${isDone ? "line-through" : ""}`}>
                       {exam && <span className="mr-1.5 rounded-full px-1.5 text-[11px] font-bold" style={{ background: tone(c), color: "var(--on-solid)" }}>Exam</span>}
-                      {d.title}
+                      {/* „Exam · 1st date“: das Schild sagt schon „Exam“ */}
+                      {(exam && examPart(d.title)?.rest) || d.title}
                     </span>
                     <span className="block truncate text-[12px] opacity-80">
                       {isDone ? "done" : [days === 0 ? "today" : days === 1 ? "tomorrow" : `in ${days} days`, d.time, d.source].filter(Boolean).join(" · ")}

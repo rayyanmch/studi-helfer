@@ -53,6 +53,18 @@ export function shortOf(course: Pick<Course, "name" | "short">): string {
   return n.length > 14 ? `${n.slice(0, 12).trimEnd()}…` : n;
 }
 
+/** Klausurtitel „Exam“ / „Exam · 1st date“ zerlegen; null, wenn der Titel etwas anderes ist („Mock exam“). */
+export function examPart(title: string): { rest: string | null } | null {
+  const m = title.match(/^Exam(?:\s*·\s*(.+))?$/);
+  return m ? { rest: m[1] ?? null } : null;
+}
+
+/** „BWL exam · 1st date“: Klausur mit Kurs, für Stellen ohne Kursname daneben (4 Wochen, Untertitel). */
+export function examLabel(title: string, course: Pick<Course, "name" | "short">): string {
+  const p = examPart(title);
+  return p ? `${shortOf(course)} exam${p.rest ? ` · ${p.rest}` : ""}` : title;
+}
+
 /** CSS-Farbe eines Kurses: "solid" kräftig, "soft" zarte Fläche, "ink" Schrift auf der Fläche. */
 export function tone(color: CourseColor, part: "solid" | "soft" | "ink" = "solid") {
   return part === "solid" ? `var(--c-${color})` : `var(--c-${color}-${part})`;

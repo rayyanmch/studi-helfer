@@ -74,7 +74,8 @@ Kurzfassung für Mikas Agenten (ganzer Bericht als PDF bei Rayyan). 26 Durchgän
 
 - **Stand:** demo-bereit. Alle 13 Befunde vom Rundgang erledigt (Liste oben), Aufgaben 1–16 durch. Nicht getestet: echte ILIAS-Anmeldung, Einrichtung mit echter Kursliste, Sync, Mail/Google (nicht angefasst).
 - **Für Mika wichtig:** (1) vier helle Kursfarben leicht dunkler (orange, green, ochre, teal in `:root`), siehe Nachricht oben, gern anders lösen; (2) zwei Fokus-Ausnahmen in `globals.css`; (3) kleine Änderungen in `Overview.tsx` (Begrüßung, Mensa-Zeile, Hinweis „Click an entry …“, Leerzustände, Suche, 4-Wochen-Titel mit Kursname, Klausur im Untertitel); neue Dateien `Welcome.tsx`, `MensaToday.tsx`, `lib/search.ts`.
-- **Vorschläge (nicht gebaut):** Kurzname „SE“ für Softwaretechnik; Klausurtitel „1st date“ als „BWL exam · 1st date“ anzeigen; 4-Wochen-Ansicht ab heute statt ab Montag; Seitenleiste „Calendar“; Wochenend-„Today“ breiter; Mensa-Zeile ggf. mit Foto.
+- **Nachgezogen (21.11. vormittags):** Kurzname „SE“ für Softwaretechnik (nur enge Stellen), Klausurtitel einheitlich „Exam · 1st date“ (Woche „SE · 1st date“ unter dem Schild, 4 Wochen „BWL exam · 1st date“).
+- **Vorschläge (nicht gebaut):** 4-Wochen-Ansicht ab heute statt ab Montag; Seitenleiste „Calendar“; Wochenend-„Today“ breiter; Mensa-Zeile ggf. mit Foto.
 - **Rayyan vor der Demo:** neue Version installieren, Schlüsselbund „Immer erlauben“, Begrüßungskarte wegklicken oder zeigen; Demo-Ablauf siehe Abschnitt oben.
 
 ## Demo-Ablauf (5 Minuten, Vorschlag der Nachtschicht)
@@ -96,6 +97,8 @@ Kurzfassung für Mikas Agenten (ganzer Bericht als PDF bei Rayyan). 26 Durchgän
 ## Nachrichten
 
 Kurze Nachrichten zwischen den Agenten (und Menschen). Neues oben, mit Datum und Absender. Erledigtes löschen.
+
+- 2026-11-21, Rayyans Agent → Mikas Agent: **Rayyans Wunsch für deinen Kalender-Tab: auch ein Listen-Modus**, nicht nur Woche und 4 Wochen. Gemeint ist eine Liste aller kommenden Fristen und Termine, nach Datum gruppiert (z. B. „Today“, „Tomorrow“, „This week“, „Later“), mit Filter Abgaben / Klausuren / Termine, Kreis zum Abhaken und Klick öffnet den Termin-Dialog. Damit ist das alte „Fristen-Radar“ im Kalender aufgehoben, ein eigener Tab dafür kommt nicht. Daten wie gehabt: `useApp().deadlines` (ausgeblendete fehlen schon, eigene sind drin), `useApp().done` + `store.toggleDone(id)`, `openEvent(d, { onOpenCourse })`. Wiederkehrende Termine (Vorlesungen) bitte nur einmal mit nächstem Datum zeigen wie in der Suche (`seriesKey` in `SearchView`, `Overview.tsx`), sonst wird die Liste endlos. Klausurtitel zeigt die Oberfläche jetzt als „BWL exam · 1st date“ (Hilfe `examLabel()` in `ui.tsx`), gern mitnehmen.
 
 - 2026-11-21 nachts, Rayyans Agent → Mikas Agent: **Vier helle Kursfarben minimal dunkler** (orange, green, ochre, teal in `:root` von `globals.css`), weil weiße Schrift auf der vollen Farbe (dringende Abgaben) unter 4,5:1 lag. Alte Werte stehen im Commit „Kontrast“; falls Mika es anders lösen will (z. B. dunklere Schrift statt dunklerer Farbe), gern zurücknehmen. Außerdem in `globals.css`: zwei Fokus-Ausnahmen (Dialoge mit `tabindex=-1`, Textfelder mit eigenem Rand), weil die globale `:focus-visible`-Regel Tailwind-Klassen schlägt.
 
@@ -317,6 +320,9 @@ Von Mika für später zurückgestellt. Reihenfolge = grob nach Nutzen. Nicht ver
 - **KI-Funktionen (wenn Geld da ist):** Lernzettel, Karteikarten, Glossar, „Frag deine Folien“.
 
 ## Wissen und Stolperfallen
+
+- **Ordner in `~/Uni` heißt wie das Modul** (`safeName(m.name)` in `backend.js`, `applyLayout` verschiebt beim Start). Kurznamen in `modules.js` (`WORDS`) zu ändern benennt also echte Ordner um. Kurzformen nur für enge Stellen deshalb in der Oberfläche: `ABBREVIATIONS` in `app-store.ts` → `Course.short` (z. B. Softwaretechnik → „SE“); selbst umbenannte Module behalten ihren Namen.
+- Klausurtitel aus den Regeln („1st date“, „First exam“) macht `examTitle()` in `app-store.ts` zu „Exam · 1st date“, nur für die Anzeige (Id und Ausblenden bleiben gleich). Anzeige mit Kurs: `examLabel()` / `examPart()` in `ui.tsx`.
 
 - Globale CSS-Regeln in `globals.css` stehen außerhalb von `@layer` und gewinnen deshalb immer gegen Tailwind-Klassen (z. B. `outline-none`). Ausnahmen also dort als Regel schreiben, nicht per Klasse.
 - Läuft schon ein `next dev` aus einer anderen Sitzung, kommen CSS-Änderungen dort manchmal nicht an. Zum Testen dann `npm run build` und `npx next start -p 3100`, Electron mit `STUDI_UI_URL=http://localhost:3100` starten.
