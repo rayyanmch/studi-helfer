@@ -7,6 +7,8 @@ Gemeinsames Gedächtnis für alle KI-Agenten und Menschen im Projekt. Wird über
 
 Wer gerade woran arbeitet (Person, Aufgabe, betroffene Dateien). Eintragen beim Start, löschen wenn fertig.
 
+- 2026-11-21, Rayyans Agent: **Study-Tab links (Study Hub)**: Karteikästen pro Modul + „All courses“ gemischt, gezielt einzelne Vorlesungen/Themen lernen, Lernzettel als PDF im Stil der „Lernhilfe“ mit Schaltern (Analogien, Beispiele, Kontrollfragen …). Dateien: neu `components/StudyHub.tsx`; `StudyView.tsx`, `lib/study.ts`, `desktop/lib/study.js`, `preload.js`; klein: `Overview.tsx` (ein Seitenleisten-Eintrag + Ansicht), `ModuleView.tsx`.
+
 
 
 
