@@ -312,7 +312,7 @@ handle("studi:getCustomEvents", () => backend.getCustomEvents());
 handle("studi:saveCustomEvent", (ev) => backend.saveCustomEvent(ev));
 handle("studi:deleteCustomEvent", (id) => backend.deleteCustomEvent(String(id)));
 handle("studi:setEventHidden", (key, hidden) => backend.setEventHidden(key, Boolean(hidden)));
-handle("studi:mensaThumb", (url) => mensa.thumb(url));
+handle("studi:mensaThumb", (url, size) => mensa.thumb(url, size === "large" ? "large" : "small"));
 handle("studi:markSeen", (ids) => backend.markSeen(ids));
 handle("studi:setNotifications", (on) => backend.setNotifications(on));
 handle("studi:setLaunchAtLogin", (on) => {

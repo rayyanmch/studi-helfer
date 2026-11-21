@@ -231,7 +231,7 @@ export interface StudiDesktop {
   /** Erkannten Termin oder Serie ausblenden (hidden) bzw. wieder zeigen; key "*" zeigt alle wieder. */
   setEventHidden(key: string, hidden: boolean): Promise<Ok | Fail>;
   /** Kleines Vorschaubild (data:-URL) eines Mensa-Fotos von CloudMensa; null bei Fehler. Zwischengespeichert. */
-  mensaThumb(url: string): Promise<string | null>;
+  mensaThumb(url: string, size?: "small" | "large"): Promise<string | null>;
   /** Dateien als gesehen markieren (verschwinden aus „New“). */
   markSeen(fileIds: string[]): Promise<Ok>;
   setNotifications(on: boolean): Promise<Ok>;

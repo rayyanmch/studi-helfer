@@ -432,7 +432,7 @@ function Files({ course, files, freshIds }: { course: Course; files: CourseFile[
   const color = colorOf(course);
   const [filter, setFilter] = useState<string>("all");
   const [query, setQuery] = useState("");
-  const [sort, setSort] = useState<Sort>("name");
+  const [sort, setSort] = useState<Sort>("newest"); // Neues zuerst (Rayyan)
   const [closed, setClosed] = useState<string[]>([]);
   const q = query.trim().toLowerCase();
 

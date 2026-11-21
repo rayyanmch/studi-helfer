@@ -5,7 +5,7 @@
 // dann Beilagen und Desserts als kompakte Listen. Vorlieben (Mensa, Preis, vegan/vegetarisch) merkt sich der Mac.
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Beef, CakeSlice, Clock, Drumstick, Fish, Ham, Leaf, MapPin, Pizza, RefreshCw, Salad, Soup, Sprout, UtensilsCrossed, WifiOff } from "lucide-react";
+import { Beef, CakeSlice, ChevronLeft, ChevronRight, Clock, Drumstick, Fish, Ham, Leaf, MapPin, Pizza, RefreshCw, Salad, Soup, Sprout, UtensilsCrossed, WifiOff, X } from "lucide-react";
 import { Spinner } from "./ui";
 import { getDesktop } from "@/lib/desktop";
 import { loadMensa, readPrefs, useMensa, writePrefs, type Dish, type MensaPrefs } from "@/lib/mensa";
@@ -38,6 +38,7 @@ export function MensaView() {
       return next;
     });
   const [day, setDay] = useState<string | null>(null);
+  const [zoom, setZoom] = useState<string | null>(null); // Gericht in der großen Ansicht
 
   // Laden beim Öffnen, danach alle 30 min (Ausverkauft-Status, Tageswechsel)
   useEffect(() => {
@@ -56,6 +57,9 @@ export function MensaView() {
   const sides = visible.filter((d) => d.group === "side");
   const desserts = visible.filter((d) => d.group === "dessert");
   const today = isoOf(new Date());
+  // Reihenfolge wie auf der Seite, damit ← → in der großen Ansicht dazu passt
+  const ordered = [...SECTIONS.flatMap(([, g]) => mains.filter((d) => g.includes(d.group))), ...sides, ...desserts];
+  const zoomed = ordered.find((d) => d.id === zoom) ?? null;
   const weekSplit = days.findIndex((d) => parse(d).getDay() === 1 && d !== days[0]);
 
   return (
@@ -172,7 +176,7 @@ export function MensaView() {
                     <h2 className="mb-2.5 text-[17px] font-bold">{title}</h2>
                     <div className="grid grid-cols-[repeat(auto-fill,minmax(400px,1fr))] gap-2.5">
                       {list.map((d) => (
-                        <DishCard key={d.id} dish={d} price={d.prices[prefs.price]} />
+                        <DishCard key={d.id} dish={d} price={d.prices[prefs.price]} onZoom={() => setZoom(d.id)} />
                       ))}
                     </div>
                   </section>
@@ -180,11 +184,24 @@ export function MensaView() {
               })}
               {(sides.length > 0 || desserts.length > 0) && (
                 <div className="mt-8 grid grid-cols-1 gap-x-8 gap-y-6 lg:grid-cols-2">
-                  {sides.length > 0 && <SmallList title="Sides & salads" dishes={sides} price={prefs.price} />}
-                  {desserts.length > 0 && <SmallList title="Desserts" dishes={desserts} price={prefs.price} />}
+                  {sides.length > 0 && <SmallList title="Sides & salads" dishes={sides} price={prefs.price} onZoom={setZoom} />}
+                  {desserts.length > 0 && <SmallList title="Desserts" dishes={desserts} price={prefs.price} onZoom={setZoom} />}
                 </div>
               )}
             </>
+          )}
+          {zoomed && (
+            <DishViewer
+              dish={zoomed}
+              price={prefs.price}
+              onClose={() => setZoom(null)}
+              onStep={(dir) => {
+                const i = ordered.findIndex((d) => d.id === zoomed.id);
+                const next = ordered[(i + dir + ordered.length) % ordered.length];
+                if (next) setZoom(next.id);
+              }}
+              count={ordered.length}
+            />
           )}
           <p className="mt-10 text-[12px] text-muted">
             Menu from Kölner Studierendenwerk. Allergens and prices without guarantee, please check the signs at the counter.
@@ -251,10 +268,10 @@ function DietTag({ dish }: { dish: Dish }) {
   return null;
 }
 
-function DishCard({ dish, price }: { dish: Dish; price: number | null }) {
+function DishCard({ dish, price, onZoom }: { dish: Dish; price: number | null; onZoom: () => void }) {
   return (
     <article className={`flex items-start gap-4 rounded-[14px] bg-surface p-3.5 pr-4 ${dish.soldOut ? "opacity-55" : ""}`}>
-      <Visual dish={dish} size={84} />
+      <Visual dish={dish} size={84} onClick={onZoom} />
       <div className="flex min-w-0 flex-1 flex-col gap-1 self-stretch">
         <div className="flex min-h-[20px] flex-wrap items-center gap-1.5">
           <DietTag dish={dish} />
@@ -284,8 +301,22 @@ function DishCard({ dish, price }: { dish: Dish; price: number | null }) {
 }
 
 /** Foto, falls vorhanden, sonst ein passendes Symbol in zarter Farbe (Zülpicher Straße hat keine Fotos). */
-function Visual({ dish, size }: { dish: Dish; size: number }) {
-  if (dish.image) return <Plate src={dish.image} size={size} />;
+function Visual({ dish, size, onClick }: { dish: Dish; size: number; onClick?: () => void }) {
+  if (dish.image) {
+    const plate = <Plate src={dish.image} size={size} />;
+    return onClick ? (
+      <button
+        type="button"
+        onClick={onClick}
+        aria-label={`Show a larger photo of ${dish.name}`}
+        className="shrink-0 cursor-zoom-in rounded-full transition-transform duration-200 ease-out hover:scale-[1.04] active:scale-[0.98]"
+      >
+        {plate}
+      </button>
+    ) : (
+      plate
+    );
+  }
   const n = `${dish.name} ${dish.nameDe}`.toLowerCase();
   const [Icon, tint] =
     dish.group === "dessert"
@@ -320,14 +351,14 @@ function Visual({ dish, size }: { dish: Dish; size: number }) {
   );
 }
 
-function SmallList({ title, dishes, price }: { title: string; dishes: Dish[]; price: MensaPrefs["price"] }) {
+function SmallList({ title, dishes, price, onZoom }: { title: string; dishes: Dish[]; price: MensaPrefs["price"]; onZoom: (id: string) => void }) {
   return (
     <section aria-label={title}>
       <h2 className="mb-2 text-[17px] font-bold">{title}</h2>
       <ul className="flex flex-col divide-y divide-[var(--line)] rounded-[14px] bg-surface">
         {dishes.map((d) => (
           <li key={d.id} className={`flex items-center gap-3 px-3 py-2 ${d.soldOut ? "opacity-55" : ""}`}>
-            <Visual dish={d} size={38} />
+            <Visual dish={d} size={38} onClick={() => onZoom(d.id)} />
             <span className="min-w-0 flex-1">
               <span className="block truncate text-[13.5px] font-semibold">{d.name}</span>
               <span className="block truncate text-[11.5px] text-muted">
@@ -401,6 +432,138 @@ function Plate({ src, size }: { src: string | null; size: number }) {
           style={{ opacity: loaded ? 1 : 0, filter: size > 60 ? "drop-shadow(0 6px 10px rgba(0,0,0,0.14))" : undefined }}
         />
       )}
+    </div>
+  );
+}
+
+// --- Große Ansicht: Foto groß, alle Angaben, ← → blättert, Esc schließt -------------------------------
+
+const PRICE_LABEL = { student: "Students", staff: "Staff", guest: "Guests" } as const;
+
+function DishViewer({
+  dish,
+  price,
+  onClose,
+  onStep,
+  count,
+}: {
+  dish: Dish;
+  price: MensaPrefs["price"];
+  onClose: () => void;
+  onStep: (dir: 1 | -1) => void;
+  count: number;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [large, setLarge] = useState<{ src: string; url: string | null } | null>(null);
+  const small = dish.image ? (thumbs.get(dish.image) ?? null) : null;
+  const url = large && large.src === dish.image ? large.url : null;
+
+  useEffect(() => {
+    const key = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+      else if (e.key === "ArrowRight") onStep(1);
+      else if (e.key === "ArrowLeft") onStep(-1);
+    };
+    window.addEventListener("keydown", key);
+    ref.current?.focus({ preventScroll: true });
+    return () => window.removeEventListener("keydown", key);
+  }, [onClose, onStep]);
+
+  // Großes Bild nachladen (Mac-App: 1100 px; Browser: Original), vorher das kleine vergrößert zeigen
+  useEffect(() => {
+    const src = dish.image;
+    if (!src) return;
+    let cancelled = false;
+    const desktop = getDesktop();
+    const done = (u: string | null) => !cancelled && setLarge({ src, url: u });
+    if (desktop?.mensaThumb) void desktop.mensaThumb(src, "large").then(done);
+    else done(src);
+    return () => {
+      cancelled = true;
+    };
+  }, [dish.image]);
+
+  const shown = url ?? small;
+  return (
+    <div className="no-drag fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-6 backdrop-blur-[2px]" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div
+        ref={ref}
+        tabIndex={-1}
+        role="dialog"
+        aria-modal="true"
+        aria-label={dish.name}
+        className="relative flex max-h-full w-[min(920px,100%)] flex-col overflow-hidden rounded-[18px] bg-bg shadow-[0_30px_80px_rgba(0,0,0,0.45)] outline-none md:flex-row"
+      >
+        <div className="relative flex aspect-square shrink-0 items-center justify-center bg-sunken md:w-[min(560px,62vh)]">
+          {shown ? (
+            // eslint-disable-next-line @next/next/no-img-element -- data:-URL aus dem Mac-Teil
+            <img src={shown} alt={dish.name} className="h-[88%] w-[88%] object-contain drop-shadow-[0_18px_30px_rgba(0,0,0,0.25)]" />
+          ) : (
+            <Visual dish={dish} size={180} />
+          )}
+          {dish.image && !url && <span className="absolute bottom-3 right-3 text-muted"><Spinner size={14} /></span>}
+          {count > 1 && (
+            <>
+              <button onClick={() => onStep(-1)} aria-label="Previous dish" className="absolute left-3 top-1/2 flex size-9 -translate-y-1/2 items-center justify-center rounded-full bg-surface/90 shadow-sm hover:bg-surface">
+                <ChevronLeft size={18} aria-hidden />
+              </button>
+              <button onClick={() => onStep(1)} aria-label="Next dish" className="absolute right-3 top-1/2 flex size-9 -translate-y-1/2 items-center justify-center rounded-full bg-surface/90 shadow-sm hover:bg-surface">
+                <ChevronRight size={18} aria-hidden />
+              </button>
+            </>
+          )}
+        </div>
+        <div className="scroll flex min-w-0 flex-1 flex-col gap-3 p-6">
+          <button onClick={onClose} aria-label="Close" className="absolute right-3 top-3 flex size-8 items-center justify-center rounded-full bg-surface/90 text-muted hover:text-[var(--text)]">
+            <X size={16} aria-hidden />
+          </button>
+          <div className="flex flex-wrap items-center gap-1.5 pr-8">
+            <DietTag dish={dish} />
+            {dish.group === "special" && <span className="rounded-full bg-accent px-2 py-0.5 text-[11.5px] font-bold text-on-accent">Today’s special</span>}
+            {dish.soldOut && <span className="rounded-full bg-danger px-2 py-0.5 text-[11.5px] font-bold text-white">Sold out</span>}
+          </div>
+          <div>
+            <h2 className="text-[22px] font-bold leading-tight">{dish.name}</h2>
+            {dish.nameDe && dish.nameDe !== dish.name && <p className="mt-1 text-[13px] text-muted">{dish.nameDe}</p>}
+            {dish.sides.length > 0 && <p className="mt-2 text-[14px]">with {dish.sides.map((x) => x.toLowerCase()).join(", ")}</p>}
+          </div>
+          <dl className="grid grid-cols-3 gap-2">
+            {(["student", "staff", "guest"] as const).map((k) => (
+              <div key={k} className={`rounded-[10px] px-3 py-2 ${k === price ? "bg-accent text-on-accent" : "bg-surface"}`}>
+                <dt className={`text-[11.5px] font-semibold ${k === price ? "opacity-80" : "text-muted"}`}>{PRICE_LABEL[k]}</dt>
+                <dd className="text-[17px] font-bold tabular-nums">{euro(dish.prices[k])}</dd>
+              </div>
+            ))}
+          </dl>
+          {(dish.counter || dish.hours) && (
+            <p className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px]">
+              {dish.counter && (
+                <span className="inline-flex items-center gap-1.5">
+                  <MapPin size={13} className="text-muted" aria-hidden /> {dish.counter}
+                </span>
+              )}
+              {dish.hours && (
+                <span className="inline-flex items-center gap-1.5">
+                  <Clock size={13} className="text-muted" aria-hidden /> {dish.hours}
+                </span>
+              )}
+            </p>
+          )}
+          {dish.allergens.length > 0 && (
+            <div>
+              <p className="mb-1.5 text-[12px] font-semibold text-muted">Contains</p>
+              <div className="flex flex-wrap gap-1.5">
+                {dish.allergens.map((a) => (
+                  <span key={a} className="rounded-full bg-surface px-2.5 py-0.5 text-[12.5px] shadow-[inset_0_0_0_1px_var(--line)]">
+                    {a}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+          <p className="mt-auto pt-2 text-[11.5px] text-muted">{shortLoc(dish.location)} · Without guarantee, please check the signs at the counter.</p>
+        </div>
+      </div>
     </div>
   );
 }

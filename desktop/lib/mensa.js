@@ -12,6 +12,7 @@ const { execFile } = require("node:child_process");
 const ALLOWED = "https://axxiebkvmfjmiaanviob.supabase.co/storage/v1/object/public/media/";
 const MAX_BYTES = 25 * 1024 * 1024;
 const KEEP_DAYS = 45;
+const SIZES = { small: 360, large: 1100 }; // Karte bzw. große Ansicht
 
 function createMensa({ dataDir }) {
   const dir = path.join(dataDir, "mensa-thumbs");
@@ -35,7 +36,7 @@ function createMensa({ dataDir }) {
 
   const toDataUrl = (buf) => `data:image/png;base64,${buf.toString("base64")}`;
 
-  async function make(url, file) {
+  async function make(url, file, px) {
     await slot();
     const tmp = `${file}.${process.pid}.src`;
     try {
@@ -49,7 +50,7 @@ function createMensa({ dataDir }) {
       await fsp.mkdir(dir, { recursive: true });
       await fsp.writeFile(tmp, buf);
       await new Promise((resolve, reject) =>
-        execFile("/usr/bin/sips", ["-Z", "360", "-s", "format", "png", tmp, "--out", file], { timeout: 20_000 }, (err) => (err ? reject(err) : resolve())),
+        execFile("/usr/bin/sips", ["-Z", String(px), "-s", "format", "png", tmp, "--out", file], { timeout: 20_000 }, (err) => (err ? reject(err) : resolve())),
       );
       return toDataUrl(await fsp.readFile(file));
     } finally {
@@ -58,24 +59,27 @@ function createMensa({ dataDir }) {
     }
   }
 
-  /** data:-URL eines kleinen Vorschaubilds oder null (falsche Adresse, offline, kaputt). */
-  async function thumb(url) {
+  /** data:-URL eines verkleinerten Fotos ("small" für Karten, "large" für die große Ansicht) oder null. */
+  async function thumb(url, size = "small") {
     if (typeof url !== "string" || url.length > 300 || !url.startsWith(ALLOWED) || /\.\.|[?#\s]/.test(url)) return null;
-    const file = path.join(dir, `${crypto.createHash("sha1").update(url).digest("hex")}.png`);
+    const px = SIZES[size] ?? SIZES.small;
+    const hash = crypto.createHash("sha1").update(url).digest("hex");
+    const file = path.join(dir, px === SIZES.small ? `${hash}.png` : `${hash}-${px}.png`);
+    const key = `${url}|${px}`;
     try {
       return toDataUrl(await fsp.readFile(file));
     } catch {
       // noch nicht da
     }
-    if (!inflight.has(url)) {
+    if (!inflight.has(key)) {
       inflight.set(
-        url,
-        make(url, file)
+        key,
+        make(url, file, px)
           .catch(() => null)
-          .finally(() => inflight.delete(url)),
+          .finally(() => inflight.delete(key)),
       );
     }
-    return inflight.get(url);
+    return inflight.get(key);
   }
 
   /** Alte Vorschaubilder löschen (beim Start). */
