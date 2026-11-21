@@ -160,6 +160,8 @@ export function Settings({ onClose, onEditCourses, onLogout }: { onClose: () => 
               hint="Only when you ask for a summary, study sheet or flashcards, the text of those files goes to Claude (Anthropic) through Claude Code on this Mac. Your password never does."
             />
             <Row label="Mensa" hint="The menu is public. The app sends nothing about you." />
+            <Row label="Weather" hint="Comes from Open-Meteo for your university’s location. Nothing about you is sent." />
+            <Row label="Mail and classes" hint="To spot cancelled or moved classes, your mails are checked with simple rules on this Mac. Nothing is sent to an AI." />
           </Section>
         </div>
       </div>

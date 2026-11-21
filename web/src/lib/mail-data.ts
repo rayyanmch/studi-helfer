@@ -126,6 +126,12 @@ const MESSAGES: MailMessage[] = [
     body: "Hello everyone,\n\ndue to the holiday on Monday, the deadline for Sheet 7 moves to Tuesday, November 24, at 10:00.\n\nTask 3 needs theorem 4.2 from the lecture notes. Please read it again before you start.\n\nBest regards\nProf. Lindner",
   }),
   msg({
+    id: "u0", accountId: "uni", courseId: "mathe", unread: true, date: "2026-11-21T07:40",
+    fromName: "Prof. Lindner", fromAddress: "lindner@uni-koeln.de",
+    subject: "Keine Vorlesung am Dienstag",
+    body: "Liebe Studierende,\n\ndie Vorlesung am Dienstag, 24.11., entfällt leider wegen einer Dienstreise. Den Stoff (Kapitel 5) holen wir am Donnerstag nach.\n\nViele Grüße\nProf. Lindner",
+  }),
+  msg({
     id: "u2", accountId: "uni", courseId: "softwaretechnik", unread: true, date: "2026-11-19T18:05",
     fromName: "ILIAS", fromAddress: "no-reply@ilias.uni-koeln.de",
     subject: "New file in Software Engineering",
@@ -572,6 +578,19 @@ export async function saveAttachment(m: MailMessage, index: number, course: { na
 }
 
 /** „Looks like an event“ nicht mehr zeigen. */
+// Eine bestimmte Mail von außen öffnen (Hinweis an einem Termin, Startseite): Overview wechselt zu „Mail“,
+// MailView liest die Mail beim Öffnen und wählt sie aus.
+let pendingMail: string | null = null;
+export function openMail(id: string) {
+  pendingMail = id;
+  if (typeof window !== "undefined") window.dispatchEvent(new Event("studi:open-mail"));
+}
+export function takeOpenMail(): string | null {
+  const id = pendingMail;
+  pendingMail = null;
+  return id;
+}
+
 export function ignoreEvent(id: string) {
   const ignoredEvents = [...state.ignoredEvents, id];
   saveJson("ignoredEvents", ignoredEvents);

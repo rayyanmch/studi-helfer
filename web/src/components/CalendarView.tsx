@@ -9,9 +9,11 @@ import { CalendarPlus, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button, colorOf, examLabel, nameOf, shortOf, tone } from "./ui";
 import { openEvent, openNewEvent } from "./EventDialog";
 import { openGoogleEvent } from "./GoogleEventDialog";
-import { placeLabel, routeFor, routeForDeadline } from "@/lib/rooms";
+import { placeLabel } from "@/lib/rooms";
 import { CalendarChip, DAY_MS, MonthView, abbrTitle, bare, courseById, isoOf, mondayOf, parseDay, startMinutes, timeRange, todayMs, withCourse } from "./calendar-bits";
 import { setCalendar, useMail, type GoogleEvent } from "@/lib/mail-data";
+import { useEventMails, type EventMail } from "@/lib/event-mail";
+import { MailBadge, cancelledStyle } from "./MailBadge";
 import { useApp } from "@/lib/app-store";
 import type { Deadline } from "@/lib/mock-data";
 
@@ -89,6 +91,7 @@ export function CalendarView({
 }) {
   const app = useApp();
   const mail = useMail();
+  const notes = useEventMails(deadlines); // Mails zu einzelnen Terminen (roter Hinweis)
   const [mode, setMode] = useState<Mode>(() => {
     try {
       return window.localStorage.getItem(MODE_KEY) === "month" ? "month" : "week";
@@ -208,9 +211,9 @@ export function CalendarView({
 
       <div key={`${mode}-${offset}`} className="cal-enter" style={{ ["--cal-dir" as string]: dir }}>
         {mode === "month" ? (
-          <MonthView deadlines={ilias} events={googleEvents} done={done} onOpen={onOpenCourse} start={start} />
+          <MonthView deadlines={ilias} events={googleEvents} done={done} onOpen={onOpenCourse} start={start} notes={notes} />
         ) : (
-          <WeekGrid start={start} today={app.today} now={now} deadlines={ilias} events={googleEvents} done={done} onToggle={onToggle} onOpenCourse={onOpenCourse} />
+          <WeekGrid start={start} today={app.today} now={now} deadlines={ilias} events={googleEvents} done={done} onToggle={onToggle} onOpenCourse={onOpenCourse} notes={notes} />
         )}
       </div>
     </>
@@ -226,6 +229,7 @@ function WeekGrid({
   done,
   onToggle,
   onOpenCourse,
+  notes,
 }: {
   start: number;
   today: string;
@@ -235,6 +239,7 @@ function WeekGrid({
   done: string[];
   onToggle: (id: string) => void;
   onOpenCourse: (id: string) => void;
+  notes: Map<string, EventMail[]>;
 }) {
   const days = Array.from({ length: 7 }, (_, i) => {
     const iso = isoOf(start + i * DAY_MS);
@@ -303,7 +308,7 @@ function WeekGrid({
           <span className="px-2 py-1.5 text-right text-[11px] leading-tight text-muted">due &amp; all day</span>
           {days.map((d) => (
             <div key={d.iso} className={`@container flex min-w-0 flex-col gap-1 border-l border-line-soft p-1 ${d.wd >= 5 ? "bg-sunken/50" : ""}`}>
-              {d.top.map((t) => (t.d ? <TopChip key={t.key} d={t.d} done={done.includes(t.d.id)} onToggle={() => onToggle(t.d!.id)} onOpenCourse={onOpenCourse} /> : <TopGoogle key={t.key} ev={t.ev!} />))}
+              {d.top.map((t) => (t.d ? <TopChip key={t.key} d={t.d} done={done.includes(t.d.id)} onToggle={() => onToggle(t.d!.id)} onOpenCourse={onOpenCourse} mails={notes.get(t.d.id) ?? []} /> : <TopGoogle key={t.key} ev={t.ev!} />))}
             </div>
           ))}
         </div>
@@ -349,6 +354,7 @@ function WeekGrid({
                   open={hovered?.key === s.key}
                   squeezed={Boolean(hovered) && hovered!.key !== s.key}
                   onHover={(on) => setHover(on ? s.key : null)}
+                  mails={s.d ? (notes.get(s.d.id) ?? []) : []}
                 />
               );
             })}
@@ -375,6 +381,7 @@ function GridBlock({
   open,
   squeezed,
   onHover,
+  mails,
 }: {
   slot: Slot;
   h0: number;
@@ -384,6 +391,7 @@ function GridBlock({
   open: boolean;
   squeezed: boolean;
   onHover: (on: boolean) => void;
+  mails: EventMail[];
 }) {
   const top = ((slot.start - h0 * 60) / 60) * HOUR + 1;
   const height = Math.max(20, ((slot.end - slot.start) / 60) * HOUR - 3);
@@ -435,15 +443,13 @@ function GridBlock({
       </span>
     );
 
-  // Hülle ohne Beschneiden (damit der Hinweis herausragen darf), darin der Termin
-  const shell = (label: string, onClick: () => void, tip: React.ReactNode, className: string, style: React.CSSProperties, content: React.ReactNode) => (
-    <div className="tip-host absolute hover:z-30 focus-within:z-30" style={pos} {...hover}>
+  // Hülle ohne Beschneiden (damit der rote Mail-Hinweis über die Ecke ragen darf), darin der Termin
+  const shell = (label: string, onClick: () => void, className: string, style: React.CSSProperties, content: React.ReactNode) => (
+    <div className="absolute hover:z-30 focus-within:z-30" style={pos} {...hover}>
       <button type="button" onClick={onClick} aria-label={label} className={`hit @container block size-full overflow-hidden rounded-[6px] px-1.5 py-1 text-left leading-tight ${className}`} style={style}>
         {content}
       </button>
-      <div role="tooltip" className="tip absolute left-0 top-full z-40 mt-1.5 w-max max-w-[250px] rounded-lg bg-accent px-3 py-2 text-[12px] leading-snug text-on-accent shadow-[0_8px_24px_rgba(0,0,0,0.28)]">
-        {tip}
-      </div>
+      {mails.length > 0 && <MailBadge mails={mails} className="absolute -right-1.5 -top-2" />}
     </div>
   );
 
@@ -453,44 +459,32 @@ function GridBlock({
     const c = d.color ?? colorOf(course);
     const exam = d.kind === "klausur";
     const title = exam ? examLabel(d.title, course) : withCourse(bare(d.title), course);
-    const route = routeForDeadline(d);
+    const cancelled = mails.some((m) => m.kind === "cancelled");
     return shell(
-      `${title}, ${time}`,
+      `${title}, ${time}${cancelled ? ", cancelled according to a mail" : ""}`,
       () => openEvent(d, { onOpenCourse: () => onOpenCourse(d.courseId) }),
-      <>
-        <b className="block font-semibold">{exam ? d.title : withCourse(d.title, course)}</b>
-        <span className="block opacity-80">{nameOf(course)} · {time}</span>
-        {d.location && <span className="block opacity-80">{d.roomChange ? `Room changed: ${placeLabel(d.location)}` : placeLabel(d.location)}</span>}
-        {slot.both && <span className="block opacity-80">Also in Google Calendar</span>}
-        <span className="mt-1 block font-semibold opacity-90">Click for details{route ? " and route" : ""}</span>
-      </>,
-      done ? "opacity-50" : "",
-      {
-        background: tone(c, "soft"),
-        boxShadow: exam ? `inset 0 0 0 2px ${tone(c)}` : slot.both ? `inset 0 0 0 1.5px ${tone(c)}` : undefined,
-      },
+      done ? "opacity-50" : cancelled ? "line-through decoration-[1.5px]" : "",
+      cancelled
+        ? cancelledStyle(tone(c), tone(c, "soft"))
+        : {
+            background: tone(c, "soft"),
+            boxShadow: exam ? `inset 0 0 0 2px ${tone(c)}` : slot.both ? `inset 0 0 0 1.5px ${tone(c)}` : undefined,
+          },
       body(title, tone(c, "ink"), slot.both ? <span className="ml-1 font-bold" style={{ color: "#4285f4" }}>+G</span> : null, placeLabel(d.location) || shortOf(course)),
     );
   }
   const ev = slot.ev!;
   const color = ev.color ?? "var(--muted)";
-  const route = routeFor(ev.location, { allowText: true });
   return shell(
     `${ev.title}, ${time}`,
     () => openGoogleEvent(ev),
-    <>
-      <b className="block font-semibold">{ev.title}</b>
-      <span className="block opacity-80">{time}{ev.calendar ? ` · ${ev.calendar}` : ""}</span>
-      {ev.location && <span className="block opacity-80">{placeLabel(ev.location)}</span>}
-      <span className="mt-1 block font-semibold opacity-90">Click for details{route ? " and route" : ""}</span>
-    </>,
     "",
     { border: `1.5px dashed ${color}`, background: `color-mix(in srgb, ${color} 14%, var(--surface))` },
     body(ev.title, undefined, <span className="ml-1 font-bold" style={{ color: "#4285f4" }}>G</span>, placeLabel(ev.location)),
   );
 }
 
-function TopChip({ d, done, onToggle, onOpenCourse }: { d: Deadline; done: boolean; onToggle: () => void; onOpenCourse: (id: string) => void }) {
+function TopChip({ d, done, onToggle, onOpenCourse, mails }: { d: Deadline; done: boolean; onToggle: () => void; onOpenCourse: (id: string) => void; mails: EventMail[] }) {
   const course = courseById(d.courseId)!;
   const c = d.color ?? colorOf(course);
   const exam = d.kind === "klausur";
@@ -499,12 +493,13 @@ function TopChip({ d, done, onToggle, onOpenCourse }: { d: Deadline; done: boole
   const due = parseDay(d.date) <= todayMs() + 2 * DAY_MS && checkable && !done;
   return (
     <div
-      className={`hit flex min-w-0 items-center gap-1 rounded-[5px] py-0.5 pl-1.5 pr-1 text-[11px] font-semibold ${done ? "line-through" : ""}`}
+      className={`hit relative flex min-w-0 items-center gap-1 rounded-[5px] py-0.5 pl-1.5 pr-1 text-[11px] font-semibold ${done ? "line-through" : ""}`}
       style={done ? { background: "var(--sunken)", color: "var(--muted)" } : due || exam ? { background: tone(c), color: "var(--on-solid)" } : { background: tone(c, "soft"), color: tone(c, "ink") }}
     >
-      <button onClick={() => openEvent(d, { onOpenCourse: () => onOpenCourse(d.courseId) })} title={`${d.title}, ${nameOf(course)}, ${d.time}`} className="min-w-0 flex-1 truncate text-left">
+      <button onClick={() => openEvent(d, { onOpenCourse: () => onOpenCourse(d.courseId) })} aria-label={`${d.title}, ${nameOf(course)}, ${d.time}`} className="min-w-0 flex-1 truncate text-left">
         {abbrTitle(label, 22)}
       </button>
+      {mails.length > 0 && <MailBadge mails={mails} className="absolute -right-1.5 -top-2" />}
       {checkable && (
         <button onClick={onToggle} aria-label={done ? `Mark ${d.title} as not done` : `Mark ${d.title} as done`} className="flex size-3.5 shrink-0 items-center justify-center rounded-full border-[1.5px] border-current opacity-80 hover:opacity-100 @max-[96px]:hidden">
           {done && <span className="size-1.5 rounded-full bg-current" />}
@@ -520,7 +515,7 @@ function TopGoogle({ ev }: { ev: GoogleEvent }) {
     <button
       type="button"
       onClick={() => openGoogleEvent(ev)}
-      title={`${ev.title}${ev.calendar ? ` · Google Calendar: ${ev.calendar}` : ""}. Click for details.`}
+      aria-label={`${ev.title}${ev.calendar ? `, Google Calendar: ${ev.calendar}` : ""}`}
       className="hit truncate rounded-[5px] px-1.5 py-0.5 text-left text-[11px] font-semibold"
       style={{ border: `1.5px dashed ${color}` }}
     >

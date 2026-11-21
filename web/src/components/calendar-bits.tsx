@@ -10,6 +10,8 @@ import { openGoogleEvent } from "./GoogleEventDialog";
 import { placeLabel } from "@/lib/rooms";
 import { appStore } from "@/lib/app-store";
 import type { GoogleEvent } from "@/lib/mail-data";
+import type { EventMail } from "@/lib/event-mail";
+import { MailBadge, cancelledStyle } from "./MailBadge";
 import type { Deadline } from "@/lib/mock-data";
 
 export const DAY_MS = 86_400_000;
@@ -38,12 +40,14 @@ export function MonthView({
   done,
   onOpen,
   start = mondayOf(todayMs()),
+  notes,
 }: {
   deadlines: Deadline[];
   events: GoogleEvent[];
   done: string[];
   onOpen: (id: string) => void;
   start?: number; // Montag der ersten Woche (ms, UTC)
+  notes?: Map<string, EventMail[]>; // Mails zu einzelnen Terminen (roter Hinweis)
 }) {
   const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   const cells = Array.from({ length: 28 }, (_, i) => {
@@ -91,7 +95,7 @@ export function MonthView({
                       key={e.key}
                       type="button"
                       onClick={() => openGoogleEvent(e.ev!)}
-                      title={`${e.ev.title}, ${e.ev.time}. Click for details.`}
+                      aria-label={`${e.ev.title}, ${e.ev.time}`}
                       className="hit truncate rounded-[5px] px-1.5 py-0.5 text-left text-[11px] font-semibold text-muted"
                       style={{ border: `1.5px dashed ${e.ev.color ?? "var(--muted)"}` }}
                     >
@@ -106,15 +110,18 @@ export function MonthView({
                 const exam = d.kind === "klausur";
                 const plain = bare(d.title);
                 const label = exam ? examLabel(d.title, course) : withCourse(plain, course);
+                const mails = notes?.get(d.id) ?? [];
+                const cancelled = mails.some((m) => m.kind === "cancelled");
                 return (
+                  <div key={e.key} className="relative flex min-w-0">
                   <button
-                    key={e.key}
                     onClick={() => openEvent(d, { onOpenCourse: () => onOpen(d.courseId) })}
-                    title={`${d.title}, ${nameOf(course)}, ${d.time}`}
-                    aria-label={`${d.title}, ${nameOf(course)}, ${d.time}`}
-                    className={`hit truncate rounded-[5px] px-1.5 py-0.5 text-left text-[11px] font-semibold ${isDone ? "line-through" : ""}`}
+                    aria-label={`${d.title}, ${nameOf(course)}, ${d.time}${cancelled ? ", cancelled according to a mail" : ""}`}
+                    className={`hit min-w-0 flex-1 truncate rounded-[5px] px-1.5 py-0.5 text-left text-[11px] font-semibold ${isDone || cancelled ? "line-through" : ""}`}
                     style={
-                      isDone
+                      cancelled && !isDone
+                        ? { ...cancelledStyle(tone(c), tone(c, "soft")), color: tone(c, "ink") }
+                        : isDone
                         ? { background: "var(--sunken)", color: "var(--muted)" }
                         : exam
                           ? { background: tone(c), color: "var(--on-solid)" }
@@ -123,6 +130,8 @@ export function MonthView({
                   >
                     {abbrTitle(label, 18)}
                   </button>
+                  {mails.length > 0 && <MailBadge mails={mails} small className="absolute -right-1 -top-1.5" />}
+                  </div>
                 );
               })}
             {cell.entries.length > 3 && <span className="px-1 text-[11px] text-muted">+{cell.entries.length - 3} more</span>}

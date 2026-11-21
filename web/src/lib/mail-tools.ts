@@ -145,8 +145,8 @@ function findDate(text: string, base: Date): DateHit | null {
     if (+m[2] >= 1 && +m[2] <= 31) push(m.index, m[0].length, inYear(monthOf(m[1]), +m[2], m[3] ? +m[3] : undefined));
   }
 
-  const rel = /\b(tomorrow|heute|today)\b/g;
-  while ((m = rel.exec(text))) push(m.index, m[0].length, m[1] === "tomorrow" ? addDays(base, 1) : base, false);
+  const rel = /(?<!guten )\b(tomorrow|morgen|heute|today)\b/g;
+  while ((m = rel.exec(text))) push(m.index, m[0].length, m[1] === "tomorrow" || m[1] === "morgen" ? addDays(base, 1) : base, false);
 
   const wd = new RegExp(`\\b(?:(next|nachsten)\\s+)?(${weekdayAlt})\\b`, "g");
   while ((m = wd.exec(text))) {
@@ -227,6 +227,20 @@ export function findEvent(subject: string, body: string, mailDay: string): Found
   const when = `${WEEKDAYS_LONG[d.getDay()]}, ${MONTHS[d.getMonth()]} ${d.getDate()}`;
   const label = [when, start ? `${start} to ${end}` : "all day", location].filter(Boolean).join(" · ");
   return { date: day(d), start, end, location, label, short: `${WEEKDAYS[d.getDay()]}${start ? ` ${start}` : ""}` };
+}
+
+/**
+ * Tag (und Uhrzeit, falls genannt) aus einer Mail, ohne Stichwort-Pflicht: „Die Vorlesung am Donnerstag entfällt“,
+ * „heute 15 Minuten später“. Für Hinweise an Terminen (lib/event-mail.ts), die selbst prüfen, ob es um einen Termin geht.
+ */
+export function findMailDay(subject: string, body: string, mailDay: string): { date: string; start: string | null; explicit: boolean } | null {
+  const lines = body.split("\n").filter((l) => !l.trimStart().startsWith(">"));
+  const text = fold(`${subject}\n${lines.join("\n").slice(0, 4000)}`);
+  const date = findDate(text, parseDay(mailDay));
+  if (!date) return null;
+  const times = findTimes(text).filter((t) => t.index >= date.index - 60 && t.index <= date.end + 80);
+  times.sort((a, b) => Math.abs(a.index - date.index) - Math.abs(b.index - date.index));
+  return { date: day(date.date), start: times[0]?.start ?? null, explicit: date.explicit };
 }
 
 // ------------------------------------------------------------------ Suche

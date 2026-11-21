@@ -404,6 +404,11 @@ textarea.outline-none:focus-visible {
   animation-delay: min(calc((sibling-index() - 1) * 40ms), 320ms);
 }
 
+/* Einzelnes Element erscheint von unten (Verzögerung per style animation-delay) */
+.lift-in {
+  animation: lift-in 340ms var(--ease-out) backwards;
+}
+
 /* Balken wachsen beim Erscheinen von links (Fortschritt, gelernt) bzw. von unten (Tage) */
 .grow-x {
   transform-origin: left center;
@@ -607,10 +612,26 @@ textarea.outline-none:focus-visible {
   animation-delay: calc(600ms + var(--k) * 14ms);
 }
 
+/* Karte am roten Mail-Hinweis (Kalender): geht vom Hinweis aus auf */
+.mail-tip {
+  animation: menu-in 150ms var(--ease-out);
+}
+
 /* Study: der kleine Kartenstapel fächert sich beim Überfahren auf */
 .deck-fan > * {
   transform: translate(var(--x, 0), var(--y, 0)) rotate(var(--r, 0deg));
   transition: transform 320ms var(--ease-out);
+}
+/* Beim Erscheinen werden die Karten aus einem Stapel ausgeteilt */
+@keyframes deal {
+  from {
+    transform: translate(0, 4px) rotate(0deg);
+    opacity: 0.4;
+  }
+}
+.deck-fan.deal > * {
+  animation: deal 520ms var(--ease-out) backwards;
+  animation-delay: calc(180ms + sibling-index() * 55ms);
 }
 @media (hover: hover) and (pointer: fine) {
   .fan-host:hover .deck-fan > * {
@@ -685,6 +706,7 @@ label:has(> input[type="radio"]) {
   [role="dialog"][aria-modal="true"],
   [role="dialog"].sheet-in,
   [role="dialog"].popover,
+  .mail-tip,
   [role="menu"] {
     animation-name: fade-in !important;
   }
@@ -700,6 +722,8 @@ label:has(> input[type="radio"]) {
     animation: none !important;
   }
   .stagger > *,
+  .deck-fan.deal > *,
+  .lift-in,
   .fc-enter,
   .fc-out {
     animation-name: fade-in !important;

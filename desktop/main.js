@@ -508,7 +508,7 @@ function buildMenu() {
     {
       label: "View",
       submenu: [
-        { label: "Next 7 Days", accelerator: "CmdOrCtrl+1", click: send("week") },
+        { label: "Today", accelerator: "CmdOrCtrl+1", click: send("week") },
         { label: "New", accelerator: "CmdOrCtrl+2", click: send("new") },
         { label: "Courses", accelerator: "CmdOrCtrl+3", click: send("courses") },
         { type: "separator" },

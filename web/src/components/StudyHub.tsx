@@ -22,7 +22,7 @@ import {
   Sigma,
   Trash2,
 } from "lucide-react";
-import { Button, Spinner, Swatch, colorOf, inDays, tone } from "./ui";
+import { Button, Spinner, Swatch, colorOf, inDays, shortOf, tone } from "./ui";
 import { CountUp, useCountUp, useSlidingThumb } from "./motion";
 import { displayName } from "./files";
 import { ErrorNotice, NoClaude, Progress, Review, SummaryRow, TYPE_LABEL } from "./StudyView";
@@ -338,6 +338,7 @@ function Home({
                 colors={[colorOf(c)]}
                 exam={examIn(c.id, app.deadlines, app.today)}
                 files={studyFiles(c).length}
+                tag={deckTag(c)}
                 onOpen={() => onDeck(c.id)}
               />
             </li>
@@ -642,6 +643,76 @@ function CatchUp({ courses, onDeck }: { courses: Course[]; onDeck: (id: string) 
   );
 }
 
+/** Kürzel für die vorderste Karte: „SE“, „BWL“, „Ma I“, „Vis“. */
+function deckTag(c: Course) {
+  const s = shortOf(c);
+  if (s.length <= 4) return s;
+  const roman = /\s(I{1,3}|IV|V|\d)$/.exec(s);
+  return roman ? `${s.slice(0, 2)} ${roman[1]}` : s.slice(0, 3);
+}
+
+/**
+ * Kartenstapel als Symbol eines Karteikastens: „All courses“ = gefächerte Hand in allen Kursfarben, ein Kurs = drei
+ * Karten in seiner Farbe mit Kürzel vorn. Beim Erscheinen werden die Karten ausgeteilt, beim Überfahren fächern sie auf.
+ */
+function DeckIcon({ colors, tag, empty, caughtUp }: { colors: CourseColor[]; tag?: string; empty: boolean; caughtUp: boolean }) {
+  const mixed = colors.length > 1;
+  const front = colors[0] ?? "blue";
+  // Hinten: bei „All courses“ eine Hand in allen Kursfarben, sonst zwei Karten in der Kursfarbe links und rechts
+  const back = mixed
+    ? colors.slice(0, 4).map((c, k, all) => {
+        const a = (k - (all.length - 1) / 2) * 15;
+        return { bg: tone(c), r: a, rh: a * 1.75, x: 0, xh: 0 };
+      })
+    : [
+        { bg: `color-mix(in srgb, ${tone(front)} 45%, var(--surface))`, r: -15, rh: -26, x: -3, xh: -8 },
+        { bg: `color-mix(in srgb, ${tone(front)} 70%, var(--surface))`, r: 11, rh: 21, x: 3, xh: 8 },
+      ];
+  return (
+    <span className="deck-fan deal relative block h-[48px] w-[52px] shrink-0" aria-hidden>
+      {back.map((c, k) => (
+        <span
+          key={k}
+          className="absolute bottom-[3px] left-[12px] h-[37px] w-[28px] rounded-[6px]"
+          style={
+            {
+              transformOrigin: "50% 95%",
+              "--r": `${c.r}deg`,
+              "--rh": `${c.rh}deg`,
+              "--x": `${c.x}px`,
+              "--xh": `${c.xh}px`,
+              "--yh": "-1px",
+              background: empty ? "transparent" : c.bg,
+              border: empty ? "1.5px dashed var(--line)" : undefined,
+              boxShadow: empty ? undefined : "0 0 0 1.5px var(--surface)",
+            } as React.CSSProperties
+          }
+        />
+      ))}
+      <span
+        className="absolute bottom-[3px] left-[12px] grid h-[38px] w-[28px] place-items-center rounded-[6px] text-[10px] font-bold leading-none tracking-[-0.02em]"
+        style={
+          {
+            transformOrigin: "50% 95%",
+            "--yh": "-6px",
+            "--rh": "-2deg",
+            background: empty ? "var(--sunken)" : mixed ? "var(--accent)" : tone(front),
+            color: empty ? "var(--muted)" : mixed ? "var(--on-accent)" : "var(--on-solid)",
+            boxShadow: empty ? "inset 0 0 0 1.5px var(--line)" : "0 0 0 1.5px var(--surface), 0 4px 10px rgba(0,0,0,0.18)",
+          } as React.CSSProperties
+        }
+      >
+        {empty ? <span className="text-[15px] font-semibold">+</span> : mixed ? <Shuffle size={14} strokeWidth={2.4} /> : tag}
+        {caughtUp && (
+          <span className="absolute -right-1.5 -top-1.5 grid size-[15px] place-items-center rounded-full text-white" style={{ background: "var(--ok)", boxShadow: "0 0 0 1.5px var(--surface)" }}>
+            <Check size={9} strokeWidth={3.5} />
+          </span>
+        )}
+      </span>
+    </span>
+  );
+}
+
 function BoxTile({
   title,
   subtitle,
@@ -650,9 +721,11 @@ function BoxTile({
   colors,
   exam,
   files,
+  tag,
   onOpen,
 }: {
   title: string;
+  tag?: string; // Kürzel auf der vordersten Karte („BWL“, „SE“)
   subtitle?: string;
   cards: Card[];
   today: string;
@@ -670,20 +743,11 @@ function BoxTile({
   return (
     <button
       onClick={onOpen}
-      className="lift group flex h-full w-full flex-col rounded-[12px] bg-surface p-4 text-left hover:shadow-[inset_0_0_0_1.5px_var(--ring),0_8px_22px_rgba(0,0,0,0.07)]"
+      className="lift fan-host group flex h-full w-full flex-col rounded-[12px] bg-surface p-4 text-left hover:shadow-[inset_0_0_0_1.5px_var(--ring),0_8px_22px_rgba(0,0,0,0.07)]"
       style={{ "--ring": mixed ? "var(--text)" : tone(color) } as React.CSSProperties}
     >
       <div className="flex items-start gap-3">
-        <span
-          className="grid size-10 shrink-0 place-items-center rounded-[10px] transition-transform duration-300 ease-[var(--ease-out)] group-hover:-rotate-6 group-hover:scale-105"
-          style={
-            mixed
-              ? { background: `conic-gradient(${colors.map((c, i) => `${tone(c)} ${(i / colors.length) * 360}deg ${((i + 1) / colors.length) * 360}deg`).join(",")})`, color: "white" }
-              : { background: tone(color, "soft"), color: tone(color, "ink") }
-          }
-        >
-          {mixed ? <Shuffle size={17} aria-hidden /> : <Layers size={17} aria-hidden />}
-        </span>
+        <DeckIcon colors={colors} tag={tag} empty={act.length === 0} caughtUp={act.length > 0 && due === 0} />
         <span className="min-w-0 flex-1">
           <span className="block truncate text-[15px] font-bold">{title}</span>
           <span className="block truncate text-[12px] text-muted">{subtitle ?? (act.length ? `${act.length} cards` : "")}</span>

@@ -19,6 +19,7 @@ import {
   saveAttachment,
   setMailRead,
   snoozeMail,
+  takeOpenMail,
   undoSend,
   unsnoozeMail,
   unsubscribeMail,
@@ -31,6 +32,7 @@ import {
 } from "@/lib/mail-data";
 import { findEvent, guessCourse, parseSearch, snoozeLabel, snoozeOptions, snoozePhrase, stamp, weekStart, type FoundEvent, type SnoozeOption } from "@/lib/mail-tools";
 import { matches, searchTerms } from "@/lib/search";
+import { mailChangeKind } from "@/lib/event-mail";
 import type { Course, CourseColor } from "@/lib/mock-data";
 
 type Box = "all" | MailAccountId;
@@ -166,15 +168,23 @@ export function MailView({ onOpenAccounts }: { onOpenAccounts: () => void }) {
   const mail = useMail();
   const connected = mail.accounts.filter((a) => a.connected);
 
+  // Von außen geöffnete Mail (Hinweis an einem Termin): richtigen Ordner zeigen und die Mail auswählen
+  const [opened] = useState(() => {
+    const id = takeOpenMail();
+    const m = id ? mail.messages.find((x) => x.id === id) : undefined;
+    if (!m) return null;
+    const f: FolderId = m.folder === "inbox" && mail.snoozed[m.id] ? "snoozed" : m.folder;
+    return { id: m.id, folder: f };
+  });
   const [box, setBox] = useState<Box>("all");
-  const [folder, setFolder] = useState<FolderId>("inbox");
+  const [folder, setFolder] = useState<FolderId>(opened?.folder ?? "inbox");
   const [courseId, setCourseId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [fUnread, setFUnread] = useState(false);
   const [fAttach, setFAttach] = useState(false);
   const [fWeek, setFWeek] = useState(false);
   const [searchFocus, setSearchFocus] = useState(false);
-  const [selected, setSelected] = useState<string | null>(null);
+  const [selected, setSelected] = useState<string | null>(opened?.id ?? null);
   const [compose, setCompose] = useState<null | (Draft & { uid: number })>(null);
   const [swipe, setSwipe] = useState<null | { id: string; opts: SnoozeOption[] }>(null);
   const [snoozeOpen, setSnoozeOpen] = useState(false);
@@ -335,7 +345,9 @@ export function MailView({ onOpenAccounts }: { onOpenAccounts: () => void }) {
       moduleId: courseOf(m) ?? null,
       kind: "termin",
     });
-  const eventOf = (m: MailMessage) => (m.folder === "sent" || m.folder === "drafts" || mail.ignoredEvents.includes(m.id) ? null : findEvent(m.subject, m.body, m.date.slice(0, 10)));
+  // Absage („Vorlesung entfällt“): kein Vorschlag, den Termin einzutragen (der rote Hinweis steht schon am Termin)
+  const eventOf = (m: MailMessage) =>
+    m.folder === "sent" || m.folder === "drafts" || mail.ignoredEvents.includes(m.id) || mailChangeKind(m) === "cancelled" ? null : findEvent(m.subject, m.body, m.date.slice(0, 10));
 
   // „Undo“ beim Senden: Mail kommt als offenes Schreibfenster zurück
   const undoNow = () => {

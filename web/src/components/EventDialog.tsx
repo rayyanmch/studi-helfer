@@ -13,6 +13,9 @@ import { COURSE_COLORS, appStore, realCourses, useApp } from "@/lib/app-store";
 import type { CourseColor, CustomEvent, Deadline } from "@/lib/mock-data";
 import { joinLink, placeLabel, resolveRoom, routeForDeadline } from "@/lib/rooms";
 import { RouteButton } from "./RouteButton";
+import { BADGE_RED } from "./MailBadge";
+import { EVENT_MAIL_LABEL, useEventMails } from "@/lib/event-mail";
+import { openMail } from "@/lib/mail-data";
 import { KLIPS_URL, registrationHint, setExamRegistered, useExamRegistered } from "@/lib/exam-reg";
 import { lecturePeriod, newEventId, occurrences, parseIso, parseTimeLabel, timeLabel, weekdayOf } from "@/lib/recurrence";
 
@@ -197,6 +200,41 @@ const KIND_LABEL: Record<Deadline["kind"], string> = { termin: "Class or event",
 
 // --- Erkannter Termin: Details --------------------------------------------------------------------
 
+/** Mails zu genau diesem Termin (abgesagt, verschoben, später, anderes Thema …); Klick öffnet die Mail. */
+function EventMails({ deadline: d }: { deadline: Deadline }) {
+  const app = useApp();
+  const notes = useEventMails(app.deadlines).get(d.id) ?? [];
+  if (!notes.length) return null;
+  return (
+    <div className="mt-3 rounded-[12px] bg-surface p-1.5">
+      <p className="flex items-center gap-2 px-2.5 pb-0.5 pt-1.5 text-[13px] font-bold">
+        <span className="grid h-[18px] min-w-[18px] place-items-center rounded-full px-1 text-[11px] text-white" style={{ background: BADGE_RED }}>
+          {notes.length}
+        </span>
+        {notes.length === 1 ? "Mail about this event" : `${notes.length} mails about this event`}
+      </p>
+      {notes.map(({ mail: m, kind }) => (
+        <button
+          key={m.id}
+          onClick={() => {
+            close();
+            openMail(m.id);
+          }}
+          className="block w-full rounded-[8px] px-2.5 py-2 text-left hover:bg-hover"
+        >
+          <span className="block text-[11px] font-bold" style={{ color: kind === "cancelled" ? BADGE_RED : kind === "info" ? "var(--muted)" : "var(--warn)" }}>
+            {EVENT_MAIL_LABEL[kind]}
+          </span>
+          <span className="block text-[13px] font-semibold leading-snug">{m.subject || "(no subject)"}</span>
+          <span className="block text-[12px] text-muted">
+            {m.fromName || m.fromAddress} · Open in Mail
+          </span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function Details({ deadline: d, onOpenCourse }: { deadline: Deadline; onOpenCourse?: () => void }) {
   const app = useApp();
   const course = app.courses.find((c) => c.id === d.courseId);
@@ -256,6 +294,7 @@ function Details({ deadline: d, onOpenCourse }: { deadline: Deadline; onOpenCour
               : `Found automatically${from ? ` in ${from.slice("Found in ".length)}` : ""}. Edit it to fix the time or room, or hide it if it is wrong.`}
           </p>
         </div>
+        <EventMails deadline={d} />
         {d.kind === "klausur" && <ExamRegistration deadline={d} />}
         <div className="mt-4 flex flex-wrap items-center gap-2">
           {route && <RouteButton route={route} />}

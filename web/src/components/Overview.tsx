@@ -10,6 +10,7 @@ import {
   ChevronDown,
   ChevronRight,
   GraduationCap,
+  Sunrise,
   Inbox,
   Library,
   LogIn,
@@ -34,8 +35,11 @@ import { MensaView } from "./MensaView";
 import { StudyHub, useStudyDue } from "./StudyHub";
 import { ProgressView } from "./ProgressView";
 import { reducedMotion } from "./motion";
+import { MailBadge, cancelledStyle } from "./MailBadge";
+import { useEventMails, type EventMail } from "@/lib/event-mail";
+import type { WeatherDay } from "@/lib/weather";
 import { Welcome } from "./Welcome";
-import { MensaToday } from "./MensaToday";
+import { TodayView, DayWeather, useWeatherDays } from "./TodayView";
 import { matches, searchTerms } from "@/lib/search";
 import { REMIND_DAYS, useExamRegistered } from "@/lib/exam-reg";
 import { MailView } from "./MailView";
@@ -188,11 +192,17 @@ export function Overview({
       setQuery("");
       setView("progress");
     };
+    const goMail = () => {
+      setQuery("");
+      setView("mail");
+    };
     window.addEventListener("studi:open-study", go);
     window.addEventListener("studi:open-progress", goProgress);
+    window.addEventListener("studi:open-mail", goMail);
     return () => {
       window.removeEventListener("studi:open-study", go);
       window.removeEventListener("studi:open-progress", goProgress);
+      window.removeEventListener("studi:open-mail", goMail);
     };
   }, []);
 
@@ -231,8 +241,8 @@ export function Overview({
         <ProfileMenu user={user} onEditCourses={onEditCourses} onLogout={onLogout} onSettings={() => setSettingsOpen(true)} onAccounts={() => setAccountsOpen(true)} />
         <nav ref={navRef} className="scroll flex-1 px-3 pb-3 pt-3" aria-label="Navigation">
           <div className="flex flex-col gap-0.5">
-            <NavItem id="week" active={activeNav === "week"} onClick={() => open("week")} icon={<CalendarDays size={15} aria-hidden />}>
-              Next 4 days
+            <NavItem id="week" active={activeNav === "week"} onClick={() => open("week")} icon={<Sunrise size={15} aria-hidden />}>
+              Today
             </NavItem>
             <NavItem id="calendar" active={activeNav === "calendar"} onClick={() => open("calendar")} icon={<CalendarRange size={15} aria-hidden />}>
               Calendar
@@ -337,6 +347,7 @@ export function Overview({
             ) : (
               <>
                 {view === "week" && <Welcome onMensa={() => open("mensa")} />}
+                {view === "week" && <TodayView deadlines={mine} done={done} onOpen={open} />}
                 {view === "week" && <WeekView list={list} deadlines={mine} done={done} onToggle={toggleDone} onOpen={open} />}
                 {view === "calendar" && <CalendarView deadlines={mine} done={done} onToggle={toggleDone} onOpenCourse={open} />}
                 {view === "places" && <PlacesView />}
@@ -809,6 +820,8 @@ function WeekView({
   const googleEvents = googleConnected && mail.calendars.google ? mail.events : [];
   const classesFiltered = showClasses ? deadlines : deadlines.filter((d) => d.kind !== "termin");
   const visible = showIlias ? classesFiltered : [];
+  const wx = useWeatherDays();
+  const notes = useEventMails(deadlines);
   const days = Array.from({ length: 4 }, (_, i) => {
     const d = new Date(todayMs() + i * DAY_MS);
     const iso = d.toISOString().slice(0, 10);
@@ -823,7 +836,7 @@ function WeekView({
     );
     // Termine, die sich überschneiden, stehen nebeneinander (Variante P1)
     const rows = overlapRows(entries);
-    return { iso, num: d.getUTCDate(), wd: d.getUTCDay(), items, events, rows, wide: entries.length > 0, today: i === 0 };
+    return { iso, num: d.getUTCDate(), wd: d.getUTCDay(), items, events, rows, wide: entries.length > 0, today: i === 0, wx: wx.get(iso) };
   });
 
   const open = deadlines.filter(
@@ -847,10 +860,10 @@ function WeekView({
 
   return (
     <>
-      <header className="flex flex-wrap items-end gap-4">
+      <header className="mt-9 flex flex-wrap items-end gap-4">
         <div className="min-w-0 flex-1">
-          <h1 className="text-[30px] font-bold leading-tight tracking-[-0.02em]">Next 4 days</h1>
-          <p className="mt-1 text-muted">
+          <h2 className="text-[20px] font-bold leading-tight tracking-[-0.01em]">Next 4 days</h2>
+          <p className="mt-1 text-[13px] text-muted">
             {
               <>
                 {open.length === 0 && deadlines.length === 0 && appStore.get().job?.kind === "import"
@@ -922,7 +935,7 @@ function WeekView({
             >
               {day.rows.map((row) =>
                 row.kind === "group" ? (
-                  <OverlapGroup key={row.key} items={row.items} onOpen={onOpen} />
+                  <OverlapGroup key={row.key} items={row.items} onOpen={onOpen} notes={notes} />
                 ) : row.e.d ? (
                   <DeadlineBlock
                     key={row.e.key}
@@ -931,6 +944,7 @@ function WeekView({
                     onToggle={() => onToggle(row.e.d!.id)}
                     onOpen={() => openEvent(row.e.d!, { onOpenCourse: () => onOpen(row.e.d!.courseId) })}
                     alsoGoogle={row.e.alsoGoogle}
+                    mails={notes.get(row.e.d.id) ?? []}
                   />
                 ) : (
                   <GoogleBlock key={row.e.key} ev={row.e.ev!} />
@@ -946,8 +960,6 @@ function WeekView({
           Settings, or use “Add event” above.
         </p>
       )}
-
-      <MensaToday onOpen={() => onOpen("mensa")} />
 
       <div className="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-2">
         <section aria-labelledby="neu-titel">
@@ -992,7 +1004,7 @@ function WeekView({
   );
 }
 
-function DayHead({ day }: { day: { num: number; wd: number; wide: boolean; today: boolean } }) {
+function DayHead({ day }: { day: { num: number; wd: number; wide: boolean; today: boolean; wx?: WeatherDay } }) {
   if (!day.wide) {
     return (
       <div className="flex h-7 flex-col items-center justify-center leading-none">
@@ -1024,6 +1036,7 @@ function DayHead({ day }: { day: { num: number; wd: number; wide: boolean; today
           <span className="text-muted">{SHORT[day.wd]}</span>
         </>
       )}
+      <DayWeather day={day.wx} />
     </div>
   );
 }
@@ -1032,7 +1045,7 @@ function DayHead({ day }: { day: { num: number; wd: number; wide: boolean; today
  * Termine, die sich überschneiden (Variante P1): nebeneinander, so weit nach unten versetzt, wie sie später
  * beginnen; die gemeinsame Zeit ist schraffiert. Zu: Farbe, Startzeit, Kürzel. Maus drüber: dieser wird breit.
  */
-function OverlapGroup({ items, onOpen }: { items: TimedEntry[]; onOpen: (id: string) => void }) {
+function OverlapGroup({ items, onOpen, notes }: { items: TimedEntry[]; onOpen: (id: string) => void; notes: Map<string, EventMail[]> }) {
   const [active, setActive] = useState<string | null>(null);
   const min = Math.min(...items.map((i) => i.start));
   const max = Math.max(...items.map((i) => i.end));
@@ -1086,11 +1099,16 @@ function OverlapGroup({ items, onOpen }: { items: TimedEntry[]; onOpen: (id: str
             onMouseEnter: () => setActive(it.key),
             onFocus: () => setActive(it.key),
             onBlur: () => setActive(null),
-            title: `${title}, ${hhmm(it.start)}–${hhmm(it.end)}`,
+            "aria-label": `${title}, ${hhmm(it.start)}–${hhmm(it.end)}`,
             className: "hit absolute inset-x-0 overflow-hidden rounded-[7px] px-1.5 py-1 text-left",
           };
           return (
             <div key={it.key} className="relative min-w-0 basis-0" style={{ flexGrow: open ? 5 : 1, transition: "flex-grow 200ms var(--ease-in-out)" }}>
+              {it.d && (notes.get(it.d.id)?.length ?? 0) > 0 && (
+                <span className="absolute z-20" style={{ top: style.top - 7, right: -5 }}>
+                  <MailBadge mails={notes.get(it.d.id)!} small />
+                </span>
+              )}
               {it.d ? (
                 <button
                   {...common}
@@ -1123,6 +1141,7 @@ function DeadlineBlock({
   onOpen,
   clash = null,
   alsoGoogle = false,
+  mails = [],
 }: {
   d: Deadline;
   done: boolean;
@@ -1130,6 +1149,7 @@ function DeadlineBlock({
   onOpen: () => void;
   clash?: string | null;
   alsoGoogle?: boolean;
+  mails?: EventMail[];
 }) {
   const course = courseById(d.courseId);
   if (!course) return null;
@@ -1151,12 +1171,14 @@ function DeadlineBlock({
   // „Lecture“ allein sagt nicht, welcher Kurs: der Kurzname steht im Titel, darunter der Raum
   const place = placeLabel(d.location);
   const below = exam && place ? place : examBits ? null : title !== bare(d.title) ? place || null : shortOf(course);
+  const cancelled = mails.some((m) => m.kind === "cancelled");
 
   return (
-    <div className="hit flex items-start gap-1.5 rounded-[7px] py-1.5 pl-2 pr-1.5" style={style}>
+    <div className="hit relative flex items-start gap-1.5 rounded-[7px] py-1.5 pl-2 pr-1.5" style={cancelled && !isDone ? cancelledStyle(tone(c), tone(c, "soft")) : style}>
+      {mails.length > 0 && <MailBadge mails={mails} className="absolute -right-1.5 -top-2" />}
       <button
         onClick={onOpen}
-        title={[`${d.title}, ${nameOf(course)}`, d.location ? `Room: ${placeLabel(d.location)}` : d.source].filter(Boolean).join(" · ")}
+        aria-label={[`${d.title}, ${nameOf(course)}`, d.location ? `Room: ${placeLabel(d.location)}` : d.source, cancelled ? "cancelled according to a mail" : null].filter(Boolean).join(" · ")}
         className="min-w-0 flex-1 text-left"
       >
         {exam && (
@@ -1175,7 +1197,7 @@ function DeadlineBlock({
             </span>
           )}
         </span>
-        <span className={`block text-[13px] font-semibold leading-snug ${isDone ? "line-through" : ""}`}>{title}</span>
+        <span className={`block text-[13px] font-semibold leading-snug ${isDone || cancelled ? "line-through" : ""}`}>{title}</span>
         {below && <span className={`block truncate text-[12px] ${solid ? "opacity-85" : isDone ? "" : "text-muted"}`}>{below}</span>}
         {clash && !isDone && <ClashTag other={clash} />}
       </button>
