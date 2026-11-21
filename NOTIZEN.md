@@ -7,6 +7,8 @@ Gemeinsames Gedächtnis für alle KI-Agenten und Menschen im Projekt. Wird über
 
 Wer gerade woran arbeitet (Person, Aufgabe, betroffene Dateien). Eintragen beim Start, löschen wenn fertig.
 
+- **Rayyans Agent: Mensa-Tab** (2026-11-21). Neu: `web/src/lib/mensa.ts` (Abruf von CloudMensa, Zwischenspeicher), `web/src/components/MensaView.tsx`. Klein geändert: `Overview.tsx` (Eintrag „Mensa“ in der Seitenleiste + Ansicht), ggf. Menübefehl in `desktop/main.js` (nur eine Zeile). Kein Eingriff in Mikas Google-/Mail-Dateien.
+
 
 
 
