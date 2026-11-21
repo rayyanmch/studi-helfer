@@ -6,8 +6,8 @@
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Check, Copy, ExternalLink, X } from "lucide-react";
-import { Button } from "./ui";
-import { openMacSettings, openVpnApp, openVpnGuide, useVpn, watchVpn } from "@/lib/vpn";
+import { Button, Spinner } from "./ui";
+import { disconnectVpn, openMacSettings, openVpnApp, openVpnGuide, useVpn, watchVpn } from "@/lib/vpn";
 
 // --- Fenster von überall öffnen (Seitenleiste, Hinweis bei ILIAS-Störung) ---------------
 
@@ -49,7 +49,7 @@ export function VpnLine() {
         style={on ? { background: "var(--ok)" } : { border: "1.5px solid var(--muted)" }}
       />
       <span className="flex-1">{on ? "Uni VPN on" : vpn.installed ? "Uni VPN off" : "Uni VPN"}</span>
-      {!on && <span className="underline underline-offset-2">{vpn.installed ? "Connect" : "Set up"}</span>}
+      <span className="underline underline-offset-2">{on ? "Manage" : vpn.installed ? "Connect" : "Set up"}</span>
     </button>
   );
 }
@@ -64,6 +64,8 @@ function VpnDialog({ onClose }: { onClose: () => void }) {
   const vpn = useVpn();
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState("");
+  const [waiting, setWaiting] = useState(false); // Cisco ist offen, wir warten auf „Connect“
+  const [busy, setBusy] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => watchVpn(true), []);
@@ -85,7 +87,19 @@ function VpnDialog({ onClose }: { onClose: () => void }) {
   };
   const openApp = async () => {
     setError("");
+    setWaiting(true);
     const err = await openVpnApp();
+    if (err) {
+      setError(err);
+      setWaiting(false);
+    }
+  };
+  const disconnect = async () => {
+    setError("");
+    setBusy(true);
+    const err = await disconnectVpn();
+    setBusy(false);
+    setWaiting(false);
     if (err) setError(err);
   };
 
@@ -148,8 +162,19 @@ function VpnDialog({ onClose }: { onClose: () => void }) {
               </Button>
             </span>
           </Step>
-          <Step n={n(2 + base)} done={done[2 + base]} now={current === 2 + base} title={connected ? "Connected" : "Connect"} sub={connected ? "You’re in the uni network. You can close this window." : `Click “Connect” in ${vpn.client}. ${vpn.login}`}>
-            {!connected && (
+          <Step n={n(2 + base)} done={done[2 + base]} now={current === 2 + base} title={connected ? "Connected" : "Connect"} sub={connected ? "You’re in the uni network. Turn it off again whenever you like." : waiting ? `Waiting for you to click “Connect” in ${vpn.client}…` : `Click “Connect” in ${vpn.client}. ${vpn.login}`}>
+            {connected ? (
+              <Button onClick={() => void disconnect()} disabled={busy}>
+                {busy && <Spinner size={12} />} Disconnect
+              </Button>
+            ) : waiting ? (
+              <span className="flex items-center gap-2 text-[13px] text-muted">
+                <Spinner size={13} />
+                <button onClick={() => void openApp()} className="underline underline-offset-2 hover:text-text">
+                  Open again
+                </button>
+              </span>
+            ) : (
               <Button variant={current === 2 + base ? "primary" : "secondary"} onClick={() => void openApp()} disabled={!vpn.installed}>
                 Open {vpn.client.replace(/ Secure Client$/, "")}
               </Button>

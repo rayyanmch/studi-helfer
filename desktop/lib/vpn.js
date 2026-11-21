@@ -83,6 +83,20 @@ async function openClient() {
   return err ? { ok: false, code: "failed", message: err } : { ok: true };
 }
 
+/**
+ * Trennt die Verbindung (Cisco-Befehlszeile, braucht keine Anmeldung). Verbinden geht nicht per Befehl:
+ * Die Uni-Anmeldung wird von der Befehlszeile nicht unterstützt („authentication type is not supported“),
+ * darum öffnet „Connect“ das VPN-Programm, wo man einmal auf „Connect“ klickt.
+ */
+async function disconnect() {
+  const client = CLIENTS[UNIS.koeln.client];
+  const cli = firstExisting(client.cli);
+  if (!cli) return { ok: false, code: "unsupported", message: `Please disconnect in ${client.name}.` };
+  await new Promise((resolve) => execFile(cli, ["disconnect"], { timeout: 20_000 }, () => resolve()));
+  const connected = await ciscoState(cli);
+  return connected ? { ok: false, code: "failed", message: `Could not disconnect. Please do it in ${client.name}.` } : { ok: true };
+}
+
 /** Öffnet die Mac-Einstellungen an der Stelle, wo man die Erweiterung erlaubt. */
 async function openSettings() {
   try {
@@ -101,6 +115,7 @@ async function openGuide() {
 function register(handle) {
   handle("studi:vpn:status", () => status());
   handle("studi:vpn:open", () => openClient());
+  handle("studi:vpn:disconnect", () => disconnect());
   handle("studi:vpn:guide", () => openGuide());
   handle("studi:vpn:settings", () => openSettings());
 }

@@ -21,6 +21,7 @@ export interface VpnStatus {
 interface VpnApi {
   status(): Promise<{ ok: true } & Omit<VpnStatus, "ready">>;
   open(): Promise<{ ok: boolean; message?: string }>;
+  disconnect(): Promise<{ ok: boolean; message?: string }>;
   guide(): Promise<{ ok: true }>;
   settings(): Promise<{ ok: true }>;
 }
@@ -103,6 +104,19 @@ export async function openVpnApp(): Promise<string | null> {
   }
   const r = await v.open();
   return r.ok ? null : (r.message ?? "Could not open the VPN app.");
+}
+
+/** Trennt die VPN-Verbindung. Gibt einen Fehlertext zurück oder null. */
+export async function disconnectVpn(): Promise<string | null> {
+  const v = api();
+  if (!v) {
+    await new Promise((r) => setTimeout(r, 600));
+    set({ connected: false });
+    return null;
+  }
+  const r = await v.disconnect();
+  await refreshVpn();
+  return r.ok ? null : (r.message ?? "Could not disconnect.");
 }
 
 /** Öffnet die Mac-Einstellungen („Erlauben“ für die VPN-Erweiterung). Im Browser: tut so, als wäre es erlaubt. */
