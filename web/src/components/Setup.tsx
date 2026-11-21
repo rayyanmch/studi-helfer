@@ -1,13 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AlertCircle, Check } from "lucide-react";
+import { AlertCircle, Check, ExternalLink, RotateCw } from "lucide-react";
 import { Button, Notice, Spinner, Stage, colorOf, folderPlace, nameOf, tone } from "./ui";
 import type { Course } from "@/lib/mock-data";
 import * as store from "@/lib/app-store";
 import { useApp } from "@/lib/app-store";
 
 type Tab = "current" | "past";
+
+// ILIAS-Magazin (Kurssuche). ILIAS listet in „Meine Kurse“ nur Kurse, denen man beigetreten ist.
+const ILIAS_COURSES = "https://www.ilias.uni-koeln.de/ilias/goto.php?target=root_1&client_id=uk";
 
 export function Setup({
   selected,
@@ -81,18 +84,48 @@ export function Setup({
             Earlier <span className="opacity-60">{past.length}</span>
           </TabButton>
         </div>
-        <button onClick={toggleAll} className="rounded-md px-2 py-1 font-semibold text-[var(--focus)] hover:bg-hover">
-          {allOn ? "Deselect all" : "Select all"}
-        </button>
+        {list.length > 0 && (
+          <button onClick={toggleAll} className="rounded-md px-2 py-1 font-semibold text-[var(--focus)] hover:bg-hover">
+            {allOn ? "Deselect all" : "Select all"}
+          </button>
+        )}
       </div>
 
-      <ul className="mt-3 grid grid-cols-1 gap-2.5 sm:grid-cols-2" aria-label="Courses">
-        {list.map((c) => (
-          <li key={c.id}>
-            <CourseTile course={c} on={selected.includes(c.id)} onToggle={() => toggle(c.id)} />
-          </li>
-        ))}
-      </ul>
+      {list.length === 0 ? (
+        <NoCourses
+          past={tab === "past"}
+          hasPast={past.length > 0}
+          onShowPast={() => setTab("past")}
+          desktop={app.mode === "desktop"}
+        />
+      ) : (
+        <>
+          <ul className="mt-3 grid grid-cols-1 gap-2.5 sm:grid-cols-2" aria-label="Courses">
+            {list.map((c) => (
+              <li key={c.id}>
+                <CourseTile course={c} on={selected.includes(c.id)} onToggle={() => toggle(c.id)} />
+              </li>
+            ))}
+          </ul>
+          {tab === "current" && (
+            <p className="mt-2.5 text-[12px] text-muted">
+              Missing a course? ILIAS only lists courses you have joined.{" "}
+              <a href={ILIAS_COURSES} target="_blank" rel="noreferrer" className="rounded font-semibold text-[var(--focus)] hover:underline">
+                Join it in ILIAS
+              </a>
+              {app.mode === "desktop" && (
+                <>
+                  , then{" "}
+                  <button onClick={() => void store.loadSetupCourses()} className="rounded font-semibold text-[var(--focus)] hover:underline">
+                    look again
+                  </button>
+                </>
+              )}
+              .
+            </p>
+          )}
+        </>
+      )}
 
       <label className="mt-5 flex cursor-default items-center gap-3 rounded-[12px] bg-surface px-4 py-3">
         <span className="min-w-0 flex-1">
@@ -151,6 +184,42 @@ export function Setup({
       </>
       )}
     </Stage>
+  );
+}
+
+// Leere Liste: Erstis sind in den ersten Tagen oft noch keinem ILIAS-Kurs beigetreten. Statt einer leeren
+// Seite mit grauem Knopf sagen, was zu tun ist, und erneut nachsehen lassen.
+function NoCourses({ past, hasPast, onShowPast, desktop }: { past: boolean; hasPast: boolean; onShowPast: () => void; desktop: boolean }) {
+  if (past) {
+    return <p className="mt-3 rounded-[12px] bg-surface px-4 py-5 text-muted">No courses from earlier semesters.</p>;
+  }
+  return (
+    <div className="mt-3 rounded-[12px] bg-surface px-5 py-5">
+      <p className="font-semibold">No courses for this semester yet</p>
+      <p className="mt-1 text-[13px] text-muted">
+        ILIAS only lists courses you have joined. Find each of your courses in ILIAS and click “Join”. Then come back here and look again.
+      </p>
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        <a
+          href={ILIAS_COURSES}
+          target="_blank"
+          rel="noreferrer"
+          className="no-drag inline-flex h-8 items-center gap-1.5 rounded-lg bg-accent px-3 text-[13px] font-semibold text-on-accent hover:opacity-90"
+        >
+          <ExternalLink size={14} aria-hidden /> Find courses in ILIAS
+        </a>
+        {desktop && (
+          <Button onClick={() => void store.loadSetupCourses()}>
+            <RotateCw size={13} aria-hidden /> Look again
+          </Button>
+        )}
+        {hasPast && (
+          <button onClick={onShowPast} className="rounded-md px-2 py-1 text-[13px] font-semibold text-[var(--focus)] hover:bg-hover">
+            Show earlier courses
+          </button>
+        )}
+      </div>
+    </div>
   );
 }
 
