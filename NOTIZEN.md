@@ -42,11 +42,11 @@ Rundgang als Anna (1. Semester, Mac, keine Technik) mit Datenkopie, dazu Recherc
 ### Befunde (offen, nach Nutzen für Erstis)
 
 1. **Kalender-Tab: Kurs fehlt an den Terminen** (`CalendarView.tsx`, Mika): Im Zeitraster steht nur „Lecture“, „Exercise · Group 3“, Kurs nur über die Farbe. Anna sieht nicht, welche Vorlesung. Vorschlag: Kurzname als zweite Zeile (wie in „Next 4 days“) oder davor bei allgemeinen Titeln (`abbrTitle`/MonthView macht das schon). → Nachricht an Mika.
-2. **Karteikarten-Rückstau** (`StudyHub`, andere Sitzung von Rayyan): neue Karten sind auf 20/Tag begrenzt, Wiederholungen nicht. Studie mit Medizin-Erstis: 82 % fanden Anki überwältigend, 68 % frustriert bei verpasster Tagesrunde. Vorschlag: Obergrenze für Wiederholungen pro Tag, Rückstand auf mehrere Tage verteilen, Zeit statt Zahl („about 6 min“).
-3. **Woche nachbereitet abhaken** (Kursseite „By week“, andere Sitzung): Stoffmenge ist Abbruchgrund Nr. 1 (30 %). Haken „Reviewed“ je Woche, Startseite „2 weeks in Mathe I not reviewed yet“.
-4. **Kursseite: Kopfzeile bei 1000 px** (`ModuleView.tsx`, andere Sitzung): vier Knöpfe rechts drücken den vollen Namen auf drei Zeilen („Grundlagen der / Betriebswirtschaftslehre / · 54 files“). Knöpfe unter den Titel umbrechen lassen.
+2. (erledigt c2b7d1e, andere Sitzung) **Karteikarten-Rückstau** (`StudyHub`): neue Karten sind auf 20/Tag begrenzt, Wiederholungen nicht. Studie mit Medizin-Erstis: 82 % fanden Anki überwältigend, 68 % frustriert bei verpasster Tagesrunde. Vorschlag: Obergrenze für Wiederholungen pro Tag, Rückstand auf mehrere Tage verteilen, Zeit statt Zahl („about 6 min“).
+3. (erledigt c2b7d1e) **Woche nachbereitet abhaken** (Kursseite „By week“): Rückmeldung an die andere Sitzung: „Catch up“ listet nach dem Update alle vergangenen Wochen aller Kurse als offen, besser erst ab erster Nutzung zählen. Stoffmenge ist Abbruchgrund Nr. 1 (30 %). Haken „Reviewed“ je Woche, Startseite „2 weeks in Mathe I not reviewed yet“.
+4. (erledigt c2b7d1e) **Kursseite: Kopfzeile bei 1000 px** (`ModuleView.tsx`): vier Knöpfe rechts drücken den vollen Namen auf drei Zeilen („Grundlagen der / Betriebswirtschaftslehre / · 54 files“). Knöpfe unter den Titel umbrechen lassen.
 5. **Uni-Mail: Mitteilung bei neuer Mail** (Mika): einzige Beschwerde in den sichtbaren Studo-Bewertungen; Uni-Mail ist Pflichtkanal (Prüfungsamt, Dozenten).
-6. **Seitenleiste: Zahl bei „Courses“** (5) ist keine Aufgabe, wirkt wie ungelesen; bei „Study“ (13) fehlt, was gezählt wird (Tooltip „13 cards to review today“).
+6. (Tooltips erledigt a8d7bac) **Seitenleiste: Zahl bei „Courses“** (5) ist keine Aufgabe, wirkt wie ungelesen; bei „Study“ (13) fehlt, was gezählt wird (Tooltip „13 cards to review today“).
 7. **Ideen für später:** Lernplan für die Klausurphase (Wochen rückwärts vom Klausurtag verteilen), Probeklausur-Modus mit Altklausuren („Exam prep“), Uni-Wörterbuch (c.t./s.t., ECTS, Fixplatz, Rücktritt; ZSB hat ein Unilexikon), Lerntermin als .ics an Kommilitonen.
 
 ### Recherche: Fakten Uni Köln WS 26/27 (mit Quelle geprüft)

@@ -8,8 +8,9 @@ Die Oberfläche ist englisch, damit alle sie nutzen können; Doku und Notizen si
 
 - **Dateien aus ILIAS auf dem Mac**: einmal mit der Uni-Kennung anmelden, Kurse wählen, fertig. Alles landet sortiert im Ordner `~/Uni` (Vorlesung, Übung und Übungsgruppe eines Fachs zusammen). Neue und geänderte Dateien kommen von selbst, alte Fassungen werden gesichert.
 - **Fristen und Stundenplan ohne KI**: Abgaben und Termine aus dem ILIAS-Kalender, Fristen aus Übungsblättern und Vorlesungszeiten aus den Orga-Folien, alles per Regeln auf dem Mac. Klausur-Countdown, Wahltermine (z. B. Übungsgruppe) zum Anklicken, eigene Termine, Ausblenden mit „Undo“.
-- **Startseite „Next 7 days“**: Wochenstreifen in Kursfarben, dringende Abgaben hervorgehoben, Abhaken, 4-Wochen-Ansicht, kurze Zusammenfassung je Kurs.
-- **Suche**: Dateien, Fristen und Kurse; versteht auch deutsche Wörter („Klausur“, „Übung“, „Folien“).
+- **Startseite „Next 4 days“ und Kalender**: Tage in Kursfarben, dringende Abgaben hervorgehoben, Abhaken, Woche als Zeitraster und 4 Wochen, kurze Zusammenfassung je Kurs.
+- **Nichts verpassen**: Mac-Mitteilung am Vorabend und 3 Stunden vor jeder Abgabe, eine Woche und einen Tag vor Klausuren (morgens auch bei geschlossener App). Klausuren fragen „Registered in KLIPS?“ (Prüfungsanmeldung ist ein eigener Schritt). Uni-Termine für alle im Kalender: Semesterbeitrag/Rückmeldung, KLIPS-Belegphasen, Vorlesungszeit.
+- **Suche**: Dateien, Fristen und Kurse; versteht auch deutsche Wörter („Klausur“, „Übung“, „Folien“, „Semesterbeitrag“).
 - **Mensa**: Speiseplan aller Kölner Mensen mit Preisen, vegan/vegetarisch und Allergenen; mittags eine Zeile auf der Startseite.
 - **Mail und Google-Kalender** (optional): Uni-Postfach mit dem ILIAS-Login, Gmail und Google-Kalender per Google-Anmeldung.
 
@@ -17,7 +18,7 @@ Die Oberfläche ist englisch, damit alle sie nutzen können; Doku und Notizen si
 
 - Das Uni-Passwort liegt nur im Schlüsselbund des Macs und geht nur an ILIAS (und ans Uni-Postfach, falls verbunden).
 - Dateien bleiben im Ordner `~/Uni` auf dem Mac, nichts wird hochgeladen.
-- Keine KI: Fristen und Zusammenfassungen entstehen mit festen Regeln auf dem Mac.
+- Fristen entstehen mit festen Regeln auf dem Mac, ohne KI. Nur der Lernbereich „Study“ schickt auf Wunsch den Text gewählter Dateien an Claude.
 - Der Mensa-Plan ist öffentlich; die App schickt dabei nichts über dich.
 
 ## Installieren (Testversion)
