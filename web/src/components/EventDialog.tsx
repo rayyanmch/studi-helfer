@@ -11,7 +11,7 @@ import { Button, Swatch, colorOf, nameOf, tone } from "./ui";
 import * as store from "@/lib/app-store";
 import { COURSE_COLORS, appStore, realCourses, useApp } from "@/lib/app-store";
 import type { CourseColor, CustomEvent, Deadline } from "@/lib/mock-data";
-import { resolveRoom, routeUrl } from "@/lib/rooms";
+import { resolveRoom, routeForDeadline } from "@/lib/rooms";
 import { RouteButton } from "./RouteButton";
 import { KLIPS_URL, registrationHint, setExamRegistered, useExamRegistered } from "@/lib/exam-reg";
 import { lecturePeriod, newEventId, occurrences, parseIso, parseTimeLabel, timeLabel, weekdayOf } from "@/lib/recurrence";
@@ -202,9 +202,10 @@ function Details({ deadline: d, onOpenCourse }: { deadline: Deadline; onOpenCour
   const course = app.courses.find((c) => c.id === d.courseId);
   const color = d.color ?? (course ? colorOf(course) : "indigo");
   const where = d.location ?? (d.source && !d.source.startsWith("Found in ") ? d.source : undefined);
-  // Route: nur wenn wir den Ort kennen (Gebäudenummer am Raum). Bei geändertem Raum ohne Gebäude gilt das Gebäude des normalen Raums.
+  // Route: Gebäudenummer am Raum, sonst das Gebäude, dessen Name passt, bei eigenen Terminen auch eine Adresse.
+  // Bei geändertem Raum ohne Gebäude gilt das Gebäude des normalen Raums.
   const direct = resolveRoom(d.location);
-  const place = direct ?? (d.roomChange ? resolveRoom(d.roomChange.was) : null);
+  const route = routeForDeadline(d);
   const from = d.source?.startsWith("Found in ") ? d.source : undefined;
   // Abgaben direkt hier abhaken (sonst nur über den kleinen Kreis im Wochenstreifen)
   const canDone = d.kind === "abgabe" && app.mode === "desktop";
@@ -237,10 +238,10 @@ function Details({ deadline: d, onOpenCourse }: { deadline: Deadline; onOpenCour
               Only on this day, from the mail “{d.roomChange.subject}”.{d.roomChange.was ? ` Usually: ${d.roomChange.was}.` : ""} Next time it is back to normal by itself.
             </p>
           )}
-          {place && (
+          {route && (
             <p className="mt-1 text-[12px] text-muted">
-              {place.label}
-              {!direct ? ". The new room has no building number, so the route goes to the usual building." : ""}
+              {route.label}
+              {!direct && d.roomChange ? ". The new room has no building number, so the route goes to the usual building." : !route.exact && route.tip ? " (best match)" : ""}
             </p>
           )}
           {d.seriesId && (
@@ -256,7 +257,7 @@ function Details({ deadline: d, onOpenCourse }: { deadline: Deadline; onOpenCour
         </div>
         {d.kind === "klausur" && <ExamRegistration deadline={d} />}
         <div className="mt-4 flex flex-wrap items-center gap-2">
-          {place && <RouteButton route={{ url: routeUrl(place.building.lat, place.building.lon), label: place.label, exact: Boolean(direct) }} />}
+          {route && <RouteButton route={route} />}
           {canDone && (
             <Button variant={isDone ? "secondary" : "primary"} onClick={() => void store.toggleDone(d.id)} aria-pressed={isDone}>
               {isDone ? <RotateCcw size={13} aria-hidden /> : <Check size={13} aria-hidden />} {isDone ? "Mark as not done" : "Mark as done"}

@@ -27,6 +27,10 @@ export const courseById = (id: string) => appStore.get().courses.find((c) => c.i
 // Titel ohne „Submit “ vorne, für enge Stellen
 export const bare = (t: string) => t.replace(/^Submit /, "");
 
+/** „Lecture“, „Exercise · Group 3“ … sagen allein nicht, welcher Kurs: Kurzname davor (nicht nur Farbe). */
+export const withCourse = (plain: string, course: Parameters<typeof shortOf>[0]) =>
+  /^(lecture|exercise|tutorial|seminar|lab|class)\b/i.test(plain) ? `${shortOf(course)} ${plain}` : plain;
+
 export function MonthView({
   deadlines,
   events,
@@ -100,8 +104,7 @@ export function MonthView({
                 const isDone = d.kind === "abgabe" && done.includes(d.id);
                 const exam = d.kind === "klausur";
                 const plain = bare(d.title);
-                // „Lecture“, „Exercise · Group 3“ … sagen allein nicht, welcher Kurs: Kurzname davor (nicht nur Farbe)
-                const label = exam ? examLabel(d.title, course) : /^(lecture|exercise|tutorial|seminar|lab|class)\b/i.test(plain) ? `${shortOf(course)} ${plain}` : plain;
+                const label = exam ? examLabel(d.title, course) : withCourse(plain, course);
                 return (
                   <button
                     key={e.key}

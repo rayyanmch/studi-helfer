@@ -41,22 +41,66 @@ const isVirtual = (t: string) => /zoom|virtuell|virtual|online|teams\.microsoft|
 export interface Route {
   url: string;
   label: string; // was wir dem Studenten als Ziel nennen
-  exact: boolean; // true = Lage des Gebäudes bekannt; false = Apple Karten sucht den Text selbst
+  exact: boolean; // true = Lage des Gebäudes bekannt; false = geschätzt oder Apple Karten sucht den Text selbst
+  tip?: string; // Erklärung für den Hinweis am Knopf
 }
 
+const foldWord = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+const SKIP_WORDS = /^(raum|room|saal|horsaal|seminarraum|gebaude|building|haus|bau|der|die|das|und|and|the|beim|zum|zur)$/;
+
+/** Raum ohne Gebäudenummer, aber mit Namen („Physik Raum 2“): das Gebäude, dessen Name am besten passt. */
+function buildingByName(text: string): Building | null {
+  const words = foldWord(text)
+    .split(/[^a-z0-9]+/)
+    .filter((w) => w.length >= 4 && !/^\d/.test(w) && !SKIP_WORDS.test(w));
+  if (words.length === 0) return null;
+  let best: Building | null = null;
+  let bestScore = 0;
+  for (const b of BUILDINGS) {
+    const nameWords = foldWord(b.name).split(/[^a-z0-9]+/).filter(Boolean);
+    let score = 0;
+    for (const w of words) {
+      const at = nameWords.findIndex((n) => n === w);
+      const pre = at >= 0 ? at : nameWords.findIndex((n) => n.startsWith(w));
+      if (pre < 0) continue;
+      score += (at >= 0 ? 3 : 2) + (pre === 0 ? 2 : 0); // Treffer im ersten Wort zählt mehr („Physik“ → Physikalische Institute)
+    }
+    if (score > bestScore || (score === bestScore && best && score > 0 && b.name.length < best.name.length)) {
+      best = b;
+      bestScore = score;
+    }
+  }
+  return bestScore >= 2 ? best : null;
+}
+
+/** „Room 3“, „Raum 2“, „HS 5“ ohne Gebäude: das findet keine Karte. */
+const BARE_ROOM = /^(room|raum|saal|h(?:ö|oe)rsaal|seminarraum|hs|lecture hall)\s*[\w.\-/]{0,6}$/i;
+
 /**
- * Ziel für „Route“: Mit Gebäudenummer (Uni-Raum) die genaue Lage. Bei Terminen, die jemand selbst eingetragen hat
- * (Google Kalender, eigene Termine), ist der Ort meist eine Adresse oder ein Name: den reicht die App an Apple Karten weiter
- * (`allowText`). Online-Termine und bloße Raumnummern ohne Gebäude haben kein Ziel.
+ * Ziel für „Route“: Mit Gebäudenummer (Uni-Raum) die genaue Lage. Steht nur ein Name da („Physik Raum 2“), nehmen wir das
+ * am besten passende Uni-Gebäude. Bei Terminen, die jemand selbst eingetragen hat (Google Kalender, eigene Termine), ist der Ort
+ * meist eine Adresse: die reicht die App an Apple Karten weiter (`allowText`). Online-Termine und bloße Raumnummern haben kein Ziel.
  */
 export function routeFor(location: string | null | undefined, opts: { allowText?: boolean } = {}): Route | null {
   const room = resolveRoom(location);
   if (room) return { url: routeUrl(room.building.lat, room.building.lon), label: room.label, exact: true };
   const first = (location ?? "").trim().split("\n")[0].trim();
-  if (opts.allowText && first.length >= 6 && /[A-Za-zÄÖÜäöüß]{3}/.test(first) && !isVirtual(first)) {
+  if (!first || isVirtual(first)) return null;
+  const near = buildingByName(first);
+  if (near) {
+    const label = `Building ${near.ref}, ${near.name}`;
+    return { url: routeUrl(near.lat, near.lon), label, exact: false, tip: `Walking route to ${label} (best match for “${first}”)` };
+  }
+  if (opts.allowText && first.length >= 6 && /[A-Za-zÄÖÜäöüß]{3}/.test(first) && !BARE_ROOM.test(first)) {
     return { url: `https://maps.apple.com/?daddr=${encodeURIComponent(first)}&dirflg=w`, label: first, exact: false };
   }
   return null;
+}
+
+/** Route für einen erkannten Termin: eigener Ort, sonst (bei geändertem Raum) das Gebäude des normalen Raums. */
+export function routeForDeadline(d: { id: string; location?: string | null; roomChange?: { was: string | null } | null }): Route | null {
+  const own = !d.id.startsWith("uni|");
+  return routeFor(d.location, { allowText: own }) ?? (d.roomChange ? routeFor(d.roomChange.was) : null);
 }
 
 /** Wegbeschreibung zu Fuß in der Karten-App des Macs (Apple Karten); der Startpunkt ist der Standort des Studenten. */

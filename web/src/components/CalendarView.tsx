@@ -9,8 +9,8 @@ import { CalendarPlus, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button, colorOf, examLabel, nameOf, shortOf, tone } from "./ui";
 import { openEvent, openNewEvent } from "./EventDialog";
 import { openGoogleEvent } from "./GoogleEventDialog";
-import { routeFor } from "@/lib/rooms";
-import { CalendarChip, DAY_MS, MonthView, abbrTitle, bare, courseById, isoOf, mondayOf, parseDay, startMinutes, timeRange, todayMs } from "./calendar-bits";
+import { routeFor, routeForDeadline } from "@/lib/rooms";
+import { CalendarChip, DAY_MS, MonthView, abbrTitle, bare, courseById, isoOf, mondayOf, parseDay, startMinutes, timeRange, todayMs, withCourse } from "./calendar-bits";
 import { setCalendar, useMail, type GoogleEvent } from "@/lib/mail-data";
 import { useApp } from "@/lib/app-store";
 import type { Deadline } from "@/lib/mock-data";
@@ -404,7 +404,12 @@ function GridBlock({
   const hover = slot.cols > 1 ? { onMouseEnter: () => onHover(true), onMouseLeave: () => onHover(false), onFocus: () => onHover(true), onBlur: () => onHover(false) } : {};
 
   const body = (title: string, timeColor: string | undefined, gMark: React.ReactNode, sub: string) =>
-    squeezed ? null : (
+    squeezed ? (
+      // Wird ein Nachbar aufgeklappt, bleibt hier der Titel senkrecht lesbar (statt eines leeren Kastens)
+      <span aria-hidden className="block h-full overflow-hidden whitespace-nowrap text-[11px] font-semibold text-ellipsis" style={{ writingMode: "vertical-rl", color: timeColor }}>
+        {title}
+      </span>
+    ) : (
       <span key={open ? "open" : "closed"} className={`${slot.cols > 1 ? "answer-in " : ""}block @max-[38px]:hidden`}>
         <span className="block truncate text-[11px] font-semibold tabular-nums" style={timeColor ? { color: timeColor } : undefined}>
           {tiny ? (
@@ -445,13 +450,13 @@ function GridBlock({
     const course = courseById(d.courseId)!;
     const c = d.color ?? colorOf(course);
     const exam = d.kind === "klausur";
-    const title = exam ? examLabel(d.title, course) : bare(d.title);
-    const route = routeFor(d.location) ?? (d.roomChange ? routeFor(d.roomChange.was) : null);
+    const title = exam ? examLabel(d.title, course) : withCourse(bare(d.title), course);
+    const route = routeForDeadline(d);
     return shell(
-      `${d.title}, ${time}`,
+      `${title}, ${time}`,
       () => openEvent(d, { onOpenCourse: () => onOpenCourse(d.courseId) }),
       <>
-        <b className="block font-semibold">{d.title}</b>
+        <b className="block font-semibold">{exam ? d.title : withCourse(d.title, course)}</b>
         <span className="block opacity-80">{nameOf(course)} · {time}</span>
         {d.location && <span className="block opacity-80">{d.roomChange ? `Room changed: ${d.location}` : d.location}</span>}
         {slot.both && <span className="block opacity-80">Also in Google Calendar</span>}
