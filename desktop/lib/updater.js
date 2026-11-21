@@ -55,6 +55,26 @@ function readBuildInfo() {
   }
 }
 
+// Protokoll für Updates (Fehler und Schritte), damit sich Probleme später nachvollziehen lassen
+function logFile() {
+  try {
+    return path.join(require("./backend").DATA_DIR, "logs", "update.log");
+  } catch {
+    return path.join(os.tmpdir(), "studi-helfer-update.log");
+  }
+}
+
+function log(msg) {
+  try {
+    fs.mkdirSync(path.dirname(logFile()), { recursive: true });
+    fs.appendFileSync(logFile(), `${new Date().toISOString()} ${msg}\n`);
+  } catch {
+    // Protokoll ist nur eine Hilfe
+  }
+}
+
+const PENDING = () => path.join(path.dirname(path.dirname(logFile())), "update-pending.json");
+
 function setState(patch) {
   state = { ...state, ...patch };
   for (const win of getWindows()) {
@@ -172,36 +192,72 @@ async function download(url, file, expectedSize) {
   setState({ progress: { received, total: total || received, etaSeconds: 0 } });
 }
 
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * Lädt die neueste Fassung herunter und entpackt sie nach `staging`. Liefert den Pfad zum neuen .app und seinen Stand.
+ * Bei jedem Versuch wird latest.json frisch gelesen: Wir pushen oft, und während GitHub Actions eine neue Fassung
+ * hochlädt, kann die zip kurz fehlen, unvollständig sein oder schon neuer sein als die zuletzt gesehene latest.json.
+ */
+async function fetchBuild(tmp, staging) {
+  let lastError = null;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      const latest = await fetchLatest();
+      if (!isNewer(latest, state.current)) return { upToDate: true };
+      setState({ latest, status: "downloading", progress: { received: 0, total: latest.size || 0, etaSeconds: null } });
+      log(`Versuch ${attempt}: lade ${latest.sha.slice(0, 7)} (${latest.size} Bytes)`);
+      const zip = path.join(tmp, latest.zip);
+      fs.rmSync(zip, { force: true });
+      await download(`${RELEASE}/${latest.zip}?t=${Date.now()}`, zip, latest.size);
+
+      setState({ status: "installing", progress: null });
+      fs.rmSync(staging, { recursive: true, force: true });
+      fs.mkdirSync(staging);
+      await run("/usr/bin/ditto", ["-x", "-k", zip, staging]);
+      fs.rmSync(zip, { force: true });
+      const fresh = fs.readdirSync(staging).find((n) => n.endsWith(".app"));
+      if (!fresh) throw new Error("The download contains no app.");
+      const freshApp = path.join(staging, fresh);
+      const info = JSON.parse(fs.readFileSync(path.join(freshApp, "Contents", "Resources", "build-info.json"), "utf8"));
+      // Andere Fassung als erwartet: Ist sie trotzdem neuer als die installierte, nehmen wir sie (gerade erst hochgeladen).
+      if (info.sha === latest.sha || isNewer(info, state.current)) {
+        log(`entpackt: ${info.sha.slice(0, 7)}${info.sha === latest.sha ? "" : ` (latest.json zeigte ${latest.sha.slice(0, 7)})`}`);
+        return { freshApp, info };
+      }
+      throw Object.assign(new Error(`zip enthält ${info.sha.slice(0, 7)}, erwartet ${latest.sha.slice(0, 7)}`), { stale: true });
+    } catch (e) {
+      lastError = e;
+      log(`Versuch ${attempt} fehlgeschlagen: ${e.name}: ${e.message}${e.cause?.code ? ` (${e.cause.code})` : ""}`);
+      if (attempt < 3) await sleep(attempt * 5000);
+    }
+  }
+  throw lastError;
+}
+
 /** Neueste Fassung laden, austauschen und die App neu starten. */
 async function install() {
-  if (state.status !== "available" || !state.latest) return { ok: false, code: "invalid", message: "No update available." };
+  if ((state.status !== "available" && state.status !== "error") || !state.latest) return { ok: false, code: "invalid", message: "No update available." };
   const problem = installProblem();
   if (problem) {
+    log(`nicht möglich: ${problem}`);
     setState({ status: "error", manual: true, message: problem });
     return { ok: false, code: "invalid", message: problem };
   }
-  const latest = state.latest;
   const bundle = bundlePath();
   const parent = path.dirname(bundle);
   // Zum Entpacken neben das .app, damit der Austausch ein einfaches Umbenennen ist.
-  const staging = path.join(parent, `.studi-helfer-update-${latest.sha.slice(0, 12)}`);
+  const staging = path.join(parent, ".studi-helfer-update");
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "studi-helfer-update-"));
   try {
-    setState({ status: "downloading", manual: true, message: null, progress: { received: 0, total: latest.size || 0, etaSeconds: null } });
-    const zip = path.join(tmp, latest.zip);
-    await download(`${RELEASE}/${latest.zip}`, zip, latest.size);
-
-    setState({ status: "installing", progress: null });
-    fs.rmSync(staging, { recursive: true, force: true });
-    fs.mkdirSync(staging);
-    await run("/usr/bin/ditto", ["-x", "-k", zip, staging]);
-    const fresh = fs.readdirSync(staging).find((n) => n.endsWith(".app"));
-    if (!fresh) throw new Error("The download contains no app.");
-    const freshApp = path.join(staging, fresh);
-    const info = JSON.parse(fs.readFileSync(path.join(freshApp, "Contents", "Resources", "build-info.json"), "utf8"));
-    if (info.sha !== latest.sha) throw new Error("The download doesn't match the latest build. Try again in a minute.");
-    fs.rmSync(zip, { force: true });
-
+    setState({ status: "downloading", manual: true, message: null, progress: { received: 0, total: state.latest.size || 0, etaSeconds: null } });
+    const build = await fetchBuild(tmp, staging);
+    if (build.upToDate) {
+      fs.rmSync(tmp, { recursive: true, force: true });
+      setState({ status: "current", progress: null, message: null });
+      return { ok: true };
+    }
+    const { freshApp, info } = build;
     // Läuft gerade ein Sync, nutzt er das Hilfsprogramm im .app. Abbrechen, fertige Dateien bleiben.
     try {
       const backend = require("./backend");
@@ -214,20 +270,30 @@ async function install() {
     fs.writeFileSync(
       script,
       `#!/bin/bash
-# Wartet, bis Studi-Helfer beendet ist, tauscht das .app aus und startet es neu.
-PID="$1"; NEW="$2"; OLD="$3"; STAGING="$4"
+# Wartet, bis Studi-Helfer beendet ist, tauscht das .app aus und startet es neu. Schritte landen im Update-Protokoll.
+PID="$1"; NEW="$2"; OLD="$3"; STAGING="$4"; LOG="$5"
+log() { echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) swap: $*" >> "$LOG"; }
 for _ in $(seq 1 120); do kill -0 "$PID" 2>/dev/null || break; sleep 0.5; done
+kill -0 "$PID" 2>/dev/null && log "App läuft nach 60 s noch, tausche trotzdem"
 /usr/bin/xattr -cr "$NEW" 2>/dev/null
 BACKUP="$OLD.old-$$"
-if mv "$OLD" "$BACKUP"; then
-  if mv "$NEW" "$OLD"; then rm -rf "$BACKUP"; else mv "$BACKUP" "$OLD"; fi
+if ERR=$(mv "$OLD" "$BACKUP" 2>&1); then
+  if ERR=$(mv "$NEW" "$OLD" 2>&1); then rm -rf "$BACKUP"; log "ok"; else log "neues .app nicht verschoben: $ERR"; mv "$BACKUP" "$OLD"; fi
+else
+  log "altes .app nicht verschoben: $ERR"
 fi
 rm -rf "$STAGING"
-/usr/bin/open "$OLD"
+/usr/bin/open "$OLD" || log "öffnen fehlgeschlagen"
 `,
       { mode: 0o755 },
     );
-    const child = spawn("/bin/bash", [script, String(process.pid), freshApp, bundle, staging], {
+    try {
+      fs.writeFileSync(PENDING(), JSON.stringify({ sha: info.sha, at: Date.now() }));
+    } catch {
+      // nur für die Meldung nach dem Neustart
+    }
+    log(`tausche aus: ${state.current?.sha?.slice(0, 7) ?? "?"} → ${info.sha.slice(0, 7)}`);
+    const child = spawn("/bin/bash", [script, String(process.pid), freshApp, bundle, staging, logFile()], {
       detached: true,
       stdio: "ignore",
     });
@@ -240,7 +306,13 @@ rm -rf "$STAGING"
     fs.rmSync(staging, { recursive: true, force: true });
     fs.rmSync(tmp, { recursive: true, force: true });
     const offline = /fetch failed|ENOTFOUND|ECONN|TimeoutError/i.test(`${e.name} ${e.message} ${e.cause?.code ?? ""}`);
-    const message = offline ? "The download stopped. Check your internet connection and try again." : e.message;
+    const uploading = e.stale || /\((404|403)\)|incomplete/i.test(e.message);
+    const message = offline
+      ? "The download stopped. Check your internet connection and try again."
+      : uploading
+        ? "The newest version is still being uploaded. Try again in a few minutes."
+        : e.message;
+    log(`abgebrochen: ${message}`);
     setState({ status: "available", manual: true, progress: null, message });
     return { ok: false, code: offline ? "unreachable" : "internal", message };
   }
@@ -255,6 +327,18 @@ function register(handle, windows) {
   getWindows = () => [...windows()];
   state.current = app.isPackaged ? readBuildInfo() : null;
   if (!app.isPackaged) state.status = "dev";
+  try {
+    const pending = JSON.parse(fs.readFileSync(PENDING(), "utf8"));
+    fs.rmSync(PENDING(), { force: true });
+    if (state.current && pending.sha !== state.current.sha && Date.now() - pending.at < 15 * 60_000) {
+      log(`nach Neustart noch alte Fassung ${state.current.sha.slice(0, 7)} (erwartet ${pending.sha.slice(0, 7)})`);
+      state.message = "The last update couldn't be installed. Please try again.";
+    } else if (state.current) {
+      log(`läuft jetzt: ${state.current.sha.slice(0, 7)}`);
+    }
+  } catch {
+    // kein Update ausstehend
+  }
   handle("studi:getUpdateState", () => state);
   handle("studi:checkForUpdate", () => check({ manual: true }));
   handle("studi:installUpdate", () => install());
