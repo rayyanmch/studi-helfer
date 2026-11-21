@@ -27,6 +27,7 @@ import { ModuleView } from "./ModuleView";
 import { openEvent, openNewEvent } from "./EventDialog";
 import { MensaView } from "./MensaView";
 import { Welcome } from "./Welcome";
+import { matches, searchTerms } from "@/lib/search";
 import { MailView } from "./MailView";
 import { Accounts } from "./Accounts";
 import { Settings } from "./Settings";
@@ -1013,16 +1014,19 @@ function SearchView({
   onOpen: (v: View) => void;
 }) {
   const [filter, setFilter] = useState<Filter>("alles");
-  const q = query.toLowerCase();
-  const hit = (s: string) => s.toLowerCase().includes(q);
+  // Versteht auch deutsche Wörter („Klausur“ findet Exams, „Folien“ findet Lecture slides), siehe lib/search.ts
+  const terms = searchTerms(query);
+  const q = query; // zum Hervorheben der Fundstelle
+  const hit = (...s: (string | undefined)[]) => matches(terms, ...s);
 
   const foundCourses = realCourses(list).filter((c) => hit(nameOf(c)) || (c.short && hit(c.short)) || (c.fullName && hit(c.fullName)));
   const foundDeadlines = deadlines.filter((d) => {
     const c = courseById(d.courseId);
-    return hit(d.title) || (c && (hit(nameOf(c)) || (c.fullName ? hit(c.fullName) : false)));
+    const kindWords = d.kind === "klausur" ? "exam" : d.kind === "abgabe" ? "deadline submission" : undefined;
+    return hit(d.title, kindWords) || (c ? hit(nameOf(c), c.fullName) : false);
   });
   const foundFiles = list.flatMap((c) =>
-    c.folders.flatMap((f) => f.files.filter((x) => hit(x.name) || hit(displayName(x.name))).map((file) => ({ file, course: c, folder: f.name }))),
+    c.folders.flatMap((f) => f.files.filter((x) => hit(x.name, displayName(x.name), f.name, f.category)).map((file) => ({ file, course: c, folder: f.name }))),
   );
   const total = foundCourses.length + foundDeadlines.length + foundFiles.length;
 
@@ -1041,7 +1045,9 @@ function SearchView({
           {total === 0 ? "No results" : `${total} ${total === 1 ? "result" : "results"}`}
         </h1>
         <p className="mt-1 text-muted">
-          {total === 0 ? `No file, deadline or course matches “${query}”.` : `for “${query}”`}
+          {total === 0
+            ? `No file, deadline or course matches “${query}”. Try a shorter word or a course name.`
+            : `for “${query}”`}
         </p>
       </header>
 
