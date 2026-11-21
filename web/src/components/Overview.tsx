@@ -4,8 +4,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   AlertTriangle,
   CalendarDays,
+  CalendarRange,
   CalendarPlus,
-  Check,
   ChevronDown,
   GraduationCap,
   Inbox,
@@ -32,6 +32,8 @@ import { Welcome } from "./Welcome";
 import { MensaToday } from "./MensaToday";
 import { matches, searchTerms } from "@/lib/search";
 import { MailView } from "./MailView";
+import { CalendarView } from "./CalendarView";
+import { CalendarChip, ClashTag, GoogleBlock, clashWith, startMinutes } from "./calendar-bits";
 import { Accounts } from "./Accounts";
 import { Settings } from "./Settings";
 import { ImportPanel, jobProgress, useJob, useTick, type Job } from "./ImportJob";
@@ -50,7 +52,7 @@ const LONG = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", 
 // Titel ohne „Submit “ vorne, für enge Stellen
 const bare = (t: string) => t.replace(/^Submit /, "");
 
-type View = "week" | "new" | "courses" | "mail" | "mensa" | "study" | string; // string = Modul-Id
+type View = "week" | "calendar" | "new" | "courses" | "mail" | "mensa" | "study" | string; // string = Modul-Id
 
 function parseDay(iso: string) {
   const [y, m, d] = iso.split("-").map(Number);
@@ -188,7 +190,10 @@ export function Overview({
         <nav className="scroll flex-1 px-3 pb-3 pt-3" aria-label="Navigation">
           <div className="flex flex-col gap-0.5">
             <NavItem active={!searching && view === "week"} onClick={() => open("week")} icon={<CalendarDays size={15} aria-hidden />}>
-              Next 7 days
+              Next 4 days
+            </NavItem>
+            <NavItem active={!searching && view === "calendar"} onClick={() => open("calendar")} icon={<CalendarRange size={15} aria-hidden />}>
+              Calendar
             </NavItem>
             <NavItem active={!searching && view === "new"} onClick={() => open("new")} icon={<Inbox size={15} aria-hidden />} count={newCount}>
               New
@@ -278,6 +283,7 @@ export function Overview({
               <>
                 {view === "week" && <Welcome onMensa={() => open("mensa")} />}
                 {view === "week" && <WeekView list={list} deadlines={mine} done={done} onToggle={toggleDone} onOpen={open} />}
+                {view === "calendar" && <CalendarView deadlines={mine} done={done} onToggle={toggleDone} onOpenCourse={open} />}
                 {view === "new" && <NewView list={list} onOpen={open} />}
                 {view === "courses" && <CoursesView onOpen={open} onEditCourses={onEditCourses} />}
                 {view === "mensa" && <MensaView />}
@@ -624,7 +630,6 @@ function WeekView({
   onToggle: (id: string) => void;
   onOpen: (id: string) => void;
 }) {
-  const [range, setRange] = useState<"week" | "month">("week");
   // Vorlesungen/Übungstermine (kind "termin") im Wochenstreifen ein-/ausblenden; gemerkt pro Mac
   const [showClasses, setShowClasses] = useState(() => {
     try {
@@ -650,7 +655,7 @@ function WeekView({
   const googleEvents = googleConnected && mail.calendars.google ? mail.events : [];
   const classesFiltered = showClasses ? deadlines : deadlines.filter((d) => d.kind !== "termin");
   const visible = showIlias ? classesFiltered : [];
-  const days = Array.from({ length: 7 }, (_, i) => {
+  const days = Array.from({ length: 4 }, (_, i) => {
     const d = new Date(todayMs() + i * DAY_MS);
     const iso = d.toISOString().slice(0, 10);
     const items = visible.filter((x) => x.date === iso);
@@ -665,7 +670,7 @@ function WeekView({
   });
 
   const open = deadlines.filter(
-    (d) => d.kind === "abgabe" && !done.includes(d.id) && daysFromToday(d.date) >= 0 && daysFromToday(d.date) < 7,
+    (d) => d.kind === "abgabe" && !done.includes(d.id) && daysFromToday(d.date) >= 0 && daysFromToday(d.date) < 4,
   );
   const first = [...open].sort((a, b) => a.date.localeCompare(b.date))[0];
   const kurse = new Set(open.map((d) => d.courseId)).size;
@@ -673,9 +678,6 @@ function WeekView({
   const nextExam = deadlines
     .filter((d) => d.kind === "klausur" && daysFromToday(d.date) >= 0 && courseById(d.courseId))
     .sort((a, b) => a.date.localeCompare(b.date))[0];
-  const in4 = deadlines.filter((d) => daysFromToday(d.date) >= 0 && daysFromToday(d.date) < 28);
-  const openIn4 = in4.filter((d) => d.kind === "abgabe" && !done.includes(d.id)).length;
-  const examsIn4 = in4.filter((d) => d.kind === "klausur").length;
 
   const newFiles = list.flatMap((c) =>
     c.folders.flatMap((f) => f.files.filter((x) => x.isNew || x.changeNote).map((file) => ({ file, course: c }))),
@@ -687,38 +689,24 @@ function WeekView({
     <>
       <header className="flex flex-wrap items-end gap-4">
         <div className="min-w-0 flex-1">
-          <h1 className="text-[30px] font-bold leading-tight tracking-[-0.02em]">
-            {range === "week" ? "Next 7 days" : "Next 4 weeks"}
-          </h1>
+          <h1 className="text-[30px] font-bold leading-tight tracking-[-0.02em]">Next 4 days</h1>
           <p className="mt-1 text-muted">
-            {range === "month" ? (
-              `${openIn4} open ${openIn4 === 1 ? "deadline" : "deadlines"}${examsIn4 > 0 ? `, ${examsIn4} ${examsIn4 === 1 ? "exam" : "exams"}` : ""}.`
-            ) : (
+            {
               <>
                 {open.length === 0 && deadlines.length === 0 && appStore.get().job?.kind === "import"
                   ? "Your deadlines are on their way…"
                   : open.length === 0
-                  ? "All done. No open deadlines in the next 7 days."
+                  ? "All done. No open deadlines in the next 4 days."
                   : `${open.length} open ${open.length === 1 ? "deadline" : "deadlines"} in ${kurse} ${kurse === 1 ? "course" : "courses"}.`}
                 {first && ` Next up: ${first.kind === "klausur" ? examLabel(first.title, courseById(first.courseId) ?? { name: "" }) : bare(first.title)} ${daysFromToday(first.date) === 0 ? "today" : daysFromToday(first.date) === 1 ? "tomorrow" : `on ${LONG[new Date(parseDay(first.date)).getUTCDay()]}`}.`}
                 {nextExam && ` Next exam: ${nameOf(courseById(nextExam.courseId)!)} ${inDays(daysFromToday(nextExam.date))}.`}
               </>
-            )}
+            }
           </p>
         </div>
-        <div role="tablist" aria-label="Time range" className="inline-flex rounded-[9px] bg-sunken p-[3px]">
-          {(["week", "month"] as const).map((r) => (
-            <button
-              key={r}
-              role="tab"
-              aria-selected={range === r}
-              onClick={() => setRange(r)}
-              className={`h-7 rounded-[7px] px-3.5 transition-colors ${range === r ? "bg-surface font-semibold shadow-sm" : "text-muted hover:text-text"}`}
-            >
-              {r === "week" ? "7 days" : "4 weeks"}
-            </button>
-          ))}
-        </div>
+        <Button onClick={() => onOpen("calendar")}>
+          <CalendarDays size={14} aria-hidden /> Open calendar
+        </Button>
       </header>
 
       {googleConnected && (
@@ -746,15 +734,12 @@ function WeekView({
         </Button>
       </div>
 
-      {range === "month" && <MonthView deadlines={visible} events={googleEvents} done={done} onOpen={onOpen} />}
-
       {/* Tage ohne Termine werden schmal, Tage mit Terminen teilen sich den Platz. */}
-      {range === "week" && (
       <div
         className="mt-6 grid gap-1.5 transition-[grid-template-columns] duration-300 ease-out"
         style={{ gridTemplateColumns: days.map((d) => (d.wide ? "minmax(0, 1fr)" : "44px")).join(" ") }}
         role="list"
-        aria-label="The next 7 days"
+        aria-label="The next 4 days"
       >
         {days.map((day) => (
           <div key={day.iso} role="listitem" className="flex min-w-0 flex-col gap-1.5" aria-label={`${LONG[day.wd]}, ${day.num}.`}>
@@ -782,15 +767,14 @@ function WeekView({
           </div>
         ))}
       </div>
-      )}
-      {range === "week" && visible.length === 0 && googleEvents.length === 0 && (
+      {visible.length === 0 && googleEvents.length === 0 && (
         <p className="mt-3 rounded-[10px] bg-surface px-4 py-3.5 text-muted">
-          Nothing planned for the next 7 days. Deadlines from ILIAS show up here by themselves. To see your lectures too, add your timetable in
+          Nothing planned for the next 4 days. Deadlines from ILIAS show up here by themselves. To see your lectures too, add your timetable in
           Settings, or use “Add event” above.
         </p>
       )}
 
-      {range === "week" && <MensaToday onOpen={() => onOpen("mensa")} />}
+      <MensaToday onOpen={() => onOpen("mensa")} />
 
       <div className="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-2">
         <section aria-labelledby="neu-titel">
@@ -835,192 +819,6 @@ function WeekView({
   );
 }
 
-function MonthView({ deadlines, events, done, onOpen }: { deadlines: Deadline[]; events: GoogleEvent[]; done: string[]; onOpen: (id: string) => void }) {
-  const wdToday = new Date(todayMs()).getUTCDay();
-  const start = todayMs() - ((wdToday + 6) % 7) * DAY_MS; // Montag dieser Woche
-  const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-  const cells = Array.from({ length: 28 }, (_, i) => {
-    const d = new Date(start + i * DAY_MS);
-    const iso = d.toISOString().slice(0, 10);
-    const diff = daysFromToday(iso);
-    return {
-      iso,
-      num: d.getUTCDate(),
-      month: d.getUTCDate() === 1 ? MONTHS[d.getUTCMonth()] : "",
-      weekend: i % 7 >= 5,
-      past: diff < 0,
-      today: diff === 0,
-      entries: [
-        ...deadlines.filter((x) => x.date === iso && courseById(x.courseId)).map((d) => ({ key: d.id, at: startMinutes(d.time), d, ev: null as GoogleEvent | null })),
-        ...events.filter((x) => x.date === iso).map((ev) => ({ key: `g-${ev.id}`, at: startMinutes(ev.time), d: null as Deadline | null, ev })),
-      ].sort((a, b) => a.at - b.at),
-    };
-  });
-
-  return (
-    <div className="mt-6">
-      <div className="mb-1.5 grid grid-cols-7 gap-1.5 px-1 text-[12px] text-muted" aria-hidden>
-        {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((w) => (
-          <span key={w}>{w}</span>
-        ))}
-      </div>
-      <div className="grid grid-cols-7 gap-1.5" role="list" aria-label="The next 4 weeks">
-        {cells.map((cell) => (
-          <div
-            key={cell.iso}
-            role="listitem"
-            className={`flex min-h-[92px] min-w-0 flex-col gap-1 rounded-[9px] p-1.5 ${cell.weekend ? "bg-sunken" : "bg-surface"} ${
-              cell.today ? "shadow-[inset_0_0_0_2px_var(--accent)]" : ""
-            } ${cell.past ? "opacity-45" : ""}`}
-          >
-            <span className="px-0.5 text-[12px] font-semibold">
-              {cell.num}
-              {cell.month && <span className="ml-1 font-normal text-muted">{cell.month}</span>}
-            </span>
-            {!cell.past &&
-              cell.entries.slice(0, 3).map((e) => {
-                if (e.ev) {
-                  return (
-                    <span
-                      key={e.key}
-                      title={`${e.ev.title}, ${e.ev.time}`}
-                      className="truncate rounded-[5px] px-1.5 py-0.5 text-left text-[11px] font-semibold text-muted"
-                      style={{ border: `1.5px dashed ${e.ev.color ?? "var(--muted)"}` }}
-                    >
-                      {abbrTitle(e.ev.title)}
-                    </span>
-                  );
-                }
-                const d = e.d!;
-                const course = courseById(d.courseId)!;
-                const c = d.color ?? colorOf(course);
-                const isDone = d.kind === "abgabe" && done.includes(d.id);
-                const exam = d.kind === "klausur";
-                const plain = bare(d.title);
-                // „Lecture“, „Exercise · Group 3“ … sagen allein nicht, welcher Kurs: Kurzname davor (nicht nur Farbe)
-                const label = exam ? examLabel(d.title, course) : /^(lecture|exercise|tutorial|seminar|lab|class)\b/i.test(plain) ? `${shortOf(course)} ${plain}` : plain;
-                return (
-                  <button
-                    key={e.key}
-                    onClick={() => openEvent(d, { onOpenCourse: () => onOpen(d.courseId) })}
-                    title={`${d.title}, ${nameOf(course)}, ${d.time}`}
-                    aria-label={`${d.title}, ${nameOf(course)}, ${d.time}`}
-                    className={`truncate rounded-[5px] px-1.5 py-0.5 text-left text-[11px] font-semibold ${isDone ? "line-through" : ""}`}
-                    style={
-                      isDone
-                        ? { background: "var(--sunken)", color: "var(--muted)" }
-                        : exam
-                          ? { background: tone(c), color: "var(--on-solid)" }
-                          : { background: tone(c, "soft"), color: tone(c, "ink") }
-                    }
-                  >
-                    {abbrTitle(label, 18)}
-                  </button>
-                );
-              })}
-            {!cell.past && cell.entries.length > 3 && <span className="px-1 text-[11px] text-muted">+{cell.entries.length - 3} more</span>}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// Schalter für einen Kalender (Haken in der Kapsel). „dashed“ zeigt, wie dessen Termine aussehen.
-function CalendarChip({ on, onChange, dashed, children }: { on: boolean; onChange: (on: boolean) => void; dashed: boolean; children: React.ReactNode }) {
-  return (
-    <button
-      onClick={() => onChange(!on)}
-      aria-pressed={on}
-      className={`flex h-8 items-center gap-2 rounded-full pl-2 pr-3.5 font-semibold transition-colors ${on ? "bg-accent text-on-accent" : "bg-surface text-muted shadow-[inset_0_0_0_1.5px_var(--line)] hover:bg-hover"}`}
-    >
-      <span
-        aria-hidden
-        className={`flex size-[18px] items-center justify-center rounded-full ${on ? "bg-white/25" : ""}`}
-        style={on ? undefined : { border: "2px solid var(--line)" }}
-      >
-        {on && <Check size={10} strokeWidth={3.6} />}
-      </span>
-      {children}
-      <span
-        aria-hidden
-        className="ml-0.5 h-3 w-5 rounded-[3px]"
-        style={dashed ? { border: `1.5px dashed ${on ? "currentColor" : "var(--muted)"}`, opacity: on ? 0.8 : 0.6 } : { background: "currentColor", opacity: on ? 0.8 : 0.4 }}
-      />
-    </button>
-  );
-}
-
-/** Beginn in Minuten für die Reihenfolge am Tag: „10:00 to 11:30“ → 600, „by 23:55“ → 1435, ganztägig → -1. */
-function startMinutes(time: string): number {
-  const m = /(\d{1,2}):(\d{2})/.exec(time);
-  return m ? +m[1] * 60 + +m[2] : -1;
-}
-
-/** Von–bis in Minuten, wenn die Zeit „10:00 to 11:30“ lautet. */
-function timeRange(time: string): [number, number] | null {
-  const m = /(\d{1,2}):(\d{2})\s*to\s*(\d{1,2}):(\d{2})/.exec(time);
-  return m ? [+m[1] * 60 + +m[2], +m[3] * 60 + +m[4]] : null;
-}
-
-/** Name des Termins, mit dem sich dieser überschneidet (gleiche Zeit zählt nicht: das ist meist derselbe Termin). */
-function clashWith<T extends { key: string; d: Deadline | null; ev: GoogleEvent | null }>(all: T[], one: T): string | null {
-  const a = timeRange(one.d?.time ?? one.ev?.time ?? "");
-  if (!a) return null;
-  for (const other of all) {
-    if (other.key === one.key) continue;
-    const b = timeRange(other.d?.time ?? other.ev?.time ?? "");
-    if (b && a[0] < b[1] && b[0] < a[1] && !(a[0] === b[0] && a[1] === b[1])) return other.d?.title ?? other.ev?.title ?? "another event";
-  }
-  return null;
-}
-
-/** Kürzel für die enge Monatsansicht: „Mathe Vorlesung“ → „Mathe VL“, zu lange Titel werden gekürzt. */
-const ABBREVIATIONS: [RegExp, string][] = [
-  [/\bvorlesung(en)?\b/gi, "VL"],
-  [/\blecture\b/gi, "Lec"],
-  [/\b(ü|ue|u)bung(en)?\b/gi, "Ü"],
-  [/\bexercises?\b/gi, "Ex"],
-  [/\btutorium\b/gi, "Tut"],
-  [/\btutorial\b/gi, "Tut"],
-  [/\bseminar\b/gi, "Sem"],
-  [/\bklausur\b/gi, "Exam"],
-  [/\bpraktikum\b/gi, "Prak"],
-  [/\bsprechstunde\b/gi, "Office h."],
-];
-function abbrTitle(title: string, max = 17): string {
-  let t = title;
-  for (const [re, short] of ABBREVIATIONS) t = t.replace(re, short);
-  t = t.replace(/\s+/g, " ").trim();
-  return t.length > max ? `${t.slice(0, max - 1).trimEnd()}…` : t;
-}
-
-// Termin aus dem Google Kalender: gestrichelter Rand, kein Kreis (Termine hakt man nicht ab).
-function GoogleBlock({ ev, clash = null }: { ev: GoogleEvent; clash?: string | null }) {
-  const color = ev.color ?? "var(--muted)";
-  return (
-    <div
-      className="relative rounded-[7px] bg-surface px-2 py-2"
-      style={{ border: `1.5px dashed ${color}` }}
-      title={[ev.title, ev.calendar ? `Google Calendar: ${ev.calendar}` : "Google Calendar"].join(" · ")}
-    >
-      <span
-        aria-hidden
-        className="absolute right-1.5 top-1.5 flex size-4 items-center justify-center rounded-[5px] bg-bg text-[10px] font-bold shadow-[inset_0_0_0_1.5px_var(--line)]"
-        style={{ color: "#4285f4" }}
-      >
-        G
-      </span>
-      <span className="inline-block max-w-full truncate rounded-full px-2 text-[12px] font-semibold text-text" style={{ background: `color-mix(in srgb, ${color} 24%, var(--surface))` }}>
-        {ev.time.replace(" to ", "–")}
-      </span>
-      <span className="mt-1 block pr-[18px] text-[13px] font-semibold leading-snug">{ev.title}</span>
-      {ev.location && <span className="block truncate text-[12px] text-muted">{ev.location}</span>}
-      {clash && <ClashTag other={clash} />}
-    </div>
-  );
-}
-
 function DayHead({ day }: { day: { num: number; wd: number; wide: boolean; today: boolean } }) {
   if (!day.wide) {
     return (
@@ -1054,18 +852,6 @@ function DayHead({ day }: { day: { num: number; wd: number; wide: boolean; today
         </>
       )}
     </div>
-  );
-}
-
-function ClashTag({ other }: { other: string }) {
-  return (
-    <span
-      title={`Overlaps with ${other}`}
-      className="mt-1 inline-flex items-center gap-1 rounded-full px-1.5 text-[11px] font-bold leading-[17px]"
-      style={{ background: tone("ochre", "soft"), color: tone("ochre", "ink") }}
-    >
-      <AlertTriangle size={10} aria-hidden /> Overlaps
-    </span>
   );
 }
 

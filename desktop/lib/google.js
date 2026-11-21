@@ -287,9 +287,11 @@ const EVENT_COLORS = {
   7: "#039be5", 8: "#616161", 9: "#3f51b5", 10: "#0b8043", 11: "#d50000",
 };
 
-async function events(days = 35) {
+async function events(days = 70) {
+  // Eine Woche zurück (Kalender-Tab blättert auch rückwärts), dann `days` Tage
   const from = new Date();
   from.setHours(0, 0, 0, 0);
+  from.setDate(from.getDate() - 7);
   const to = new Date(from.getTime() + days * 86_400_000);
   const params = new URLSearchParams({
     timeMin: from.toISOString(),
@@ -554,7 +556,7 @@ function register(handle) {
   handle("studi:google:status", () => status());
   handle("studi:google:connect", () => connect());
   handle("studi:google:disconnect", () => disconnect());
-  handle("studi:google:events", (days) => events(Number(days) || 35));
+  handle("studi:google:events", (days) => events(Number(days) || 70));
   handle("studi:google:mails", () => mails());
   handle("studi:google:modify", (id, change) => modify(String(id), change || {}));
   handle("studi:google:send", (mail) => send(mail || {}));
