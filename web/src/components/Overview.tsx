@@ -1036,11 +1036,23 @@ function SearchView({
   const hit = (...s: (string | undefined)[]) => matches(terms, ...s);
 
   const foundCourses = realCourses(list).filter((c) => hit(nameOf(c)) || (c.short && hit(c.short)) || (c.fullName && hit(c.fullName)));
-  const foundDeadlines = deadlines.filter((d) => {
-    const c = courseById(d.courseId);
-    const kindWords = d.kind === "klausur" ? "exam" : d.kind === "abgabe" ? "deadline submission" : undefined;
-    return hit(d.title, kindWords) || (c ? hit(nameOf(c), c.fullName) : false);
-  });
+  // Wiederkehrende Termine (Vorlesung jede Woche) nur einmal zeigen, mit dem nächsten Datum; vergangene Termine weglassen.
+  const seriesKey = (d: Deadline) =>
+    d.seriesId ?? (d.kind === "termin" ? `${d.courseId}|${d.title}|${d.time}|${new Date(parseDay(d.date)).getUTCDay()}` : d.id);
+  const repeats = new Map<string, number>();
+  const foundDeadlines = deadlines
+    .filter((d) => {
+      if (d.kind === "termin" && daysFromToday(d.date) < 0) return false;
+      const c = courseById(d.courseId);
+      const kindWords = d.kind === "klausur" ? "exam" : d.kind === "abgabe" ? "deadline submission" : undefined;
+      return hit(d.title, kindWords) || (c ? hit(nameOf(c), c.fullName) : false);
+    })
+    .sort((x, y) => x.date.localeCompare(y.date))
+    .filter((d) => {
+      const k = seriesKey(d);
+      repeats.set(k, (repeats.get(k) ?? 0) + 1);
+      return repeats.get(k) === 1;
+    });
   const foundFiles = list.flatMap((c) =>
     c.folders.flatMap((f) => f.files.filter((x) => hit(x.name, displayName(x.name), f.name, f.category)).map((file) => ({ file, course: c, folder: f.name }))),
   );
@@ -1102,7 +1114,10 @@ function SearchView({
                         <span className={`block truncate font-medium ${isDone ? "text-muted line-through" : ""}`}>
                           <Highlight text={d.title} q={q} />
                         </span>
-                        <span className="block truncate text-[12px] text-muted">{nameOf(c)}</span>
+                        <span className="block truncate text-[12px] text-muted">
+                          {nameOf(c)}
+                          {(repeats.get(seriesKey(d)) ?? 0) > 1 ? " · repeats" : ""}
+                        </span>
                       </span>
                       <span className="text-[12px] text-muted">
                         {isDone
