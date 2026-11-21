@@ -67,6 +67,10 @@ import {
   useHiddenWeeks,
   useStudyCourses,
   useTodayCards,
+  useReviewedWeeks,
+  reviewedWeeksOf,
+  hiddenWeeksOf,
+  minutesFor,
 } from "@/lib/study";
 import { type Week, ROLE_LABEL, weekLabel, weeksOf } from "@/lib/weeks";
 
@@ -248,7 +252,8 @@ function Home({
           <span>
             {anyCards
               ? due.length
-                ? [set.reviews.length ? `${set.reviews.length} to review` : null, set.fresh.length ? `${set.fresh.length} new cards` : null].filter(Boolean).join(" and ") + " today"
+                ? [set.reviews.length ? `${set.reviews.length} to review` : null, set.fresh.length ? `${set.fresh.length} new cards` : null].filter(Boolean).join(" and ") +
+                  ` today · about ${minutesFor(due.length)} min`
                 : "Nothing left for today"
               : "Flashcards and study sheets from your course files"}
           </span>
@@ -306,6 +311,8 @@ function Home({
 
       {!anyCards && <HowItWorks />}
 
+      <CatchUp courses={courses} onDeck={onDeck} />
+
       {/* Karteikästen */}
       <section aria-label="Card boxes">
         <div className="mb-2 flex items-baseline gap-2">
@@ -348,6 +355,44 @@ function Home({
         something looks off.
       </p>
     </>
+  );
+}
+
+/** Kurse mit mindestens zwei vergangenen Wochen, die noch nicht als „reviewed“ markiert sind (Kursseite, Haken je Woche). */
+function CatchUp({ courses, onDeck }: { courses: Course[]; onDeck: (id: string) => void }) {
+  const app = useApp();
+  useReviewedWeeks(null);
+  useHiddenWeeks(null);
+  const behind = courses
+    .map((c) => {
+      const weeks = weeksOf(c, { today: app.today || new Date().toISOString().slice(0, 10) });
+      const cur = weeks.find((w) => w.current && w.kind === "week")?.n;
+      const done = reviewedWeeksOf(c.id);
+      const hidden = hiddenWeeksOf(c.id);
+      const open = cur == null ? [] : weeks.filter((w) => w.kind === "week" && (w.n ?? 0) < cur && !done.includes(w.key) && !hidden.includes(w.key));
+      return { c, open };
+    })
+    .filter((x) => x.open.length >= 2)
+    .slice(0, 3);
+  if (!behind.length) return null;
+  return (
+    <section aria-label="Catch up" className="rounded-[12px] bg-surface px-4 py-3">
+      <h2 className="text-[13px] font-bold">Catch up</h2>
+      <ul className="mt-1">
+        {behind.map(({ c, open }) => (
+          <li key={c.id} className="flex items-center gap-2 py-1 text-[13px]">
+            <Swatch color={colorOf(c)} size={8} />
+            <span className="min-w-0 flex-1 truncate">
+              <strong className="font-semibold">{c.name}:</strong> {open.length} past weeks not marked as reviewed ({open.map((w) => w.n).join(", ")})
+            </span>
+            <button onClick={() => onDeck(c.id)} className="shrink-0 font-semibold hover:underline" style={{ color: tone(colorOf(c), "ink") }}>
+              Open
+            </button>
+          </li>
+        ))}
+      </ul>
+      <p className="mt-1 text-[12px] text-muted">Tick “Mark reviewed” on a week in the course page once you’ve read the lecture and done the sheet.</p>
+    </section>
   );
 }
 
@@ -558,7 +603,12 @@ function CourseDeck({
           <h1 className="truncate text-[30px] font-bold leading-tight tracking-[-0.02em]">{course.name}</h1>
           <p className="mt-1 text-muted">
             {deckCards.length
-              ? [`${deckCards.filter(active).length} cards`, `${todays.length} for today`, `${Math.round(mastery(deckCards) * 100)}% learned`, exam != null ? `exam ${inDays(exam)}` : null]
+              ? [
+                  `${deckCards.filter(active).length} cards`,
+                  todays.length ? `${todays.length} for today (about ${minutesFor(todays.length)} min)` : "nothing left for today",
+                  `${Math.round(mastery(deckCards) * 100)}% learned`,
+                  exam != null ? `exam ${inDays(exam)}` : null,
+                ]
                   .filter(Boolean)
                   .join(" · ")
               : [course.fullName && course.fullName !== course.name ? course.fullName : null, exam != null ? `exam ${inDays(exam)}` : null].filter(Boolean).join(" · ") || "No cards yet"}

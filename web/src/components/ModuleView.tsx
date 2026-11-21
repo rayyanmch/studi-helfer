@@ -10,7 +10,7 @@ import { Button, Swatch, colorOf, examPart, tone } from "./ui";
 import { CheckButton, DocTile, FileRow, FolderBadge, displayName } from "./files";
 import { linkSolutions } from "@/lib/solutions";
 import { openEvent, openNewEvent } from "./EventDialog";
-import { openStudy, useWeeks } from "@/lib/study";
+import { openStudy, setWeekReviewed, useReviewedWeeks, useWeeks } from "@/lib/study";
 import { type Role, type Week, weekLabel } from "@/lib/weeks";
 import type { ClassSlot, Course, CourseColor, CourseFile, Deadline } from "@/lib/mock-data";
 import * as store from "@/lib/app-store";
@@ -62,7 +62,7 @@ export function ModuleView({
 
       <header className="flex flex-wrap items-start gap-4">
         <ColorPicker course={course} color={color} disabled={!desktop} />
-        <div className="min-w-0 flex-1">
+        <div className="min-w-[min(100%,420px)] flex-1">
           <Title course={course} editable={desktop} />
           <p className="mt-1 text-muted">
             {[course.fullName && course.fullName !== course.name ? course.fullName : null, `${files.length} ${files.length === 1 ? "file" : "files"}`]
@@ -628,6 +628,7 @@ function Files({ course, files, freshIds }: { course: Course; files: CourseFile[
 function WeekFiles({ course, links }: { course: Course; links: ReturnType<typeof linkSolutions> }) {
   const color = colorOf(course);
   const weeks = useWeeks(course);
+  const reviewedWeeks = useReviewedWeeks(course.id);
   const ordered: Week[] = [...weeks.filter((w) => w.kind === "week").reverse(), ...weeks.filter((w) => w.kind !== "week")];
   const cur = Math.max(0, ordered.findIndex((w) => w.current));
   const [toggled, setToggled] = useState<string[]>([]);
@@ -640,8 +641,8 @@ function WeekFiles({ course, links }: { course: Course; links: ReturnType<typeof
       {ordered.map((w, i) => {
         const open = isOpen(w, i);
         return (
-          <section key={w.key} className="rounded-[12px] bg-surface" style={w.current ? { boxShadow: `inset 3px 0 0 ${tone(color)}` } : undefined}>
-            <button onClick={() => toggle(w.key)} aria-expanded={open} className="flex w-full items-center gap-3 px-4 py-3 text-left">
+          <section key={w.key} className="relative rounded-[12px] bg-surface" style={w.current ? { boxShadow: `inset 3px 0 0 ${tone(color)}` } : undefined}>
+            <button onClick={() => toggle(w.key)} aria-expanded={open} className="flex w-full items-center gap-3 px-4 py-3 pr-40 text-left">
               <span className="min-w-0 flex-1">
                 <span className="flex flex-wrap items-baseline gap-x-2">
                   <span className="text-[15px] font-bold">{w.kind === "week" ? `Week ${w.n}` : weekLabel(w)}</span>
@@ -658,6 +659,21 @@ function WeekFiles({ course, links }: { course: Course; links: ReturnType<typeof
               </span>
               {open ? <ChevronDown size={16} className="shrink-0 text-muted" aria-hidden /> : <ChevronRight size={16} className="shrink-0 text-muted" aria-hidden />}
             </button>
+            {w.kind === "week" && (
+              <label
+                className="absolute right-12 top-3.5 flex cursor-default items-center gap-1.5 rounded-md px-1.5 py-0.5 text-[12px] font-medium text-muted hover:bg-hover"
+                title="Mark this week as worked through (lecture read, sheet done)"
+              >
+                <input
+                  type="checkbox"
+                  checked={reviewedWeeks.includes(w.key)}
+                  onChange={(e) => setWeekReviewed(course.id, w.key, e.target.checked)}
+                  className="size-3.5"
+                  style={{ accentColor: tone(color) }}
+                />
+                {reviewedWeeks.includes(w.key) ? "Reviewed" : "Mark reviewed"}
+              </label>
+            )}
             {open && (
               <ul className="px-1.5 pb-2">
                 {w.files.map((x) => (

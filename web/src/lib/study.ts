@@ -479,9 +479,19 @@ export const isNew = (c: Card) => !c.state || !c.state.box;
 /** Schon gelernte Karte, die heute wieder dran ist (neue Karten zählen nicht, siehe todaysSet). */
 export const isDue = (c: Card, today: string) => active(c) && !isNew(c) && (!c.state?.due || c.state.due <= today);
 
-/** Was heute drankommt: fällige Wiederholungen plus neue Karten bis zum Tageslimit. */
+/** Höchstens so viele Wiederholungen pro Tag; ein Rückstand verteilt sich auf die nächsten Tage (die ältesten zuerst). */
+export const REVIEWS_PER_DAY = 80;
+/** Grobe Zeit pro Karte (Sekunden) für „about 4 min“. */
+export const SECONDS_PER_CARD = 12;
+export const minutesFor = (n: number) => Math.max(1, Math.round((n * SECONDS_PER_CARD) / 60));
+
+/** Was heute drankommt: fällige Wiederholungen (gedeckelt) plus neue Karten bis zum Tageslimit. */
 export function todaysSet(cards: Card[], today: string, stats: StudyStats) {
-  const reviews = cards.filter((c) => isDue(c, today));
+  const reviewsLeft = Math.max(0, REVIEWS_PER_DAY - Math.max(0, stats.today - stats.newToday));
+  const reviews = cards
+    .filter((c) => isDue(c, today))
+    .sort((a, b) => (a.state?.due ?? "").localeCompare(b.state?.due ?? ""))
+    .slice(0, reviewsLeft);
   const budget = Math.max(0, NEW_PER_DAY - stats.newToday);
   // Neue Karten reihum aus allen Modulen, je Modul in Vorlesungsreihenfolge
   const seed = 1;
@@ -582,6 +592,49 @@ function hiddenKeys(course: Course, today: string): Set<string> {
   const weeks = weeksOf(course, { today: today || localToday() });
   return new Set(weeks.filter((w) => hidden.includes(w.key)).flatMap((w) => w.files.map((x) => fileKey(x.file))));
 }
+
+// ------------------------------------------------------------------ Wochen als „durchgearbeitet“ markieren (Kursseite)
+
+const REVIEWED_KEY = "studi.weeksReviewed";
+let reviewed: Record<string, string[]> | null = null;
+let reviewedVersion = 0;
+const reviewedListeners = new Set<() => void>();
+function loadReviewed(): Record<string, string[]> {
+  if (reviewed) return reviewed;
+  try {
+    reviewed = JSON.parse((typeof localStorage !== "undefined" && localStorage.getItem(REVIEWED_KEY)) || "{}") ?? {};
+  } catch {
+    reviewed = {};
+  }
+  return reviewed!;
+}
+export function setWeekReviewed(courseId: string, key: string, on: boolean) {
+  const cur = loadReviewed();
+  const list = new Set(cur[courseId] ?? []);
+  if (on) list.add(key);
+  else list.delete(key);
+  reviewed = { ...cur, [courseId]: [...list] };
+  try {
+    localStorage.setItem(REVIEWED_KEY, JSON.stringify(reviewed));
+  } catch {
+    // egal
+  }
+  reviewedVersion += 1;
+  for (const l of reviewedListeners) l();
+}
+/** Wochen eines Kurses, die als durchgearbeitet markiert sind. */
+export function useReviewedWeeks(courseId: string | null): string[] {
+  useSyncExternalStore(
+    (l) => {
+      reviewedListeners.add(l);
+      return () => reviewedListeners.delete(l);
+    },
+    () => reviewedVersion,
+    () => 0,
+  );
+  return courseId ? (loadReviewed()[courseId] ?? []) : [];
+}
+export const reviewedWeeksOf = (courseId: string) => loadReviewed()[courseId] ?? [];
 
 // ------------------------------------------------------------------ Heute dran (eine Menge für die ganze App)
 
