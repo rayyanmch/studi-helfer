@@ -27,6 +27,10 @@ export type DesktopErrorCode =
   | "rate_limited" // KI: gerade ausgelastet
   | "ai_error"
   | "timeout"
+  | "cancelled" // abgebrochen (z. B. Speichern-Dialog)
+  | "no_ai" // Lernbereich: Claude Code fehlt oder ist nicht angemeldet
+  | "no_text" // Lernbereich: Datei hat kaum Text (Folien als Bilder)
+  | "unsupported"
   | "internal";
 
 export type Fail = { ok: false; code: DesktopErrorCode; message: string };

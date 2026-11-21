@@ -10,6 +10,7 @@ import { Button, Swatch, colorOf, examPart, tone } from "./ui";
 import { CheckButton, DocTile, FileRow, FolderBadge, displayName } from "./files";
 import { linkSolutions } from "@/lib/solutions";
 import { openEvent, openNewEvent } from "./EventDialog";
+import { StudyPanel } from "./StudyView";
 import type { ClassSlot, Course, CourseColor, CourseFile, Deadline } from "@/lib/mock-data";
 import * as store from "@/lib/app-store";
 import { COURSE_COLORS, useApp } from "@/lib/app-store";
@@ -40,6 +41,7 @@ export function ModuleView({
   const color = colorOf(course);
   const files = course.folders.flatMap((f) => f.files);
   const fresh = files.filter((f) => f.isNew || f.changeNote);
+  const [tab, setTab] = useState<"overview" | "study">("overview");
 
   // Esc führt zurück zur Kursübersicht (außer beim Tippen in einem Feld oder bei offenem Dialog)
   useEffect(() => {
@@ -92,9 +94,30 @@ export function ModuleView({
         </div>
       </header>
 
-      <ComingUp course={course} deadlines={deadlines} done={done} onToggle={onToggle} today={app.today} />
+      <div role="tablist" aria-label="Course sections" className="mt-6 flex gap-1 border-b border-line">
+        {(["overview", "study"] as const).map((t) => (
+          <button
+            key={t}
+            role="tab"
+            aria-selected={tab === t}
+            onClick={() => setTab(t)}
+            className={`-mb-px border-b-2 px-3 pb-2 pt-1 text-[14px] font-semibold transition-colors ${tab === t ? "text-text" : "border-transparent text-muted hover:text-text"}`}
+            style={tab === t ? { borderColor: tone(color) } : undefined}
+          >
+            {t === "overview" ? "Overview" : "Study"}
+          </button>
+        ))}
+      </div>
 
-      <Files course={course} files={files} freshIds={fresh.map((f) => f.id)} />
+      {tab === "overview" ? (
+        <>
+          <ComingUp course={course} deadlines={deadlines} done={done} onToggle={onToggle} today={app.today} />
+
+          <Files course={course} files={files} freshIds={fresh.map((f) => f.id)} />
+        </>
+      ) : (
+        <StudyPanel course={course} />
+      )}
     </>
   );
 }

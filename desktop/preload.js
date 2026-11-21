@@ -79,6 +79,24 @@ contextBridge.exposeInMainWorld("studi", {
     modify: call("studi:unimail:modify"),
     send: call("studi:unimail:send"),
   },
+  // Lernbereich (desktop/lib/study.js, Typen in web/src/lib/study.ts)
+  study: {
+    status: call("studi:study:status"),
+    get: call("studi:study:get"),
+    analyze: call("studi:study:analyze"),
+    cancel: call("studi:study:cancel"),
+    review: call("studi:study:review"),
+    resetCards: call("studi:study:resetCards"),
+    sheets: call("studi:study:sheets"),
+    createSheet: call("studi:study:createSheet"),
+    deleteSheet: call("studi:study:deleteSheet"),
+    exportAnki: call("studi:study:exportAnki"),
+    onState(callback) {
+      const listener = (_event, state) => callback(state);
+      ipcRenderer.on("studi:study:state", listener);
+      return () => ipcRenderer.removeListener("studi:study:state", listener);
+    },
+  },
   onDeadlinesChanged(callback) {
     const listener = () => callback();
     ipcRenderer.on("studi:deadlinesChanged", listener);

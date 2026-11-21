@@ -127,8 +127,12 @@ export function Settings({ onClose, onEditCourses, onLogout }: { onClose: () => 
           {/* Was wo bleibt, in einfachen Worten (Vertrauen für alle, nicht nur für Technikinteressierte) */}
           <Section title="Privacy">
             <Row label="Your password" hint="Saved only on this Mac. Used only to sign in to ILIAS (and your uni mail, if you connect it)." />
-            <Row label="Your files" hint="Saved in your Uni folder on this Mac. Nothing is uploaded." />
-            <Row label="No AI" hint="Deadlines and summaries are found with simple rules on your Mac. Nothing is sent to an AI." />
+            <Row label="Your files" hint="Saved in your Uni folder on this Mac. Nothing is uploaded unless you use Study." />
+            <Row label="Deadlines" hint="Found with simple rules on your Mac. Nothing is sent to an AI." />
+            <Row
+              label="Study"
+              hint="Only when you ask for a summary, study sheet or flashcards, the text of those files goes to Claude (Anthropic) through Claude Code on this Mac. Your password never does."
+            />
             <Row label="Mensa" hint="The menu is public. The app sends nothing about you." />
           </Section>
         </div>

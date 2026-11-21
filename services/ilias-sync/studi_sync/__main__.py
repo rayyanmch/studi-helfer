@@ -17,6 +17,7 @@
     mail-list                    Uni-Mails holen; stdin: {"known": [Ids]} (bekannte nur mit Ordner/gelesen).
     mail-modify                  stdin: {"id", "unread"?, "archive"?}
     mail-send                    stdin: {"to", "subject", "body", "inReplyTo"?}
+    file-text                    Text einer Kursdatei mit Seitenmarken (Lernbereich); stdin: {"path", "maxChars"?}
     pferd-run --config DATEI     Intern: PFERD mit Köln-Korrekturen starten.
 
 Ergebnis: {"type": "result", ...} oder {"type": "error", "code": ..., "message": ...} (Exit 1).
@@ -189,6 +190,14 @@ def cmd_mail_send(args: argparse.Namespace) -> None:
     emit(unimail.send(*_mail_login(), _stdin_json()))
 
 
+def cmd_file_text(args: argparse.Namespace) -> None:
+    from .studytext import file_text
+
+    data = _stdin_json()
+    max_chars = int(data.get("maxChars") or 150_000)
+    emit({"type": "result", **file_text(str(data.get("path") or ""), max(5_000, min(max_chars, 600_000)))})
+
+
 def cmd_pferd_run(args: argparse.Namespace) -> None:
     from .pferd_run import run
 
@@ -209,7 +218,7 @@ def main() -> int:
     p = sub.add_parser("orga"); p.set_defaults(fn=cmd_orga)
     p = sub.add_parser("calendar-test"); p.add_argument("--url", required=True); p.set_defaults(fn=cmd_calendar_test)
     p = sub.add_parser("sync"); p.add_argument("--auto", action="store_true"); p.set_defaults(fn=cmd_sync)
-    for name, fn in (("mail-check", cmd_mail_check), ("mail-list", cmd_mail_list), ("mail-modify", cmd_mail_modify), ("mail-send", cmd_mail_send)):
+    for name, fn in (("mail-check", cmd_mail_check), ("mail-list", cmd_mail_list), ("mail-modify", cmd_mail_modify), ("mail-send", cmd_mail_send), ("file-text", cmd_file_text)):
         sub.add_parser(name).set_defaults(fn=fn)
     p = sub.add_parser("pferd-run"); p.add_argument("--config", required=True); p.set_defaults(fn=cmd_pferd_run)
     args = parser.parse_args()
