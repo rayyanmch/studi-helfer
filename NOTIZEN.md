@@ -7,7 +7,6 @@ Gemeinsames Gedächtnis für alle KI-Agenten und Menschen im Projekt. Wird über
 
 Wer gerade woran arbeitet (Person, Aufgabe, betroffene Dateien). Eintragen beim Start, löschen wenn fertig.
 
-- 2026-11-21/22 nachts, Rayyans Agent (Nachtschicht, allein): kleine Verständlichkeits-Verbesserungen nach Befundliste unten. Nur Texte, Zustände, Hinweise, kleine Bausteine in `Login.tsx`, `CoursesView.tsx`, `Settings.tsx`, `ModuleView.tsx`, `Overview.tsx` (klein), `EventDialog.tsx`, `MensaView.tsx`, `ui.tsx`, Python-Fehlertexte in `studi_sync/`. Mail/Google/Accounts bleiben unberührt.
 
 
 
@@ -49,6 +48,7 @@ Protokoll der Nacht 21./22.11. (Rayyans Agent, allein). Eine Zeile pro Durchgang
 - 21.11. 10:00: **Mensa-Zeile auf der Startseite** (Aufgabe 13): neue `components/MensaToday.tsx`, unter dem Wochenstreifen „Lunch today at Zülpicher Straße“ mit bis zu 3 Hauptgerichten und Preis (gewählte Mensa, Preisgruppe und vegan/vegetarisch aus den Mensa-Vorlieben, nichts Ausverkauftes), Klick öffnet den Mensa-Tab; nur Mo–Fr vor 15 Uhr. Dazu Untertitel „Next up: … today/tomorrow“ statt „on Monday“, wenn es heute/morgen ist. Getestet mit Datenkopie und per CDP vorgetäuschter Uhrzeit (Mo 12:00 → Karte da, hell/dunkel; Mo 16:00 → keine Karte; echter Samstag → keine Karte).
 - 21.11. 10:10: **Demo-Ablauf und README** (Aufgabe 15): Abschnitt „Demo-Ablauf (5 Minuten)“ in NOTIZEN (Vorbereitung, 9 Schritte, Notfall); README neu (war noch Supabase/Vercel/Moodle-Planung): was die App kann, was wo bleibt, Installieren aus dem Release, Entwickeln, Aufbau.
 - 21.11. 10:20: **Abschlussprüfung web-design-guidelines** (Aufgabe 16): eigene Komponenten gegen die Vercel-Richtlinien geprüft; erfüllt: kein `transition-all`, Knöpfe/Felder beschriftet, `color-scheme` für hell/dunkel, „Bewegung reduzieren“, Fokusrahmen (nach den Fixes der Nacht), Undo für Ausblenden/Löschen. Behoben: Einzeltermine auf der Kursseite waren `<li onClick>` (nur Maus) → Knopf; Uni-Kennung ohne Rechtschreibprüfung/Großschreibung. Bewusst nicht: Title Case in Knöpfen (Mikas Stil ist Satzanfang groß), Datumsformate über `Intl` (App ist nur englisch), URL-Zustand (Electron-App ohne Adressleiste), Bilder in der Mensa ohne feste Größe (stecken in fester Box). Getestet: alle 5 Kursseiten ohne Fehler, Login-Feld `spellcheck=false`.
+- 21.11. 10:35: **Morgenbericht** als PDF (6 Seiten, Vorher/Nachher-Bilder) an Rayyan geschickt, Kurzfassung unten unter „Nachtschicht – Morgenbericht“. In-Arbeit-Eintrag entfernt. Nachtschicht beendet.
 
 ## Nachtschicht – Befunde
 
@@ -67,6 +67,15 @@ Priorisiert, oben zuerst. Status in Klammern.
 11. **Mensa am Wochenende** (`MensaView.tsx`): springt still auf Montag. Vorschlag: „Closed today. Showing Monday.“ (erledigt)
 12. **Suchfeld mit doppeltem Fokusrahmen** (`Overview.tsx`). (erledigt)
 13. **Termin-Dialog ohne „Mark as done“** für Abgaben (nur Kreis im Kasten). (erledigt)
+
+## Nachtschicht – Morgenbericht
+
+Kurzfassung für Mikas Agenten (ganzer Bericht als PDF bei Rayyan). 26 Durchgänge, 27 Commits (d2b7fd8 … ba1580c), alle auf `main`.
+
+- **Stand:** demo-bereit. Alle 13 Befunde vom Rundgang erledigt (Liste oben), Aufgaben 1–16 durch. Nicht getestet: echte ILIAS-Anmeldung, Einrichtung mit echter Kursliste, Sync, Mail/Google (nicht angefasst).
+- **Für Mika wichtig:** (1) vier helle Kursfarben leicht dunkler (orange, green, ochre, teal in `:root`), siehe Nachricht oben, gern anders lösen; (2) zwei Fokus-Ausnahmen in `globals.css`; (3) kleine Änderungen in `Overview.tsx` (Begrüßung, Mensa-Zeile, Hinweis „Click an entry …“, Leerzustände, Suche, 4-Wochen-Titel mit Kursname, Klausur im Untertitel); neue Dateien `Welcome.tsx`, `MensaToday.tsx`, `lib/search.ts`.
+- **Vorschläge (nicht gebaut):** Kurzname „SE“ für Softwaretechnik; Klausurtitel „1st date“ als „BWL exam · 1st date“ anzeigen; 4-Wochen-Ansicht ab heute statt ab Montag; Seitenleiste „Calendar“; Wochenend-„Today“ breiter; Mensa-Zeile ggf. mit Foto.
+- **Rayyan vor der Demo:** neue Version installieren, Schlüsselbund „Immer erlauben“, Begrüßungskarte wegklicken oder zeigen; Demo-Ablauf siehe Abschnitt oben.
 
 ## Demo-Ablauf (5 Minuten, Vorschlag der Nachtschicht)
 
