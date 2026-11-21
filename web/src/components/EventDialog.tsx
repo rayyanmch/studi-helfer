@@ -150,8 +150,8 @@ function Details({ deadline: d, onOpenCourse }: { deadline: Deadline; onOpenCour
   const app = useApp();
   const course = app.courses.find((c) => c.id === d.courseId);
   const color = d.color ?? (course ? colorOf(course) : "indigo");
-  const where = d.location ?? (d.source && !d.source.startsWith("From ") ? d.source : undefined);
-  const from = d.source?.startsWith("From ") ? d.source : undefined;
+  const where = d.location ?? (d.source && !d.source.startsWith("Found in ") ? d.source : undefined);
+  const from = d.source?.startsWith("Found in ") ? d.source : undefined;
   return (
     <>
       <Header title={KIND_LABEL[d.kind]} />
@@ -176,7 +176,7 @@ function Details({ deadline: d, onOpenCourse }: { deadline: Deadline; onOpenCour
             </p>
           )}
           <p className="mt-3 text-[12px] text-muted">
-            Found automatically{from ? ` · ${from}` : ""}. Edit it to fix the time or room, or hide it if it is wrong.
+            Found automatically{from ? ` in ${from.slice("Found in ".length)}` : ""}. Edit it to fix the time or room, or hide it if it is wrong.
           </p>
         </div>
         <div className="mt-4 flex flex-wrap items-center gap-2">

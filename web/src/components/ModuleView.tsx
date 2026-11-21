@@ -44,7 +44,7 @@ export function ModuleView({
   // Esc führt zurück zur Kursübersicht (außer beim Tippen in einem Feld oder bei offenem Dialog)
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      const t = e.target as HTMLElement | null;
+      const t = e.target instanceof Element ? e.target : null; // kann auch document sein
       if (e.key !== "Escape" || t?.closest("input, textarea, select, [role=dialog]")) return;
       onBack();
     };

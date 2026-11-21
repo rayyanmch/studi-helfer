@@ -968,7 +968,7 @@ function DeadlineBlock({ d, done, onToggle, onOpen }: { d: Deadline; done: boole
     <div className="flex items-start gap-1.5 rounded-[7px] py-1.5 pl-2 pr-1.5 transition-colors" style={style}>
       <button
         onClick={onOpen}
-        title={d.source ? `${d.kind === "klausur" ? "Room" : "Found in"}: ${d.source}` : `${d.title}, ${nameOf(course)}`}
+        title={[`${d.title}, ${nameOf(course)}`, d.location ? `Room: ${d.location}` : d.source].filter(Boolean).join(" · ")}
         className="min-w-0 flex-1 text-left"
       >
         {exam && (
@@ -984,7 +984,7 @@ function DeadlineBlock({ d, done, onToggle, onOpen }: { d: Deadline; done: boole
         </span>
         <span className={`block text-[13px] font-semibold leading-snug ${isDone ? "line-through" : ""}`}>{title}</span>
         <span className={`block truncate text-[12px] ${solid ? "opacity-85" : isDone ? "" : "text-muted"}`}>
-          {exam && d.source ? d.source : shortOf(course)}
+          {exam && d.location ? d.location : shortOf(course)}
         </span>
       </button>
       {checkable && (
