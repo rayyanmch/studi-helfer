@@ -323,7 +323,8 @@ function sheetHtml(sheet, { moduleName, accent = "#22325c" }) {
 
   const vctx = { rich, files: sheet.files || [], accent, labels: { source: L.sources.replace(/n$/, ""), page: L.page } };
   const visualsOf = (p) => (p.visuals || []).map((v) => V.visualHtml(v, vctx)).join("");
-  const calloutsOf = (p) => (p.callouts || []).map((c) => V.calloutHtml(c, { rich, language: sheet.language })).join("");
+  const calloutsOf = (p) => (p.callouts || []).filter((c) => c.kind !== "code").map((c) => V.calloutHtml(c, { rich, language: sheet.language })).join("");
+  const codeOf = (p) => (p.callouts || []).filter((c) => c.kind === "code").map((c) => V.calloutHtml(c, { rich, language: sheet.language })).join("");
   // Quellen je Datei zusammenfassen: „09-System Modeling II S. 4, 5, 18“
   const groupSources = (sources) => {
     const byFile = new Map();
@@ -375,6 +376,7 @@ function sheetHtml(sheet, { moduleName, accent = "#22325c" }) {
       ${h("tasks", bullets(p.tasks, (t) => `<strong>${rich(t.type)}:</strong> ${rich(t.approach)}`))}
       ${h("mistakes", bullets(p.mistakes, (m) => `<span class="wrong">${M.wrong}:</span> ${rich(m.wrong)}<br><span class="right">${M.right}:</span> ${rich(m.right)}`))}
       ${h("proofs", bullets(p.proofs, (x) => `<strong>${rich(x.name)}:</strong> ${rich(x.text)}`))}
+      ${codeOf(p)}
       ${h("practice", numbered(p.practice, (q) => `${rich(q.q)}${sheet.include?.answers && q.a ? `<div class="answer"><span>${M.solution}:</span> ${rich(q.a)}</div>` : ""}`))}
       ${sourcesOf(p)}
     </section>`;
@@ -409,6 +411,7 @@ function sheetHtml(sheet, { moduleName, accent = "#22325c" }) {
       ${h3("mnemonics", bullets(p.mnemonics))}
       ${h3("misconceptions", numbered(p.misconceptions, (m) => `<strong>„${rich(m.myth)}“</strong> ${rich(m.truth)}`))}
       ${h3("anecdotes", bullets(p.anecdotes))}
+      ${codeOf(p)}
       ${h3("questions", questions)}
       ${sources.length ? `<p class="sources">${L.sources}: ${[...new Set(sources)].join(" · ")}</p>` : ""}
     </section>`;

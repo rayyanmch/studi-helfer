@@ -64,9 +64,17 @@ function build(weeks: Week[], files: ReturnType<typeof useStudy>["files"], data:
   const map = new Map<string, Item>();
   const weekAgo = Math.max(seen, Date.now() - 7 * 86_400_000);
   const ordered = [...weeks.filter((w) => w.kind === "week"), ...weeks.filter((w) => w.kind !== "week")];
+  // Duplikate zusammenführen: „AIDA-Formel“ = „AIDA-Modell“, gleiche Formel unter anderem Namen
+  const GENERIC = new Set("modell model formel formula prinzip principle konzept concept schema ansatz approach methode method regel rule satz theorem gesetz law begriff".split(" "));
+  const keyOf = (kind: Kind, term: string, definition: string) => {
+    if (kind === "formula") return `formula:${definition.replace(/\s+/g, "").replace(/[{}]/g, "").toLowerCase().slice(0, 80)}`;
+    const tokens = norm(term).split(/[\s-]+/).filter(Boolean);
+    const core = tokens.length > 1 && tokens[0].length >= 4 ? tokens.filter((t, i) => i === 0 || !GENERIC.has(t)) : tokens;
+    return `term:${core.join(" ")}`;
+  };
   const add = (kind: Kind, term: string, definition: string, note: string | undefined, source: Item["sources"][number], at: number) => {
     if (!term.trim() || !definition.trim()) return;
-    const key = `${kind}:${norm(term)}`;
+    const key = keyOf(kind, term, definition);
     const cur = map.get(key);
     if (cur) {
       if (!cur.sources.some((s) => s.label === source.label)) cur.sources.push(source);
@@ -85,10 +93,13 @@ function build(weeks: Week[], files: ReturnType<typeof useStudy>["files"], data:
         path: x.file.path,
         week: w.n,
       });
-      for (const t of a.terms ?? []) add("term", t.term, t.definition, undefined, src(t.page), a.at);
-      for (const f of a.formulas ?? []) add("formula", f.name, f.formula, f.meaning, src(f.page), a.at);
-      // ältere Auswertungen ohne Formel-Liste: Formel-Karten übernehmen
-      if (!a.formulas) for (const c of a.cards.filter((c) => c.type === "formula")) add("formula", c.q.replace(/\?$/, ""), c.a, undefined, src(c.page), a.at);
+      // Begriffe nur aus Lernstoff (keine Fallstudien, Altklausuren, Lösungen: dort stecken Fall-Details in den Definitionen)
+      const learning = ["lecture", "notes", "reading", "selfstudy", "exslides", "tutorial"].includes(x.type);
+      if (learning) for (const t of a.terms ?? []) add("term", t.term, t.definition, undefined, src(t.page), a.at);
+      if (x.type !== "info") for (const f of a.formulas ?? []) add("formula", f.name, f.formula, f.meaning, src(f.page), a.at);
+      // ältere Vorlesungs-Auswertungen ohne Formel-Liste: Formel-Karten übernehmen (keine Lückentexte)
+      if (!a.formulas && learning && a.kind !== "help")
+        for (const c of a.cards.filter((c) => c.type === "formula" && !/_{2,}/.test(c.q) && c.a.length < 300)) add("formula", c.q.replace(/^(wie lautet|what is|gib|nenne)\s+/i, "").replace(/\?$/, ""), c.a, undefined, src(c.page), a.at);
     }
   }
   // Änderungen des Nutzers
@@ -113,11 +124,14 @@ export function GlossaryPanel({ course, color, kind, math }: { course: Course; c
   const [editing, setEditing] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [week, setWeek] = useState<number | "all">("all");
   const q = norm(query);
   const all = items.filter((i) => i.kind === kind);
   const hiddenCount = all.filter((i) => i.hidden).length;
+  const weeksPresent = [...new Set(all.map((i) => i.week).filter((w): w is number => w != null))].sort((a, b) => a - b);
   const shown = all
     .filter((i) => showHidden || !i.hidden)
+    .filter((i) => week === "all" || i.sources.some((s) => s.week === week) || (i.own && false))
     .filter((i) => !q || norm(`${i.term} ${i.definition} ${i.note ?? ""}`).includes(q))
     .sort((a, b) => (kind === "formula" ? (a.week ?? 99) - (b.week ?? 99) || a.term.localeCompare(b.term, "de") : a.term.localeCompare(b.term, "de", { sensitivity: "base" })));
 
@@ -162,6 +176,21 @@ export function GlossaryPanel({ course, color, kind, math }: { course: Course; c
             className="min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-muted"
           />
         </label>
+        {weeksPresent.length > 1 && (
+          <select
+            value={week}
+            onChange={(e) => setWeek(e.target.value === "all" ? "all" : Number(e.target.value))}
+            aria-label="Filter by week"
+            className="h-9 rounded-lg bg-surface px-2.5 text-[13px] shadow-[inset_0_0_0_1px_var(--line)] outline-none"
+          >
+            <option value="all">All weeks</option>
+            {weeksPresent.map((w) => (
+              <option key={w} value={w}>
+                Week {w}
+              </option>
+            ))}
+          </select>
+        )}
         <Button onClick={() => setAdding(true)}>
           <Plus size={14} aria-hidden /> {kind === "term" ? "Add term" : "Add formula"}
         </Button>

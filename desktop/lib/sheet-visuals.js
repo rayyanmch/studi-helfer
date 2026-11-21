@@ -52,11 +52,18 @@ function visualPrompt({ subject, figures, candidates }) {
     "VISUALS: in each part add 1–3 visuals where they really help understanding (a process, a structure, a relationship, a model, a curve), and skip them where they don't.",
     SUBJECTS[subject] || "",
     "Diagram rules: valid Mermaid only, short node labels (max ~6 words, no quotes or brackets inside labels unless quoted), max ~14 nodes, no styling/classDef, labels in the language of the material. Chains of more than 4 steps go top-down (flowchart TD); left-right only for up to 4 nodes.",
-    "Plot rules: give functions as expressions in x and choose a sensible window; points only with exact coordinates from the material or your own correct calculation.",
+    "NOTATION (students learn exam notation from these diagrams, so it must be exactly right or the diagram must be left out):",
+    "- Draw only what the material shows, in the course's notation. If Mermaid can't express the notation correctly, skip the diagram and use the slide as a figure instead.",
+    "- Never draw EPK/EPC or BPMN with Mermaid (wrong shapes for events, functions and connectors): use the slide page as a figure or a table of the elements.",
+    "- UML class diagrams: multiplicities at the association ends in Mermaid syntax (A \"1\" --> \"*\" B : label), never words like '1 to many'; aggregation o--, composition *--, inheritance <|--, realization <|.., dependency ..>; design patterns with all participants, relations and overridden methods as on the slides.",
+    "- UML sequence diagrams: every synchronous call ->> has its own return -->> right after the callee's work; use activate/deactivate for activation bars; asynchronous calls -) ; object names like 'obj:Class'.",
+    "- Layer models (e.g. a process map with management, core and support processes): flowchart with one subgraph per layer and no arrows between layers unless the material has them.",
+    "- Linear processes are fine as a chain; the app lays out chains compactly.",
+    "Plot rules: functions as expressions in x with a sensible window; points only with exact coordinates. SEQUENCES are plotted ONLY as points (n, a_n) for the integer indices starting at the first index of the material, never as a function curve; show the limit as a constant function (label 'a = …'), an ε-band as two constants a±ε, and mark N(ε) as a labelled point. Axis labels in plain text (a_n is fine).",
     figures
       ? `FIGURES: you may include slide pages as figures (type figure, file + page) when a page shows a diagram, model or graphic that the text refers to (max 1 per part). ${candidates ? `Pages with little text (likely graphics): ${candidates}.` : ""}`
       : "Do not use type figure.",
-    "CALLOUTS: 1–3 per part: 'remember' for the one key takeaway, 'tip' only for exam tips stated in the material, 'warning' for typical traps, 'code' for short code if useful.",
+    "CALLOUTS: 1–3 per part: 'remember' for the one key takeaway, 'tip' only for exam tips stated in the material, 'warning' for typical traps, 'code' for short code (real line breaks, max 12 lines, first line a comment naming what it shows, in the part about that topic).",
   ];
   return parts.filter(Boolean).join("\n");
 }
@@ -167,6 +174,22 @@ const esc = (s) =>
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
 
+/** Beschriftung im Graphen ohne LaTeX-Reste: „$a_n$“ → „aₙ“, „x^2“ → „x²“, „\\varepsilon“ → „ε“. */
+function plain(t) {
+  const sub = { 0: "₀", 1: "₁", 2: "₂", 3: "₃", 4: "₄", 5: "₅", 6: "₆", 7: "₇", 8: "₈", 9: "₉", n: "ₙ", k: "ₖ", i: "ᵢ", "+": "₊", "-": "₋" };
+  const sup = { 0: "⁰", 1: "¹", 2: "²", 3: "³", 4: "⁴", 5: "⁵", 6: "⁶", 7: "⁷", 8: "⁸", 9: "⁹", n: "ⁿ", "-": "⁻", "+": "⁺" };
+  return String(t ?? "")
+    .replace(/\$/g, "")
+    .replace(/\\(varepsilon|epsilon)/g, "ε")
+    .replace(/\\infty/g, "∞")
+    .replace(/\\sqrt\{?([^}\s]+)\}?/g, "√$1")
+    .replace(/\\pi/g, "π")
+    .replace(/\\(left|right|,|;)/g, "")
+    .replace(/_\{([^}]+)\}|_(\w)/g, (_, a, b) => [...(a ?? b)].map((c) => sub[c] ?? c).join(""))
+    .replace(/\^\{([^}]+)\}|\^(\w|-)/g, (_, a, b) => [...(a ?? b)].map((c) => sup[c] ?? c).join(""))
+    .replace(/\\[a-z]+/gi, "");
+}
+
 /** SVG eines Graphen: Gitter, Achsen, Funktionen (300 Stützstellen, Sprünge werden getrennt), Punkte mit Beschriftung. */
 function plotSvg(plot, accent) {
   const fns = (plot.functions || []).map((f) => ({ ...f, fn: compile(f.expr) })).filter((f) => f.fn);
@@ -193,7 +216,10 @@ function plotSvg(plot, accent) {
     const m = span / step > 30 ? 5 : span / step > 12 ? 2 : 1;
     return step * m;
   };
-  const tx = tick(xmin, xmax), ty = tick(ymin, ymax);
+  // Folgen (nur Punkte mit ganzzahligem x, keine Funktion in x): ganzzahlige Achse
+  const sequence = pts.length > 0 && pts.every((p) => Number.isInteger(p.x)) && fns.every((f) => !/x/i.test(f.expr.replace(/exp/gi, "")));
+  const tx = sequence ? Math.max(1, Math.round(tick(xmin, xmax))) : tick(xmin, xmax),
+    ty = tick(ymin, ymax);
   const lines = [];
   for (let x = Math.ceil(xmin / tx) * tx; x <= xmax + 1e-9; x += tx) {
     lines.push(`<line x1="${sx(x)}" y1="${T}" x2="${sx(x)}" y2="${H - B}" class="g"/><text x="${sx(x)}" y="${H - B + 14}" class="t" text-anchor="middle">${+x.toFixed(4)}</text>`);
@@ -221,19 +247,65 @@ function plotSvg(plot, accent) {
     return `<path d="${d}" fill="none" stroke="${colors[n % 4]}" stroke-width="2"/>`;
   });
   const legend = fns
-    .map((f, n) => `<text x="${W - R - 4}" y="${T + 12 + n * 14}" text-anchor="end" class="l" fill="${colors[n % 4]}">${esc(f.label || f.expr)}</text>`)
+    .map((f, n) => `<text x="${W - R - 4}" y="${T + 12 + n * 14}" text-anchor="end" class="l" fill="${colors[n % 4]}">${esc(plain(f.label || f.expr))}</text>`)
     .join("");
   const dots = pts
-    .map((p) => `<circle cx="${sx(p.x)}" cy="${sy(p.y)}" r="3.5" fill="${accent}"/>${p.label ? `<text x="${sx(p.x) + 6}" y="${sy(p.y) - 6}" class="l">${esc(p.label)}</text>` : ""}`)
+    .map((p) => `<circle cx="${sx(p.x)}" cy="${sy(p.y)}" r="3.5" fill="${accent}"/>${p.label ? `<text x="${sx(p.x) + 6}" y="${sy(p.y) - 6}" class="l">${esc(plain(p.label))}</text>` : ""}`)
     .join("");
-  const labels = `${plot.xlabel ? `<text x="${W - R}" y="${H - 4}" text-anchor="end" class="t">${esc(plot.xlabel)}</text>` : ""}${plot.ylabel ? `<text x="${L + 4}" y="${T + 10}" class="t">${esc(plot.ylabel)}</text>` : ""}`;
+  const labels = `${plot.xlabel ? `<text x="${W - R}" y="${H - 4}" text-anchor="end" class="t">${esc(plain(plot.xlabel))}</text>` : ""}${plot.ylabel ? `<text x="${L + 4}" y="${T + 10}" class="t">${esc(plain(plot.ylabel))}</text>` : ""}`;
   return `<svg viewBox="0 0 ${W} ${H}" class="plot" xmlns="http://www.w3.org/2000/svg"><style>.g{stroke:#e3e7ee;stroke-width:1}.a{stroke:#6b7280;stroke-width:1.2}.t{font:9px -apple-system,Helvetica,sans-serif;fill:#6b7280}.l{font:600 10px -apple-system,Helvetica,sans-serif;fill:#1d1d1f}</style>${lines.join("")}${axes.join("")}${curves.join("")}${dots}${legend}${labels}</svg>`;
+}
+
+/** Einfache Kette A --> B --> C … (ohne Verzweigung, ohne Subgraphen) → Beschriftungen in Reihenfolge, sonst null. */
+function linearChain(code) {
+  const lines = String(code).trim().split(/\n|;/).map((l) => l.trim()).filter(Boolean);
+  if (!/^(flowchart|graph)\b/i.test(lines[0] || "") || lines.some((l) => /^(subgraph|end\b|classDef|style|click)/i.test(l))) return null;
+  const label = new Map();
+  const edges = [];
+  const node = (raw) => {
+    const m = raw.trim().match(/^([A-Za-z0-9_]+)\s*(?:\[\(?\[?([^\]]*?)\]?\)?\]|\(\(?([^)]*?)\)?\)|\{([^}]*)\}|>([^\]]*)\])?$/);
+    if (!m) return null;
+    const text = (m[2] ?? m[3] ?? m[4] ?? m[5] ?? "").replace(/^"|"$/g, "").trim();
+    if (text) label.set(m[1], text);
+    return m[1];
+  };
+  for (const l of lines.slice(1)) {
+    const parts = l.split(/\s*(?:-->|---|==>|-\.->)(?:\|[^|]*\|)?\s*/);
+    if (parts.length < 2) {
+      if (!node(l)) return null;
+      continue;
+    }
+    const ids = parts.map(node);
+    if (ids.some((x) => !x)) return null;
+    for (let k = 0; k < ids.length - 1; k++) edges.push([ids[k], ids[k + 1]]);
+  }
+  if (edges.length < 4) return null;
+  const out = new Map(), into = new Map();
+  for (const [a, b] of edges) {
+    if (out.has(a) || into.has(b)) return null; // Verzweigung oder Zusammenführung
+    out.set(a, b);
+    into.set(b, a);
+  }
+  let start = edges[0][0];
+  while (into.has(start)) {
+    start = into.get(start);
+    if (start === edges[0][0]) return null; // Kreis
+  }
+  const order = [start];
+  while (out.has(order[order.length - 1]) && order.length < 30) order.push(out.get(order[order.length - 1]));
+  if (order.length !== edges.length + 1) return null;
+  return order.map((id) => label.get(id) || id);
 }
 
 /** HTML eines Visuals; rich = Text mit **fett** (und ggf. Formeln). files = Dateien des Lernzettels (für Abbildungen). */
 function visualHtml(v, { rich, files, accent, labels }) {
   const cap = `${v.title ? `<strong>${rich(v.title)}</strong>` : ""}${v.title && v.caption ? ": " : ""}${v.caption ? rich(v.caption) : ""}`;
   if (v.type === "diagram" && v.mermaid?.trim()) {
+    const chain = linearChain(v.mermaid);
+    if (chain) {
+      const steps = chain.map((t, k) => `<span class="step"><span class="n">${k + 1}</span>${esc(t)}</span>`).join(`<span class="arrow">→</span>`);
+      return `<figure class="visual"><div class="chain">${steps}</div>${cap ? `<figcaption>${cap}</figcaption>` : ""}</figure>`;
+    }
     // Lange Ketten von links nach rechts werden im PDF winzig: ab 5 Pfeilen von oben nach unten
     let code = v.mermaid.trim();
     if (/^(flowchart|graph)\s+(LR|RL)\b/i.test(code) && (code.match(/-->|---|==>|-\.->/g) || []).length >= 5) code = code.replace(/^(flowchart|graph)\s+(LR|RL)\b/i, "$1 TD");
@@ -246,7 +318,7 @@ function visualHtml(v, { rich, files, accent, labels }) {
   if (v.type === "figure" && v.figure?.file > 0 && v.figure?.page > 0) {
     const f = files[v.figure.file - 1];
     if (!f || !/\.pdf$/i.test(f.path)) return "";
-    const src = `${labels.source}: ${esc(f.name.replace(/\.[a-z0-9]+$/i, ""))}, ${labels.page} ${v.figure.page}`;
+    const src = `${labels.source}: ${esc(f.name.replace(/\.[a-z0-9]+$/i, ""))}, PDF ${labels.page} ${v.figure.page}`;
     return `<figure class="visual slide"><canvas data-pdf="${esc(pathToFileURL(f.path).href)}" data-page="${v.figure.page}"></canvas><figcaption>${cap}${cap ? " · " : ""}<span class="src">${src}</span></figcaption></figure>`;
   }
   return "";
@@ -266,7 +338,11 @@ function calloutHtml(c, { rich, language }) {
 const VISUAL_CSS = `
   figure.visual { margin: 8px 0 12px; break-inside: avoid; text-align: center; }
   figure.visual pre.mermaid { margin: 0 auto; background: none; font-family: inherit; white-space: pre; }
-  figure.visual svg { max-width: 100%; height: auto; max-height: 125mm; }
+  figure.visual > svg, figure.visual pre.mermaid > svg { max-width: 100%; height: auto; max-height: 125mm; }
+  .chain { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 6px 4px; margin: 2px 0; }
+  .chain .step { display: inline-flex; align-items: center; gap: 6px; background: #eef3fb; border: 1px solid #b9c7e2; border-radius: 6px; padding: 4px 9px; font-size: 9.5pt; }
+  .chain .n { font-weight: 700; color: #3a5ba0; font-size: 8.5pt; }
+  .chain .arrow { color: #22325c; font-size: 11pt; }
   figure.visual svg.plot { width: 92%; }
   figure.slide canvas, figure.slide img { max-width: 88%; border: 1px solid #dde3ee; border-radius: 4px; }
   figcaption { font-size: 9pt; color: #4b5563; margin-top: 4px; text-align: center; }
@@ -291,7 +367,8 @@ function pageScript() {
   try {
     if (window.mermaid && document.querySelector("pre.mermaid")) {
       mermaid.initialize({ startOnLoad: false, securityLevel: "strict", theme: "base", fontFamily: "-apple-system, Helvetica, Arial, sans-serif",
-        flowchart: { nodeSpacing: 26, rankSpacing: 22, padding: 8, useMaxWidth: true }, sequence: { useMaxWidth: true }, class: { useMaxWidth: true },
+        flowchart: { nodeSpacing: 26, rankSpacing: 22, padding: 8, useMaxWidth: true }, sequence: { useMaxWidth: true, mirrorActors: false, showSequenceNumbers: false }, class: { useMaxWidth: true },
+        themeCSS: ".actor-line { stroke-dasharray: 4 3; }",
         themeVariables: { primaryColor: "#eef3fb", primaryBorderColor: "#3a5ba0", primaryTextColor: "#1d1d1f", lineColor: "#22325c", secondaryColor: "#f4f6fa", tertiaryColor: "#fbfcfe", fontSize: "13px" } });
       for (const el of document.querySelectorAll("pre.mermaid")) {
         try { await mermaid.parse(el.textContent); } catch { el.closest("figure")?.remove(); }

@@ -1357,6 +1357,7 @@ function NewSheet({
             <p className="mt-1.5 text-[12px] text-muted">{SUBJECTS.find((x) => x.id === subject)?.hint}.</p>
           </div>
         )}
+        <p className="mb-1.5 text-[12px] font-semibold text-muted">Start from a template, then switch parts on or off</p>
         <div className="flex flex-wrap gap-1.5">
           {PRESET_LIST.map((p) => (
             <button

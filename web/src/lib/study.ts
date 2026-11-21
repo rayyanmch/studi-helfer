@@ -92,7 +92,7 @@ export const MATH_PRESETS: { id: string; label: string; include: Include }[] = [
 ];
 
 export const PRESETS: { id: string; label: string; include: Include }[] = [
-  { id: "guide", label: "Study guide", include: on("beginner", "analogies", "examples", "tables", "misconceptions", "questions", "bigPicture", "visuals", "figures") },
+  { id: "guide", label: "Study guide", include: on("beginner", "analogies", "examples", "tables", "terms", "misconceptions", "questions", "answers", "bigPicture", "visuals", "figures") },
   { id: "exam", label: "Exam prep", include: on("tables", "terms", "misconceptions", "questions", "answers", "bigPicture", "visuals") },
   { id: "quick", label: "Quick review", include: on("terms", "questions", "visuals") },
   { id: "beginner", label: "Beginner-friendly", include: on("beginner", "analogies", "examples", "mnemonics", "anecdotes", "visuals", "figures") },
