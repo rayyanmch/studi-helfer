@@ -233,3 +233,94 @@ export function ClashTag({ other }: { other: string }) {
   );
 }
 
+
+// --- Überschneidungen in der Liste (Startseite „Next 4 days“) ---------------------------
+
+const titleWords = (s: string) =>
+  new Set(
+    s
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .split(/[^a-z0-9]+/)
+      .filter((w) => w.length >= 3),
+  );
+/** Zwei Titel meinen wahrscheinlich denselben Termin („ISM - Vorlesung“ / „ISM Vorlesung“). */
+export const similarTitles = (a: string, b: string) => [...titleWords(a)].some((w) => titleWords(b).has(w));
+
+export interface DayEntry {
+  key: string;
+  at: number;
+  d: Deadline | null;
+  ev: GoogleEvent | null;
+  alsoGoogle?: boolean; // ILIAS-Termin steht genauso auch in Google
+}
+export type TimedEntry = DayEntry & { start: number; end: number };
+export type DayRow = { kind: "one"; e: DayEntry } | { kind: "group"; key: string; items: TimedEntry[] };
+
+/** Gleiche Termine aus ILIAS und Google (gleiche Zeit, ähnlicher Titel) nur einmal zeigen. */
+export function mergeTwins(entries: DayEntry[]): DayEntry[] {
+  const out = entries.map((e) => ({ ...e }));
+  const drop = new Set<string>();
+  for (const g of out) {
+    if (!g.ev) continue;
+    const r = timeRange(g.ev.time);
+    if (!r) continue;
+    const twin = out.find((x) => {
+      if (!x.d || x.alsoGoogle) return false;
+      const rx = timeRange(x.d.time);
+      return rx && rx[0] === r[0] && rx[1] === r[1] && similarTitles(`${x.d.title} ${courseById(x.d.courseId)?.name ?? ""}`, g.ev!.title);
+    });
+    if (twin) {
+      twin.alsoGoogle = true;
+      drop.add(g.key);
+    }
+  }
+  return out.filter((e) => !drop.has(e.key));
+}
+
+/** Teilt die Tagesliste in einzelne Termine und Gruppen, die sich zeitlich überschneiden. */
+export function overlapRows(entries: DayEntry[]): DayRow[] {
+  const rows: DayRow[] = [];
+  let cur: TimedEntry[] = [];
+  let curEnd = -1;
+  const flush = () => {
+    if (cur.length === 1) rows.push({ kind: "one", e: cur[0] });
+    else if (cur.length > 1) rows.push({ kind: "group", key: cur.map((c) => c.key).join("+"), items: cur });
+    cur = [];
+    curEnd = -1;
+  };
+  for (const e of entries) {
+    const r = timeRange(e.d?.time ?? e.ev?.time ?? "");
+    if (!r) {
+      flush();
+      rows.push({ kind: "one", e });
+      continue;
+    }
+    if (cur.length && r[0] < curEnd) {
+      cur.push({ ...e, start: r[0], end: r[1] });
+      curEnd = Math.max(curEnd, r[1]);
+    } else {
+      flush();
+      cur = [{ ...e, start: r[0], end: r[1] }];
+      curEnd = r[1];
+    }
+  }
+  flush();
+  return rows;
+}
+
+/** Zeitabschnitte, in denen mindestens zwei Termine gleichzeitig laufen. */
+export function sharedZones(items: { start: number; end: number }[]): [number, number][] {
+  const points = [...new Set(items.flatMap((i) => [i.start, i.end]))].sort((a, b) => a - b);
+  const zones: [number, number][] = [];
+  for (let k = 0; k < points.length - 1; k++) {
+    const [a, b] = [points[k], points[k + 1]];
+    const n = items.filter((i) => i.start < b && i.end > a).length;
+    if (n < 2) continue;
+    const last = zones[zones.length - 1];
+    if (last && last[1] === a) last[1] = b;
+    else zones.push([a, b]);
+  }
+  return zones;
+}

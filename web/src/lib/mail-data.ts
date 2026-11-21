@@ -219,6 +219,7 @@ const EVENTS: GoogleEvent[] = [
   { id: "e4", title: "Dentist", date: "2026-11-27", time: "08:30 to 09:30", color: "#039be5", calendar: "Personal" },
   { id: "e5", title: "Birthday party", date: "2026-11-28", time: "all day", color: "#e67c73", calendar: "Personal" },
   { id: "e6", title: "Study group", date: "2026-11-24", time: "10:30 to 12:00", color: "#3f51b5", calendar: "Uni" },
+  { id: "e7", title: "Call with Leo", date: "2026-11-23", time: "18:45 to 19:45", color: "#039be5", calendar: "Personal" },
 ];
 
 // --- Speicher -------------------------------------------------------------------

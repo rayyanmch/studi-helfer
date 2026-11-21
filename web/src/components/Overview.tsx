@@ -33,7 +33,7 @@ import { MensaToday } from "./MensaToday";
 import { matches, searchTerms } from "@/lib/search";
 import { MailView } from "./MailView";
 import { CalendarView } from "./CalendarView";
-import { CalendarChip, ClashTag, GoogleBlock, clashWith, startMinutes } from "./calendar-bits";
+import { CalendarChip, ClashTag, GoogleBlock, abbrTitle, mergeTwins, overlapRows, sharedZones, startMinutes, type DayEntry, type TimedEntry } from "./calendar-bits";
 import { Accounts } from "./Accounts";
 import { Settings } from "./Settings";
 import { ImportPanel, jobProgress, useJob, useTick, type Job } from "./ImportJob";
@@ -42,7 +42,7 @@ import { UpdateMenuItem } from "./UpdateNotice";
 import type { Problem } from "./AppShell";
 import { countFiles, countNew, type Course, type Deadline } from "@/lib/mock-data";
 import * as store from "@/lib/app-store";
-import { initMail, setCalendar, useMail, type GoogleEvent } from "@/lib/mail-data";
+import { initMail, setCalendar, useMail } from "@/lib/mail-data";
 import { appStore, etaLabel, realCourses, useApp, useCommand } from "@/lib/app-store";
 
 const FAIL_ID = "rechnernetze";
@@ -661,12 +661,15 @@ function WeekView({
     const items = visible.filter((x) => x.date === iso);
     const events = googleEvents.filter((x) => x.date === iso);
     // ILIAS und Google stehen in einer Reihenfolge nach Uhrzeit (ILIAS bei gleicher Zeit zuerst)
-    const entries = [
-      ...items.map((d) => ({ key: d.id, at: startMinutes(d.time), d, ev: null as GoogleEvent | null })),
-      ...events.map((ev) => ({ key: `g-${ev.id}`, at: startMinutes(ev.time), d: null as Deadline | null, ev })),
-    ].sort((a, b) => a.at - b.at);
-    const clashes = new Map(entries.map((e) => [e.key, clashWith(entries, e)]));
-    return { iso, num: d.getUTCDate(), wd: d.getUTCDay(), items, events, entries, clashes, wide: entries.length > 0, today: i === 0 };
+    const entries = mergeTwins(
+      [
+        ...items.map((d): DayEntry => ({ key: d.id, at: startMinutes(d.time), d, ev: null })),
+        ...events.map((ev): DayEntry => ({ key: `g-${ev.id}`, at: startMinutes(ev.time), d: null, ev })),
+      ].sort((a, b) => a.at - b.at),
+    );
+    // Termine, die sich überschneiden, stehen nebeneinander (Variante P1)
+    const rows = overlapRows(entries);
+    return { iso, num: d.getUTCDate(), wd: d.getUTCDay(), items, events, rows, wide: entries.length > 0, today: i === 0 };
   });
 
   const open = deadlines.filter(
@@ -749,18 +752,20 @@ function WeekView({
                 day.today && day.wide ? "shadow-[inset_0_0_0_2px_var(--accent)]" : ""
               }`}
             >
-              {day.entries.map((e) =>
-                e.d ? (
+              {day.rows.map((row) =>
+                row.kind === "group" ? (
+                  <OverlapGroup key={row.key} items={row.items} onOpen={onOpen} />
+                ) : row.e.d ? (
                   <DeadlineBlock
-                    key={e.key}
-                    d={e.d}
-                    done={done.includes(e.d.id)}
-                    onToggle={() => onToggle(e.d!.id)}
-                    onOpen={() => openEvent(e.d!, { onOpenCourse: () => onOpen(e.d!.courseId) })}
-                    clash={day.clashes.get(e.key) ?? null}
+                    key={row.e.key}
+                    d={row.e.d}
+                    done={done.includes(row.e.d.id)}
+                    onToggle={() => onToggle(row.e.d!.id)}
+                    onOpen={() => openEvent(row.e.d!, { onOpenCourse: () => onOpen(row.e.d!.courseId) })}
+                    alsoGoogle={row.e.alsoGoogle}
                   />
                 ) : (
-                  <GoogleBlock key={e.key} ev={e.ev!} clash={day.clashes.get(e.key) ?? null} />
+                  <GoogleBlock key={row.e.key} ev={row.e.ev!} />
                 ),
               )}
             </div>
@@ -855,7 +860,95 @@ function DayHead({ day }: { day: { num: number; wd: number; wide: boolean; today
   );
 }
 
-function DeadlineBlock({ d, done, onToggle, onOpen, clash = null }: { d: Deadline; done: boolean; onToggle: () => void; onOpen: () => void; clash?: string | null }) {
+/**
+ * Termine, die sich überschneiden (Variante P1): nebeneinander, so weit nach unten versetzt, wie sie später
+ * beginnen; die gemeinsame Zeit ist schraffiert. Zu: Farbe, Startzeit, Kürzel. Maus drüber: dieser wird breit.
+ */
+function OverlapGroup({ items, onOpen }: { items: TimedEntry[]; onOpen: (id: string) => void }) {
+  const [active, setActive] = useState<string | null>(null);
+  const min = Math.min(...items.map((i) => i.start));
+  const max = Math.max(...items.map((i) => i.end));
+  const scale = Math.min(1.3, Math.max(0.85, 170 / (max - min))); // px pro Minute
+  const hhmm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+  const stripes = `repeating-linear-gradient(135deg, ${tone("ochre", "soft")} 0 5px, transparent 5px 10px)`;
+
+  return (
+    <div className="relative" style={{ height: (max - min) * scale }} onMouseLeave={() => setActive(null)} role="group" aria-label="Events at the same time">
+      {sharedZones(items).map(([a, b]) => (
+        <span key={a} aria-hidden className="absolute inset-x-0 rounded-[6px]" style={{ top: (a - min) * scale, height: (b - a) * scale, background: stripes }} />
+      ))}
+      <div className="relative flex h-full gap-1">
+        {items.map((it) => {
+          const open = active === it.key;
+          const squeezed = active !== null && !open;
+          const style = { top: (it.start - min) * scale, height: Math.max(26, (it.end - it.start) * scale - 2) };
+          const course = it.d ? courseById(it.d.courseId) : undefined;
+          const c = it.d && course ? (it.d.color ?? colorOf(course)) : null;
+          const gColor = it.ev?.color ?? "var(--muted)";
+          const title = it.d ? (it.d.kind === "klausur" && course ? examLabel(it.d.title, course) : bare(it.d.title)) : it.ev!.title;
+          const sub = it.d ? (it.d.location || (course ? shortOf(course) : "")) : (it.ev!.location ?? "");
+          const body = squeezed ? null : open ? (
+            <>
+              <span className="block truncate text-[11px] font-semibold" style={c ? { color: tone(c, "ink") } : undefined}>
+                {hhmm(it.start)}–{hhmm(it.end)}
+                {it.ev && <span className="ml-1 font-bold" style={{ color: "#4285f4" }}>G</span>}
+              </span>
+              <span className="block text-[13px] font-semibold leading-snug">{title}</span>
+              {sub && <span className="block truncate text-[12px] text-muted">{sub}</span>}
+            </>
+          ) : (
+            <>
+              <span className="block text-[11px] font-bold tabular-nums" style={c ? { color: tone(c, "ink") } : undefined}>
+                {hhmm(it.start)}
+              </span>
+              <span className="block truncate text-[12px] font-semibold leading-tight">{abbrTitle(title, 10)}</span>
+            </>
+          );
+          const common = {
+            onMouseEnter: () => setActive(it.key),
+            onFocus: () => setActive(it.key),
+            onBlur: () => setActive(null),
+            title: `${title}, ${hhmm(it.start)}–${hhmm(it.end)}`,
+            className: "absolute inset-x-0 overflow-hidden rounded-[7px] px-1.5 py-1 text-left",
+          };
+          return (
+            <div key={it.key} className="relative min-w-0 basis-0" style={{ flexGrow: open ? 5 : 1, transition: "flex-grow 220ms var(--ease-out)" }}>
+              {it.d ? (
+                <button
+                  {...common}
+                  onClick={() => openEvent(it.d!, { onOpenCourse: () => onOpen(it.d!.courseId) })}
+                  style={{ ...style, background: c ? tone(c, "soft") : "var(--sunken)" }}
+                >
+                  {body}
+                </button>
+              ) : (
+                <div {...common} tabIndex={0} style={{ ...style, border: `1.5px dashed ${gColor}`, background: `color-mix(in srgb, ${gColor} 14%, var(--surface))` }}>
+                  {body}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function DeadlineBlock({
+  d,
+  done,
+  onToggle,
+  onOpen,
+  clash = null,
+  alsoGoogle = false,
+}: {
+  d: Deadline;
+  done: boolean;
+  onToggle: () => void;
+  onOpen: () => void;
+  clash?: string | null;
+  alsoGoogle?: boolean;
+}) {
   const course = courseById(d.courseId);
   if (!course) return null;
   const c = d.color ?? colorOf(course);
@@ -892,6 +985,11 @@ function DeadlineBlock({ d, done, onToggle, onOpen, clash = null }: { d: Deadlin
           style={isDone || solid ? undefined : { color: tone(c, "ink") }}
         >
           {isDone ? "done" : d.time}
+          {alsoGoogle && !isDone && (
+            <span className="ml-1 font-bold" style={{ color: "#4285f4" }} title="Also in your Google Calendar">
+              +G
+            </span>
+          )}
         </span>
         <span className={`block text-[13px] font-semibold leading-snug ${isDone ? "line-through" : ""}`}>{title}</span>
         {below && <span className={`block truncate text-[12px] ${solid ? "opacity-85" : isDone ? "" : "text-muted"}`}>{below}</span>}
