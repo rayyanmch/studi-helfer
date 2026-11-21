@@ -119,7 +119,7 @@ function CourseCard({
           <span className="block text-[17px] font-bold leading-snug">{course.name}</span>
           {showFull && <span className="mt-0.5 block truncate text-[12px] text-muted">{course.fullName}</span>}
         </span>
-        {failed.includes(course.id) && <AlertTriangle size={15} className="mt-1 shrink-0 text-danger" aria-label="Last update failed" />}
+        {failed.includes(course.id) && <AlertTriangle size={15} className="mt-1 shrink-0 text-danger" aria-label="Could not get new files for this course" />}
       </span>
       {course.parts && course.parts.length > 1 && (
         <span className="mt-2 flex flex-wrap gap-1">

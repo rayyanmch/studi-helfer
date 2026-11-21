@@ -447,7 +447,7 @@ function NavItem({
       <span className="flex w-4 shrink-0 justify-center">{icon}</span>
       <span className="line-clamp-2 min-w-0 flex-1">{children}</span>
       {warn ? (
-        <AlertTriangle size={13} className={active ? "" : "text-danger"} aria-label="Sync error" />
+        <AlertTriangle size={13} className={active ? "" : "text-danger"} aria-label="Problem getting new files" />
       ) : (
         count > 0 && (
           <span className={`text-[12px] tabular-nums ${active ? "opacity-80" : "text-muted"}`}>{count}</span>
@@ -504,11 +504,11 @@ function SyncStatus({
   }
 
   let icon = <span className="size-2 rounded-full bg-ok" aria-hidden />;
-  let label = "Last updated";
+  let label = "Checked for new files";
   let text = lastSync;
   if (job?.stopped) {
     icon = <span className="size-2 rounded-full bg-warn" aria-hidden />;
-    label = "Update stopped";
+    label = "Stopped early";
     text = `As of ${lastSync}`;
   } else if (problem === "offline") {
     icon = <WifiOff size={13} className="text-warn" aria-hidden />;
@@ -520,7 +520,7 @@ function SyncStatus({
     text = "Please sign in again";
   } else if (problem === "courseFailed") {
     icon = <AlertTriangle size={13} className="text-danger" aria-hidden />;
-    label = `${failed || 1} ${failed > 1 ? "courses" : "course"} failed`;
+    label = `${failed || 1} ${failed > 1 ? "courses" : "course"} not updated`;
     text = `Others: ${lastSync}`;
   }
 
@@ -573,7 +573,7 @@ function Banners({
     return (
       <div className="mb-5">
         <Notice tone="warn" icon={<LogIn size={16} aria-hidden />} action={<Button onClick={onRelogin}>Sign in again</Button>}>
-          Your ILIAS session has expired. Your files are safe.
+          You were signed out of ILIAS. Your files are safe.
         </Notice>
       </div>
     );

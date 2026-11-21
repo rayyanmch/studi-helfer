@@ -45,7 +45,7 @@ export function Settings({ onClose, onEditCourses, onLogout }: { onClose: () => 
           </button>
         </header>
         <div className="flex flex-col gap-6 px-6 pb-6">
-          <Section title="Updates">
+          <Section title="New files">
             <Row label="Get new files automatically" hint="Runs in the background, even when the app is closed.">
               <Toggle on={app.schedule.enabled} onChange={(on) => void store.setSchedule(on, app.schedule.time)} disabled={!desktop} />
             </Row>
@@ -77,7 +77,7 @@ export function Settings({ onClose, onEditCourses, onLogout }: { onClose: () => 
                 />
               </Row>
             )}
-            <Row label="Last update" hint={app.lastSync}>
+            <Row label="Last checked" hint={app.lastSync}>
               <Button onClick={() => void store.syncNow()} disabled={!desktop || Boolean(app.job?.running)}>
                 {app.job?.running ? "Updating…" : "Get new files now"}
               </Button>
@@ -101,7 +101,7 @@ export function Settings({ onClose, onEditCourses, onLogout }: { onClose: () => 
           </Section>
 
           <Section title="Account">
-            <Row label={app.user ? `Signed in as ${app.user}` : "Not signed in"} hint="University of Cologne · Your password stays in your Mac’s Keychain.">
+            <Row label={app.user ? `Signed in as ${app.user}` : "Not signed in"} hint="University of Cologne · Your password is saved only on this Mac.">
               <div className="flex gap-2">
                 <Button
                   onClick={() => {
