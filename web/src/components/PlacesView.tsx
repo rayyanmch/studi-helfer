@@ -5,7 +5,7 @@
 // Live-Zahlen von der Uni und Meldungen von Studenten kommen später als eigene Quellen dazu.
 
 import { useEffect, useRef, useState } from "react";
-import { BookOpen, Clock, Coffee, ExternalLink, Footprints, Heart, List, Map as MapIcon, Navigation, Plug, Utensils, Wifi, X } from "lucide-react";
+import { BookOpen, Clock, ExternalLink, Footprints, Heart, List, Map as MapIcon, Navigation, Plug, Utensils, Wifi, X } from "lucide-react";
 import { Button, Spinner } from "./ui";
 import {
   DAY_NAMES,
@@ -24,11 +24,11 @@ import {
 } from "@/lib/places";
 
 const FAV_KEY = "studi.placeFavs";
-const KIND_COLOR: Record<PlaceKind, string> = { library: "var(--c-blue)", cafe: "var(--c-ochre)", canteen: "var(--c-plum)" };
-const KIND_ICON = { library: BookOpen, cafe: Coffee, canteen: Utensils };
+const KIND_COLOR: Record<PlaceKind, string> = { library: "var(--c-blue)", canteen: "var(--c-plum)" };
+const KIND_ICON = { library: BookOpen, canteen: Utensils };
 const LEVEL_COLOR = { quiet: "var(--ok)", some: "var(--c-ochre)", busy: "var(--danger)" } as const;
 
-type Filter = "open" | "wifi" | "library" | "cafe" | "canteen" | "fav";
+type Filter = "open" | "wifi" | "library" | "canteen" | "fav";
 
 function loadFavs(): string[] {
   try {
@@ -45,7 +45,7 @@ export function PlacesView() {
   const [refreshing, setRefreshing] = useState(true);
   const [error, setError] = useState("");
   const [stale, setStale] = useState(false);
-  const [filters, setFilters] = useState<Filter[]>(["open"]);
+  const [filters, setFilters] = useState<Filter[]>([]);
   const [view, setView] = useState<"list" | "map">("list");
   const [selected, setSelected] = useState<string | null>(null);
   const [favs, setFavs] = useState<string[]>(loadFavs);
@@ -89,7 +89,7 @@ export function PlacesView() {
     });
   const toggle = (f: Filter) => setFilters((cur) => (cur.includes(f) ? cur.filter((x) => x !== f) : [...cur, f]));
 
-  const kinds = filters.filter((f): f is PlaceKind => f === "library" || f === "cafe" || f === "canteen");
+  const kinds = filters.filter((f): f is PlaceKind => f === "library" || f === "canteen");
   const rows = places
     .map((p) => ({ p, st: openState(p.hours, now) }))
     .filter(({ p, st }) => {
@@ -99,8 +99,8 @@ export function PlacesView() {
       if (kinds.length && !kinds.includes(p.kind)) return false;
       return true;
     })
-    // Bibliotheken und Mensen zuerst, dann nach Entfernung
-    .sort((a, b) => Number(a.p.kind === "cafe") - Number(b.p.kind === "cafe") || a.p.meters - b.p.meters);
+    // Was jetzt offen ist, steht oben; sonst nach Entfernung
+    .sort((a, b) => Number(b.st.open === true) - Number(a.st.open === true) || a.p.meters - b.p.meters);
   const shown = rows.slice(0, limit);
   const current = places.find((p) => p.id === selected) ?? null;
 
@@ -148,8 +148,7 @@ export function PlacesView() {
         {chip("open", "Open now", <Clock size={13} aria-hidden />)}
         {chip("wifi", "Wi-Fi", <Wifi size={13} aria-hidden />)}
         {chip("library", "Libraries", <BookOpen size={13} aria-hidden />)}
-        {chip("cafe", "Cafés", <Coffee size={13} aria-hidden />)}
-        {chip("canteen", "Canteens", <Utensils size={13} aria-hidden />)}
+        {chip("canteen", "Mensa", <Utensils size={13} aria-hidden />)}
         {chip("fav", "Favorites", <Heart size={13} aria-hidden />)}
       </div>
       <p className="mt-3 flex flex-wrap items-center gap-2 text-[12px] text-muted">
@@ -162,7 +161,7 @@ export function PlacesView() {
 
       {state === "loading" && (
         <p className="mt-8 flex items-center gap-2 text-muted">
-          <Spinner /> Looking for places around your uni…
+          <Spinner /> Looking for libraries and Mensas around your uni…
         </p>
       )}
       {state === "error" && (

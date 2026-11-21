@@ -1,9 +1,9 @@
-// Study places: Bibliotheken, Cafés und Mensen rund um die Uni aus OpenStreetMap (kostenlos, keine eigene Schnittstelle).
+// Study places: Bibliotheken und Mensen rund um die Uni aus OpenStreetMap (kostenlos, keine eigene Schnittstelle).
 // Schicht 1 des Plans: gilt für jede Uni, sobald ihre Lage bekannt ist. „Jetzt offen“ rechnet die App selbst aus den
 // Öffnungszeiten. „Typisch für diese Zeit“ ist eine Schätzung nach Art des Ortes, KEINE Live-Zahl; echte Zahlen
 // (Uni-Daten, Meldungen von Studenten) kommen später als eigene Quellen dazu.
 
-export type PlaceKind = "library" | "cafe" | "canteen";
+export type PlaceKind = "library" | "canteen";
 
 export interface Place {
   id: string; // "node/123"
@@ -41,7 +41,7 @@ export interface UniSpot {
 export const UNI: UniSpot = { id: "koeln", name: "University of Cologne", lat: 50.9283, lon: 6.9285 };
 export const RADIUS = 1500;
 
-const CACHE_KEY = "studi.places.v1";
+const CACHE_KEY = "studi.places.v2";
 const CACHE_DAYS = 7;
 
 export function haversine(aLat: number, aLon: number, bLat: number, bLon: number): number {
@@ -68,7 +68,8 @@ function toPlace(e: OsmElement, uni: UniSpot): Place | null {
   const lon = e.lon ?? e.center?.lon;
   const name = t.name?.trim();
   if (!name || lat === undefined || lon === undefined) return null;
-  const kind: PlaceKind | null = t.amenity === "library" ? "library" : t.amenity === "cafe" ? "cafe" : t.amenity === "canteen" ? "canteen" : null;
+  const isMensa = t.amenity === "canteen" || (t.amenity === "restaurant" && /mensa/i.test(name));
+  const kind: PlaceKind | null = t.amenity === "library" ? "library" : isMensa ? "canteen" : null;
   if (!kind) return null;
   const meters = Math.round(haversine(uni.lat, uni.lon, lat, lon));
   const street = [t["addr:street"], t["addr:housenumber"]].filter(Boolean).join(" ");
@@ -116,7 +117,7 @@ export async function loadPlaces(uni: UniSpot = UNI): Promise<{ places: Place[];
   if (cached && cached.uni === uni.id && Date.now() - cached.at < CACHE_DAYS * 86_400_000) return { places: cached.places, error: null, stale: false };
 
   const around = `around:${RADIUS},${uni.lat},${uni.lon}`;
-  const query = `[out:json][timeout:25];(nwr(${around})[amenity=library];nwr(${around})[amenity=cafe];nwr(${around})[amenity=canteen];);out center tags 600;`;
+  const query = `[out:json][timeout:25];(nwr(${around})[amenity=library];nwr(${around})[amenity=canteen];nwr(${around})[amenity=restaurant][name~"Mensa",i];);out center tags 400;`;
   const parse = (data: { elements?: unknown[] }) => ((data.elements ?? []) as OsmElement[]).map((e) => toPlace(e, uni)).filter((p): p is Place => p !== null);
   let places: Place[] | null = null;
   try {
@@ -286,8 +287,7 @@ export function typicalBusy(kind: PlaceKind, dayIdx: number, hour: number): numb
   };
   let v: number;
   if (kind === "library") v = weekend ? curve([[14, 3, 40]], 10) : curve([[11, 2.5, 55], [15, 3, 55]], 12);
-  else if (kind === "canteen") v = weekend ? 5 : curve([[12.7, 1, 85]], 6);
-  else v = weekend ? curve([[11, 2, 55], [15, 2.5, 45]], 15) : curve([[9, 1.3, 45], [13, 1.8, 50], [16, 1.8, 30]], 12);
+  else v = weekend ? 5 : curve([[12.7, 1, 85]], 6);
   return Math.round(Math.min(95, v));
 }
 
@@ -295,4 +295,4 @@ export type Level = "quiet" | "some" | "busy";
 export const levelOf = (pct: number): Level => (pct < 35 ? "quiet" : pct < 65 ? "some" : "busy");
 export const LEVEL_TEXT: Record<Level, string> = { quiet: "Usually quiet", some: "Usually some seats", busy: "Usually busy" };
 
-export const KIND_LABEL: Record<PlaceKind, string> = { library: "Library", cafe: "Café", canteen: "Canteen" };
+export const KIND_LABEL: Record<PlaceKind, string> = { library: "Library", canteen: "Canteen" };

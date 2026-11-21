@@ -48,6 +48,7 @@ import type { Problem } from "./AppShell";
 import { countFiles, countNew, type Course, type Deadline } from "@/lib/mock-data";
 import * as store from "@/lib/app-store";
 import { initMail, setCalendar, useMail } from "@/lib/mail-data";
+import { useRoomChanged } from "@/lib/room-changes";
 import { appStore, etaLabel, realCourses, useApp, useCommand } from "@/lib/app-store";
 
 const FAIL_ID = "rechnernetze";
@@ -184,7 +185,8 @@ export function Overview({
   const course = list.find((c) => c.id === view);
   const newCount = list.reduce((n, c) => n + countNew(c) + c.folders.reduce((m, f) => m + f.files.filter((x) => x.changeNote && !x.isNew).length, 0), 0);
   const modules = realCourses(list);
-  const mine = app.deadlines.filter((d) => courseIds.includes(d.courseId));
+  // Raum per Mail nur für einen Tag geändert? Dann gilt der neue Raum an diesem Tag (lib/room-changes.ts)
+  const mine = useRoomChanged(app.deadlines.filter((d) => courseIds.includes(d.courseId)));
   const searching = query.trim().length > 0;
 
   return (

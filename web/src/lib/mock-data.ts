@@ -77,6 +77,8 @@ export interface Deadline {
   seriesId?: string; // wiederkehrender erkannter Termin (zum Ausblenden der ganzen Serie)
   notes?: string; // Notiz zu eigenem Termin
   location?: string | null; // Ort (für den Termin-Dialog)
+  /** Raum nur für diesen Tag per Mail geändert (lib/room-changes.ts); `was` = der normale Raum. */
+  roomChange?: { was: string | null; mailId: string; subject: string };
 }
 
 /**
@@ -308,7 +310,7 @@ export const courses: Course[] = [
 ];
 
 export const deadlines: Deadline[] = [
-  { id: "d0", courseId: "softwaretechnik", title: "Tutorial", date: "2026-11-20", time: "14:00", kind: "termin" },
+  { id: "d0", courseId: "softwaretechnik", title: "Tutorial", date: "2026-11-20", time: "14:00", kind: "termin", location: "106 Seminarraum 2" },
   { id: "d1", courseId: "mathe", title: "Submit Sheet 7", date: "2026-11-23", time: "by 10:00", kind: "abgabe" },
   { id: "d2", courseId: "softwaretechnik", title: "Submit Exercise Sheet 4", date: "2026-11-25", time: "by 23:59", kind: "abgabe" },
   { id: "d3", courseId: "bwl", title: "Upload Case Study", date: "2026-11-26", time: "by 12:00", kind: "abgabe" },
@@ -324,7 +326,9 @@ export const deadlines: Deadline[] = [
   { id: "d5", courseId: "datenbanken", title: "Submit Sheet 5", date: "2026-11-27", time: "by 18:00", kind: "abgabe" },
   { id: "d6", courseId: "mathe", title: "Submit Sheet 8", date: "2026-11-30", time: "by 10:00", kind: "abgabe" },
   { id: "d7", courseId: "softwaretechnik", title: "Submit Exercise Sheet 5", date: "2026-12-02", time: "by 23:59", kind: "abgabe" },
-  { id: "d8", courseId: "softwaretechnik", title: "Tutorial", date: "2026-12-04", time: "14:00", kind: "termin" },
+  { id: "d8", courseId: "softwaretechnik", title: "Tutorial", date: "2026-12-04", time: "14:00", kind: "termin", location: "106 Seminarraum 2" },
+  { id: "d11", courseId: "softwaretechnik", title: "Tutorial", date: "2026-11-27", time: "14:00", kind: "termin", location: "106 Seminarraum 2" },
+  { id: "d12", courseId: "mathe", title: "Lecture", date: "2026-11-24", time: "10:00 to 11:30", kind: "termin", location: "100 Aula 1" },
   { id: "d9", courseId: "datenbanken", title: "Exam", date: "2026-12-10", time: "10:00", kind: "klausur", source: "Lecture Hall C" },
   { id: "d10", courseId: "bwl", title: "Midterm", date: "2026-12-11", time: "12:00", kind: "klausur" },
 ];
