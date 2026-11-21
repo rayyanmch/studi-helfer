@@ -47,6 +47,7 @@ Protokoll der Nacht 21./22.11. (Rayyans Agent, allein). Eine Zeile pro Durchgang
 - 21.11. 09:40: **Weitere Robustheit und Leistung geprüft, nichts zu ändern** (Aufgaben 11, 12): abgeschnittene `config.json` → Login-Bildschirm (kein Absturz; `saveConfig` schreibt ohnehin atomar über `.tmp`), Mensa ohne Netz zeigt „The menu could not be loaded … Try again“ bzw. den letzten Stand, ILIAS offline zeigt das Banner mit „Try again“. Leistung mit Datenkopie: Übersicht ≈ 1,2 s nach Start (Dev-Server warm), DOM 268 Knoten, Kursseite BWL mit 63 Zeilen in 22 ms; `pushState` schickt den Sync-Status nur bei Änderung (kein Dauer-Neuzeichnen).
 - 21.11. 09:50: **Klausur-Countdown** (Aufgabe 14): Kurskacheln zeigen „Exam in 87 days · Feb 16“ (ist die Klausur das Nächste) bzw. eine zweite Zeile „Exam in 82 days · Feb 11“ unter der nächsten Abgabe; Startseite hängt an den Untertitel „Next exam: Softwaretechnik in 82 days.“ Neue Hilfe `inDays()` in `ui.tsx`. Getestet mit Datenkopie (hell 1280×800, dunkel 1000×700). Die Mensa-Karte (Aufgabe 13) kommt danach; heute ist Samstag, die Karte soll nur Mo–Fr erscheinen.
 - 21.11. 10:00: **Mensa-Zeile auf der Startseite** (Aufgabe 13): neue `components/MensaToday.tsx`, unter dem Wochenstreifen „Lunch today at Zülpicher Straße“ mit bis zu 3 Hauptgerichten und Preis (gewählte Mensa, Preisgruppe und vegan/vegetarisch aus den Mensa-Vorlieben, nichts Ausverkauftes), Klick öffnet den Mensa-Tab; nur Mo–Fr vor 15 Uhr. Dazu Untertitel „Next up: … today/tomorrow“ statt „on Monday“, wenn es heute/morgen ist. Getestet mit Datenkopie und per CDP vorgetäuschter Uhrzeit (Mo 12:00 → Karte da, hell/dunkel; Mo 16:00 → keine Karte; echter Samstag → keine Karte).
+- 21.11. 10:10: **Demo-Ablauf und README** (Aufgabe 15): Abschnitt „Demo-Ablauf (5 Minuten)“ in NOTIZEN (Vorbereitung, 9 Schritte, Notfall); README neu (war noch Supabase/Vercel/Moodle-Planung): was die App kann, was wo bleibt, Installieren aus dem Release, Entwickeln, Aufbau.
 
 ## Nachtschicht – Befunde
 
@@ -65,6 +66,22 @@ Priorisiert, oben zuerst. Status in Klammern.
 11. **Mensa am Wochenende** (`MensaView.tsx`): springt still auf Montag. Vorschlag: „Closed today. Showing Monday.“ (erledigt)
 12. **Suchfeld mit doppeltem Fokusrahmen** (`Overview.tsx`). (erledigt)
 13. **Termin-Dialog ohne „Mark as done“** für Abgaben (nur Kreis im Kasten). (erledigt)
+
+## Demo-Ablauf (5 Minuten, Vorschlag der Nachtschicht)
+
+**Vorbereitung:** neueste App aus dem Release installiert und einmal geöffnet (Schlüsselbund „Immer erlauben“ vorher klicken, nicht live). Angemeldet, Kurse eingerichtet, letzter Abruf frisch (kein Sync live starten, das dauert). Fenster ca. 1280×800, hell. Begrüßungskarte vorher einmal wegklicken oder bewusst als Einstieg zeigen. Internet an (Mensa). Am Sonntag ist die Mensa zu: Die App sagt das selbst und zeigt Montag.
+
+1. **Problem (30 s):** „Im ersten Semester hast du ILIAS, KLIPS, Uni-Mail, Mensa-Seite, PDFs mit Abgabeterminen. Niemand sagt dir, was diese Woche wichtig ist.“
+2. **Anmelden (30 s, nur zeigen oder erzählen):** Login sagt, was die App tut; Passwort bleibt auf dem Mac. Danach Kurse antippen, „Get 5 courses“, Fortschritt mit Restzeit unten rechts, App bleibt benutzbar.
+3. **Next 7 days (60 s):** Woche in Kursfarben, dringende Abgabe kräftig, Kreis abhaken. Termin anklicken → „Found automatically in …“ → „Hide“ → unten „Undo“. Untertitel: nächste Abgabe und „Next exam: … in 80 days“. Umschalten auf „4 weeks“.
+4. **Kursseite BWL (60 s):** Klausur-Countdown, Stundenplan aus den Orga-Folien, „Your tutorial: click a time …“ (eigene Übungsgruppe wählen, erscheint sofort in der Woche), Dateien nach Art, „Solution“-Chip neben dem Blatt, Datei mit Doppelklick öffnen.
+5. **Suche (20 s):** „klausur“ tippen → Klausurtermine und Altklausuren, obwohl die App englisch ist.
+6. **Finder (20 s):** „Open “Uni” folder“ → alles sortiert in `~/Uni`, Spotlight findet es auch.
+7. **Mensa (30 s):** Speiseplan, vegan/vegetarisch, Foto groß ansehen; unter der Woche steht das Mittagessen auch auf der Startseite.
+8. **Vertrauen (20 s):** Settings → Privacy: Passwort nur auf dem Mac, Dateien nicht hochgeladen, keine KI.
+9. **Ausblick (10 s):** Mail und Google-Kalender (Mika), Lernzettel/Karteikarten später.
+
+**Notfall:** Hängt etwas, App neu öffnen (Daten bleiben). Kein Internet: App zeigt „No connection to ILIAS“ mit „Try again“, alles Bisherige bleibt sichtbar.
 
 ## Nachrichten
 
