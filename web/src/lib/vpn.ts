@@ -15,6 +15,8 @@ export interface VpnStatus {
   installed: boolean;
   allowed: boolean | null; // Systemerweiterung in den Mac-Einstellungen erlaubt? null = nicht nötig
   connected: boolean | null; // null = das Programm verrät es nicht
+  phase: "connected" | "connecting" | "disconnected" | null; // „connecting“ = die Anmeldung läuft (z. B. Duo)
+  secondFactor: string | null; // „Duo Mobile“: Bestätigung auf dem Handy bei jeder Anmeldung
   ready: boolean;
 }
 
@@ -24,6 +26,7 @@ interface VpnApi {
   disconnect(): Promise<{ ok: boolean; message?: string }>;
   guide(): Promise<{ ok: true }>;
   settings(): Promise<{ ok: true }>;
+  front(): Promise<{ ok: true }>;
 }
 
 declare module "./desktop" {
@@ -42,6 +45,8 @@ const DEMO: VpnStatus = {
   installed: true,
   allowed: false,
   connected: false,
+  phase: "disconnected",
+  secondFactor: "Duo Mobile",
   ready: true,
 };
 
@@ -95,11 +100,12 @@ export function useVpn(): VpnStatus {
   );
 }
 
-/** Öffnet das VPN-Programm. Im Browser: tut so, als würde man sich nach 2 Sekunden verbinden. */
+/** Öffnet das VPN-Programm. Im Browser: spielt den Ablauf vor (Anmeldung läuft, dann verbunden). */
 export async function openVpnApp(): Promise<string | null> {
   const v = api();
   if (!v) {
-    setTimeout(() => set({ connected: true }), 2000);
+    setTimeout(() => set({ phase: "connecting" }), 1500);
+    setTimeout(() => set({ connected: true, phase: "connected" }), 4500);
     return null;
   }
   const r = await v.open();
@@ -111,12 +117,17 @@ export async function disconnectVpn(): Promise<string | null> {
   const v = api();
   if (!v) {
     await new Promise((r) => setTimeout(r, 600));
-    set({ connected: false });
+    set({ connected: false, phase: "disconnected" });
     return null;
   }
   const r = await v.disconnect();
   await refreshVpn();
   return r.ok ? null : (r.message ?? "Could not disconnect.");
+}
+
+/** Holt unser Fenster nach vorn, wenn das VPN-Programm es verdeckt hat. */
+export function focusApp() {
+  void api()?.front();
 }
 
 /** Öffnet die Mac-Einstellungen („Erlauben“ für die VPN-Erweiterung). Im Browser: tut so, als wäre es erlaubt. */

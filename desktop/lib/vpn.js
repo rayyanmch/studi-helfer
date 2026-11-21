@@ -4,7 +4,7 @@
 
 const fs = require("fs");
 const { execFile } = require("child_process");
-const { shell } = require("electron");
+const { app, BrowserWindow, shell } = require("electron");
 
 /** VPN-Programme, die Unis in Deutschland nutzen, mit typischen Orten auf dem Mac. */
 const CLIENTS = {
@@ -28,21 +28,27 @@ const UNIS = {
     server: "vpngate.uni-koeln.de",
     guide: "https://rrzk.uni-koeln.de/en/internet-access-web/network-access/vpn/cisco-secure-client-fuer-mac",
     login: "Your uni ID and password, the same as for ILIAS.",
+    secondFactor: "Duo Mobile", // Die Uni fragt bei jeder Anmeldung nach einer Bestätigung auf dem Handy
   },
 };
 
 const firstExisting = (paths) => paths.find((p) => fs.existsSync(p)) ?? null;
 
-/** Cisco meldet den Zustand selbst („state: Connected“). Andere Programme: unbekannt. */
-function ciscoState(cli) {
+/** Cisco meldet den Zustand selbst („state: Connected“). Gibt „connected“, „connecting“, „disconnected“ oder null zurück. */
+function ciscoPhase(cli) {
   return new Promise((resolve) => {
     execFile(cli, ["state"], { timeout: 6000 }, (err, stdout) => {
       const states = [...String(stdout || "").matchAll(/state:\s*(\w+)/gi)].map((m) => m[1].toLowerCase());
       const last = states[states.length - 1];
-      resolve(last === "connected" ? true : last ? false : null);
+      if (!last || last === "unknown") return resolve(null);
+      resolve(last === "connected" ? "connected" : last === "disconnected" ? "disconnected" : "connecting");
     });
   });
 }
+const ciscoState = async (cli) => {
+  const phase = await ciscoPhase(cli);
+  return phase === null ? null : phase === "connected";
+};
 
 /** Hat der Student die Systemerweiterung des VPN-Programms in den Mac-Einstellungen erlaubt? null = nicht nötig/unbekannt. */
 function extensionAllowed(bundleId) {
@@ -58,10 +64,11 @@ function extensionAllowed(bundleId) {
 async function status() {
   const uni = UNIS.koeln;
   const client = CLIENTS[uni.client];
-  const app = firstExisting(client.apps);
+  const appPath = firstExisting(client.apps);
   const cli = firstExisting(client.cli);
-  const connected = app && cli && uni.client === "cisco" ? await ciscoState(cli) : null;
-  const allowed = client.extension ? (app ? await extensionAllowed(client.extension) : false) : null;
+  const phase = appPath && cli && uni.client === "cisco" ? await ciscoPhase(cli) : null;
+  const connected = phase === null ? null : phase === "connected";
+  const allowed = client.extension ? (appPath ? await extensionAllowed(client.extension) : false) : null;
   return {
     ok: true,
     uni: uni.name,
@@ -69,7 +76,9 @@ async function status() {
     server: uni.server,
     guide: uni.guide,
     login: uni.login,
-    installed: Boolean(app),
+    installed: Boolean(appPath),
+    phase, // connected / connecting / disconnected / null
+    secondFactor: uni.secondFactor || null,
     allowed, // true / false / null = braucht keine Erlaubnis
     connected, // true / false / null = unbekannt
   };
@@ -77,9 +86,9 @@ async function status() {
 
 async function openClient() {
   const client = CLIENTS[UNIS.koeln.client];
-  const app = firstExisting(client.apps);
-  if (!app) return { ok: false, code: "missing", message: `${client.name} is not installed yet.` };
-  const err = await shell.openPath(app);
+  const appPath = firstExisting(client.apps);
+  if (!appPath) return { ok: false, code: "missing", message: `${client.name} is not installed yet.` };
+  const err = await shell.openPath(appPath);
   return err ? { ok: false, code: "failed", message: err } : { ok: true };
 }
 
@@ -107,6 +116,22 @@ async function openSettings() {
   return { ok: true };
 }
 
+/** Holt unsere App wieder nach vorn (nach dem Verbinden oder Trennen, damit der Student nicht „rausgetappt“ bleibt). */
+function bringToFront() {
+  try {
+    app.focus({ steal: true });
+    const win = BrowserWindow.getAllWindows().find((w) => !w.isDestroyed());
+    if (win) {
+      if (win.isMinimized()) win.restore();
+      win.show();
+      win.focus();
+    }
+  } catch {
+    // Nur eine Annehmlichkeit
+  }
+  return { ok: true };
+}
+
 async function openGuide() {
   await shell.openExternal(UNIS.koeln.guide);
   return { ok: true };
@@ -115,7 +140,12 @@ async function openGuide() {
 function register(handle) {
   handle("studi:vpn:status", () => status());
   handle("studi:vpn:open", () => openClient());
-  handle("studi:vpn:disconnect", () => disconnect());
+  handle("studi:vpn:disconnect", async () => {
+    const r = await disconnect();
+    bringToFront();
+    return r;
+  });
+  handle("studi:vpn:front", () => bringToFront());
   handle("studi:vpn:guide", () => openGuide());
   handle("studi:vpn:settings", () => openSettings());
 }
