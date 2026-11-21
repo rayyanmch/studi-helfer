@@ -62,7 +62,9 @@ export function MensaView() {
   const zoomed = ordered.find((d) => d.id === zoom) ?? null;
   const weekSplit = days.findIndex((d) => parse(d).getDay() === 1 && d !== days[0]);
   // Heute zu (Wochenende, Feiertag, nach 18:30): sagen, warum ein anderer Tag gezeigt wird
-  const tomorrow = isoOf(new Date(Date.now() + 86_400_000));
+  const next = new Date();
+  next.setDate(next.getDate() + 1);
+  const tomorrow = isoOf(next);
   const closedNote =
     day === null && shownDay && shownDay > today
       ? `The mensa is closed now. Here is the menu for ${shownDay === tomorrow ? "tomorrow" : parse(shownDay).toLocaleDateString("en-US", { weekday: "long" })}.`
