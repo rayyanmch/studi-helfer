@@ -268,7 +268,7 @@ export function Overview({
         </header>
 
         <div className="scroll flex-1">
-          <div className="mx-auto max-w-[1080px] px-10 pb-12">
+          <div key={searching ? "search" : view} className="view-in mx-auto max-w-[1080px] px-10 pb-12">
             <Banners
               problem={problem}
               onRetry={sync}

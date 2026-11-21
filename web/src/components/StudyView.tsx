@@ -321,7 +321,7 @@ export function Review({
           </div>
         </div>
       ) : (
-        <div className="rounded-[14px] bg-surface px-7 py-8 shadow-[0_1px_0_var(--line)]" style={{ borderTop: `4px solid ${tone(color)}` }}>
+        <div key={card.id} className="card-in rounded-[14px] bg-surface px-7 py-8 shadow-[0_1px_0_var(--line)]" style={{ borderTop: `4px solid ${tone(color)}` }}>
           <p className="flex flex-wrap items-center gap-x-2 text-[12px] text-muted">
             {courseOfCard?.(card) && (
               <span className="rounded-full px-2 py-px font-semibold" style={{ background: tone(color, "soft"), color: tone(color, "ink") }}>
@@ -355,7 +355,7 @@ export function Review({
           {shown ? (
             <>
               <div className="my-5 h-px bg-line" />
-              <p className="whitespace-pre-line text-[15px] leading-relaxed">
+              <p className="answer-in whitespace-pre-line text-[15px] leading-relaxed">
                 <MathText text={card.a} math={card.math} />
               </p>
               <div className="mt-8 flex flex-wrap items-center gap-2">

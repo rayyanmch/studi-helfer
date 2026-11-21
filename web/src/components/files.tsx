@@ -182,7 +182,7 @@ export function CheckButton({ done, onClick, label, onSolid }: { done: boolean; 
             : "border-2 border-current bg-surface hover:bg-hover"
       }`}
     >
-      {done && <Check size={12} strokeWidth={3.2} aria-hidden />}
+      {done && <Check size={12} strokeWidth={3.2} aria-hidden className="check-pop" />}
     </button>
   );
 }

@@ -691,7 +691,7 @@ function Toasts({
   onDismissToast: () => void;
   onDiscardFailed: () => void;
 }) {
-  const shell = "no-drag fixed bottom-6 left-6 z-[60] w-[380px] max-w-[calc(100vw-48px)] overflow-hidden rounded-xl bg-accent text-on-accent shadow-[0_16px_40px_rgba(0,0,0,0.3)]";
+  const shell = "toast no-drag fixed bottom-6 left-6 z-[60] w-[380px] max-w-[calc(100vw-48px)] overflow-hidden rounded-xl bg-accent text-on-accent shadow-[0_16px_40px_rgba(0,0,0,0.3)]";
   if (outbox) {
     const failed = outbox.status === "failed";
     const who = outbox.mail.to.length > 32 ? `${outbox.mail.to.slice(0, 30)}…` : outbox.mail.to;
@@ -1256,7 +1256,7 @@ function Compose({
     <div
       role="dialog"
       aria-label="New mail"
-      className="no-drag fixed bottom-6 right-6 z-40 w-[540px] max-w-[calc(100vw-48px)] overflow-hidden rounded-[14px] bg-surface shadow-[0_0_0_1px_var(--line),0_24px_60px_rgba(0,0,0,0.28)]"
+      className="sheet-in no-drag fixed bottom-6 right-6 z-40 w-[540px] max-w-[calc(100vw-48px)] overflow-hidden rounded-[14px] bg-surface shadow-[0_0_0_1px_var(--line),0_24px_60px_rgba(0,0,0,0.28)]"
       onKeyDown={(e) => (e.metaKey || e.ctrlKey) && e.key === "Enter" && send()}
     >
       <div className="flex items-center bg-accent px-4 py-2.5 text-on-accent">
