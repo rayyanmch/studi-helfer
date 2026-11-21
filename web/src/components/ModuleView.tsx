@@ -161,7 +161,7 @@ function Title({ course, editable }: { course: Course; editable: boolean }) {
             }}
             aria-label="Rename course"
             title="Rename (the folder on your Mac is renamed too)"
-            className="flex size-7 shrink-0 items-center justify-center rounded-md text-muted opacity-0 transition-opacity hover:bg-hover group-hover:opacity-100 focus-visible:opacity-100"
+            className="flex size-7 shrink-0 items-center justify-center rounded-md text-muted opacity-50 transition-opacity hover:bg-hover group-hover:opacity-100 focus-visible:opacity-100"
           >
             <Pencil size={14} aria-hidden />
           </button>
@@ -398,7 +398,7 @@ function SlotPicker({ course, slots }: { course: Course; slots: ClassSlot[] }) {
     <div className="mb-1.5 rounded-[10px] bg-surface px-3.5 py-2.5">
       <p className="text-[13px] font-semibold">
         {chosen.length ? `Your ${kind.toLowerCase()}` : `${kind}: pick your slot`}
-        <span className="ml-1.5 font-normal text-muted">{chosen.length ? "· shown in your calendar" : "· several times to choose from"}</span>
+        <span className="ml-1.5 font-normal text-muted">{chosen.length ? "· shown in your calendar. Click a time to change it." : "· click the time you go to, it then shows up in your calendar."}</span>
       </p>
       <div className="mt-2 flex flex-wrap gap-1.5">
         {slots.map((s) => {

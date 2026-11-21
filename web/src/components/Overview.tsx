@@ -711,6 +711,7 @@ function WeekView({
             Show classes and events
           </label>
         )}
+        {visible.length > 0 && <span className="text-[12px] text-muted">Click an entry to see details, change or hide it.</span>}
         <Button variant="plain" className="-my-1 ml-auto" onClick={() => openNewEvent()}>
           <CalendarPlus size={14} aria-hidden /> Add event
         </Button>
