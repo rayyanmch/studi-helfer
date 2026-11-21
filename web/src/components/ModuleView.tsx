@@ -453,7 +453,7 @@ function Files({ course, files, freshIds }: { course: Course; files: CourseFile[
   if (files.length === 0) {
     return (
       <p className="mt-8 rounded-[10px] bg-surface px-4 py-5 text-muted">
-        {app.job?.running ? "Files are on their way…" : "No files yet. They appear here after the next update."}
+        {app.job?.running ? "Files are on their way…" : "No files yet. New files from ILIAS appear here by themselves."}
       </p>
     );
   }

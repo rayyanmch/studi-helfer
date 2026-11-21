@@ -752,6 +752,12 @@ function WeekView({
         ))}
       </div>
       )}
+      {range === "week" && visible.length === 0 && googleEvents.length === 0 && (
+        <p className="mt-3 rounded-[10px] bg-surface px-4 py-3.5 text-muted">
+          Nothing planned for the next 7 days. Deadlines from ILIAS show up here by themselves. To see your lectures too, add your timetable in
+          Settings, or use “Add event” above.
+        </p>
+      )}
 
       <div className="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-2">
         <section aria-labelledby="neu-titel">
@@ -759,7 +765,7 @@ function WeekView({
             New in your courses
           </h2>
           {newFiles.length === 0 ? (
-            <p className="rounded-[10px] bg-surface px-4 py-5 text-muted">Nothing new since the last update.</p>
+            <p className="rounded-[10px] bg-surface px-4 py-5 text-muted">Nothing new since the last check. New files from ILIAS show up here.</p>
           ) : (
             <ul className="rounded-[10px] bg-surface px-1.5 py-1">
               {newFiles.map(({ file, course }) => (
@@ -774,6 +780,11 @@ function WeekView({
             In short
           </h2>
           <div className="flex flex-col gap-3.5">
+            {withDigest.length === 0 && (
+              <p className="rounded-[10px] bg-surface px-4 py-5 text-muted">
+                Nothing to sum up yet. Once your files and deadlines are in, you get one line per course here.
+              </p>
+            )}
             {withDigest.map((c) => (
               <p key={c.id} className="flex gap-3">
                 <span className="mt-[5px]">
