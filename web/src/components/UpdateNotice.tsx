@@ -87,6 +87,10 @@ export function UpdateNotice() {
             {state.latest.size ? ` · ${mb(state.latest.size)}` : ""}
           </p>
           {state.message && <p className="mt-2 text-[13px] text-danger">{state.message}</p>}
+          {/* Unsignierte App: nach jedem Update fragt macOS einmal nach dem Schlüsselbund (siehe NOTIZEN). */}
+          <p className="mt-2 text-[12px] text-muted">
+            After the update, your Mac may ask once to use the saved ILIAS password. Enter your Mac password and click “Always Allow”.
+          </p>
           <div className="mt-3 flex justify-end gap-1.5">
             <Button variant="plain" onClick={() => setDismissed({ sha: state.latest!.sha, at: state.checkedAt })}>
               Later
