@@ -7,6 +7,8 @@ Gemeinsames Gedächtnis für alle KI-Agenten und Menschen im Projekt. Wird über
 
 Wer gerade woran arbeitet (Person, Aufgabe, betroffene Dateien). Eintragen beim Start, löschen wenn fertig.
 
+- Mika (Mikas Agent), 2026-11-21: **Kalender-Tab** (neu `components/CalendarView.tsx`: Woche als Zeitraster Mo–So, 4 Wochen, blättern; Liste nach Rayyans Wunsch kommt danach) und Startseite **„Next 4 days“** (`Overview.tsx`: WeekView, NavItem „Calendar“, MonthView zieht in den Kalender-Tab um). Danach **Animationen** in Mail/Kalender/Startseite; an `StudyView`/`StudyHub` (Karteikarten) erst nach Absprache.
+
 
 
 
