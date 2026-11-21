@@ -7,12 +7,13 @@
 import { useEffect, useRef, useState } from "react";
 import { Check, ChevronDown, ChevronLeft, ChevronRight, ExternalLink, FolderOpen, Pencil, RotateCcw, Search, X } from "lucide-react";
 import { Button, Swatch, colorOf, tone } from "./ui";
-import { CheckButton, FileRow, displayName } from "./files";
-import type { Course, CourseColor, CourseFile, Deadline } from "@/lib/mock-data";
+import { CheckButton, DocTile, FileRow, FolderBadge, displayName } from "./files";
+import type { ClassSlot, Course, CourseColor, CourseFile, Deadline } from "@/lib/mock-data";
 import * as store from "@/lib/app-store";
 import { COURSE_COLORS, useApp } from "@/lib/app-store";
 
 const WD = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const WD_MON = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]; // ClassSlot.weekday: 0 = Montag
 const RECENT_DAYS = 14;
 
 function parseDay(iso: string) {
@@ -270,8 +271,15 @@ function ComingUp({
     return { weekly, single: single.sort((a, b) => a.date.localeCompare(b.date)) };
   })();
 
-  if (due.length === 0 && events.length === 0) return null;
-  const both = due.length > 0 && events.length > 0;
+  // Wahltermine aus den Orga-Folien („Exercise: Mon 12:00 or Wed 17:45“). Hat man schon eine eigene Gruppe
+  // dieser Art (ILIAS-Gruppe), bleiben die anderen Gruppen weg.
+  const slots = course.slots ?? [];
+  const pickable = slots.filter((s) => (s.state === "option" || s.state === "chosen") && !slots.some((m) => m.type === s.type && m.state === "mine"));
+  const pickTypes = [...new Set(pickable.map((s) => s.type))];
+  const hasClasses = events.length > 0 || pickTypes.length > 0;
+
+  if (due.length === 0 && !hasClasses) return null;
+  const both = due.length > 0 && hasClasses;
   // Nur Fristen (keine Termine): volle Breite in zwei Spalten statt einer halben Seite
   const limit = both ? 4 : 6;
   const shown = all ? due : due.slice(0, limit);
@@ -325,9 +333,12 @@ function ComingUp({
           )}
         </div>
       )}
-      {events.length > 0 && (
+      {hasClasses && (
         <div>
           <h2 className="mb-2 text-[15px] font-bold">Classes & events</h2>
+          {pickTypes.map((t) => (
+            <SlotPicker key={t} course={course} slots={pickable.filter((s) => s.type === t)} />
+          ))}
           <ul className={`grid grid-cols-1 gap-1.5 ${both ? "" : "lg:grid-cols-2"}`}>
             {schedule.weekly.map((g) => {
               const first = g[0];
@@ -365,12 +376,47 @@ function ComingUp({
   );
 }
 
+/** Wahltermine einer Art als Chips: Klick = „das ist meiner“ → steht jede Woche im Kalender. */
+function SlotPicker({ course, slots }: { course: Course; slots: ClassSlot[] }) {
+  const color = colorOf(course);
+  const chosen = slots.filter((s) => s.state === "chosen");
+  const kind = slots[0].label.split(" · ")[0];
+  return (
+    <div className="mb-1.5 rounded-[10px] bg-surface px-3.5 py-2.5">
+      <p className="text-[13px] font-semibold">
+        {chosen.length ? `Your ${kind.toLowerCase()}` : `${kind}: pick your slot`}
+        <span className="ml-1.5 font-normal text-muted">{chosen.length ? "· shown in your calendar" : "· several times to choose from"}</span>
+      </p>
+      <div className="mt-2 flex flex-wrap gap-1.5">
+        {slots.map((s) => {
+          const on = s.state === "chosen";
+          return (
+            <button
+              key={s.key}
+              onClick={() => void store.chooseSlot(course.id, s.key, !on)}
+              aria-pressed={on}
+              title={[s.room, s.source].filter(Boolean).join(" · ")}
+              className="flex h-7 items-center gap-1 rounded-full px-2.5 text-[12.5px] font-semibold transition-colors"
+              style={on ? { background: tone(color), color: "var(--on-solid)" } : { boxShadow: `inset 0 0 0 1.5px ${tone(color)}`, color: "var(--text)" }}
+            >
+              {on && <Check size={12} strokeWidth={3} aria-hidden />}
+              {s.group != null && <span className="opacity-75">G{s.group}</span>}
+              {WD_MON[s.weekday]} {s.start}–{s.end}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // --- Dateien ------------------------------------------------------------------
 
 type Sort = "name" | "newest";
 
 function Files({ course, files, freshIds }: { course: Course; files: CourseFile[]; freshIds: string[] }) {
   const app = useApp();
+  const color = colorOf(course);
   const [filter, setFilter] = useState<string>("all");
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<Sort>("name");
@@ -380,7 +426,8 @@ function Files({ course, files, freshIds }: { course: Course; files: CourseFile[
   // „heute“ aus dem Store statt Date.now(): Rendern bleibt rein
   const since = Date.parse(`${app.today}T00:00:00`) - RECENT_DAYS * 86_400_000;
   const recent = files
-    .filter((f) => (f.modifiedAt ?? 0) >= since)
+    // Beispieldaten haben keine Zeit: dort zählen neue und geänderte Dateien
+    .filter((f) => (f.modifiedAt ? f.modifiedAt >= since : f.isNew || Boolean(f.changeNote)))
     .sort((a, b) => (b.modifiedAt ?? 0) - (a.modifiedAt ?? 0))
     .slice(0, 6);
 
@@ -410,12 +457,13 @@ function Files({ course, files, freshIds }: { course: Course; files: CourseFile[
     <section className="mt-8" aria-label="Files">
       <div className="flex flex-wrap items-center gap-2">
         <div role="group" aria-label="Show files" className="flex min-w-0 flex-1 flex-wrap gap-1.5">
-          <Chip active={filter === "all"} onClick={() => setFilter("all")}>
-            All <span className="opacity-60">{files.length}</span>
+          <Chip color={color} active={filter === "all"} onClick={() => setFilter("all")}>
+            All <span className="opacity-70">{files.length}</span>
           </Chip>
           {course.folders.map((f) => (
-            <Chip key={f.id} active={filter === f.id} onClick={() => setFilter(f.id)}>
-              {f.name} <span className="opacity-60">{f.files.length}</span>
+            <Chip key={f.id} color={color} active={filter === f.id} onClick={() => setFilter(f.id)}>
+              <FolderBadge name={f.name} category={f.category} color={color} size={18} />
+              {f.name} <span className="opacity-70">{f.files.length}</span>
             </Chip>
           ))}
         </div>
@@ -453,7 +501,7 @@ function Files({ course, files, freshIds }: { course: Course; files: CourseFile[
           ) : (
             <ul className="rounded-[10px] bg-surface px-1.5 py-1">
               {sortFiles(matches).map((f) => (
-                <FileRow key={f.id} file={f} highlight={q} />
+                <FileRow key={f.id} file={f} color={color} highlight={q} />
               ))}
             </ul>
           )}
@@ -472,10 +520,10 @@ function Files({ course, files, freshIds }: { course: Course; files: CourseFile[
           )}
           {filter === "all" && recent.length > 0 && (
             <section>
-              <h3 className="mb-1.5 text-[15px] font-bold">Recently added</h3>
-              <ul className="rounded-[10px] bg-surface px-1.5 py-1">
+              <h3 className="mb-2 text-[15px] font-bold">Recently added</h3>
+              <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3">
                 {recent.map((f) => (
-                  <FileRow key={`r-${f.id}`} file={f} compact />
+                  <RecentCard key={`r-${f.id}`} file={f} color={color} folder={course.folders.find((x) => x.files.includes(f))?.name} />
                 ))}
               </ul>
             </section>
@@ -487,16 +535,23 @@ function Files({ course, files, freshIds }: { course: Course; files: CourseFile[
                 <button
                   onClick={() => setClosed((c) => (c.includes(f.id) ? c.filter((x) => x !== f.id) : [...c, f.id]))}
                   aria-expanded={isOpen}
-                  className="-ml-1.5 mb-1.5 flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[15px] font-bold hover:bg-hover"
+                  className="group/h -ml-1.5 mb-2 flex items-center gap-2 rounded-md px-1.5 py-1 text-[15px] font-bold hover:bg-hover"
                 >
-                  {isOpen ? <ChevronDown size={15} aria-hidden /> : <ChevronRight size={15} aria-hidden />}
+                  <FolderBadge name={f.name} category={f.category} color={color} />
                   {f.name}
-                  <span className="ml-1 text-[13px] font-normal text-muted">{f.files.length}</span>
+                  <span className="rounded-full px-2 py-px text-[12px] font-semibold" style={{ background: tone(color, "soft"), color: tone(color, "ink") }}>
+                    {f.files.length}
+                  </span>
+                  {isOpen ? (
+                    <ChevronDown size={15} className="text-muted opacity-0 transition-opacity group-hover/h:opacity-100" aria-hidden />
+                  ) : (
+                    <ChevronRight size={15} className="text-muted" aria-hidden />
+                  )}
                 </button>
                 {isOpen && (
                   <ul className="rounded-[10px] bg-surface px-1.5 py-1">
                     {sortFiles(f.files).map((x) => (
-                      <FileRow key={x.id} file={x} />
+                      <FileRow key={x.id} file={x} color={color} />
                     ))}
                   </ul>
                 )}
@@ -509,14 +564,46 @@ function Files({ course, files, freshIds }: { course: Course; files: CourseFile[
   );
 }
 
-function Chip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+function Chip({ active, color, onClick, children }: { active: boolean; color: CourseColor; onClick: () => void; children: React.ReactNode }) {
   return (
     <button
       onClick={onClick}
       aria-pressed={active}
-      className={`h-8 rounded-full px-3.5 text-[13px] font-medium transition-colors ${active ? "bg-accent text-on-accent" : "bg-surface hover:bg-hover"}`}
+      className={`inline-flex h-8 items-center gap-1.5 rounded-full pl-2 pr-3.5 text-[13px] font-medium transition-colors first:pl-3.5 ${active ? "" : "bg-surface hover:bg-hover"}`}
+      style={active ? { background: tone(color, "soft"), color: tone(color, "ink"), boxShadow: `inset 0 0 0 1.5px ${tone(color)}` } : undefined}
     >
       {children}
     </button>
+  );
+}
+
+// Karte für „Recently added“: zarte Kursfläche, großes Datei-Symbol, Klick öffnet die Datei.
+function RecentCard({ file, color, folder }: { file: CourseFile; color: CourseColor; folder?: string }) {
+  const desktop = useApp().mode === "desktop";
+  const changed = Boolean(file.changeNote);
+  return (
+    <li>
+      <button
+        onClick={() => store.openFile(file.path, file.id)}
+        title={desktop ? `Open ${file.name}` : file.name}
+        className="group flex w-full items-center gap-3 rounded-[10px] px-3 py-2.5 text-left transition-[box-shadow,transform] hover:shadow-[inset_0_0_0_1.5px_var(--ring)] active:scale-[0.99]"
+        style={{ background: tone(color, "soft"), "--ring": tone(color) } as React.CSSProperties}
+      >
+        <DocTile name={file.name} kind={file.kind} color={color} solid size={38} />
+        <span className="min-w-0 flex-1">
+          <span className="block truncate font-semibold" style={{ color: tone(color, "ink") }}>
+            {displayName(file.name)}
+          </span>
+          <span className="mt-0.5 flex items-center gap-1.5 truncate text-[12px] text-muted">
+            {changed ? (
+              <span className="rounded-full bg-warn-soft px-1.5 font-semibold text-warn">updated</span>
+            ) : (
+              file.isNew && <span className="rounded-full bg-surface px-1.5 font-semibold text-[var(--c-green-ink)]">new</span>
+            )}
+            <span className="truncate">{[file.updated, folder].filter(Boolean).join(" · ")}</span>
+          </span>
+        </span>
+      </button>
+    </li>
   );
 }

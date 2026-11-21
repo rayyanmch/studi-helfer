@@ -2,9 +2,9 @@
 
 // Datei-Zeile und Hervorhebung, gemeinsam für Übersicht, „New“, Suche und Modulseite.
 
-import { Check } from "lucide-react";
-import { Button, FileIcon, Swatch, colorOf } from "./ui";
-import type { CourseFile } from "@/lib/mock-data";
+import { BookOpen, Check, CircleCheck, ClipboardList, Folder, GraduationCap, Info, PencilLine, Presentation, Video, type LucideIcon } from "lucide-react";
+import { Button, FileIcon, colorOf, tone } from "./ui";
+import type { CourseColor, CourseFile, FileKind } from "@/lib/mock-data";
 import * as store from "@/lib/app-store";
 import { appStore } from "@/lib/app-store";
 import { displayName, shortWhere } from "@/lib/names";
@@ -24,16 +24,77 @@ export function Highlight({ text, q }: { text: string; q?: string }) {
   );
 }
 
+/** Datei-Symbol als Blatt mit Eselsohr in Kursfarbe, unten die Endung (PDF, ZIP …). */
+export function DocTile({ name, kind, color, solid, size = 32 }: { name: string; kind: FileKind; color: CourseColor; solid?: boolean; size?: number }) {
+  const ext = (name.match(/\.([a-z0-9]{1,4})$/i)?.[1] ?? (kind === "other" ? "" : kind)).toUpperCase();
+  const w = Math.round(size * 0.8);
+  const fold = Math.round(size * 0.28);
+  return (
+    <span aria-hidden className="relative inline-flex shrink-0 items-end justify-center" style={{ width: w, height: size }}>
+      <span
+        className="absolute inset-0 rounded-[5px]"
+        style={{
+          background: solid ? tone(color) : `color-mix(in srgb, ${tone(color)} 26%, var(--surface))`,
+          clipPath: `polygon(0 0, calc(100% - ${fold}px) 0, 100% ${fold}px, 100% 100%, 0 100%)`,
+        }}
+      />
+      <span
+        className="absolute right-0 top-0 rounded-bl-[3px]"
+        style={{
+          width: fold,
+          height: fold,
+          background: solid ? "var(--on-solid)" : tone(color),
+          opacity: solid ? 0.45 : 0.7,
+          clipPath: "polygon(0 0, 100% 100%, 0 100%)",
+        }}
+      />
+      {ext && (
+        <span
+          className="relative font-bold leading-none"
+          style={{ fontSize: Math.max(7.5, size * 0.25), marginBottom: Math.round(size * 0.14), color: solid ? "var(--on-solid)" : tone(color, "ink") }}
+        >
+          {ext}
+        </span>
+      )}
+    </span>
+  );
+}
+
+// Art der Dateien → Symbol. In der Mac-App kommt `category` mit, bei Beispieldaten raten wir aus dem Namen.
+const CATEGORY_ICON: [string, RegExp, LucideIcon][] = [
+  ["solutions", /solution|lösung/i, CircleCheck],
+  ["exams", /exam|klausur/i, ClipboardList],
+  ["selfstudy", /self.?study/i, GraduationCap],
+  ["readings", /reading|literat/i, BookOpen],
+  ["exercises", /exercise|übung|sheet|tutor/i, PencilLine],
+  ["lectures", /lecture|slides|vorlesung|notes/i, Presentation],
+  ["info", /info|general|orga/i, Info],
+  ["recordings", /recording|video/i, Video],
+];
+
+/** Kleines Symbol in voller Kursfarbe für eine Art von Dateien („Lecture slides“, „Exercises“ …). */
+export function FolderBadge({ name, category, color, size = 24 }: { name: string; category?: string; color: CourseColor; size?: number }) {
+  const hit = CATEGORY_ICON.find(([id, re]) => (category ? id === category : re.test(name)));
+  const Icon = hit?.[2] ?? Folder;
+  return (
+    <span aria-hidden className="inline-flex shrink-0 items-center justify-center rounded-[7px]" style={{ width: size, height: size, background: tone(color), color: "var(--on-solid)" }}>
+      <Icon size={Math.round(size * 0.56)} strokeWidth={2.1} />
+    </span>
+  );
+}
+
 export function FileRow({
   file,
   sub,
   courseId,
+  color,
   compact,
   highlight,
 }: {
   file: CourseFile;
   sub?: string; // eigene Unterzeile; sonst Teil + Ordner
-  courseId?: string; // Farbpunkt statt Datei-Symbol (in Listen über mehrere Kurse)
+  courseId?: string; // Datei-Symbol in der Farbe dieses Kurses (in Listen über mehrere Kurse)
+  color?: CourseColor; // Datei-Symbol in dieser Farbe (Modulseite)
   compact?: boolean;
   highlight?: string;
 }) {
@@ -42,18 +103,20 @@ export function FileRow({
   const auto = [file.part, shortWhere(file.where)].filter(Boolean).join(" · ");
   const line2 = changed ? file.changeNote : (sub ?? auto);
   const open = () => store.openFile(file.path, file.id);
+  const tint = color ?? (courseId ? colorOf({ id: courseId, color: appStore.get().courses.find((c) => c.id === courseId)?.color }) : undefined);
   return (
     <li
       onDoubleClick={open}
       title={desktop ? "Double-click to open" : undefined}
-      className="group flex min-h-[46px] items-center gap-3 rounded-[7px] px-2.5 py-1.5 hover:bg-hover focus-within:bg-hover"
+      className="group flex min-h-[48px] items-center gap-3 rounded-[8px] px-2.5 py-1.5 transition-colors hover:bg-[var(--row-hover,var(--hover))] focus-within:bg-[var(--row-hover,var(--hover))]"
+      style={tint ? ({ "--row-hover": `color-mix(in srgb, ${tone(tint, "soft")} 70%, transparent)` } as React.CSSProperties) : undefined}
     >
-      {courseId ? <Swatch color={colorOf({ id: courseId, color: appStore.get().courses.find((c) => c.id === courseId)?.color })} /> : <FileIcon kind={file.kind} />}
+      {tint ? <DocTile name={file.name} kind={file.kind} color={tint} size={30} /> : <FileIcon kind={file.kind} />}
       <div className="min-w-0 flex-1">
         <p className="truncate font-medium" title={file.name}>
           <Highlight text={displayName(file.name)} q={highlight} />
-          {changed && <span className="ml-2 text-[12px] font-semibold text-warn">updated</span>}
-          {!changed && file.isNew && <span className="ml-2 text-[12px] font-semibold text-ok">new</span>}
+          {changed && <span className="ml-2 rounded-full bg-warn-soft px-1.5 py-px text-[11px] font-semibold text-warn">updated</span>}
+          {!changed && file.isNew && <span className="ml-2 rounded-full bg-[var(--c-green-soft)] px-1.5 py-px text-[11px] font-semibold text-[var(--c-green-ink)]">new</span>}
         </p>
         {line2 && <p className="truncate text-[12px] text-muted">{line2}</p>}
       </div>
