@@ -73,6 +73,7 @@ export interface AppState {
   lastStatus: SyncRunStatus | null;
   failedCourseIds: string[]; // Modul-Ids, bei denen der letzte Sync scheiterte
   problem: Problem;
+  iliasDown: boolean; // bei problem "offline": Internet ging, nur ILIAS antwortete nicht
   job: StoreJob | null;
   today: string; // "2026-11-20"
   schedule: { enabled: boolean; time: string; every: SyncEvery };
@@ -104,6 +105,7 @@ const DEMO: AppState = {
   lastStatus: "ok",
   failedCourseIds: [],
   problem: "none",
+  iliasDown: false,
   job: null,
   today: mock.TODAY,
   schedule: { enabled: true, time: "07:00", every: "daily" },
@@ -419,6 +421,7 @@ export async function refresh() {
     lastStatus,
     failedCourseIds: failed,
     problem,
+    iliasDown: problem === "offline" && Boolean(status.lastSync?.iliasDown),
     today: localIso(),
     schedule: { enabled: status.schedule.enabled, time: status.schedule.time, every: status.schedule.every ?? "daily" },
     notifications: status.notifications,

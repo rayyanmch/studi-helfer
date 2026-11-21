@@ -11,7 +11,7 @@ import requests
 from bs4 import BeautifulSoup, Tag
 from PFERD.crawl.ilias.kit_ilias_html import IliasPage, IliasSoup
 
-from .common import BASE_URL, CLIENT_ID, DATA_DIR, MSG_ILIAS_DOWN, MSG_UNREACHABLE, USER_AGENT, AppError, log_detail
+from .common import BASE_URL, CLIENT_ID, DATA_DIR, MSG_ILIAS_DOWN, USER_AGENT, AppError, log_detail, unreachable_message
 
 TIMEOUT = 30
 
@@ -21,7 +21,7 @@ def _get(session: requests.Session, url: str, **kwargs: Any) -> requests.Respons
         r = session.get(url, timeout=TIMEOUT, **kwargs)
     except requests.RequestException as e:
         log_detail("ilias", e)
-        raise AppError("unreachable", MSG_UNREACHABLE) from None
+        raise AppError("unreachable", unreachable_message()) from None
     if r.status_code >= 500:
         print(f"[ilias] HTTP {r.status_code} for {url}", file=sys.stderr, flush=True)
         raise AppError("unreachable", MSG_ILIAS_DOWN)
@@ -64,7 +64,7 @@ def login(username: str, password: str) -> requests.Session:
         )
     except requests.RequestException as e:
         log_detail("ilias", e)
-        raise AppError("unreachable", MSG_UNREACHABLE) from None
+        raise AppError("unreachable", unreachable_message()) from None
 
     if _logged_in(r):
         return session

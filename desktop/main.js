@@ -116,7 +116,7 @@ async function getStatus() {
     defaultTargetDir: backend.DEFAULT_TARGET,
     configured: Boolean(cfg.targetDir && cfg.courses.some((c) => c.selected)),
     schedule: { ...cfg.schedule, every: backend.scheduleEvery(cfg.schedule?.every), active: await backend.scheduleLoaded() },
-    lastSync: last ? { at: last.end * 1000, status: last.status, added: last.added.length } : null,
+    lastSync: last ? { at: last.end * 1000, status: last.status, added: last.added.length, iliasDown: Boolean(last.iliasDown) } : null,
     sync: backend.readState(),
     notifications: cfg.notifications !== false,
     launchAtLogin: app.getLoginItemSettings().openAtLogin,

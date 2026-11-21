@@ -18,6 +18,7 @@ import {
   Search,
   Sun,
   UtensilsCrossed,
+  CloudOff,
   WifiOff,
   X,
 } from "lucide-react";
@@ -497,6 +498,7 @@ function SyncStatus({
   onSync: () => void;
   onStop: () => void;
 }) {
+  const iliasDown = useApp().iliasDown;
   // Variante D2: während des Holens Balken, Restzeit („About 2 min left“) und Stopp
   useTick(Boolean(job?.running));
   if (job?.running) {
@@ -536,8 +538,8 @@ function SyncStatus({
     label = "Stopped early";
     text = `As of ${lastSync}`;
   } else if (problem === "offline") {
-    icon = <WifiOff size={13} className="text-warn" aria-hidden />;
-    label = "Offline";
+    icon = iliasDown ? <CloudOff size={13} className="text-warn" aria-hidden /> : <WifiOff size={13} className="text-warn" aria-hidden />;
+    label = iliasDown ? "ILIAS not responding" : "Offline";
     text = `As of ${lastSync}`;
   } else if (problem === "loginExpired") {
     icon = <LogIn size={13} className="text-warn" aria-hidden />;
@@ -586,11 +588,14 @@ function Banners({
   failedIds: string[];
   lastSync: string;
 }) {
+  const iliasDown = useApp().iliasDown;
   if (problem === "offline")
     return (
       <div className="mb-5">
-        <Notice tone="warn" icon={<WifiOff size={16} aria-hidden />} action={<Button onClick={onRetry}>Try again</Button>}>
-          No connection to ILIAS. You are seeing the files from {lastSync}.
+        <Notice tone="warn" icon={iliasDown ? <CloudOff size={16} aria-hidden /> : <WifiOff size={16} aria-hidden />} action={<Button onClick={onRetry}>Try again</Button>}>
+          {iliasDown
+            ? `ILIAS isn’t responding right now. Your internet works, so it’s on ILIAS’s side. You are seeing the files from ${lastSync}.`
+            : `No connection to ILIAS. You are seeing the files from ${lastSync}.`}
         </Notice>
       </div>
     );

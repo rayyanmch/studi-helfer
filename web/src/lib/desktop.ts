@@ -96,7 +96,7 @@ export interface DesktopStatus {
   defaultTargetDir: string; // ~/Uni als absoluter Pfad
   configured: boolean; // Zielordner + mindestens ein Kurs gewählt
   schedule: { enabled: boolean; time: string; every?: SyncEvery; active: boolean }; // auch wenn die App zu ist
-  lastSync: { at: number; status: SyncRunStatus; added: number } | null; // at in Millisekunden
+  lastSync: { at: number; status: SyncRunStatus; added: number; iliasDown?: boolean } | null; // at in Millisekunden; iliasDown = Internet ging, nur ILIAS nicht
   sync: SyncState;
   notifications: boolean;
   launchAtLogin: boolean;

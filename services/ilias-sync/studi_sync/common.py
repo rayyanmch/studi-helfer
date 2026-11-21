@@ -2,6 +2,7 @@
 
 import json
 import os
+import socket
 import sys
 from pathlib import Path
 from typing import Any
@@ -29,6 +30,22 @@ USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Studi-Helfer"
 # Fehlertexte für die Oberfläche: ein Satz, was los ist, und was man tun kann. Technik nur ins Log (stderr).
 MSG_UNREACHABLE = "Can't reach ILIAS. Check your internet connection and try again."
 MSG_ILIAS_DOWN = "ILIAS is having problems right now. Try again in a few minutes."
+MSG_ILIAS_NOT_RESPONDING = "ILIAS isn't responding right now. Your internet works, so it's on ILIAS's side. Try again later."
+
+
+def internet_ok() -> bool:
+    """Geht das Internet sonst? Unterscheidet „kein Netz“ von „ILIAS antwortet nicht“ (Wartung, Überlast zum Semesterstart)."""
+    for host in ("www.apple.com", "www.uni-koeln.de"):
+        try:
+            socket.create_connection((host, 443), timeout=4).close()
+            return True
+        except OSError:
+            continue
+    return False
+
+
+def unreachable_message() -> str:
+    return MSG_ILIAS_NOT_RESPONDING if internet_ok() else MSG_UNREACHABLE
 
 
 def log_detail(where: str, e: BaseException) -> None:

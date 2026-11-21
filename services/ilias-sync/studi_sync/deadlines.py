@@ -16,7 +16,7 @@ from zoneinfo import ZoneInfo
 import requests
 from bs4 import BeautifulSoup
 
-from .common import BASE_URL, DATA_DIR, MSG_UNREACHABLE, AppError, load_config, log_detail, read_json, write_json
+from .common import BASE_URL, DATA_DIR, AppError, load_config, log_detail, read_json, unreachable_message, write_json
 
 DEADLINES = DATA_DIR / "deadlines.json"
 PARENTS = DATA_DIR / "object-parents.json"  # "exc/123" → ["crs-1", "grp-2"] (Brotkrumen, außen → innen)
@@ -49,7 +49,7 @@ def fetch_ics(session: requests.Session) -> str:
         r = session.get(url, timeout=TIMEOUT)
     except requests.RequestException as e:
         log_detail("calendar", e)
-        raise AppError("unreachable", MSG_UNREACHABLE) from None
+        raise AppError("unreachable", unreachable_message()) from None
     if "BEGIN:VCALENDAR" not in r.text:
         raise AppError("unexpected", "Could not read your ILIAS calendar. Try again later.")
     return r.text

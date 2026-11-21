@@ -23,7 +23,7 @@ from typing import Any, Optional
 
 from .common import (
     BASE_URL, CLIENT_ID, DATA_DIR, ILIAS_HOST, KEYCHAIN_SERVICE, LOCK, LOGS, PFERD_CFG, RUNS, STATE,
-    AppError, emit, load_config, self_command, write_json,
+    AppError, emit, internet_ok, load_config, self_command, write_json,
 )
 
 ANSI = re.compile(r"\x1b\[[0-9;?]*[A-Za-z]")
@@ -389,6 +389,7 @@ def sync(auto: bool) -> dict[str, Any]:
         except Cancelled:
             break
 
+    ilias_down = False
     login_problem = any(any(e in p["message"] for e in AUTH_ERRORS) for p in run.problems)
     if run.cancelled:
         status = "cancelled"
@@ -397,6 +398,8 @@ def sync(auto: bool) -> dict[str, Any]:
                 c["status"] = "cancelled"
     elif offline:
         status = "offline"
+        # Internet geht, nur ILIAS nicht (Wartung, Überlast): Oberfläche sagt dann nicht „check your internet“
+        ilias_down = internet_ok()
     elif login_problem:
         status = "login"
     elif run.problems or exit_code != 0:
@@ -441,7 +444,7 @@ def sync(auto: bool) -> dict[str, Any]:
     record = {
         "id": str(int(run.started)), "start": run.started, "end": ended,
         "duration": round(ended - run.started, 1), "trigger": trigger, "status": status,
-        "attempts": attempt, "exit": exit_code, "courses": run.courses, "initialCourses": sorted(run.initial),
+        "attempts": attempt, "exit": exit_code, "iliasDown": ilias_down, "courses": run.courses, "initialCourses": sorted(run.initial),
         "added": run.added, "changed": run.changed, "deleted": run.deleted, "problems": run.problems,
     }
     with open(RUNS, "a", encoding="utf-8") as f:
