@@ -17,6 +17,8 @@ const { startBundledUi } = require("./lib/ui-server");
 const updater = require("./lib/updater");
 const google = require("./lib/google");
 const unimail = require("./lib/unimail");
+const { createMensa } = require("./lib/mensa");
+const mensa = createMensa({ dataDir: backend.DATA_DIR });
 
 let uiUrl = process.env.STUDI_UI_URL || "http://localhost:3000";
 let uiServer = null;
@@ -110,7 +112,7 @@ async function getStatus() {
     targetDir: cfg.targetDir,
     defaultTargetDir: backend.DEFAULT_TARGET,
     configured: Boolean(cfg.targetDir && cfg.courses.some((c) => c.selected)),
-    schedule: { ...cfg.schedule, active: await backend.scheduleLoaded() },
+    schedule: { ...cfg.schedule, every: backend.scheduleEvery(cfg.schedule?.every), active: await backend.scheduleLoaded() },
     lastSync: last ? { at: last.end * 1000, status: last.status, added: last.added.length } : null,
     sync: backend.readState(),
     notifications: cfg.notifications !== false,
@@ -255,6 +257,7 @@ async function setSchedule(schedule) {
   cfg.schedule = {
     enabled: Boolean(schedule?.enabled),
     time: typeof schedule?.time === "string" ? schedule.time : cfg.schedule.time,
+    every: backend.scheduleEvery(schedule?.every ?? cfg.schedule.every),
   };
   const res = await backend.applySchedule(packaged(), cfg.schedule);
   if (res.ok) backend.saveConfig(cfg);
@@ -309,6 +312,7 @@ handle("studi:getCustomEvents", () => backend.getCustomEvents());
 handle("studi:saveCustomEvent", (ev) => backend.saveCustomEvent(ev));
 handle("studi:deleteCustomEvent", (id) => backend.deleteCustomEvent(String(id)));
 handle("studi:setEventHidden", (key, hidden) => backend.setEventHidden(key, Boolean(hidden)));
+handle("studi:mensaThumb", (url) => mensa.thumb(url));
 handle("studi:markSeen", (ids) => backend.markSeen(ids));
 handle("studi:setNotifications", (on) => backend.setNotifications(on));
 handle("studi:setLaunchAtLogin", (on) => {
@@ -467,6 +471,7 @@ function buildMenu() {
 // ------------------------------------------------------------------ Start
 
 app.whenReady().then(async () => {
+  mensa.prune();
   // App läuft: der Hintergrund-Sync überlässt die Mitteilungen der App (klickbar).
   fs.mkdirSync(backend.DATA_DIR, { recursive: true });
   fs.writeFileSync(path.join(backend.DATA_DIR, "app.pid"), String(process.pid));

@@ -321,6 +321,10 @@ def sync(auto: bool) -> dict[str, Any]:
     signal.signal(signal.SIGTERM, on_term)
 
     delay_min = int(cfg.get("randomDelayMin", 15))
+    # Zufallsverzögerung nur beim täglichen Lauf (verteilt die 7-Uhr-Abrufe). Bei „alle 30 min / 1 h / 3 h“
+    # verteilt launchd die Starts ohnehin, und 15 min Wartezeit wären dort die halbe Taktung.
+    if (cfg.get("schedule") or {}).get("every", "daily") != "daily":
+        delay_min = 0
     if auto and delay_min > 0:
         delay = random.randint(0, delay_min * 60)
         run.state(waitingUntil=time.time() + delay)

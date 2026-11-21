@@ -16,6 +16,7 @@ import {
   RefreshCw,
   Search,
   Sun,
+  UtensilsCrossed,
   WifiOff,
   X,
 } from "lucide-react";
@@ -24,6 +25,7 @@ import { CheckButton, FileRow, Highlight, displayName } from "./files";
 import { CoursesView } from "./CoursesView";
 import { ModuleView } from "./ModuleView";
 import { openEvent, openNewEvent } from "./EventDialog";
+import { MensaView } from "./MensaView";
 import { MailView } from "./MailView";
 import { Accounts } from "./Accounts";
 import { Settings } from "./Settings";
@@ -43,7 +45,7 @@ const LONG = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", 
 // Titel ohne „Submit “ vorne, für enge Stellen
 const bare = (t: string) => t.replace(/^Submit /, "");
 
-type View = "week" | "new" | "courses" | "mail" | string; // string = Modul-Id
+type View = "week" | "new" | "courses" | "mail" | "mensa" | string; // string = Modul-Id
 
 function parseDay(iso: string) {
   const [y, m, d] = iso.split("-").map(Number);
@@ -187,6 +189,9 @@ export function Overview({
             <NavItem active={view === "mail"} onClick={() => open("mail")} icon={<Mail size={15} aria-hidden />} count={mailUnread}>
               Mail
             </NavItem>
+            <NavItem active={!searching && view === "mensa"} onClick={() => open("mensa")} icon={<UtensilsCrossed size={15} aria-hidden />}>
+              Mensa
+            </NavItem>
           </div>
         </nav>
         <SyncStatus problem={problem} job={job} lastSync={lastSync} failed={failedIds.length} onSync={sync} onStop={stop} />
@@ -255,6 +260,7 @@ export function Overview({
                 {view === "week" && <WeekView list={list} deadlines={mine} done={done} onToggle={toggleDone} onOpen={open} />}
                 {view === "new" && <NewView list={list} onOpen={open} />}
                 {view === "courses" && <CoursesView onOpen={open} onEditCourses={onEditCourses} />}
+                {view === "mensa" && <MensaView />}
                 {course && (
                   <ModuleView
                     key={course.id}

@@ -90,6 +90,8 @@ export function FileRow({
   color,
   compact,
   highlight,
+  solutions,
+  sheet,
 }: {
   file: CourseFile;
   sub?: string; // eigene Unterzeile; sonst Teil + Ordner
@@ -97,11 +99,13 @@ export function FileRow({
   color?: CourseColor; // Datei-Symbol in dieser Farbe (Modulseite)
   compact?: boolean;
   highlight?: string;
+  solutions?: CourseFile[]; // Lösungen zu diesem Blatt (Chip „Solution“ neben dem Namen)
+  sheet?: CourseFile; // diese Datei ist die Lösung zu diesem Blatt
 }) {
   const desktop = appStore.get().mode === "desktop";
   const changed = Boolean(file.changeNote);
   const auto = [file.part, shortWhere(file.where)].filter(Boolean).join(" · ");
-  const line2 = changed ? file.changeNote : (sub ?? auto);
+  const line2 = changed ? file.changeNote : (sub ?? (sheet ? `Solution to ${displayName(sheet.name)}` : auto));
   const open = () => store.openFile(file.path, file.id);
   const tint = color ?? (courseId ? colorOf({ id: courseId, color: appStore.get().courses.find((c) => c.id === courseId)?.color }) : undefined);
   return (
@@ -113,10 +117,15 @@ export function FileRow({
     >
       {tint ? <DocTile name={file.name} kind={file.kind} color={tint} size={30} /> : <FileIcon kind={file.kind} />}
       <div className="min-w-0 flex-1">
-        <p className="truncate font-medium" title={file.name}>
-          <Highlight text={displayName(file.name)} q={highlight} />
-          {changed && <span className="ml-2 rounded-full bg-warn-soft px-1.5 py-px text-[11px] font-semibold text-warn">updated</span>}
-          {!changed && file.isNew && <span className="ml-2 rounded-full bg-[var(--c-green-soft)] px-1.5 py-px text-[11px] font-semibold text-[var(--c-green-ink)]">new</span>}
+        <p className="flex min-w-0 items-center gap-2 font-medium">
+          <span className="truncate" title={file.name}>
+            <Highlight text={displayName(file.name)} q={highlight} />
+          </span>
+          {changed && <span className="shrink-0 rounded-full bg-warn-soft px-1.5 py-px text-[11px] font-semibold text-warn">updated</span>}
+          {!changed && file.isNew && <span className="shrink-0 rounded-full bg-[var(--c-green-soft)] px-1.5 py-px text-[11px] font-semibold text-[var(--c-green-ink)]">new</span>}
+          {solutions?.map((s, i) => (
+            <SolutionChip key={s.id} file={s} color={tint} label={solutions.length > 1 ? `Solution ${i + 1}` : "Solution"} />
+          ))}
         </p>
         {line2 && <p className="truncate text-[12px] text-muted">{line2}</p>}
       </div>
@@ -134,6 +143,27 @@ export function FileRow({
       <span className="w-[72px] shrink-0 text-right text-[12px] text-muted group-hover:hidden group-focus-within:hidden">{file.updated}</span>
       {!compact && <span className="w-[56px] shrink-0 text-right text-[12px] tabular-nums text-muted">{file.size}</span>}
     </li>
+  );
+}
+
+/** Kleiner Knopf neben dem Blatt: öffnet die passende Lösung. */
+function SolutionChip({ file, color, label }: { file: CourseFile; color?: CourseColor; label: string }) {
+  return (
+    <button
+      onClick={() => store.openFile(file.path, file.id)}
+      onDoubleClick={(e) => e.stopPropagation()}
+      title={`Open ${file.name}`}
+      aria-label={`${label}: open ${displayName(file.name)}`}
+      className="inline-flex h-[20px] shrink-0 items-center gap-1 rounded-full px-1.5 text-[11px] font-semibold transition-[filter] hover:brightness-95"
+      style={
+        color
+          ? { background: tone(color, "soft"), color: tone(color, "ink"), boxShadow: `inset 0 0 0 1px color-mix(in srgb, ${tone(color)} 45%, transparent)` }
+          : { background: "var(--sunken)", color: "var(--text)" }
+      }
+    >
+      <CircleCheck size={11} strokeWidth={2.4} aria-hidden />
+      {label}
+    </button>
   );
 }
 

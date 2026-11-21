@@ -36,6 +36,7 @@ contextBridge.exposeInMainWorld("studi", {
   saveCustomEvent: call("studi:saveCustomEvent"),
   deleteCustomEvent: call("studi:deleteCustomEvent"),
   setEventHidden: call("studi:setEventHidden"),
+  mensaThumb: call("studi:mensaThumb"),
   markSeen: call("studi:markSeen"),
   setNotifications: call("studi:setNotifications"),
   setLaunchAtLogin: call("studi:setLaunchAtLogin"),

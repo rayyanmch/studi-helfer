@@ -21,6 +21,7 @@ import {
   type DesktopDeadline,
   type SetupModule,
   type StudiDesktop,
+  type SyncEvery,
   type SyncRunStatus,
   type SyncState,
 } from "./desktop";
@@ -74,7 +75,7 @@ export interface AppState {
   problem: Problem;
   job: StoreJob | null;
   today: string; // "2026-11-20"
-  schedule: { enabled: boolean; time: string };
+  schedule: { enabled: boolean; time: string; every: SyncEvery };
   notifications: boolean;
   launchAtLogin: boolean;
   calendars: CalendarInfo[];
@@ -105,7 +106,7 @@ const DEMO: AppState = {
   problem: "none",
   job: null,
   today: mock.TODAY,
-  schedule: { enabled: true, time: "07:00" },
+  schedule: { enabled: true, time: "07:00", every: "daily" },
   notifications: true,
   launchAtLogin: false,
   calendars: [],
@@ -396,7 +397,7 @@ export async function refresh() {
     failedCourseIds: failed,
     problem,
     today: localIso(),
-    schedule: { enabled: status.schedule.enabled, time: status.schedule.time },
+    schedule: { enabled: status.schedule.enabled, time: status.schedule.time, every: status.schedule.every ?? "daily" },
     notifications: status.notifications,
     launchAtLogin: status.launchAtLogin,
     calendars,
@@ -681,10 +682,10 @@ export async function chooseSlot(moduleId: string, key: string, on: boolean) {
   await Promise.all([refresh(), refreshDeadlines()]);
 }
 
-export async function setSchedule(enabled: boolean, time: string) {
+export async function setSchedule(enabled: boolean, time: string, every: SyncEvery = state.schedule.every) {
   if (state.mode !== "desktop") return { ok: true };
-  set({ schedule: { enabled, time } });
-  const res = await api().setSchedule({ enabled, time });
+  set({ schedule: { enabled, time, every } });
+  const res = await api().setSchedule({ enabled, time, every });
   if (!res.ok) await refresh();
   return res;
 }

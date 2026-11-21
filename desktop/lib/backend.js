@@ -117,7 +117,7 @@ function loadConfig() {
     username: null,
     targetDir: null,
     courses: [],
-    schedule: { enabled: false, time: "07:00" },
+    schedule: { enabled: false, time: "07:00", every: "daily" },
     notifications: true,
     randomDelayMin: 15,
     ...readJson(CONFIG, {}),
@@ -824,6 +824,13 @@ function launchctl(args) {
   return new Promise((resolve) => execFile("launchctl", args, (err) => resolve(!err)));
 }
 
+// Wie oft automatisch geholt wird: täglich zur Uhrzeit oder alle x Minuten (launchd StartInterval).
+const SCHEDULE_EVERY = { "30m": 30 * 60, "1h": 60 * 60, "3h": 3 * 60 * 60, daily: null };
+
+function scheduleEvery(value) {
+  return Object.hasOwn(SCHEDULE_EVERY, value) ? value : "daily";
+}
+
 async function applySchedule(isPackaged, schedule) {
   const domain = `gui/${process.getuid()}`;
   await launchctl(["bootout", `${domain}/${PLIST_LABEL}`]);
@@ -831,6 +838,8 @@ async function applySchedule(isPackaged, schedule) {
     await fsp.rm(PLIST, { force: true });
     return { ok: true, enabled: false };
   }
+  const every = scheduleEvery(schedule.every);
+  const intervalSec = SCHEDULE_EVERY[every];
   const [hour, minute] = String(schedule.time || "07:00")
     .split(":")
     .map((n) => Number.parseInt(n, 10));
@@ -864,13 +873,17 @@ ${programArgs}
 		<key>STUDI_DATA_DIR</key>
 		<string>${xmlEscape(DATA_DIR)}</string>
 	</dict>
-	<key>StartCalendarInterval</key>
-	<dict>
-		<key>Hour</key>
-		<integer>${hour}</integer>
-		<key>Minute</key>
-		<integer>${minute}</integer>
-	</dict>
+${
+  intervalSec
+    ? `\t<key>StartInterval</key>\n\t<integer>${intervalSec}</integer>`
+    : `\t<key>StartCalendarInterval</key>
+\t<dict>
+\t\t<key>Hour</key>
+\t\t<integer>${hour}</integer>
+\t\t<key>Minute</key>
+\t\t<integer>${minute}</integer>
+\t</dict>`
+}
 	<key>StandardOutPath</key>
 	<string>${xmlEscape(path.join(LOGS, "launchd.log"))}</string>
 	<key>StandardErrorPath</key>
@@ -882,8 +895,8 @@ ${programArgs}
   fs.writeFileSync(PLIST, plist);
   const ok = await launchctl(["bootstrap", domain, PLIST]);
   return ok
-    ? { ok: true, enabled: true, time: schedule.time }
-    : { ok: false, code: "launchd", message: "Could not set up the daily sync." };
+    ? { ok: true, enabled: true, time: schedule.time, every }
+    : { ok: false, code: "launchd", message: "Could not set up automatic updates." };
 }
 
 async function scheduleLoaded() {
@@ -925,5 +938,6 @@ module.exports = {
   listFiles,
   insideTarget,
   applySchedule,
+  scheduleEvery,
   scheduleLoaded,
 };

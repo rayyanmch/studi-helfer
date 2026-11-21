@@ -82,13 +82,16 @@ export interface SyncState {
   interrupted?: boolean;
 }
 
+/** Wie oft automatisch geholt wird: alle 30 min / 1 h / 3 h oder täglich zur Uhrzeit `time`. */
+export type SyncEvery = "30m" | "1h" | "3h" | "daily";
+
 export interface DesktopStatus {
   loggedIn: boolean;
   username: string | null;
   targetDir: string | null;
   defaultTargetDir: string; // ~/Uni als absoluter Pfad
   configured: boolean; // Zielordner + mindestens ein Kurs gewählt
-  schedule: { enabled: boolean; time: string; active: boolean }; // täglich, auch wenn die App zu ist
+  schedule: { enabled: boolean; time: string; every?: SyncEvery; active: boolean }; // auch wenn die App zu ist
   lastSync: { at: number; status: SyncRunStatus; added: number } | null; // at in Millisekunden
   sync: SyncState;
   notifications: boolean;
@@ -197,8 +200,8 @@ export interface StudiDesktop {
   getFiles(): Promise<DesktopCourse[]>;
   openFile(path: string): Promise<Ok | Fail>;
   revealFile(path: string): Promise<Ok | Fail>;
-  setSchedule(schedule: { enabled: boolean; time?: string }): Promise<
-    Ok<{ enabled: boolean; time?: string }> | Fail
+  setSchedule(schedule: { enabled: boolean; time?: string; every?: SyncEvery }): Promise<
+    Ok<{ enabled: boolean; time?: string; every?: SyncEvery }> | Fail
   >;
   /** Letzter Stand der Fristen (sofort, ohne Netz). Wird bei jedem Sync automatisch aktualisiert. */
   getDeadlines(): Promise<{ updatedAt: number | null; deadlines: DesktopDeadline[] }>;
@@ -227,6 +230,8 @@ export interface StudiDesktop {
   deleteCustomEvent(id: string): Promise<Ok | Fail>;
   /** Erkannten Termin oder Serie ausblenden (hidden) bzw. wieder zeigen; key "*" zeigt alle wieder. */
   setEventHidden(key: string, hidden: boolean): Promise<Ok | Fail>;
+  /** Kleines Vorschaubild (data:-URL) eines Mensa-Fotos von CloudMensa; null bei Fehler. Zwischengespeichert. */
+  mensaThumb(url: string): Promise<string | null>;
   /** Dateien als gesehen markieren (verschwinden aus „New“). */
   markSeen(fileIds: string[]): Promise<Ok>;
   setNotifications(on: boolean): Promise<Ok>;

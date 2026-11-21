@@ -8,6 +8,7 @@ import { useEffect, useRef, useState } from "react";
 import { CalendarPlus, Check, ChevronDown, ChevronLeft, ChevronRight, ExternalLink, FolderOpen, Pencil, RotateCcw, Search, X } from "lucide-react";
 import { Button, Swatch, colorOf, tone } from "./ui";
 import { CheckButton, DocTile, FileRow, FolderBadge, displayName } from "./files";
+import { linkSolutions } from "@/lib/solutions";
 import { openEvent, openNewEvent } from "./EventDialog";
 import type { ClassSlot, Course, CourseColor, CourseFile, Deadline } from "@/lib/mock-data";
 import * as store from "@/lib/app-store";
@@ -443,6 +444,9 @@ function Files({ course, files, freshIds }: { course: Course; files: CourseFile[
     .sort((a, b) => (b.modifiedAt ?? 0) - (a.modifiedAt ?? 0))
     .slice(0, 6);
 
+  // Lösung neben dem Blatt: „Solution“-Chip am Blatt, „Solution to …“ an der Lösung
+  const links = linkSolutions(files);
+
   const sortFiles = (list: CourseFile[]) =>
     sort === "newest" ? [...list].sort((a, b) => (b.modifiedAt ?? 0) - (a.modifiedAt ?? 0)) : list;
 
@@ -513,7 +517,7 @@ function Files({ course, files, freshIds }: { course: Course; files: CourseFile[
           ) : (
             <ul className="rounded-[10px] bg-surface px-1.5 py-1">
               {sortFiles(matches).map((f) => (
-                <FileRow key={f.id} file={f} color={color} highlight={q} />
+                <FileRow key={f.id} file={f} color={color} highlight={q} solutions={links.solutionsOf.get(f.id)} sheet={links.sheetOf.get(f.id)} />
               ))}
             </ul>
           )}
@@ -563,7 +567,7 @@ function Files({ course, files, freshIds }: { course: Course; files: CourseFile[
                 {isOpen && (
                   <ul className="rounded-[10px] bg-surface px-1.5 py-1">
                     {sortFiles(f.files).map((x) => (
-                      <FileRow key={x.id} file={x} color={color} />
+                      <FileRow key={x.id} file={x} color={color} solutions={links.solutionsOf.get(x.id)} sheet={links.sheetOf.get(x.id)} />
                     ))}
                   </ul>
                 )}

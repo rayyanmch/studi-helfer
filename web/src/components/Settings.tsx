@@ -7,6 +7,14 @@ import { AlertCircle, CalendarPlus, Check, FolderOpen, Trash2, X } from "lucide-
 import { Button, Spinner } from "./ui";
 import * as store from "@/lib/app-store";
 import { useApp } from "@/lib/app-store";
+import type { SyncEvery } from "@/lib/desktop";
+
+const EVERY: [SyncEvery, string][] = [
+  ["30m", "Every 30 minutes"],
+  ["1h", "Every hour"],
+  ["3h", "Every 3 hours"],
+  ["daily", "Once a day"],
+];
 
 export function Settings({ onClose, onEditCourses, onLogout }: { onClose: () => void; onEditCourses: () => void; onLogout: () => void }) {
   const app = useApp();
@@ -38,10 +46,27 @@ export function Settings({ onClose, onEditCourses, onLogout }: { onClose: () => 
         </header>
         <div className="flex flex-col gap-6 px-6 pb-6">
           <Section title="Updates">
-            <Row label="Get new files every day" hint="Runs in the background, even when the app is closed.">
+            <Row label="Get new files automatically" hint="Runs in the background, even when the app is closed.">
               <Toggle on={app.schedule.enabled} onChange={(on) => void store.setSchedule(on, app.schedule.time)} disabled={!desktop} />
             </Row>
             {app.schedule.enabled && (
+              <Row label="How often">
+                <select
+                  value={app.schedule.every}
+                  onChange={(e) => void store.setSchedule(true, app.schedule.time, e.target.value as SyncEvery)}
+                  disabled={!desktop}
+                  aria-label="How often to get new files"
+                  className="h-8 rounded-lg bg-surface px-2 shadow-[inset_0_0_0_1px_var(--line)] outline-none"
+                >
+                  {EVERY.map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </Row>
+            )}
+            {app.schedule.enabled && app.schedule.every === "daily" && (
               <Row label="Time">
                 <input
                   type="time"

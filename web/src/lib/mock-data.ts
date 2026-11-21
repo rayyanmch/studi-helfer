@@ -141,6 +141,13 @@ export const courses: Course[] = [
         ],
       },
       {
+        id: "st-loesung",
+        name: "Solutions",
+        files: [
+          { id: "st8", name: "Exercise Sheet 3 Solution.pdf", kind: "pdf", size: "340 KB", updated: "yesterday", isNew: true },
+        ],
+      },
+      {
         id: "st-selbst",
         name: "Self-study",
         files: [
@@ -204,6 +211,7 @@ export const courses: Course[] = [
         files: [
           { id: "ma3", name: "Sheet 7.pdf", kind: "pdf", size: "180 KB", updated: "today", isNew: true },
           { id: "ma4", name: "Sheet 6.pdf", kind: "pdf", size: "175 KB", updated: "Nov 13", isNew: false },
+          { id: "ma5", name: "Solution Sheet 6.pdf", kind: "pdf", size: "210 KB", updated: "Nov 18", isNew: false },
         ],
       },
     ],
