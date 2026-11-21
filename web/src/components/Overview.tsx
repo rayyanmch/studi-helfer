@@ -31,6 +31,7 @@ import { StudyHub, useStudyDue } from "./StudyHub";
 import { Welcome } from "./Welcome";
 import { MensaToday } from "./MensaToday";
 import { matches, searchTerms } from "@/lib/search";
+import { REMIND_DAYS, useExamRegistered } from "@/lib/exam-reg";
 import { MailView } from "./MailView";
 import { CalendarView } from "./CalendarView";
 import { CalendarChip, ClashTag, GoogleBlock, abbrTitle, mergeTwins, overlapRows, sharedZones, startMinutes, type DayEntry, type TimedEntry } from "./calendar-bits";
@@ -681,6 +682,9 @@ function WeekView({
   const nextExam = deadlines
     .filter((d) => d.kind === "klausur" && daysFromToday(d.date) >= 0 && courseById(d.courseId))
     .sort((a, b) => a.date.localeCompare(b.date))[0];
+  // Erinnerung an die Prüfungsanmeldung in KLIPS (Details und „I’m registered“ im Termin-Dialog)
+  const registered = useExamRegistered();
+  const askRegistered = nextExam && !registered.includes(nextExam.id) && daysFromToday(nextExam.date) <= REMIND_DAYS;
 
   const newFiles = list.flatMap((c) =>
     c.folders.flatMap((f) => f.files.filter((x) => x.isNew || x.changeNote).map((file) => ({ file, course: c }))),
@@ -703,6 +707,17 @@ function WeekView({
                   : `${open.length} open ${open.length === 1 ? "deadline" : "deadlines"} in ${kurse} ${kurse === 1 ? "course" : "courses"}.`}
                 {first && ` Next up: ${first.kind === "klausur" ? examLabel(first.title, courseById(first.courseId) ?? { name: "" }) : bare(first.title)} ${daysFromToday(first.date) === 0 ? "today" : daysFromToday(first.date) === 1 ? "tomorrow" : `on ${LONG[new Date(parseDay(first.date)).getUTCDay()]}`}.`}
                 {nextExam && ` Next exam: ${nameOf(courseById(nextExam.courseId)!)} ${inDays(daysFromToday(nextExam.date))}.`}
+                {askRegistered && (
+                  <>
+                    {" "}
+                    <button
+                      onClick={() => openEvent(nextExam, { onOpenCourse: () => onOpen(nextExam.courseId) })}
+                      className="rounded font-semibold text-[var(--focus)] hover:underline"
+                    >
+                      Registered in KLIPS?
+                    </button>
+                  </>
+                )}
               </>
             }
           </p>

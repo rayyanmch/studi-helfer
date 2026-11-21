@@ -6,11 +6,12 @@
 // openNewEvent({ date, start, moduleId }).
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { CalendarDays, Check, Clock, EyeOff, MapPin, Pencil, Repeat, RotateCcw, Trash2, X } from "lucide-react";
+import { CalendarDays, Check, CircleCheck, ClipboardCheck, Clock, ExternalLink, EyeOff, MapPin, Pencil, Repeat, RotateCcw, Trash2, X } from "lucide-react";
 import { Button, Swatch, colorOf, nameOf, tone } from "./ui";
 import * as store from "@/lib/app-store";
 import { COURSE_COLORS, appStore, realCourses, useApp } from "@/lib/app-store";
 import type { CourseColor, CustomEvent, Deadline } from "@/lib/mock-data";
+import { KLIPS_URL, registrationHint, setExamRegistered, useExamRegistered } from "@/lib/exam-reg";
 import { lecturePeriod, newEventId, occurrences, parseIso, parseTimeLabel, timeLabel, weekdayOf } from "@/lib/recurrence";
 
 // --- Steuerung (kleiner eigener Speicher, damit jede Ansicht den Dialog öffnen kann) -------------------
@@ -230,6 +231,7 @@ function Details({ deadline: d, onOpenCourse }: { deadline: Deadline; onOpenCour
             Found automatically{from ? ` in ${from.slice("Found in ".length)}` : ""}. Edit it to fix the time or room, or hide it if it is wrong.
           </p>
         </div>
+        {d.kind === "klausur" && <ExamRegistration deadline={d} />}
         <div className="mt-4 flex flex-wrap items-center gap-2">
           {canDone && (
             <Button variant={isDone ? "secondary" : "primary"} onClick={() => void store.toggleDone(d.id)} aria-pressed={isDone}>
@@ -290,6 +292,49 @@ function Details({ deadline: d, onOpenCourse }: { deadline: Deadline; onOpenCour
         </div>
       </div>
     </>
+  );
+}
+
+// Prüfungsanmeldung: Erstis verwechseln Kursbeitritt und Prüfungsanmeldung (siehe lib/exam-reg.ts).
+function ExamRegistration({ deadline: d }: { deadline: Deadline }) {
+  const app = useApp();
+  const registered = useExamRegistered().includes(d.id);
+  const today = app.today || store.localIso();
+  const days = Math.round((parseIso(d.date).getTime() - parseIso(today).getTime()) / 86_400_000);
+  if (days < 0) return null;
+  if (registered) {
+    return (
+      <div className="mt-3 flex items-center gap-2.5 rounded-[12px] bg-surface px-4 py-3 text-[13px]">
+        <CircleCheck size={16} className="shrink-0 text-muted" aria-hidden />
+        <span className="flex-1">You marked this exam as registered in KLIPS.</span>
+        <Button variant="plain" onClick={() => setExamRegistered(d.id, false)}>
+          Undo
+        </Button>
+      </div>
+    );
+  }
+  return (
+    <div className="mt-3 rounded-[12px] bg-surface p-4">
+      <p className="flex items-center gap-2 font-semibold">
+        <ClipboardCheck size={15} className="shrink-0 text-muted" aria-hidden /> Registered in KLIPS?
+      </p>
+      <p className="mt-1 text-[13px] text-muted">
+        Being in the course is not enough, you also have to register for the exam itself. {registrationHint(days)}
+      </p>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <a
+          href={KLIPS_URL}
+          target="_blank"
+          rel="noreferrer"
+          className="no-drag inline-flex h-8 items-center gap-1.5 rounded-lg border border-line bg-surface px-3 text-[13px] font-semibold hover:bg-hover"
+        >
+          <ExternalLink size={13} aria-hidden /> Open KLIPS
+        </a>
+        <Button onClick={() => setExamRegistered(d.id, true)}>
+          <Check size={13} aria-hidden /> I’m registered
+        </Button>
+      </div>
+    </div>
   );
 }
 
