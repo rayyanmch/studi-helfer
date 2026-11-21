@@ -300,10 +300,32 @@ function Details({ deadline: d, onOpenCourse }: { deadline: Deadline; onOpenCour
 // Prüfungsanmeldung: Erstis verwechseln Kursbeitritt und Prüfungsanmeldung (siehe lib/exam-reg.ts).
 function ExamRegistration({ deadline: d }: { deadline: Deadline }) {
   const app = useApp();
-  const registered = useExamRegistered().includes(d.id);
+  const ids = useExamRegistered();
+  const registered = ids.includes(d.id);
   const today = app.today || store.localIso();
   const days = Math.round((parseIso(d.date).getTime() - parseIso(today).getTime()) / 86_400_000);
+  // Erst- und Zweittermin sind Alternativen (WiSo: man meldet sich nur für einen an)
+  const other = registered
+    ? undefined
+    : app.deadlines.find((x) => x.kind === "klausur" && x.courseId === d.courseId && x.id !== d.id && ids.includes(x.id));
   if (days < 0) return null;
+  if (other) {
+    return (
+      <div className="mt-3 flex items-center gap-2.5 rounded-[12px] bg-surface px-4 py-3 text-[13px]">
+        <CircleCheck size={16} className="shrink-0 text-muted" aria-hidden />
+        <span className="flex-1">You registered for the other date ({fmtShort(other.date)}). Usually you can take only one of them.</span>
+        <Button
+          variant="plain"
+          onClick={() => {
+            setExamRegistered(other.id, false);
+            setExamRegistered(d.id, true);
+          }}
+        >
+          Switch to this date
+        </Button>
+      </div>
+    );
+  }
   if (registered) {
     return (
       <div className="mt-3 flex items-center gap-2.5 rounded-[12px] bg-surface px-4 py-3 text-[13px]">

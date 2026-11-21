@@ -197,7 +197,7 @@ export function Overview({
             <NavItem active={!searching && view === "calendar"} onClick={() => open("calendar")} icon={<CalendarRange size={15} aria-hidden />}>
               Calendar
             </NavItem>
-            <NavItem active={!searching && view === "new"} onClick={() => open("new")} icon={<Inbox size={15} aria-hidden />} count={newCount}>
+            <NavItem active={!searching && view === "new"} onClick={() => open("new")} icon={<Inbox size={15} aria-hidden />} count={newCount} countHint={`${newCount} new ${newCount === 1 ? "file" : "files"} you haven’t opened`}>
               New
             </NavItem>
             <NavItem
@@ -205,14 +205,15 @@ export function Overview({
               onClick={() => open("courses")}
               icon={<Library size={15} aria-hidden />}
               count={modules.length}
+              countHint={`${modules.length} ${modules.length === 1 ? "course" : "courses"}`}
               warn={failedIds.length > 0}
             >
               Courses
             </NavItem>
-            <NavItem active={!searching && view === "study"} onClick={() => open("study")} icon={<GraduationCap size={15} aria-hidden />} count={studyDue}>
+            <NavItem active={!searching && view === "study"} onClick={() => open("study")} icon={<GraduationCap size={15} aria-hidden />} count={studyDue} countHint={`${studyDue} ${studyDue === 1 ? "card" : "cards"} to learn today`}>
               Study
             </NavItem>
-            <NavItem active={view === "mail"} onClick={() => open("mail")} icon={<Mail size={15} aria-hidden />} count={mailUnread}>
+            <NavItem active={view === "mail"} onClick={() => open("mail")} icon={<Mail size={15} aria-hidden />} count={mailUnread} countHint={`${mailUnread} unread`}>
               Mail
             </NavItem>
             <NavItem active={!searching && view === "mensa"} onClick={() => open("mensa")} icon={<UtensilsCrossed size={15} aria-hidden />}>
@@ -452,6 +453,7 @@ function NavItem({
   onClick,
   icon,
   count = 0,
+  countHint,
   warn,
   children,
 }: {
@@ -459,6 +461,7 @@ function NavItem({
   onClick: () => void;
   icon: React.ReactNode;
   count?: number;
+  countHint?: string; // was die Zahl zählt („13 cards to review today“), als Tooltip und für VoiceOver
   warn?: boolean;
   children: React.ReactNode;
 }) {
@@ -476,7 +479,9 @@ function NavItem({
         <AlertTriangle size={13} className={active ? "" : "text-danger"} aria-label="Problem getting new files" />
       ) : (
         count > 0 && (
-          <span className={`text-[12px] tabular-nums ${active ? "opacity-80" : "text-muted"}`}>{count}</span>
+          <span className={`text-[12px] tabular-nums ${active ? "opacity-80" : "text-muted"}`} title={countHint} aria-label={countHint}>
+            {count}
+          </span>
         )
       )}
     </button>
