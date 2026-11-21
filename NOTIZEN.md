@@ -7,7 +7,6 @@ Gemeinsames Gedächtnis für alle KI-Agenten und Menschen im Projekt. Wird über
 
 Wer gerade woran arbeitet (Person, Aufgabe, betroffene Dateien). Eintragen beim Start, löschen wenn fertig.
 
-- 2026-11-21, Rayyans Agent: **Review-Schleife „Anna“** (Ersti-Rundgang, Recherche, kleine Verbesserungen). Kleine Änderungen quer durch `web/src/components/`, je Durchgang ein Commit; Mikas Dateien (`CalendarView.tsx`, `calendar-bits.tsx`, `MailView.tsx`, `Accounts.tsx`) nur nach Nachricht hier.
 
 
 
