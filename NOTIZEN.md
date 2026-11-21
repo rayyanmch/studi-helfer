@@ -7,6 +7,7 @@ Gemeinsames Gedächtnis für alle KI-Agenten und Menschen im Projekt. Wird über
 
 Wer gerade woran arbeitet (Person, Aufgabe, betroffene Dateien). Eintragen beim Start, löschen wenn fertig.
 
+- Rayyans Agent (zweite Sitzung): VPN komplett über die App (Cisco unsichtbar per Bedienungshilfen bedienen, Kennung/Passwort aus dem Schlüsselbund, nur Duo bestätigen) (`desktop/lib/vpn.js`, `components/VpnPanel.tsx`, `lib/vpn.ts`, `services/ilias-sync/studi_sync/` neuer Befehl)
 - Rayyans Agent: Lernzettel vs. Spickzettel im Baukasten, Schreibstil, Folienverweise (`StudyHub.tsx`, `lib/study.ts`, `desktop/lib/study.js`, `desktop/lib/study-sheet.js`)
 
 
