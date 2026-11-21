@@ -12,6 +12,8 @@ const CLIENTS = {
     name: "Cisco Secure Client",
     apps: ["/Applications/Cisco/Cisco Secure Client.app", "/Applications/Cisco/Cisco AnyConnect Secure Mobility Client.app"],
     cli: ["/opt/cisco/secureclient/bin/vpn", "/opt/cisco/anyconnect/bin/vpn"],
+    // macOS verlangt einmal „Erlauben“ für die Systemerweiterung (Netzwerkfilter)
+    extension: "com.cisco.anyconnect.macos.acsockext",
   },
   eduvpn: { name: "eduVPN", apps: ["/Applications/eduVPN.app"], cli: [] },
   forticlient: { name: "FortiClient", apps: ["/Applications/FortiClient.app"], cli: [] },
@@ -42,12 +44,24 @@ function ciscoState(cli) {
   });
 }
 
+/** Hat der Student die Systemerweiterung des VPN-Programms in den Mac-Einstellungen erlaubt? null = nicht nötig/unbekannt. */
+function extensionAllowed(bundleId) {
+  return new Promise((resolve) => {
+    execFile("/usr/bin/systemextensionsctl", ["list"], { timeout: 6000 }, (err, stdout) => {
+      if (err && !stdout) return resolve(null);
+      const line = String(stdout).split("\n").find((l) => l.includes(bundleId));
+      resolve(Boolean(line && /activated enabled/.test(line)));
+    });
+  });
+}
+
 async function status() {
   const uni = UNIS.koeln;
   const client = CLIENTS[uni.client];
   const app = firstExisting(client.apps);
   const cli = firstExisting(client.cli);
   const connected = app && cli && uni.client === "cisco" ? await ciscoState(cli) : null;
+  const allowed = client.extension ? (app ? await extensionAllowed(client.extension) : false) : null;
   return {
     ok: true,
     uni: uni.name,
@@ -56,6 +70,7 @@ async function status() {
     guide: uni.guide,
     login: uni.login,
     installed: Boolean(app),
+    allowed, // true / false / null = braucht keine Erlaubnis
     connected, // true / false / null = unbekannt
   };
 }
@@ -68,6 +83,16 @@ async function openClient() {
   return err ? { ok: false, code: "failed", message: err } : { ok: true };
 }
 
+/** Öffnet die Mac-Einstellungen an der Stelle, wo man die Erweiterung erlaubt. */
+async function openSettings() {
+  try {
+    await shell.openExternal("x-apple.systempreferences:com.apple.LoginItems-Settings.extension");
+  } catch {
+    await shell.openExternal("x-apple.systempreferences:com.apple.preference.security");
+  }
+  return { ok: true };
+}
+
 async function openGuide() {
   await shell.openExternal(UNIS.koeln.guide);
   return { ok: true };
@@ -77,6 +102,7 @@ function register(handle) {
   handle("studi:vpn:status", () => status());
   handle("studi:vpn:open", () => openClient());
   handle("studi:vpn:guide", () => openGuide());
+  handle("studi:vpn:settings", () => openSettings());
 }
 
 module.exports = { register, status, UNIS, CLIENTS };

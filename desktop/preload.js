@@ -113,6 +113,7 @@ contextBridge.exposeInMainWorld("studi", {
     status: call("studi:vpn:status"),
     open: call("studi:vpn:open"),
     guide: call("studi:vpn:guide"),
+    settings: call("studi:vpn:settings"),
   },
   onDeadlinesChanged(callback) {
     const listener = () => callback();

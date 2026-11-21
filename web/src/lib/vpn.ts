@@ -13,6 +13,7 @@ export interface VpnStatus {
   guide: string; // offizielle Anleitung der Uni (mit Download)
   login: string; // womit man sich anmeldet
   installed: boolean;
+  allowed: boolean | null; // Systemerweiterung in den Mac-Einstellungen erlaubt? null = nicht nötig
   connected: boolean | null; // null = das Programm verrät es nicht
   ready: boolean;
 }
@@ -21,6 +22,7 @@ interface VpnApi {
   status(): Promise<{ ok: true } & Omit<VpnStatus, "ready">>;
   open(): Promise<{ ok: boolean; message?: string }>;
   guide(): Promise<{ ok: true }>;
+  settings(): Promise<{ ok: true }>;
 }
 
 declare module "./desktop" {
@@ -37,6 +39,7 @@ const DEMO: VpnStatus = {
   guide: "https://rrzk.uni-koeln.de/en/internet-access-web/network-access/vpn/cisco-secure-client-fuer-mac",
   login: "Your uni ID and password, the same as for ILIAS.",
   installed: true,
+  allowed: false,
   connected: false,
   ready: true,
 };
@@ -100,6 +103,13 @@ export async function openVpnApp(): Promise<string | null> {
   }
   const r = await v.open();
   return r.ok ? null : (r.message ?? "Could not open the VPN app.");
+}
+
+/** Öffnet die Mac-Einstellungen („Erlauben“ für die VPN-Erweiterung). Im Browser: tut so, als wäre es erlaubt. */
+export function openMacSettings() {
+  const v = api();
+  if (v) void v.settings();
+  else setTimeout(() => set({ allowed: true }), 1500);
 }
 
 export function openVpnGuide() {

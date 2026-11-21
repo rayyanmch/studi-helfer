@@ -7,7 +7,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Check, Copy, ExternalLink, X } from "lucide-react";
 import { Button } from "./ui";
-import { openVpnApp, openVpnGuide, useVpn, watchVpn } from "@/lib/vpn";
+import { openMacSettings, openVpnApp, openVpnGuide, useVpn, watchVpn } from "@/lib/vpn";
 
 // --- Fenster von überall öffnen (Seitenleiste, Hinweis bei ILIAS-Störung) ---------------
 
@@ -89,9 +89,13 @@ function VpnDialog({ onClose }: { onClose: () => void }) {
     if (err) setError(err);
   };
 
-  // Welcher Schritt ist dran? Fertige Schritte bekommen einen Haken.
-  const done = [vpn.installed, copied || connected, connected];
+  // Welcher Schritt ist dran? Fertige Schritte bekommen einen Haken. „Erlauben“ gibt es nur bei Programmen mit Systemerweiterung (Cisco).
+  const needsAllow = vpn.allowed !== null;
+  const allowed = vpn.allowed === true;
+  const done = [vpn.installed, ...(needsAllow ? [allowed] : []), copied || connected, connected];
   const current = done.findIndex((d) => !d);
+  const n = (i: number) => i + 1;
+  const base = needsAllow ? 1 : 0;
 
   return (
     <div className="no-drag fixed inset-0 z-50 flex items-start justify-center bg-black/25 p-6 pt-[10vh]" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
@@ -121,7 +125,22 @@ function VpnDialog({ onClose }: { onClose: () => void }) {
               </Button>
             )}
           </Step>
-          <Step n={2} done={done[1]} now={current === 1} title="Server address" sub={`Paste it into ${vpn.client} the first time. After that it remembers it.`}>
+          {needsAllow && (
+            <Step
+              n={2}
+              done={allowed}
+              now={current === 1}
+              title={allowed ? `${vpn.client} is allowed on your Mac` : `Allow ${vpn.client} on your Mac`}
+              sub={allowed ? "macOS lets it set up the VPN." : "Your Mac asks once. Open the settings, switch the Cisco entry on and click “Allow” if a window pops up."}
+            >
+              {!allowed && (
+                <Button variant={current === 1 ? "primary" : "secondary"} onClick={openMacSettings} disabled={!vpn.installed}>
+                  <ExternalLink size={13} aria-hidden /> Open Mac settings
+                </Button>
+              )}
+            </Step>
+          )}
+          <Step n={n(1 + base)} done={done[1 + base]} now={current === 1 + base} title="Server address" sub={`Paste it into ${vpn.client} the first time. After that it remembers it.`}>
             <span className="flex items-center gap-2">
               <code className="rounded-md bg-bg px-2 py-1 text-[12px] [user-select:text]">{vpn.server}</code>
               <Button onClick={() => void copy()}>
@@ -129,9 +148,9 @@ function VpnDialog({ onClose }: { onClose: () => void }) {
               </Button>
             </span>
           </Step>
-          <Step n={3} done={done[2]} now={current === 2} title={connected ? "Connected" : "Connect"} sub={connected ? "You’re in the uni network. You can close this window." : `Click “Connect” in ${vpn.client}. ${vpn.login}`}>
+          <Step n={n(2 + base)} done={done[2 + base]} now={current === 2 + base} title={connected ? "Connected" : "Connect"} sub={connected ? "You’re in the uni network. You can close this window." : `Click “Connect” in ${vpn.client}. ${vpn.login}`}>
             {!connected && (
-              <Button variant={current === 2 ? "primary" : "secondary"} onClick={() => void openApp()} disabled={!vpn.installed}>
+              <Button variant={current === 2 + base ? "primary" : "secondary"} onClick={() => void openApp()} disabled={!vpn.installed}>
                 Open {vpn.client.replace(/ Secure Client$/, "")}
               </Button>
             )}
