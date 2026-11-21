@@ -674,7 +674,8 @@ function getDeadlines() {
   const { modules, moduleOfCourse } = currentModules(cfg);
   const moduleOf = (courseId) => (String(courseId).startsWith("mod-") ? courseId : moduleOfCourse.get(courseId));
 
-  const external = readJson(CALENDAR_EVENTS, { events: [] }).events ?? [];
+  const externalRaw = readJson(CALENDAR_EVENTS, { events: [] }).events;
+  const external = Array.isArray(externalRaw) ? externalRaw.filter((e) => e && typeof e === "object") : [];
   const fromCalendars = external.map((e) => {
     const m = matchModule(e.title, modules);
     return {
@@ -697,11 +698,14 @@ function getDeadlines() {
   const sameDay = new Set();
   const all = [];
   const termsByDay = new Map(); // Modul|Tag → Termine (für den Abgleich mit dem Stundenplan)
+  // Kaputte oder halb geschriebene Dateien dürfen die Übersicht nicht leer lassen: nur brauchbare Einträge nehmen.
+  const usable = (list) =>
+    Array.isArray(list) ? list.filter((d) => d && typeof d === "object" && typeof d.date === "string" && typeof d.title === "string") : [];
   const sources = [
-    data.deadlines ?? [],
-    readJson(SHEET_DEADLINES, { deadlines: [] }).deadlines ?? [],
-    fromCalendars,
-    aiDeadlines.list(),
+    usable(data.deadlines),
+    usable(readJson(SHEET_DEADLINES, { deadlines: [] }).deadlines),
+    usable(fromCalendars),
+    usable(aiDeadlines.list()),
   ];
   for (const list of sources) {
     for (const d0 of list) {

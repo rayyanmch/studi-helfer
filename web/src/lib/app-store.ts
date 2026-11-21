@@ -402,7 +402,12 @@ export async function refresh() {
     launchAtLogin: status.launchAtLogin,
     calendars,
   });
-  await refreshDeadlines();
+  try {
+    await refreshDeadlines();
+  } catch (e) {
+    // Fristen kaputt? Die App öffnet trotzdem (mit Dateien), statt leer zu bleiben.
+    console.error("[deadlines]", e);
+  }
 }
 
 export async function refreshDeadlines() {
