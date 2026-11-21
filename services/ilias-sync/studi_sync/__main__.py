@@ -22,6 +22,7 @@
                                  Student im Browser; danach den Anmelde-Tab schließen. stdin: {"server"}.
                                  Zwischenstände als {"type": "progress", "stage"}.
     vpn-disconnect               Uni-VPN trennen; Ciscos Abmeldeseite im Browser abfangen und schließen.
+    vpn-trusted                  Darf der Helfer die Bedienungshilfen nutzen? stdin: {"prompt"?} (macOS fragt nach).
     vpn-inspect                  Fehlersuche: Aufbau der Cisco-Fenster (ohne Feldinhalte).
     file-text                    Text einer Kursdatei mit Seitenmarken (Lernbereich); stdin: {"path", "maxChars"?}
     pferd-run --config DATEI     Intern: PFERD mit Köln-Korrekturen starten.
@@ -228,6 +229,12 @@ def cmd_vpn_disconnect(args: argparse.Namespace) -> None:
     emit(vpnauto.disconnect())
 
 
+def cmd_vpn_trusted(args: argparse.Namespace) -> None:
+    from . import vpnauto
+
+    emit({"type": "result", "trusted": vpnauto.trusted(prompt=_stdin_json().get("prompt") is True)})
+
+
 def cmd_vpn_inspect(args: argparse.Namespace) -> None:
     from . import vpnauto
 
@@ -255,7 +262,8 @@ def main() -> int:
     p = sub.add_parser("calendar-test"); p.add_argument("--url", required=True); p.set_defaults(fn=cmd_calendar_test)
     p = sub.add_parser("sync"); p.add_argument("--auto", action="store_true"); p.set_defaults(fn=cmd_sync)
     for name, fn in (("mail-check", cmd_mail_check), ("mail-list", cmd_mail_list), ("mail-modify", cmd_mail_modify), ("mail-send", cmd_mail_send), ("mail-attachment", cmd_mail_attachment), ("file-text", cmd_file_text),
-                     ("vpn-connect", cmd_vpn_connect), ("vpn-disconnect", cmd_vpn_disconnect), ("vpn-inspect", cmd_vpn_inspect)):
+                     ("vpn-connect", cmd_vpn_connect), ("vpn-disconnect", cmd_vpn_disconnect), ("vpn-trusted", cmd_vpn_trusted),
+                     ("vpn-inspect", cmd_vpn_inspect)):
         sub.add_parser(name).set_defaults(fn=fn)
     p = sub.add_parser("pferd-run"); p.add_argument("--config", required=True); p.set_defaults(fn=cmd_pferd_run)
     args = parser.parse_args()

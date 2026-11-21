@@ -19,7 +19,8 @@ export interface VpnStatus {
   phase: "connected" | "connecting" | "disconnected" | null; // „connecting“ = die Anmeldung läuft (z. B. Duo)
   secondFactor: string | null; // „Duo Mobile“: Bestätigung auf dem Handy bei jeder Anmeldung
   canAuto: boolean; // App kann das VPN-Programm bedienen (heute: Cisco)
-  axTrusted: boolean; // Erlaubnis „Bedienungshilfen“ für Studi-Helfer
+  axTrusted: boolean; // Erlaubnis „Bedienungshilfen“ (geprüft im Helfer, der Cisco bedient)
+  axName?: string; // so heißt der Eintrag unter Bedienungshilfen („studi-sync“ in der fertigen App)
   auto: VpnAuto | null; // laufendes oder letztes Verbinden über die App
   ready: boolean;
 }

@@ -192,9 +192,17 @@ function VpnDialog({ onClose }: { onClose: () => void }) {
   useEffect(() => {
     connectAutoRef.current = connectAuto;
   });
+  // Nur einmal pro erteilter Erlaubnis automatisch starten (sonst Schleife, falls der Helfer sie doch nicht hat)
+  const autoStarted = useRef(false);
   useEffect(() => {
-    if (!accessJustGranted) return;
-    const t = window.setTimeout(() => void connectAutoRef.current(), 300);
+    if (!vpn.axTrusted) autoStarted.current = false;
+  }, [vpn.axTrusted]);
+  useEffect(() => {
+    if (!accessJustGranted || autoStarted.current) return;
+    const t = window.setTimeout(() => {
+      autoStarted.current = true;
+      void connectAutoRef.current();
+    }, 300);
     return () => window.clearTimeout(t);
   }, [accessJustGranted]);
 
@@ -268,7 +276,7 @@ function VpnDialog({ onClose }: { onClose: () => void }) {
               )}
             </div>
 
-            {showAccess && <AccessCard factor={factor} onUseCisco={useCiscoMyself} />}
+            {showAccess && <AccessCard vpn={vpn} onUseCisco={useCiscoMyself} />}
 
             {/* Im Hintergrund: was passiert gerade? */}
             {running && (
@@ -320,7 +328,7 @@ function VpnDialog({ onClose }: { onClose: () => void }) {
             </ol>
             {showAccess && (
               <div className="mx-6">
-                <AccessCard factor={factor} onUseCisco={useCiscoMyself} />
+                <AccessCard vpn={vpn} onUseCisco={useCiscoMyself} />
               </div>
             )}
           </>
@@ -371,7 +379,8 @@ function VpnDialog({ onClose }: { onClose: () => void }) {
 }
 
 /** Einmal fragen: Darf Studi-Helfer Cisco für dich bedienen? */
-function AccessCard({ factor, onUseCisco }: { factor: string | null; onUseCisco: () => void }) {
+function AccessCard({ vpn, onUseCisco }: { vpn: VpnStatus; onUseCisco: () => void }) {
+  const factor = vpn.secondFactor;
   return (
     <div className="mt-3 rounded-[12px] bg-surface px-4 py-3.5">
       <div className="flex items-start gap-3">
@@ -381,7 +390,7 @@ function AccessCard({ factor, onUseCisco }: { factor: string | null; onUseCisco:
         <span className="min-w-0 flex-1">
           <b className="block font-semibold">Let Studi-Helfer handle Cisco</b>
           <span className="text-[13px] text-muted">
-            Then you never open Cisco yourself: you sign in in your browser{factor ? ` and confirm on ${factor}` : ""}, and Studi-Helfer closes the sign-in tab once you’re connected. Your Mac asks once: switch on “Studi-Helfer” under Accessibility.
+            Then you never open Cisco yourself: you sign in in your browser{factor ? ` and confirm on ${factor}` : ""}, and Studi-Helfer closes the sign-in tab once you’re connected. Your Mac asks once: switch on “{vpn.axName ?? "Studi-Helfer"}” under Accessibility.
           </span>
         </span>
       </div>
@@ -452,7 +461,7 @@ function AutoSetupSteps({
         sub={
           vpn.axTrusted
             ? `It clicks “Connect” for you and closes the sign-in tab afterwards.`
-            : `Then you never open ${vpn.client} yourself. Your Mac asks once: switch on “Studi-Helfer” under Accessibility.`
+            : `Then you never open ${vpn.client} yourself. Your Mac asks once: switch on “${vpn.axName ?? "Studi-Helfer"}” under Accessibility.`
         }
         right={
           !vpn.axTrusted ? (

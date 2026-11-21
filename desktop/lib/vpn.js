@@ -7,7 +7,7 @@
 
 const fs = require("fs");
 const { execFile } = require("child_process");
-const { app, BrowserWindow, shell, systemPreferences } = require("electron");
+const { app, BrowserWindow, shell } = require("electron");
 const backend = require("./backend");
 
 /** VPN-Programme, die Unis in Deutschland nutzen, mit typischen Orten auf dem Mac. */
@@ -65,14 +65,24 @@ function extensionAllowed(bundleId) {
   });
 }
 
-/** Darf Studi-Helfer andere Programme bedienen (Bedienungshilfen)? prompt = macOS-Abfrage zeigen. */
-function axTrusted(prompt = false) {
-  try {
-    return systemPreferences.isTrustedAccessibilityClient(prompt);
-  } catch {
-    return false;
-  }
+let isPackaged = () => app.isPackaged; // setzt register()
+
+/**
+ * Darf der Helfer die Bedienungshilfen nutzen? Gefragt wird der Helfer selbst: In der fertigen App rechnet macOS
+ * ihn nicht Studi-Helfer zu (eigener Eintrag „studi-sync“), Electrons eigene Erlaubnis sagt darüber nichts.
+ * Gepuffert: erlaubt 60 s, sonst 3 s (damit ein frisch erteilter Haken schnell ankommt).
+ */
+async function axTrusted() {
+  const c = cache.get("ax");
+  if (c && !c.pending && Date.now() - c.at > (c.value ? 60_000 : 3_000)) forget("ax");
+  return cached("ax", 60_000, async () => {
+    const res = await backend.runHelper(isPackaged(), ["vpn-trusted"], { stdin: "{}", timeoutMs: 15_000 });
+    return res.type === "result" && res.trusted === true;
+  });
 }
+
+/** Name des Eintrags unter Bedienungshilfen, den der Student einschalten muss. */
+const axName = () => (isPackaged() ? "studi-sync" : "Electron");
 
 // Laufendes Verbinden: { running, stage (starting/browser/connecting/done/error/cancelled), since, error, child, cancelled }
 let auto = null;
@@ -121,7 +131,8 @@ async function status() {
     allowed, // true / false / null = braucht keine Erlaubnis
     connected, // true / false / null = unbekannt
     canAuto: uni.client === "cisco", // App kann Cisco im Hintergrund bedienen (sobald installiert)
-    axTrusted: axTrusted(false),
+    axTrusted: await axTrusted(),
+    axName: axName(),
     auto: autoView(),
   };
 }
@@ -132,7 +143,8 @@ async function status() {
  */
 async function connectAuto(packaged) {
   if (auto?.running) return { ok: false, code: "busy", message: "Already connecting." };
-  if (!axTrusted(false)) return { ok: false, code: "no_permission", message: "Studi-Helfer needs permission to operate Cisco for you." };
+  forget("ax");
+  if (!(await axTrusted())) return { ok: false, code: "no_permission", message: "Studi-Helfer needs permission to operate Cisco for you." };
   auto = { running: true, stage: "starting", since: Date.now(), error: null, child: null, cancelled: false };
   const run = auto;
   const res = await backend.runHelper(packaged(), ["vpn-connect"], {
@@ -145,6 +157,7 @@ async function connectAuto(packaged) {
     },
   });
   forget("phase");
+  if (res.code === "no_permission") forget("ax");
   const ok = res.type === "result";
   const error = ok || run.cancelled ? null : { code: res.code || "failed", message: res.message || "Could not connect." };
   auto = { running: false, stage: ok ? "done" : run.cancelled ? "cancelled" : "error", since: Date.now(), error };
@@ -162,13 +175,15 @@ async function cancelAuto() {
   return { ok: true };
 }
 
-/** Fragt einmal nach „Bedienungshilfen“ und öffnet die passende Stelle in den Mac-Einstellungen. */
+/** Der Helfer fragt macOS nach „Bedienungshilfen“ (trägt sich dabei in die Liste ein); dazu die Einstellungen öffnen. */
 async function allowAccess() {
-  if (axTrusted(true)) return { ok: true, allowed: true };
+  forget("ax");
+  const res = await backend.runHelper(isPackaged(), ["vpn-trusted"], { stdin: JSON.stringify({ prompt: true }), timeoutMs: 15_000 });
+  if (res.type === "result" && res.trusted) return { ok: true, allowed: true };
   try {
     await shell.openExternal("x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility");
   } catch {
-    // die macOS-Abfrage von axTrusted(true) hat schon einen Knopf zu den Einstellungen
+    // die macOS-Abfrage hat selbst einen Knopf zu den Einstellungen
   }
   return { ok: true, allowed: false };
 }
@@ -227,6 +242,7 @@ async function openGuide() {
 }
 
 function register(handle, packaged = () => app.isPackaged) {
+  isPackaged = packaged;
   handle("studi:vpn:status", () => status());
   handle("studi:vpn:connect", () => connectAuto(packaged));
   handle("studi:vpn:cancel", () => cancelAuto());
@@ -236,7 +252,7 @@ function register(handle, packaged = () => app.isPackaged) {
   handle("studi:vpn:open", () => openClient());
   handle("studi:vpn:disconnect", async () => {
     // Mit Erlaubnis fängt der Helfer die Abmeldeseite ab, die Cisco danach im Browser öffnet (versteckt + schließt)
-    if (UNIS.koeln.client === "cisco" && axTrusted(false)) {
+    if (UNIS.koeln.client === "cisco" && (await axTrusted())) {
       const res = await backend.runHelper(packaged(), ["vpn-disconnect"], { timeoutMs: 40_000 });
       forget("phase");
       bringToFront();

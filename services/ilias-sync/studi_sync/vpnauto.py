@@ -84,6 +84,8 @@ kCFBooleanTrue = c_void_p.in_dll(_CF, "kCFBooleanTrue").value
 kCFBooleanFalse = c_void_p.in_dll(_CF, "kCFBooleanFalse").value
 
 AXIsProcessTrusted = _sig(_AX, "AXIsProcessTrusted", c_bool, [])
+AXIsProcessTrustedWithOptions = _sig(_AX, "AXIsProcessTrustedWithOptions", c_bool, [c_void_p])
+CFDictionaryCreate = _sig(_CF, "CFDictionaryCreate", c_void_p, [c_void_p, POINTER(c_void_p), POINTER(c_void_p), c_long, c_void_p, c_void_p])
 AXUIElementCreateApplication = _sig(_AX, "AXUIElementCreateApplication", c_void_p, [c_int32])
 AXUIElementCreateSystemWide = _sig(_AX, "AXUIElementCreateSystemWide", c_void_p, [])
 AXUIElementCopyAttributeValue = _sig(_AX, "AXUIElementCopyAttributeValue", c_int32, [c_void_p, c_void_p, POINTER(c_void_p)])
@@ -197,10 +199,25 @@ def walk(root: El, limit: int = 400) -> list[tuple[El, str]]:
     return out
 
 
-def trusted() -> bool:
+def trusted(prompt: bool = False) -> bool:
+    """Darf dieser Prozess die Bedienungshilfen nutzen? In der fertigen App rechnet macOS den Helfer nicht
+    Studi-Helfer zu, er braucht einen eigenen Eintrag („studi-sync“). prompt=True: macOS fragt nach und trägt
+    den Helfer in die Liste unter Datenschutz & Sicherheit → Bedienungshilfen ein."""
     try:
-        return bool(AXIsProcessTrusted())
-    except Exception:  # noqa: BLE001
+        if not prompt:
+            return bool(AXIsProcessTrusted())
+        key = c_void_p.in_dll(_AX, "kAXTrustedCheckOptionPrompt")
+        keys = (c_void_p * 1)(key.value)
+        values = (c_void_p * 1)(kCFBooleanTrue)
+        key_cb = ctypes.addressof(ctypes.c_char.in_dll(_CF, "kCFTypeDictionaryKeyCallBacks"))
+        value_cb = ctypes.addressof(ctypes.c_char.in_dll(_CF, "kCFTypeDictionaryValueCallBacks"))
+        options = CFDictionaryCreate(None, keys, values, 1, key_cb, value_cb)
+        try:
+            return bool(AXIsProcessTrustedWithOptions(options))
+        finally:
+            CFRelease(options)
+    except Exception as e:  # noqa: BLE001
+        log_detail("vpn-trusted", e)
         return False
 
 
