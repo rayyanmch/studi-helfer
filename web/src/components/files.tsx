@@ -186,7 +186,7 @@ export function CheckButton({ done, onClick, label, onSolid }: { done: boolean; 
       aria-pressed={done}
       aria-label={done ? `${label}: mark as open` : `${label}: mark as done`}
       title={done ? "Mark as open" : "Done"}
-      className={`flex size-[22px] shrink-0 items-center justify-center rounded-full transition-colors ${
+      className={`press flex size-[22px] shrink-0 items-center justify-center rounded-full transition-colors ${
         done
           ? "bg-accent text-on-accent"
           : onSolid

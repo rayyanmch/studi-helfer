@@ -862,7 +862,7 @@ function MailRow({
       <button
         onClick={onClick}
         aria-current={active ? "true" : undefined}
-        style={swipeOpts ? { transform: `translateX(-${SWIPE_W}px)` } : undefined}
+        style={{ transform: swipeOpts ? `translateX(-${SWIPE_W}px)` : undefined, transitionTimingFunction: "var(--ease-out)" }}
         className={`relative flex w-full gap-2.5 rounded-[10px] px-3 py-2.5 text-left transition-[transform,background-color] duration-200 ${
           active ? "bg-surface shadow-[0_0_0_1px_var(--line)]" : swipeOpts ? "bg-surface" : "hover:bg-hover"
         }`}
@@ -1310,7 +1310,7 @@ function Compose({
         <button
           onClick={send}
           disabled={!ready}
-          className="flex h-9 items-center gap-2 rounded-[9px] bg-accent px-4 font-semibold text-on-accent transition-opacity hover:opacity-90 disabled:opacity-40"
+          className="press flex h-9 items-center gap-2 rounded-[9px] bg-accent px-4 font-semibold text-on-accent transition-opacity hover:opacity-90 disabled:opacity-40"
         >
           <Send size={13} aria-hidden /> Send
           <span className="text-[12px] font-medium opacity-60">⌘↵</span>

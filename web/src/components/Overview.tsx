@@ -373,6 +373,7 @@ function ProfileMenu({
       {open && (
         <div
           role="menu"
+          style={{ ["--menu-origin" as string]: "top center" }}
           className="absolute left-3 right-3 top-full z-20 mt-1 rounded-[10px] bg-surface p-1.5 shadow-[0_0_0_1px_var(--line),0_10px_28px_rgba(0,0,0,0.14)]"
         >
           <button
@@ -913,21 +914,21 @@ function OverlapGroup({ items, onOpen }: { items: TimedEntry[]; onOpen: (id: str
           const title = it.d ? (it.d.kind === "klausur" && course ? examLabel(it.d.title, course) : bare(it.d.title)) : it.ev!.title;
           const sub = it.d ? (it.d.location || (course ? shortOf(course) : "")) : (it.ev!.location ?? "");
           const body = squeezed ? null : open ? (
-            <>
+            <span key="open" className="answer-in block">
               <span className="block truncate text-[11px] font-semibold" style={c ? { color: tone(c, "ink") } : undefined}>
                 {hhmm(it.start)}–{hhmm(it.end)}
                 {it.ev && <span className="ml-1 font-bold" style={{ color: "#4285f4" }}>G</span>}
               </span>
               <span className="block text-[13px] font-semibold leading-snug">{title}</span>
               {sub && <span className="block truncate text-[12px] text-muted">{sub}</span>}
-            </>
+            </span>
           ) : (
-            <>
+            <span key="closed" className="answer-in block">
               <span className="block text-[11px] font-bold tabular-nums" style={c ? { color: tone(c, "ink") } : undefined}>
                 {hhmm(it.start)}
               </span>
               <span className="block truncate text-[12px] font-semibold leading-tight">{abbrTitle(title, 10)}</span>
-            </>
+            </span>
           );
           const common = {
             onMouseEnter: () => setActive(it.key),
@@ -937,7 +938,7 @@ function OverlapGroup({ items, onOpen }: { items: TimedEntry[]; onOpen: (id: str
             className: "absolute inset-x-0 overflow-hidden rounded-[7px] px-1.5 py-1 text-left",
           };
           return (
-            <div key={it.key} className="relative min-w-0 basis-0" style={{ flexGrow: open ? 5 : 1, transition: "flex-grow 220ms var(--ease-out)" }}>
+            <div key={it.key} className="relative min-w-0 basis-0" style={{ flexGrow: open ? 5 : 1, transition: "flex-grow 200ms var(--ease-in-out)" }}>
               {it.d ? (
                 <button
                   {...common}

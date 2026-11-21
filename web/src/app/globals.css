@@ -300,7 +300,8 @@ textarea.outline-none:focus-visible {
 }
 @keyframes check-pop {
   from {
-    transform: scale(0.5);
+    opacity: 0;
+    transform: scale(0.6);
   }
 }
 
@@ -324,7 +325,7 @@ textarea.outline-none:focus-visible {
 
 /* Menüs gehen vom Knopf aus auf (oben links) */
 [role="menu"] {
-  transform-origin: top left;
+  transform-origin: var(--menu-origin, top left);
   animation: menu-in 160ms var(--ease-out);
 }
 
@@ -339,8 +340,14 @@ textarea.outline-none:focus-visible {
   }
 }
 
-/* Drücken: Knöpfe geben kurz nach (Rückmeldung, dass der Klick ankam) */
-:where(button, [role="button"]):not(:disabled):active {
+/* Drücken: Knöpfe (Klasse „press“) geben kurz nach und federn weich zurück. Nicht bei breiten Zeilen
+   (Listen, Seitenleiste, Kalender), dort sähe das Schrumpfen falsch aus. */
+.press {
+  transition-property: color, background-color, border-color, box-shadow, opacity, transform;
+  transition-duration: 160ms;
+  transition-timing-function: var(--ease-out);
+}
+.press:not(:disabled):active {
   transform: scale(0.97);
 }
 
@@ -351,23 +358,12 @@ textarea.outline-none:focus-visible {
 
 /* Karteikarten: neue Karte gleitet leicht herein, die Antwort blendet ein (schnell, weil man oft drückt) */
 .card-in {
-  animation: slide-in 180ms var(--ease-out);
+  animation: slide-in 150ms var(--ease-out);
 }
 .answer-in {
-  animation: fade-in 140ms var(--ease-out);
+  animation: fade-in 120ms var(--ease-out);
 }
 
-/* Karten, die man anklickt, heben sich beim Überfahren minimal (nur mit Maus) */
-@media (hover: hover) and (pointer: fine) {
-  .lift {
-    transition:
-      transform 160ms var(--ease-out),
-      box-shadow 160ms var(--ease-out);
-  }
-  .lift:hover {
-    transform: translateY(-1px);
-  }
-}
 
 @media (prefers-reduced-motion: reduce) {
   * {
@@ -386,7 +382,7 @@ textarea.outline-none:focus-visible {
   .answer-in {
     animation: none !important;
   }
-  :where(button, [role="button"]):not(:disabled):active {
+  .press:not(:disabled):active {
     transform: none;
   }
 }

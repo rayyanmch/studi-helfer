@@ -153,10 +153,10 @@ export function CalendarView({
             Today
           </Button>
           <div className="flex">
-            <button onClick={() => go(-1)} aria-label={mode === "week" ? "Previous week" : "Previous 4 weeks"} className="flex size-8 items-center justify-center rounded-l-lg border border-line bg-surface hover:bg-hover">
+            <button onClick={() => go(-1)} aria-label={mode === "week" ? "Previous week" : "Previous 4 weeks"} className="press flex size-8 items-center justify-center rounded-l-lg border border-line bg-surface hover:bg-hover">
               <ChevronLeft size={16} aria-hidden />
             </button>
-            <button onClick={() => go(1)} aria-label={mode === "week" ? "Next week" : "Next 4 weeks"} className="-ml-px flex size-8 items-center justify-center rounded-r-lg border border-line bg-surface hover:bg-hover">
+            <button onClick={() => go(1)} aria-label={mode === "week" ? "Next week" : "Next 4 weeks"} className="press -ml-px flex size-8 items-center justify-center rounded-r-lg border border-line bg-surface hover:bg-hover">
               <ChevronRight size={16} aria-hidden />
             </button>
           </div>

@@ -18,7 +18,7 @@ export function Button({
   return (
     <button
       {...props}
-      className={`no-drag inline-flex h-8 items-center justify-center gap-1.5 rounded-lg px-3 text-[13px] font-semibold transition-colors disabled:opacity-45 ${styles[variant]} ${className}`}
+      className={`press no-drag inline-flex h-8 items-center justify-center gap-1.5 rounded-lg px-3 text-[13px] font-semibold transition-colors disabled:opacity-45 ${styles[variant]} ${className}`}
     />
   );
 }

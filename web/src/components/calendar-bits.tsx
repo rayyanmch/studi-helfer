@@ -132,7 +132,7 @@ export function CalendarChip({ on, onChange, dashed, children }: { on: boolean; 
     <button
       onClick={() => onChange(!on)}
       aria-pressed={on}
-      className={`flex h-8 items-center gap-2 rounded-full pl-2 pr-3.5 font-semibold transition-colors ${on ? "bg-accent text-on-accent" : "bg-surface text-muted shadow-[inset_0_0_0_1.5px_var(--line)] hover:bg-hover"}`}
+      className={`press flex h-8 items-center gap-2 rounded-full pl-2 pr-3.5 font-semibold transition-colors ${on ? "bg-accent text-on-accent" : "bg-surface text-muted shadow-[inset_0_0_0_1.5px_var(--line)] hover:bg-hover"}`}
     >
       <span
         aria-hidden
