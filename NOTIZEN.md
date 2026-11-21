@@ -7,6 +7,8 @@ Gemeinsames Gedächtnis für alle KI-Agenten und Menschen im Projekt. Wird über
 
 Wer gerade woran arbeitet (Person, Aufgabe, betroffene Dateien). Eintragen beim Start, löschen wenn fertig.
 
+- Rayyan (Agent): Startseite neu (Umbenennung „Next 4 days“, Wetter, Infos aus anderen Tabs), Karteikasten-Symbole, **Kalender: Mail-Hinweis an Terminen (roter Kreis), Hover-Karte raus**. Dateien: `Overview.tsx` (WeekView/Startseite), neue `components/Today*.tsx`, `lib/weather.ts`, `lib/event-mail.ts`, `StudyHub.tsx`; bei Mika klein: `CalendarView.tsx`, `calendar-bits.tsx`, `MailView.tsx` (nur „Mail öffnen“ von außen).
+
 
 
 
