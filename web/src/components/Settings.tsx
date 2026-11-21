@@ -3,7 +3,7 @@
 // Einstellungen (⌘, oder Profilmenü): Sync-Zeitplan, Kalender (KLIPS-Stundenplan), Mac, Konto.
 
 import { useEffect, useRef, useState } from "react";
-import { AlertCircle, CalendarPlus, Check, FolderOpen, Trash2, X } from "lucide-react";
+import { AlertCircle, CalendarPlus, Check, ExternalLink, FolderOpen, Trash2, X } from "lucide-react";
 import { Button, Spinner, folderPlace } from "./ui";
 import * as store from "@/lib/app-store";
 import { useApp } from "@/lib/app-store";
@@ -14,6 +14,15 @@ const EVERY: [SyncEvery, string][] = [
   ["1h", "Every hour"],
   ["3h", "Every 3 hours"],
   ["daily", "Once a day"],
+];
+
+const UNI_LINKS: [string, string, string][] = [
+  ["KLIPS", "Timetable, exam registration, semester fee, student ID", "https://klips2.uni-koeln.de"],
+  ["ILIAS", "Course pages, forums, submissions", "https://www.ilias.uni-koeln.de/ilias/"],
+  ["Uni mail on the web", "Your @smail.uni-koeln.de mailbox", "https://sogo.uni-koeln.de"],
+  ["First steps", "Checklist for new students", "https://studierende.uni-koeln.de/erstsemester/erste_schritte/index_ger.html"],
+  ["Student advice (ZSB)", "Questions about your studies, uni glossary", "https://zsb.uni-koeln.de"],
+  ["Psychological counselling", "Free first appointments (Studierendenwerk)", "https://www.kstw.de/en/beratung/psychological-counseling"],
 ];
 
 export function Settings({ onClose, onEditCourses, onLogout }: { onClose: () => void; onEditCourses: () => void; onLogout: () => void }) {
@@ -87,7 +96,7 @@ export function Settings({ onClose, onEditCourses, onLogout }: { onClose: () => 
           <Calendars />
 
           <Section title="Mac">
-            <Row label="Notifications" hint="New files, and a reminder the evening before a deadline or exam (“Due tomorrow: Übung 06”).">
+            <Row label="Notifications" hint="New files, and reminders before deadlines and exams.">
               <Toggle on={app.notifications} onChange={(on) => void store.setNotifications(on)} disabled={!desktop} />
             </Row>
             <Row label="Open at login" hint="Starts quietly in the background.">
@@ -122,6 +131,23 @@ export function Settings({ onClose, onEditCourses, onLogout }: { onClose: () => 
                 </Button>
               </div>
             </Row>
+          </Section>
+
+          {/* Erstis kennen die vielen Portale noch nicht: die wichtigsten an einer Stelle (Quellen: Uni-Seiten, geprüft 2026-11-21) */}
+          <Section title="Uni links">
+            {UNI_LINKS.map(([label, hint, href]) => (
+              <Row key={href} label={label} hint={hint}>
+                <a
+                  href={href}
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label={`Open ${label}`}
+                  className="no-drag inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-line bg-surface px-3 text-[13px] font-semibold hover:bg-hover"
+                >
+                  <ExternalLink size={13} aria-hidden /> Open
+                </a>
+              </Row>
+            ))}
           </Section>
 
           {/* Was wo bleibt, in einfachen Worten (Vertrauen für alle, nicht nur für Technikinteressierte) */}
