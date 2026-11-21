@@ -919,8 +919,13 @@ function OverlapGroup({ items, onOpen }: { items: TimedEntry[]; onOpen: (id: str
                 {hhmm(it.start)}–{hhmm(it.end)}
                 {it.ev && <span className="ml-1 font-bold" style={{ color: "#4285f4" }}>G</span>}
               </span>
-              <span className="block text-[13px] font-semibold leading-snug">{title}</span>
-              {sub && <span className="block truncate text-[12px] text-muted">{sub}</span>}
+              <span
+                className="block break-words text-[13px] font-semibold leading-[17px]"
+                style={{ display: "-webkit-box", WebkitBoxOrient: "vertical", WebkitLineClamp: Math.max(1, Math.floor((style.height - 24) / 17)), overflow: "hidden" }}
+              >
+                {title}
+              </span>
+              {sub && style.height - 24 >= 34 && <span className="block truncate text-[12px] text-muted">{sub}</span>}
             </span>
           ) : (
             <span key="closed" className="answer-in block">

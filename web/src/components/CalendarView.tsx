@@ -30,6 +30,7 @@ interface Slot {
   both: boolean;
   col: number;
   cols: number;
+  group: number; // Termine, die sich überschneiden, haben dieselbe Gruppe
 }
 
 const words = (s: string) =>
@@ -44,14 +45,19 @@ const words = (s: string) =>
 const similar = (a: string, b: string) => [...words(a)].some((w) => words(b).has(w));
 
 /** Spalten für überlappende Termine (wie in Google Kalender): jede Gruppe bekommt so viele Spalten wie nötig. */
-function layout(slots: Omit<Slot, "col" | "cols">[]): Slot[] {
+function layout(slots: Omit<Slot, "col" | "cols" | "group">[]): Slot[] {
   const sorted = [...slots].sort((a, b) => a.start - b.start || b.end - a.end);
   const out: Slot[] = [];
   let group: Slot[] = [];
   let groupEnd = -1;
+  let groupNo = 0;
   const close = () => {
+    groupNo += 1;
     const cols = Math.max(1, ...group.map((s) => s.col + 1));
-    group.forEach((s) => (s.cols = cols));
+    group.forEach((s) => {
+      s.cols = cols;
+      s.group = groupNo;
+    });
     out.push(...group);
     group = [];
   };
@@ -61,7 +67,7 @@ function layout(slots: Omit<Slot, "col" | "cols">[]): Slot[] {
     for (const g of group) ends[g.col] = Math.max(ends[g.col] ?? 0, g.end);
     let col = ends.findIndex((e) => e <= s.start);
     if (col < 0) col = ends.length;
-    group.push({ ...s, col, cols: 1 });
+    group.push({ ...s, col, cols: 1, group: 0 });
     groupEnd = Math.max(groupEnd, s.end);
   }
   if (group.length) close();
@@ -233,7 +239,7 @@ function WeekGrid({
     const ds = deadlines.filter((d) => d.date === iso && courseById(d.courseId));
     const es = events.filter((e) => e.date === iso);
     // Mit Uhrzeit von–bis ins Raster, alles andere (Abgaben, ganztägig) in die Zeile oben
-    const timed: Omit<Slot, "col" | "cols">[] = [];
+    const timed: Omit<Slot, "col" | "cols" | "group">[] = [];
     const top: { key: string; d: Deadline | null; ev: GoogleEvent | null }[] = [];
     for (const d of ds) {
       const r = timeRange(d.time) ?? (d.kind === "termin" && startMinutes(d.time) >= 0 ? [startMinutes(d.time), startMinutes(d.time) + 60] as [number, number] : null);
@@ -263,6 +269,8 @@ function WeekGrid({
   const hours = Array.from({ length: h1 - h0 }, (_, i) => h0 + i);
   const nowMin = now.getHours() * 60 + now.getMinutes();
   const hasTop = days.some((d) => d.top.length > 0);
+  // Maus über einem Termin, der sich mit anderen überschneidet: er wird breit, die anderen schmal (wie in „Next 4 days“)
+  const [hover, setHover] = useState<string | null>(null);
 
   const newAt = (iso: string, minute: number) => {
     const h = Math.min(22, Math.floor(minute / 60));
@@ -271,14 +279,16 @@ function WeekGrid({
   };
 
   return (
-    <div className="mt-6 overflow-hidden rounded-[12px] bg-surface shadow-[0_0_0_1px_var(--line)]">
+    // Bei schmalem Fenster bleibt das Raster lesbar und lässt sich seitlich schieben, statt zu quetschen
+    <div className="mt-6 overflow-x-auto rounded-[12px] bg-surface shadow-[0_0_0_1px_var(--line)]">
+      <div className="min-w-[640px]">
       {/* Kopf: Wochentage */}
       <div className="grid border-b border-line-soft" style={{ gridTemplateColumns: "52px repeat(7, minmax(0, 1fr))" }}>
         <span />
         {days.map((d) => (
-          <div key={d.iso} className={`flex items-center gap-1.5 px-2 py-2.5 ${d.wd >= 5 ? "text-muted" : ""}`}>
-            <span className={`flex h-7 min-w-7 items-center justify-center rounded-full px-1 font-bold ${d.today ? "bg-accent text-on-accent" : ""}`}>{d.num}</span>
-            <span className={d.today ? "font-semibold" : "text-muted"}>{WD[d.wd]}</span>
+          <div key={d.iso} className={`flex min-w-0 items-center gap-1.5 px-2 py-2.5 ${d.wd >= 5 ? "text-muted" : ""}`}>
+            <span className={`flex h-7 min-w-7 shrink-0 items-center justify-center rounded-full px-1 font-bold ${d.today ? "bg-accent text-on-accent" : ""}`}>{d.num}</span>
+            <span className={`truncate ${d.today ? "font-semibold" : "text-muted"}`}>{WD[d.wd]}</span>
           </div>
         ))}
       </div>
@@ -288,7 +298,7 @@ function WeekGrid({
         <div className="grid border-b border-line-soft" style={{ gridTemplateColumns: "52px repeat(7, minmax(0, 1fr))" }}>
           <span className="px-2 py-1.5 text-right text-[11px] leading-tight text-muted">due &amp; all day</span>
           {days.map((d) => (
-            <div key={d.iso} className={`flex min-w-0 flex-col gap-1 border-l border-line-soft p-1 ${d.wd >= 5 ? "bg-sunken/50" : ""}`}>
+            <div key={d.iso} className={`@container flex min-w-0 flex-col gap-1 border-l border-line-soft p-1 ${d.wd >= 5 ? "bg-sunken/50" : ""}`}>
               {d.top.map((t) => (t.d ? <TopChip key={t.key} d={t.d} done={done.includes(t.d.id)} onToggle={() => onToggle(t.d!.id)} onOpenCourse={onOpenCourse} /> : <TopGoogle key={t.key} ev={t.ev!} />))}
             </div>
           ))}
@@ -319,9 +329,25 @@ function WeekGrid({
             {hours.map((h, i) => (
               <span key={h} aria-hidden className="pointer-events-none absolute inset-x-0 border-t border-line-soft" style={{ top: i * HOUR }} />
             ))}
-            {d.slots.map((s) => (
-              <GridBlock key={s.key} slot={s} h0={h0} done={s.d ? done.includes(s.d.id) : false} onOpenCourse={onOpenCourse} />
-            ))}
+            {d.slots.map((s) => {
+              const hovered = s.cols > 1 ? d.slots.find((x) => x.key === hover && x.group === s.group) : undefined;
+              const weight = (col: number) => (hovered ? (col === hovered.col ? (s.cols === 2 ? 4 : 3) : 1) : 1);
+              const total = Array.from({ length: s.cols }, (_, k) => weight(k)).reduce((a, b) => a + b, 0);
+              const before = Array.from({ length: s.col }, (_, k) => weight(k)).reduce((a, b) => a + b, 0);
+              return (
+                <GridBlock
+                  key={s.key}
+                  slot={s}
+                  h0={h0}
+                  done={s.d ? done.includes(s.d.id) : false}
+                  onOpenCourse={onOpenCourse}
+                  share={[before / total, weight(s.col) / total]}
+                  open={hovered?.key === s.key}
+                  squeezed={Boolean(hovered) && hovered!.key !== s.key}
+                  onHover={(on) => setHover(on ? s.key : null)}
+                />
+              );
+            })}
             {d.today && nowMin >= h0 * 60 && nowMin <= h1 * 60 && (
               <span aria-hidden className="pointer-events-none absolute inset-x-0 z-10 flex items-center" style={{ top: ((nowMin - h0 * 60) / 60) * HOUR - 4 }}>
                 <span className="size-2 rounded-full bg-danger" />
@@ -331,19 +357,74 @@ function WeekGrid({
           </div>
         ))}
       </div>
+      </div>
     </div>
   );
 }
 
-function GridBlock({ slot, h0, done, onOpenCourse }: { slot: Slot; h0: number; done: boolean; onOpenCourse: (id: string) => void }) {
+function GridBlock({
+  slot,
+  h0,
+  done,
+  onOpenCourse,
+  share,
+  open,
+  squeezed,
+  onHover,
+}: {
+  slot: Slot;
+  h0: number;
+  done: boolean;
+  onOpenCourse: (id: string) => void;
+  share: [number, number]; // Anteil links und Breite in der Spalte (0–1)
+  open: boolean;
+  squeezed: boolean;
+  onHover: (on: boolean) => void;
+}) {
   const top = ((slot.start - h0 * 60) / 60) * HOUR + 1;
   const height = Math.max(20, ((slot.end - slot.start) / 60) * HOUR - 3);
-  const gap = 3;
-  const left = `calc(${(slot.col / slot.cols) * 100}% + ${gap}px)`;
-  const width = `calc(${100 / slot.cols}% - ${gap * 2}px)`;
+  const gap = 2;
+  const pos = {
+    top,
+    height,
+    left: `calc(${share[0] * 100}% + ${gap}px)`,
+    width: `calc(${share[1] * 100}% - ${gap * 2}px)`,
+    transition: "left 200ms var(--ease-in-out), width 200ms var(--ease-in-out)",
+    zIndex: open ? 2 : undefined,
+  };
   const hhmm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
   const time = `${hhmm(slot.start)}–${hhmm(slot.end)}`;
   const tiny = height < 40;
+  // So viele Zeilen Titel, wie in die Höhe passen; der Rest endet sauber mit „…“
+  const lines = Math.max(1, Math.floor((height - 22) / 15));
+  const clamp = { display: "-webkit-box", WebkitBoxOrient: "vertical" as const, WebkitLineClamp: lines, overflow: "hidden" };
+  const showSub = !tiny && height - 22 - lines * 15 >= 13;
+  const hover = slot.cols > 1 ? { onMouseEnter: () => onHover(true), onMouseLeave: () => onHover(false), onFocus: () => onHover(true), onBlur: () => onHover(false) } : {};
+
+  const body = (title: string, timeColor: string | undefined, gMark: React.ReactNode, sub: string) =>
+    squeezed ? null : (
+      <span key={open ? "open" : "closed"} className={`${slot.cols > 1 ? "answer-in " : ""}block @max-[38px]:hidden`}>
+        <span className="block truncate text-[11px] font-semibold tabular-nums" style={timeColor ? { color: timeColor } : undefined}>
+          {tiny ? (
+            hhmm(slot.start)
+          ) : (
+            <>
+              {/* Schmal: nur die Startzeit statt „09:00–1…“ */}
+              <span className="@max-[92px]:hidden">{time}</span>
+              <span className="hidden @max-[92px]:inline">{hhmm(slot.start)}</span>
+            </>
+          )}
+          {gMark}
+          {tiny && <span className="ml-1 text-text">{title}</span>}
+        </span>
+        {!tiny && (
+          <span className="block break-words text-[12px] font-semibold leading-[15px]" style={clamp}>
+            {title}
+          </span>
+        )}
+        {showSub && sub && <span className="block truncate text-[11px] text-muted">{sub}</span>}
+      </span>
+    );
 
   if (slot.d) {
     const d = slot.d;
@@ -353,24 +434,17 @@ function GridBlock({ slot, h0, done, onOpenCourse }: { slot: Slot; h0: number; d
     const title = exam ? examLabel(d.title, course) : bare(d.title);
     return (
       <button
+        {...hover}
         onClick={() => openEvent(d, { onOpenCourse: () => onOpenCourse(d.courseId) })}
         title={[`${d.title}, ${nameOf(course)}, ${time}`, slot.both ? "Also in Google Calendar" : "", d.location ? `Room: ${d.location}` : ""].filter(Boolean).join(" · ")}
-        className={`cal-block absolute overflow-hidden rounded-[6px] px-1.5 py-1 text-left leading-tight ${done ? "opacity-50" : ""}`}
+        className={`@container absolute overflow-hidden rounded-[6px] px-1.5 py-1 text-left leading-tight ${done ? "opacity-50" : ""}`}
         style={{
-          top,
-          height,
-          left,
-          width,
+          ...pos,
           background: tone(c, "soft"),
           boxShadow: exam ? `inset 0 0 0 2px ${tone(c)}` : slot.both ? `inset 0 0 0 1.5px ${tone(c)}` : undefined,
         }}
       >
-        <span className="block truncate text-[11px] font-semibold" style={{ color: tone(c, "ink") }}>
-          {tiny ? `${hhmm(slot.start)} ${abbrTitle(title, 30)}` : time}
-          {slot.both && <span className="ml-1 font-bold" style={{ color: "#4285f4" }}>+G</span>}
-        </span>
-        {!tiny && <span className="block text-[12px] font-semibold">{slot.cols > 2 ? abbrTitle(title, 14) : title}</span>}
-        {!tiny && height > 64 && <span className="block truncate text-[11px] text-muted">{d.location || shortOf(course)}</span>}
+        {body(title, tone(c, "ink"), slot.both ? <span className="ml-1 font-bold" style={{ color: "#4285f4" }}>+G</span> : null, d.location || shortOf(course))}
       </button>
     );
   }
@@ -378,15 +452,13 @@ function GridBlock({ slot, h0, done, onOpenCourse }: { slot: Slot; h0: number; d
   const color = ev.color ?? "var(--muted)";
   return (
     <div
+      {...hover}
+      tabIndex={slot.cols > 1 ? 0 : undefined}
       title={[ev.title, time, ev.location ?? "", ev.calendar ? `Google Calendar: ${ev.calendar}` : "Google Calendar"].filter(Boolean).join(" · ")}
-      className="cal-block absolute overflow-hidden rounded-[6px] px-1.5 py-1 leading-tight"
-      style={{ top, height, left, width, border: `1.5px dashed ${color}`, background: `color-mix(in srgb, ${color} 14%, var(--surface))` }}
+      className="@container absolute overflow-hidden rounded-[6px] px-1.5 py-1 leading-tight"
+      style={{ ...pos, border: `1.5px dashed ${color}`, background: `color-mix(in srgb, ${color} 14%, var(--surface))` }}
     >
-      <span className="block truncate text-[11px] font-semibold">
-        {tiny ? `${hhmm(slot.start)} ${ev.title}` : time} <span className="font-bold" style={{ color: "#4285f4" }}>G</span>
-      </span>
-      {!tiny && <span className="block text-[12px] font-semibold">{slot.cols > 2 ? abbrTitle(ev.title, 14) : ev.title}</span>}
-      {!tiny && height > 64 && ev.location && <span className="block truncate text-[11px] text-muted">{ev.location}</span>}
+      {body(ev.title, undefined, <span className="ml-1 font-bold" style={{ color: "#4285f4" }}>G</span>, ev.location ?? "")}
     </div>
   );
 }
@@ -407,7 +479,7 @@ function TopChip({ d, done, onToggle, onOpenCourse }: { d: Deadline; done: boole
         {abbrTitle(label, 22)}
       </button>
       {checkable && (
-        <button onClick={onToggle} aria-label={done ? `Mark ${d.title} as not done` : `Mark ${d.title} as done`} className="flex size-3.5 shrink-0 items-center justify-center rounded-full border-[1.5px] border-current opacity-80 hover:opacity-100">
+        <button onClick={onToggle} aria-label={done ? `Mark ${d.title} as not done` : `Mark ${d.title} as done`} className="flex size-3.5 shrink-0 items-center justify-center rounded-full border-[1.5px] border-current opacity-80 hover:opacity-100 @max-[96px]:hidden">
           {done && <span className="size-1.5 rounded-full bg-current" />}
         </button>
       )}
