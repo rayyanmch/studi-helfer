@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { AlertCircle, Check } from "lucide-react";
-import { Button, Notice, Spinner, Stage, colorOf, nameOf, tone } from "./ui";
+import { Button, Notice, Spinner, Stage, colorOf, folderPlace, nameOf, tone } from "./ui";
 import type { Course } from "@/lib/mock-data";
 import * as store from "@/lib/app-store";
 import { useApp } from "@/lib/app-store";
@@ -120,7 +120,7 @@ export function Setup({
 
       <div className="mt-6 flex flex-wrap items-center gap-4">
         <span className="flex-1 text-[12px] text-muted">
-          Saving to {app.targetDir}{" "}
+          <span title={app.targetDir}>Saving to {folderPlace(app.targetDir)}</span>{" "}
           <button onClick={() => void store.chooseFolder()} className="rounded font-semibold text-[var(--focus)] hover:underline">
             change
           </button>

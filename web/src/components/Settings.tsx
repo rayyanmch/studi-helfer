@@ -4,7 +4,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { AlertCircle, CalendarPlus, Check, FolderOpen, Trash2, X } from "lucide-react";
-import { Button, Spinner } from "./ui";
+import { Button, Spinner, folderPlace } from "./ui";
 import * as store from "@/lib/app-store";
 import { useApp } from "@/lib/app-store";
 import type { SyncEvery } from "@/lib/desktop";
@@ -93,7 +93,7 @@ export function Settings({ onClose, onEditCourses, onLogout }: { onClose: () => 
             <Row label="Open at login" hint="Starts quietly in the background.">
               <Toggle on={app.launchAtLogin} onChange={(on) => void store.setLaunchAtLogin(on)} disabled={!desktop} />
             </Row>
-            <Row label="Folder" hint={app.targetDir}>
+            <Row label="Folder" hint={`Your files are in ${folderPlace(app.targetDir)}.`}>
               <Button onClick={() => store.revealFile(app.targetPath ?? undefined)} disabled={!desktop}>
                 <FolderOpen size={14} aria-hidden /> Show in Finder
               </Button>

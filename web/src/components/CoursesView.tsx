@@ -3,7 +3,7 @@
 // „Courses“: alle Module als Kacheln. Ein Klick öffnet die Modulseite.
 
 import { AlertTriangle, FolderOpen, Settings2 } from "lucide-react";
-import { Button, Swatch, colorOf, tone } from "./ui";
+import { Button, Swatch, colorOf, folderName, tone } from "./ui";
 import type { Course, Deadline } from "@/lib/mock-data";
 import * as store from "@/lib/app-store";
 import { realCourses, useApp } from "@/lib/app-store";
@@ -37,11 +37,11 @@ export function CoursesView({ onOpen, onEditCourses }: { onOpen: (id: string) =>
         </div>
         <div className="flex gap-2">
           {app.mode === "desktop" && app.targetPath && (
-            <Button onClick={() => store.revealFile(app.targetPath ?? undefined)}>
-              <FolderOpen size={14} aria-hidden /> Open {app.targetDir}
+            <Button onClick={() => store.revealFile(app.targetPath ?? undefined)} title={`Show ${app.targetDir} in Finder`} className="whitespace-nowrap">
+              <FolderOpen size={14} aria-hidden /> Open “{folderName(app.targetDir)}” folder
             </Button>
           )}
-          <Button onClick={onEditCourses}>
+          <Button onClick={onEditCourses} className="whitespace-nowrap">
             <Settings2 size={14} aria-hidden /> Change courses
           </Button>
         </div>

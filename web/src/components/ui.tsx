@@ -104,3 +104,14 @@ export function Notice({
     </div>
   );
 }
+
+/** Ordner verständlich benennen: "~/Uni" → "Uni" (statt Pfad im Knopf). */
+export function folderName(dir: string): string {
+  return dir.split("/").filter(Boolean).pop() ?? dir;
+}
+
+/** "the “Uni” folder in your home folder" für ~/Uni, sonst "the “Uni” folder". */
+export function folderPlace(dir: string): string {
+  const name = folderName(dir);
+  return /^~\/[^/]+\/?$/.test(dir) ? `the “${name}” folder in your home folder` : `the “${name}” folder`;
+}
