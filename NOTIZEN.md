@@ -406,6 +406,8 @@ Von Mika für später zurückgestellt. Reihenfolge = grob nach Nutzen. Nicht ver
 
 ## Offen
 
+- [ ] **Feste Signierung gegen die Schlüsselbund-Abfrage nach jedem Update** (Rayyan: **erst nach der Demo**). Eigenes Code-Signing-Zertifikat, App und `studi-sync` in Actions damit signieren, Rayyan legt die Secrets an. Bis dahin nach jedem Update einmal „Immer erlauben“. Build-Dateien (`app-build.yml`, `pack.sh`, `after-pack.js`, `build.sh`) bis dahin nicht umbauen.
+
 - [ ] Rolle von Supabase klären: Dateien und ILIAS-Login liegen jetzt lokal. Braucht die App überhaupt ein eigenes Konto?
 - [ ] Supabase-Projekt anlegen, Keys in `.env.local` beider Rechner
 - [ ] KI-Fristen (`/api/ki/fristen`, `refreshAiDeadlines`) bleiben ohne Key inaktiv (`no_key`); Rayyan will dafür kein Geld ausgeben. Stattdessen Regeln lokal (siehe Entscheidungen).
