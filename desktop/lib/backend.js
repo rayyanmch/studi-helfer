@@ -833,8 +833,8 @@ function scheduleEvery(value) {
 
 async function applySchedule(isPackaged, schedule) {
   const domain = `gui/${process.getuid()}`;
-  await launchctl(["bootout", `${domain}/${PLIST_LABEL}`]);
   if (!schedule.enabled) {
+    await launchctl(["bootout", `${domain}/${PLIST_LABEL}`]);
     await fsp.rm(PLIST, { force: true });
     return { ok: true, enabled: false };
   }
@@ -891,6 +891,11 @@ ${
 </dict>
 </plist>
 `;
+  // Unverändert und geladen: nichts tun. „bootout“ beendet einen gerade laufenden Hintergrund-Sync,
+  // und die App ruft das bei jedem Start auf (bei „alle 30 min“ läuft oft gerade einer).
+  const current = fs.existsSync(PLIST) ? fs.readFileSync(PLIST, "utf8") : null;
+  if (current === plist && (await scheduleLoaded())) return { ok: true, enabled: true, time: schedule.time, every };
+  await launchctl(["bootout", `${domain}/${PLIST_LABEL}`]);
   fs.mkdirSync(path.dirname(PLIST), { recursive: true });
   fs.writeFileSync(PLIST, plist);
   const ok = await launchctl(["bootstrap", domain, PLIST]);
