@@ -1214,7 +1214,7 @@ function Reader({
             <span className="flex size-10 shrink-0 items-center justify-center rounded-[10px]" style={amber}>
               <CalendarPlus size={20} aria-hidden />
             </span>
-            <span className="min-w-0 flex-1">
+            <span className="min-w-[200px] flex-1">
               <b className="block font-semibold">Looks like an event</b>
               <span className="text-[13px] text-muted">{event.label}</span>
             </span>
