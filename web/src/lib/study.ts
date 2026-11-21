@@ -1,11 +1,12 @@
 "use client";
 
-// Lernbereich „Study“: Zusammenfassung pro Datei, Lernzettel, Karteikarten (Leitner), Anki-Export.
+// Lernbereich „Study“: Zusammenfassung pro Datei, Karteikästen (Leitner, je Modul und gemischt), Lernzettel als PDF.
 // In der Mac-App kommen die Daten aus desktop/lib/study.js (KI: lokales Claude Code, nur Demo).
 // Im Browser gibt es kleine Beispieldaten, damit man am Aussehen arbeiten kann.
 
 import { useSyncExternalStore } from "react";
 import { getDesktop, type Fail, type Ok } from "./desktop";
+import type { Course } from "./mock-data";
 
 export interface Analysis {
   id: string; // erste 16 Zeichen des Datei-Hashes
@@ -23,18 +24,55 @@ export interface Analysis {
 
 export interface CardState {
   box: number; // Leitner-Fach 1–5 (1 = nochmal heute, 2 = morgen, 3 = in 3 Tagen, 4 = in 1 Woche, 5 = in 2 Wochen)
-  due: string; // YYYY-MM-DD
+  due?: string; // YYYY-MM-DD
   reviews: number;
+  suspended?: boolean; // nicht mehr abfragen
 }
+
+/** Bausteine eines Lernzettels (Reihenfolge wie im PDF). */
+export const SHEET_SECTIONS = [
+  { key: "summary", label: "Summary", hint: "Short paragraphs with the key ideas", fixed: true },
+  { key: "beginner", label: "Explained simply", hint: "Simple why and what questions for a first understanding" },
+  { key: "analogies", label: "Analogies", hint: "Everyday comparisons that make it click" },
+  { key: "examples", label: "Examples", hint: "Concrete cases, mostly from the slides" },
+  { key: "tables", label: "Tables", hint: "Phases, types and comparisons side by side" },
+  { key: "terms", label: "Key terms", hint: "Short definitions you should know" },
+  { key: "mnemonics", label: "Memory hooks", hint: "Mnemonics for lists and orders" },
+  { key: "misconceptions", label: "Common mistakes", hint: "What students often get wrong" },
+  { key: "anecdotes", label: "Stories", hint: "Short true stories that help you remember" },
+  { key: "questions", label: "Review questions", hint: "Questions like in the exam" },
+  { key: "answers", label: "Answers", hint: "Model answers to the review questions", needs: "questions" },
+  { key: "bigPicture", label: "Big picture", hint: "The core ideas that connect everything" },
+] as const;
+
+export type SectionKey = (typeof SHEET_SECTIONS)[number]["key"];
+export type Include = Record<SectionKey, boolean>;
+export type SheetLength = "short" | "normal" | "detailed";
+
+const on = (...keys: SectionKey[]): Include =>
+  Object.fromEntries(SHEET_SECTIONS.map((s) => [s.key, s.key === "summary" || keys.includes(s.key)])) as Include;
+
+export const PRESETS: { id: string; label: string; include: Include }[] = [
+  { id: "guide", label: "Study guide", include: on("beginner", "analogies", "examples", "tables", "misconceptions", "questions", "bigPicture") },
+  { id: "exam", label: "Exam prep", include: on("tables", "terms", "misconceptions", "questions", "answers", "bigPicture") },
+  { id: "quick", label: "Quick review", include: on("terms", "questions") },
+  { id: "beginner", label: "Beginner-friendly", include: on("beginner", "analogies", "examples", "mnemonics", "anecdotes") },
+  { id: "all", label: "Everything", include: on(...SHEET_SECTIONS.map((s) => s.key)) },
+];
 
 export interface Sheet {
   id: string;
   moduleId: string;
+  moduleName?: string;
   createdAt: number;
   focus: string | null;
   files: { path: string; name: string }[];
   title: string;
-  sections: { heading: string; points: { text: string; file: number; page: number }[] }[];
+  pdf?: string | null;
+  include?: Partial<Include>;
+  length?: SheetLength;
+  parts?: { title: string }[];
+  sections?: { heading: string }[]; // ältere Lernzettel
 }
 
 export interface StudyJob {
@@ -46,21 +84,55 @@ export interface StudyJob {
   etaSeconds: number | null;
 }
 
+export interface StudyStats {
+  today: number; // heute abgefragt
+  streak: number; // Tage am Stück
+  newToday: number; // heute zum ersten Mal gesehene Karten
+}
+
+/** Neue Karten pro Tag (wie bei Anki), damit es nicht erschlägt. */
+export const NEW_PER_DAY = 20;
+
 export interface StudyApi {
   status(): Promise<{ available: boolean; provider: string; model: string }>;
-  get(paths: string[]): Promise<{ files: Record<string, Analysis | null>; cards: Record<string, CardState>; today: string; state: StudyJob }>;
+  get(paths: string[]): Promise<{
+    files: Record<string, Analysis | null>;
+    cards: Record<string, CardState>;
+    today: string;
+    state: StudyJob;
+    stats: StudyStats;
+    sheet: SheetRun;
+  }>;
   analyze(paths: string[], moduleName: string): Promise<Ok | Fail>;
   cancel(): Promise<Ok>;
-  review(cardId: string, knew: boolean): Promise<Ok<{ card: CardState }> | Fail>;
+  review(cardId: string, knew: boolean, practice?: boolean): Promise<Ok<{ card: CardState; stats: StudyStats }> | Fail>;
+  suspend(cardId: string, on: boolean): Promise<Ok<{ card: CardState }> | Fail>;
   resetCards(ids: string[]): Promise<Ok>;
   sheets(moduleId: string | null): Promise<Sheet[]>;
-  createSheet(opts: { moduleId: string; moduleName: string; paths: string[]; focus?: string }): Promise<Ok<{ sheet: Sheet }> | Fail>;
+  createSheet(opts: {
+    moduleId: string;
+    moduleName: string;
+    paths: string[];
+    focus?: string;
+    include: Include;
+    length: SheetLength;
+    accent?: string;
+  }): Promise<Ok<{ sheet: Sheet }> | Fail>;
+  openSheet(id: string, reveal?: boolean): Promise<Ok<{ path: string }> | Fail>;
   deleteSheet(id: string): Promise<Ok>;
+  sheetState(): Promise<SheetRun>;
   exportAnki(name: string, cards: { q: string; a: string; tags: string }[]): Promise<Ok<{ path: string }> | Fail>;
   onState(cb: (s: StudyJob) => void): () => void;
 }
 
-/** Karte mit Herkunft (für Abfrage und Export). */
+export interface SheetRun {
+  running: boolean;
+  startedAt?: number;
+  step?: "reading" | "writing" | "pdf";
+  title?: string; // nur Oberfläche
+}
+
+/** Karte mit Herkunft (für Abfrage, Kästen und Export). */
 export interface Card {
   id: string; // `${analysis.id}:${index}`
   q: string;
@@ -68,6 +140,7 @@ export interface Card {
   page: number;
   file: string; // Dateiname
   path: string;
+  moduleId?: string;
   state?: CardState;
 }
 
@@ -75,10 +148,15 @@ interface StudyState {
   available: boolean | null; // null = noch unbekannt
   files: Record<string, Analysis | null>;
   cards: Record<string, CardState>;
-  sheets: Record<string, Sheet[]>; // je Modul
+  sheets: Sheet[]; // alle Module
   today: string;
   job: StudyJob;
+  stats: StudyStats;
+  sheetRun: SheetRun;
+  target: StudyTarget | null; // Sprungziel aus der Kursseite
 }
+
+export type StudyTarget = { screen: "deck"; moduleId: string } | { screen: "new-sheet"; moduleId?: string };
 
 const IDLE: StudyJob = { running: false, total: 0, done: 0, current: [], failed: [], etaSeconds: null };
 
@@ -87,7 +165,17 @@ function localToday() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-let state: StudyState = { available: null, files: {}, cards: {}, sheets: {}, today: "", job: IDLE };
+let state: StudyState = {
+  available: null,
+  files: {},
+  cards: {},
+  sheets: [],
+  today: "",
+  job: IDLE,
+  stats: { today: 0, streak: 0, newToday: 0 },
+  sheetRun: { running: false },
+  target: null,
+};
 const listeners = new Set<() => void>();
 function set(patch: Partial<StudyState>) {
   state = { ...state, ...patch };
@@ -111,18 +199,28 @@ function api(): StudyApi | null {
   return d?.study ?? null;
 }
 
+export const STUDY_FILE = /\.(pdf|txt|md|tex)$/i;
+
+/** Pfad (Mac-App) bzw. Id (Browser) einer Datei, unter dem ihre Auswertung liegt. */
+export const fileKey = (f: { path?: string; id: string }) => f.path ?? f.id;
+
+/** Alle lernbaren Dateien eines Moduls. */
+export function studyFiles(course: Course) {
+  return course.folders.flatMap((f) => f.files).filter((f) => STUDY_FILE.test(f.name));
+}
+
 // ------------------------------------------------------------------ Laden
 
 let lastPaths: string[] = [];
 let unsub: (() => void) | null = null;
 let lastDone = -1;
 
-/** Daten für ein Modul laden (Dateien des Moduls, Lernzettel). */
-export async function loadStudy(moduleId: string, paths: string[]) {
-  lastPaths = paths;
+/** Daten für die angegebenen Dateien laden (Kursseite: ein Modul, Study-Tab: alle). */
+export async function loadStudy(paths: string[]) {
+  lastPaths = [...new Set([...paths, ...lastPaths])];
   const a = api();
   if (!a) {
-    set({ available: true, today: localToday(), ...demoData(moduleId, paths) });
+    set({ available: true, today: localToday(), ...demoData(paths) });
     return;
   }
   if (!unsub) {
@@ -135,14 +233,16 @@ export async function loadStudy(moduleId: string, paths: string[]) {
       }
     });
   }
-  const [status, data, sheets] = await Promise.all([a.status(), a.get(paths), a.sheets(moduleId)]);
+  const [status, data, sheets] = await Promise.all([a.status(), a.get(lastPaths), a.sheets(null)]);
   set({
     available: status.available,
     files: { ...state.files, ...data.files },
     cards: { ...state.cards, ...data.cards },
     today: data.today,
     job: data.state,
-    sheets: { ...state.sheets, [moduleId]: sheets },
+    stats: data.stats,
+    sheets,
+    sheetRun: state.sheetRun.running ? state.sheetRun : data.sheet,
   });
 }
 
@@ -150,7 +250,20 @@ async function refresh() {
   const a = api();
   if (!a || !lastPaths.length) return;
   const data = await a.get(lastPaths);
-  set({ files: { ...state.files, ...data.files }, cards: { ...state.cards, ...data.cards }, today: data.today });
+  set({ files: { ...state.files, ...data.files }, cards: { ...state.cards, ...data.cards }, today: data.today, stats: data.stats });
+}
+
+// ------------------------------------------------------------------ Navigation (Kursseite → Study-Tab)
+
+export function openStudy(target: StudyTarget) {
+  set({ target });
+  if (typeof window !== "undefined") window.dispatchEvent(new Event("studi:open-study"));
+}
+
+export function takeTarget(): StudyTarget | null {
+  const t = state.target;
+  if (t) set({ target: null });
+  return t;
 }
 
 // ------------------------------------------------------------------ Aktionen
@@ -166,17 +279,42 @@ export async function cancelAnalyze() {
   await api()?.cancel();
 }
 
-export async function review(cardId: string, knew: boolean) {
+const DAYS = [0, 0, 1, 3, 7, 14];
+
+function addDays(iso: string, n: number) {
+  const d = new Date(`${iso}T12:00:00`);
+  d.setDate(d.getDate() + n);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+export async function review(cardId: string, knew: boolean, practice = false) {
   const a = api();
   if (!a) {
-    // Browser: nur im Speicher
-    const cur = state.cards[cardId] ?? { box: 0, due: state.today, reviews: 0 };
-    const box = knew ? Math.min(5, Math.max(1, cur.box) + 1) : 1;
-    set({ cards: { ...state.cards, [cardId]: { box, due: addDays(state.today, [0, 0, 1, 3, 7, 14][box]), reviews: cur.reviews + 1 } } });
+    // Browser: nur im Speicher, gleiche Regel wie desktop/lib/study.js
+    const cur = state.cards[cardId] ?? { box: 0, reviews: 0 };
+    const due = !cur.due || cur.due <= state.today;
+    const next =
+      practice && !due && knew
+        ? { ...cur, reviews: cur.reviews + 1 }
+        : (() => {
+            const box = knew ? Math.min(5, Math.max(1, cur.box) + 1) : 1;
+            return { ...cur, box, due: addDays(state.today, DAYS[box]), reviews: cur.reviews + 1 };
+          })();
+    const fresh = !cur.box ? 1 : 0;
+    set({
+      cards: { ...state.cards, [cardId]: next },
+      stats: { today: state.stats.today + 1, streak: Math.max(1, state.stats.streak), newToday: state.stats.newToday + fresh },
+    });
     return;
   }
-  const res = await a.review(cardId, knew);
-  if (res.ok) set({ cards: { ...state.cards, [cardId]: res.card } });
+  const res = await a.review(cardId, knew, practice);
+  if (res.ok) set({ cards: { ...state.cards, [cardId]: res.card }, stats: res.stats });
+}
+
+export async function suspendCard(cardId: string, suspended: boolean) {
+  const cur = state.cards[cardId] ?? { box: 0, reviews: 0 };
+  set({ cards: { ...state.cards, [cardId]: suspended ? { ...cur, suspended: true } : { ...cur, suspended: undefined } } });
+  await api()?.suspend(cardId, suspended);
 }
 
 export async function resetCards(ids: string[]) {
@@ -186,17 +324,41 @@ export async function resetCards(ids: string[]) {
   await api()?.resetCards(ids);
 }
 
-export async function createSheet(opts: { moduleId: string; moduleName: string; paths: string[]; focus?: string }): Promise<{ sheet?: Sheet; error?: string }> {
+export async function createSheet(opts: {
+  moduleId: string;
+  moduleName: string;
+  paths: string[];
+  focus?: string;
+  include: Include;
+  length: SheetLength;
+  accent?: string;
+}): Promise<{ sheet?: Sheet; error?: string }> {
   const a = api();
   if (!a) return { error: "Study sheets work in the Mac app." };
+  set({ sheetRun: { running: true, startedAt: Date.now(), step: "reading", title: opts.moduleName } });
+  const poll = setInterval(async () => {
+    const s = await a.sheetState();
+    if (s.running && state.sheetRun.running) set({ sheetRun: { ...state.sheetRun, step: s.step } });
+  }, 2000);
   const res = await a.createSheet(opts);
+  clearInterval(poll);
+  set({ sheetRun: { running: false } });
   if (!res.ok) return { error: res.message };
-  set({ sheets: { ...state.sheets, [opts.moduleId]: [res.sheet, ...(state.sheets[opts.moduleId] ?? [])] } });
+  set({ sheets: [res.sheet, ...state.sheets] });
   return { sheet: res.sheet };
 }
 
-export async function deleteSheet(moduleId: string, id: string) {
-  set({ sheets: { ...state.sheets, [moduleId]: (state.sheets[moduleId] ?? []).filter((s) => s.id !== id) } });
+export async function openSheet(id: string, reveal = false): Promise<string | null> {
+  const a = api();
+  if (!a) return "PDFs work in the Mac app.";
+  const res = await a.openSheet(id, reveal);
+  if (!res.ok) return res.message;
+  set({ sheets: state.sheets.map((s) => (s.id === id ? { ...s, pdf: res.path } : s)) });
+  return null;
+}
+
+export async function deleteSheet(id: string) {
+  set({ sheets: state.sheets.filter((s) => s.id !== id) });
   await api()?.deleteSheet(id);
 }
 
@@ -214,37 +376,77 @@ export async function exportAnki(name: string, cards: Card[]): Promise<string | 
 
 // ------------------------------------------------------------------ Ableitungen
 
-export function cardsOf(paths: string[], s: StudyState): Card[] {
+export function cardsOf(paths: string[], s: Pick<StudyState, "files" | "cards">, moduleId?: string): Card[] {
   const out: Card[] = [];
+  const seen = new Set<string>();
   for (const p of paths) {
     const a = s.files[p];
-    if (!a) continue;
+    if (!a || seen.has(a.id)) continue; // gleiche Datei in Übung und Gruppe nur einmal
+    seen.add(a.id);
     a.cards.forEach((c, i) => {
       const id = `${a.id}:${i}`;
-      out.push({ id, q: c.q, a: c.a, page: c.page, file: a.name, path: p, state: s.cards[id] });
+      out.push({ id, q: c.q, a: c.a, page: c.page, file: a.name, path: p, moduleId, state: s.cards[id] });
     });
   }
   return out;
 }
 
-export function isDue(c: Card, today: string) {
-  return !c.state || c.state.due <= today;
+/** Karten aller Module (für Kästen und den gemischten Kasten). */
+export function allCards(courses: Course[], s: Pick<StudyState, "files" | "cards">): Card[] {
+  return courses.flatMap((c) => cardsOf(studyFiles(c).map(fileKey), s, c.id));
 }
 
-function addDays(iso: string, n: number) {
-  const d = new Date(`${iso}T12:00:00`);
-  d.setDate(d.getDate() + n);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+export const active = (c: Card) => !c.state?.suspended;
+export const isNew = (c: Card) => !c.state || !c.state.box;
+/** Schon gelernte Karte, die heute wieder dran ist (neue Karten zählen nicht, siehe todaysSet). */
+export const isDue = (c: Card, today: string) => active(c) && !isNew(c) && (!c.state?.due || c.state.due <= today);
+
+/** Was heute drankommt: fällige Wiederholungen plus neue Karten bis zum Tageslimit. */
+export function todaysSet(cards: Card[], today: string, stats: StudyStats) {
+  const reviews = cards.filter((c) => isDue(c, today));
+  const budget = Math.max(0, NEW_PER_DAY - stats.newToday);
+  const fresh = cards.filter((c) => active(c) && isNew(c)).slice(0, budget);
+  return { reviews, fresh, all: [...reviews, ...fresh] };
+}
+
+/** Verteilung auf die Fächer: [neu, Fach 1 … Fach 5]. */
+export function boxes(cards: Card[]) {
+  const counts = [0, 0, 0, 0, 0, 0];
+  for (const c of cards) if (active(c)) counts[c.state?.box ?? 0] += 1;
+  return counts;
+}
+
+/** Anteil „sitzt“ (Fach 3 und höher). */
+export function mastery(cards: Card[]) {
+  const act = cards.filter(active);
+  if (!act.length) return 0;
+  return act.filter((c) => (c.state?.box ?? 0) >= 3).length / act.length;
+}
+
+/** Mischen, aber Module abwechselnd (Interleaving), damit der gemischte Kasten wirklich gemischt ist. */
+export function interleave(cards: Card[], seed = 1): Card[] {
+  let x = seed;
+  const rand = () => ((x = (x * 9301 + 49297) % 233280) / 233280);
+  const groups = new Map<string, Card[]>();
+  for (const c of [...cards].sort(() => rand() - 0.5)) {
+    const k = c.moduleId ?? "";
+    groups.set(k, [...(groups.get(k) ?? []), c]);
+  }
+  const out: Card[] = [];
+  const lists = [...groups.values()];
+  while (lists.some((l) => l.length)) for (const l of lists) if (l.length) out.push(l.shift()!);
+  return out;
 }
 
 // ------------------------------------------------------------------ Beispieldaten (nur Browser)
 
-function demoData(moduleId: string, paths: string[]): Partial<StudyState> {
-  const files: Record<string, Analysis | null> = {};
+function demoData(paths: string[]): Partial<StudyState> {
+  const files: Record<string, Analysis | null> = { ...state.files };
   paths.forEach((p, i) => {
+    if (p in files) return;
     const name = p.split("/").pop() ?? p;
     files[p] =
-      i < 2
+      i % 3 !== 2
         ? {
             id: `demo${String(i).padStart(12, "0")}`,
             name,
@@ -258,14 +460,15 @@ function demoData(moduleId: string, paths: string[]): Partial<StudyState> {
               { text: "Second key idea, including the formula a = b + c.", page: 7 },
               { text: "A worked example that shows how to apply it.", page: 12 },
             ],
-            topics: ["Topic one", "Topic two"],
+            topics: [i % 2 ? "Topic one" : "Topic two"],
             terms: [{ term: "Key term", definition: "A one-sentence definition of the term.", page: 4 }],
             cards: [
-              { q: "What does the key term mean?", a: "A one-sentence definition of the term.", page: 4 },
+              { q: `What does the key term in ${name} mean?`, a: "A one-sentence definition of the term.", page: 4 },
               { q: "How do you calculate a?", a: "a = b + c", page: 7 },
+              { q: "Name the three steps of the example.", a: "Plan, do, check.", page: 12 },
             ],
           }
         : null;
   });
-  return { files, cards: {}, job: IDLE, sheets: { ...state.sheets, [moduleId]: state.sheets[moduleId] ?? [] } };
+  return { files, job: IDLE };
 }

@@ -90,6 +90,9 @@ contextBridge.exposeInMainWorld("studi", {
     sheets: call("studi:study:sheets"),
     createSheet: call("studi:study:createSheet"),
     deleteSheet: call("studi:study:deleteSheet"),
+    openSheet: call("studi:study:openSheet"),
+    sheetState: call("studi:study:sheetState"),
+    suspend: call("studi:study:suspend"),
     exportAnki: call("studi:study:exportAnki"),
     onState(callback) {
       const listener = (_event, state) => callback(state);

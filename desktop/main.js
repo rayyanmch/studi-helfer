@@ -351,7 +351,7 @@ google.register(handle);
 unimail.register(handle, packaged);
 mailtools.register(handle); // Newsletter abbestellen
 // Lernbereich: Zusammenfassungen, Lernzettel, Karteikarten über Claude Code (lib/study.js)
-study.register(handle, { packaged, windows: () => windows, dialog });
+study.register(handle, { packaged, windows: () => windows, dialog, BrowserWindow, shell });
 
 // ------------------------------------------------------------------ Sync-Stand an die Fenster schicken
 

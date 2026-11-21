@@ -14,12 +14,14 @@ const os = require("node:os");
 const path = require("node:path");
 const { spawn, execFile } = require("node:child_process");
 const backend = require("./backend");
+const sheetLib = require("./study-sheet");
 
 const DIR = path.join(backend.DATA_DIR, "study");
 const ANALYSES = path.join(DIR, "analyses.json"); // { [hash]: Analysis }
 const HASHES = path.join(DIR, "hashes.json"); // { [path]: { size, mtime, hash } }
 const SHEETS = path.join(DIR, "sheets.json"); // { sheets: Sheet[] }
-const CARDS = path.join(DIR, "cards.json"); // { [cardId]: { box, due, reviews } }
+const CARDS = path.join(DIR, "cards.json"); // { [cardId]: { box, due, reviews, suspended? } }
+const LOG = path.join(DIR, "log.json"); // { days: { "YYYY-MM-DD": Anzahl Abfragen } }
 
 const MODEL = process.env.STUDI_STUDY_MODEL || "sonnet";
 const PARALLEL = 2; // gleichzeitige Auswertungen (Abo-Limits schonen)
@@ -209,24 +211,6 @@ const FILE_SCHEMA = obj({
   ),
 });
 
-const SHEET_SCHEMA = obj({
-  title: { type: "string", description: "Short title for the study sheet" },
-  sections: list(
-    obj({
-      heading: { type: "string" },
-      points: list(
-        obj({
-          text: { type: "string", description: "A concise but complete statement; definitions, formulas, examples where useful" },
-          file: { type: "integer", description: "Number of the source file (F1 → 1), 0 if several or unknown" },
-          page,
-        }),
-        "3–8 points",
-      ),
-    }),
-    "3–8 sections, ordered by topic (not by file)",
-  ),
-});
-
 // ------------------------------------------------------------------ Text holen
 
 async function fileText(isPackaged, p, maxChars) {
@@ -237,7 +221,7 @@ async function fileText(isPackaged, p, maxChars) {
 
 // ------------------------------------------------------------------ Auswertung pro Datei (Warteschlange)
 
-function createStudy({ packaged, broadcast }) {
+function createStudy({ packaged, broadcast, ...deps }) {
   const job = { running: false, total: 0, done: 0, current: [], failed: [], startedAt: 0, durations: [], cancel: false };
 
   function jobState() {
@@ -357,17 +341,59 @@ function createStudy({ packaged, broadcast }) {
         if (cards[id]) progress[id] = cards[id];
       });
     }
-    return { files, cards: progress, today: today(), state: jobState() };
+    return { files, cards: progress, today: today(), state: jobState(), stats: stats(), sheet: sheetState() };
   }
 
   // ---------------------------------------------------------------- Karteikarten
 
-  function review(cardId, knew) {
+  /** Wie viel heute gelernt wurde und wie viele Tage am Stück (für die Übersicht). */
+  function stats() {
+    const days = readJson(LOG, { days: {} }).days || {};
+    let streak = 0;
+    let d = days[today()] ? 0 : -1; // heute noch nichts gelernt: Serie zählt bis gestern
+    while (days[today(d)]) {
+      streak += 1;
+      d -= 1;
+    }
+    const fresh = readJson(LOG, { newDays: {} }).newDays || {};
+    return { today: days[today()] || 0, streak, newToday: fresh[today()] || 0 };
+  }
+
+  /**
+   * Karte bewerten (Leitner). practice = freies Üben nicht fälliger Karten: „gewusst“ ändert dann den Plan nicht,
+   * „nicht gewusst“ holt die Karte zurück in Fach 1.
+   */
+  function review(cardId, knew, practice) {
     if (typeof cardId !== "string" || !/^[0-9a-f]{16}:\d+$/.test(cardId)) return fail("invalid", "Unknown card.");
     const cards = readJson(CARDS, {});
     const cur = cards[cardId] || { box: 0, reviews: 0 };
-    const box = knew ? Math.min(5, Math.max(1, cur.box) + 1) : 1;
-    cards[cardId] = { box, due: today(LEITNER_DAYS[box]), reviews: cur.reviews + 1 };
+    const due = !cur.due || cur.due <= today();
+    let next;
+    if (practice && !due && knew) next = { ...cur, reviews: cur.reviews + 1 };
+    else {
+      const box = knew ? Math.min(5, Math.max(1, cur.box) + 1) : 1;
+      next = { ...cur, box, due: today(LEITNER_DAYS[box]), reviews: cur.reviews + 1 };
+    }
+    cards[cardId] = next;
+    writeJson(CARDS, cards);
+    const log = readJson(LOG, { days: {} });
+    log.days = log.days || {};
+    log.days[today()] = (log.days[today()] || 0) + 1;
+    if (!cur.box) {
+      log.newDays = log.newDays || {};
+      log.newDays[today()] = (log.newDays[today()] || 0) + 1;
+    }
+    writeJson(LOG, log);
+    return { ok: true, card: next, stats: stats() };
+  }
+
+  /** Karte nicht mehr abfragen (z. B. unpassend) bzw. wieder abfragen. */
+  function suspend(cardId, on) {
+    if (typeof cardId !== "string" || !/^[0-9a-f]{16}:\d+$/.test(cardId)) return fail("invalid", "Unknown card.");
+    const cards = readJson(CARDS, {});
+    const cur = cards[cardId] || { box: 0, reviews: 0 };
+    cards[cardId] = { ...cur, suspended: Boolean(on) };
+    if (!on) delete cards[cardId].suspended;
     writeJson(CARDS, cards);
     return { ok: true, card: cards[cardId] };
   }
@@ -379,71 +405,100 @@ function createStudy({ packaged, broadcast }) {
     return { ok: true };
   }
 
-  // ---------------------------------------------------------------- Lernzettel
+  // ---------------------------------------------------------------- Lernzettel (PDF)
 
   function listSheets(moduleId) {
     return readJson(SHEETS, { sheets: [] }).sheets.filter((s) => !moduleId || s.moduleId === moduleId);
   }
 
-  let sheetRunning = null;
+  /** PDFs liegen in ~/Uni/Study sheets/ (Spotlight findet sie), ohne Zielordner in den App-Daten. */
+  function pdfPathFor(sheet, moduleName) {
+    const cfg = backend.loadConfig();
+    const dir = cfg.targetDir ? path.join(cfg.targetDir, "Study sheets") : path.join(DIR, "pdf");
+    const clean = (x) => String(x || "").replace(/[/\\:*?"<>|\n\r]/g, "-").replace(/\s+/g, " ").trim();
+    const base = clean(`${moduleName ? `${moduleName} – ` : ""}${sheet.title}`).slice(0, 120) || "Study sheet";
+    let file = path.join(dir, `${base}.pdf`);
+    for (let n = 2; fs.existsSync(file) && n < 100; n++) file = path.join(dir, `${base} (${n}).pdf`);
+    return file;
+  }
 
-  async function createSheet({ moduleId, moduleName, paths, focus }) {
+  let sheetRunning = null;
+  let sheetProgress = null; // { startedAt, step }
+
+  async function sourceText(files, moduleName) {
+    // Volltext, solange er in den Rahmen passt; sonst die gespeicherten Auswertungen (dann ggf. erst auswerten)
+    const texts = [];
+    let total = 0;
+    for (const p of files) {
+      const t = await fileText(packaged(), p, FILE_CHARS);
+      texts.push(t);
+      if (t.ok) total += t.text.length;
+    }
+    if (total <= SHEET_CHARS) {
+      const parts = files.map((p, i) => (texts[i].ok ? `=== F${i + 1}: ${path.basename(p)} ===\n${texts[i].text}` : null)).filter(Boolean);
+      return parts.length ? { ok: true, input: parts.join("\n\n") } : texts[0];
+    }
+    const hashes = readJson(HASHES, {});
+    const parts = [];
+    for (const [i, p] of files.entries()) {
+      let a = readJson(ANALYSES, {})[hashOf(p, hashes)];
+      if (!a) {
+        const res = await analyzeOne(p, moduleName);
+        if (!res.ok) continue;
+        a = readJson(ANALYSES, {})[hashOf(p, hashes)];
+      }
+      parts.push(
+        `=== F${i + 1}: ${path.basename(p)} ===\nSummary: ${a.summary}\nKey points:\n${a.keyPoints.map((k) => `- ${k.text} (p. ${k.page})`).join("\n")}\nTerms:\n${a.terms.map((t) => `- ${t.term}: ${t.definition} (p. ${t.page})`).join("\n")}`,
+      );
+    }
+    writeJson(HASHES, hashes);
+    return parts.length ? { ok: true, input: parts.join("\n\n") } : fail("ai_error", "These files couldn't be read.");
+  }
+
+  async function createSheet({ moduleId, moduleName, paths, focus, include, length, accent }) {
     if (sheetRunning) return fail("busy", "A study sheet is already being written.");
     const files = [...new Set((Array.isArray(paths) ? paths : []).filter(allowedPath))].slice(0, 30);
     if (!files.length) return fail("invalid", "Choose at least one file.");
+    const inc = sheetLib.cleanInclude(include);
+    const len = ["short", "normal", "detailed"].includes(length) ? length : "normal";
+    const focusText = typeof focus === "string" && focus.trim() ? focus.trim().slice(0, 300) : null;
+    sheetProgress = { startedAt: Date.now(), step: "reading" };
     sheetRunning = (async () => {
-      // Volltext, solange er in den Rahmen passt; sonst die gespeicherten Auswertungen (dann ggf. erst auswerten)
-      const texts = [];
-      let total = 0;
-      for (const p of files) {
-        const t = await fileText(packaged(), p, FILE_CHARS);
-        texts.push(t);
-        if (t.ok) total += t.text.length;
-      }
-      let input;
-      if (total <= SHEET_CHARS) {
-        const parts = files.map((p, i) => (texts[i].ok ? `=== F${i + 1}: ${path.basename(p)} ===\n${texts[i].text}` : null)).filter(Boolean);
-        if (!parts.length) return texts[0];
-        input = parts.join("\n\n");
-      } else {
-        const hashes = readJson(HASHES, {});
-        const parts = [];
-        for (const [i, p] of files.entries()) {
-          let a = readJson(ANALYSES, {})[hashOf(p, hashes)];
-          if (!a) {
-            const res = await analyzeOne(p, moduleName);
-            if (!res.ok) continue;
-            a = readJson(ANALYSES, {})[hashOf(p, hashes)];
-          }
-          parts.push(
-            `=== F${i + 1}: ${path.basename(p)} ===\nSummary: ${a.summary}\nKey points:\n${a.keyPoints.map((k) => `- ${k.text} (p. ${k.page})`).join("\n")}\nTerms:\n${a.terms.map((t) => `- ${t.term}: ${t.definition} (p. ${t.page})`).join("\n")}`,
-          );
-        }
-        writeJson(HASHES, hashes);
-        if (!parts.length) return fail("ai_error", "These files couldn't be read.");
-        input = parts.join("\n\n");
-      }
-      const focusLine = typeof focus === "string" && focus.trim() ? ` Focus on: ${focus.trim().slice(0, 300)}.` : "";
+      const src = await sourceText(files, moduleName);
+      if (!src.ok) return src;
+      sheetProgress.step = "writing";
       const res = await askClaude({
         system: SYSTEM,
-        prompt: `Course: ${moduleName || "unknown"}. Write a study sheet (Lernzettel) for the exam from these ${files.length} file(s), marked F1…F${files.length}.${focusLine} Cite the source file number and page for each point.`,
-        input,
-        schema: SHEET_SCHEMA,
-        timeoutMs: 420_000,
+        prompt: sheetLib.prompt({ moduleName, count: files.length, include: inc, length: len, focus: focusText }),
+        input: src.input,
+        schema: sheetLib.SCHEMA,
+        timeoutMs: 600_000,
       });
       if (!res.ok) return res;
+      sheetProgress.step = "pdf";
       const sheet = {
         id: crypto.randomUUID(),
         moduleId: String(moduleId || ""),
+        moduleName: String(moduleName || ""),
         createdAt: Date.now(),
-        focus: focusLine ? focus.trim().slice(0, 300) : null,
+        focus: focusText,
+        include: inc,
+        length: len,
         files: files.map((p) => ({ path: p, name: path.basename(p) })),
-        title: res.data.title,
-        sections: res.data.sections,
+        ...res.data,
       };
+      const accentColor = /^#[0-9a-f]{6}$/i.test(String(accent || "")) ? accent : undefined;
+      sheet.accent = accentColor || null;
+      try {
+        sheet.pdf = await sheetLib.renderPdf(deps.BrowserWindow, sheet, { moduleName, accent: accentColor, outFile: pdfPathFor(sheet, moduleName) });
+      } catch (e) {
+        console.error("[study] pdf", e);
+        sheet.pdf = null;
+      }
       const store = readJson(SHEETS, { sheets: [] });
       store.sheets.unshift(sheet);
       writeJson(SHEETS, store);
+      if (sheet.pdf) deps.shell.openPath(sheet.pdf);
       return { ok: true, sheet };
     })();
     try {
@@ -453,14 +508,45 @@ function createStudy({ packaged, broadcast }) {
       return fail("ai_error", "Something went wrong. Please try again.");
     } finally {
       sheetRunning = null;
+      sheetProgress = null;
     }
   }
 
-  function deleteSheet(id) {
+  /** PDF öffnen; fehlt es (alter Lernzettel oder gelöscht), wird es neu erstellt. */
+  async function openSheet(id, reveal) {
     const store = readJson(SHEETS, { sheets: [] });
+    const sheet = store.sheets.find((s) => s.id === id);
+    if (!sheet) return fail("invalid", "This study sheet no longer exists.");
+    if (!sheet.pdf || !fs.existsSync(sheet.pdf)) {
+      try {
+        sheet.pdf = await sheetLib.renderPdf(deps.BrowserWindow, sheet, {
+          moduleName: sheet.moduleName,
+          accent: sheet.accent || undefined,
+          outFile: pdfPathFor(sheet, sheet.moduleName),
+        });
+        writeJson(SHEETS, store);
+      } catch (e) {
+        console.error("[study] pdf", e);
+        return fail("internal", "The PDF couldn't be created. Please try again.");
+      }
+    }
+    if (reveal) deps.shell.showItemInFolder(sheet.pdf);
+    else await deps.shell.openPath(sheet.pdf);
+    return { ok: true, path: sheet.pdf };
+  }
+
+  async function deleteSheet(id) {
+    const store = readJson(SHEETS, { sheets: [] });
+    const sheet = store.sheets.find((s) => s.id === id);
     store.sheets = store.sheets.filter((s) => s.id !== id);
     writeJson(SHEETS, store);
+    // PDF in den Papierkorb (lässt sich im Finder zurücklegen)
+    if (sheet?.pdf && fs.existsSync(sheet.pdf)) await deps.shell.trashItem(sheet.pdf).catch(() => {});
     return { ok: true };
+  }
+
+  function sheetState() {
+    return sheetProgress ? { running: true, ...sheetProgress } : { running: false };
   }
 
   async function status() {
@@ -468,7 +554,7 @@ function createStudy({ packaged, broadcast }) {
     return { available: Boolean(bin), provider: "claude-code", model: MODEL };
   }
 
-  return { status, analyze, cancel, get, review, resetCards, listSheets, createSheet, deleteSheet, jobState };
+  return { status, analyze, cancel, get, review, suspend, stats, resetCards, listSheets, createSheet, openSheet, deleteSheet, sheetState, jobState };
 }
 
 // ------------------------------------------------------------------ Anki-Export
@@ -492,20 +578,23 @@ function ankiText(cards) {
   return lines.join("\n") + "\n";
 }
 
-function register(handle, { packaged, windows, dialog }) {
+function register(handle, { packaged, windows, dialog, BrowserWindow, shell }) {
   const broadcast = (channel, payload) => {
     for (const win of windows()) win.webContents.send(channel, payload);
   };
-  const study = createStudy({ packaged, broadcast });
+  const study = createStudy({ packaged, broadcast, BrowserWindow, shell });
   handle("studi:study:status", () => study.status());
   handle("studi:study:get", (paths) => study.get(paths));
   handle("studi:study:analyze", (paths, moduleName) => study.analyze(paths, String(moduleName || "")));
   handle("studi:study:cancel", () => study.cancel());
-  handle("studi:study:review", (cardId, knew) => study.review(cardId, Boolean(knew)));
+  handle("studi:study:review", (cardId, knew, practice) => study.review(cardId, Boolean(knew), Boolean(practice)));
+  handle("studi:study:suspend", (cardId, on) => study.suspend(cardId, Boolean(on)));
   handle("studi:study:resetCards", (ids) => study.resetCards(ids));
   handle("studi:study:sheets", (moduleId) => study.listSheets(moduleId ? String(moduleId) : null));
   handle("studi:study:createSheet", (opts) => study.createSheet(opts || {}));
   handle("studi:study:deleteSheet", (id) => study.deleteSheet(String(id)));
+  handle("studi:study:openSheet", (id, reveal) => study.openSheet(String(id), Boolean(reveal)));
+  handle("studi:study:sheetState", () => study.sheetState());
   handle("studi:study:exportAnki", async (name, cards) => {
     const safe = String(name || "Flashcards").replace(/[/\\:*?"<>|]/g, "-").slice(0, 80);
     const win = [...windows()][0];

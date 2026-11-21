@@ -7,6 +7,7 @@ import {
   CalendarPlus,
   Check,
   ChevronDown,
+  GraduationCap,
   Inbox,
   Library,
   LogIn,
@@ -26,6 +27,7 @@ import { CoursesView } from "./CoursesView";
 import { ModuleView } from "./ModuleView";
 import { openEvent, openNewEvent } from "./EventDialog";
 import { MensaView } from "./MensaView";
+import { StudyHub, useStudyDue } from "./StudyHub";
 import { Welcome } from "./Welcome";
 import { MensaToday } from "./MensaToday";
 import { matches, searchTerms } from "@/lib/search";
@@ -48,7 +50,7 @@ const LONG = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", 
 // Titel ohne „Submit “ vorne, für enge Stellen
 const bare = (t: string) => t.replace(/^Submit /, "");
 
-type View = "week" | "new" | "courses" | "mail" | "mensa" | string; // string = Modul-Id
+type View = "week" | "new" | "courses" | "mail" | "mensa" | "study" | string; // string = Modul-Id
 
 function parseDay(iso: string) {
   const [y, m, d] = iso.split("-").map(Number);
@@ -161,6 +163,17 @@ export function Overview({
     setView(v);
   };
 
+  const studyDue = useStudyDue();
+  // „Open in Study“ / „New study sheet“ auf der Kursseite öffnet den Study-Tab
+  useEffect(() => {
+    const go = () => {
+      setQuery("");
+      setView("study");
+    };
+    window.addEventListener("studi:open-study", go);
+    return () => window.removeEventListener("studi:open-study", go);
+  }, []);
+
   const course = list.find((c) => c.id === view);
   const newCount = list.reduce((n, c) => n + countNew(c) + c.folders.reduce((m, f) => m + f.files.filter((x) => x.changeNote && !x.isNew).length, 0), 0);
   const modules = realCourses(list);
@@ -188,6 +201,9 @@ export function Overview({
               warn={failedIds.length > 0}
             >
               Courses
+            </NavItem>
+            <NavItem active={!searching && view === "study"} onClick={() => open("study")} icon={<GraduationCap size={15} aria-hidden />} count={studyDue}>
+              Study
             </NavItem>
             <NavItem active={view === "mail"} onClick={() => open("mail")} icon={<Mail size={15} aria-hidden />} count={mailUnread}>
               Mail
@@ -265,6 +281,7 @@ export function Overview({
                 {view === "new" && <NewView list={list} onOpen={open} />}
                 {view === "courses" && <CoursesView onOpen={open} onEditCourses={onEditCourses} />}
                 {view === "mensa" && <MensaView />}
+                {view === "study" && <StudyHub />}
                 {course && (
                   <ModuleView
                     key={course.id}
