@@ -20,6 +20,7 @@ const unimail = require("./lib/unimail");
 const mailtools = require("./lib/mailtools");
 const study = require("./lib/study");
 const { createMensa } = require("./lib/mensa");
+const { createReminders } = require("./lib/reminders");
 const mensa = createMensa({ dataDir: backend.DATA_DIR });
 
 let uiUrl = process.env.STUDI_UI_URL || "http://localhost:3000";
@@ -432,6 +433,46 @@ async function notifyNewFiles() {
   n.show();
 }
 
+/** Offene Abgaben und Klausuren für die Erinnerungen (ohne erledigte und ausgeblendete). */
+function reminderItems() {
+  const cfg = backend.loadConfig();
+  if (!cfg.username) return [];
+  const { modules } = backend.currentModules(cfg);
+  const name = (id) => modules.find((m) => m.id === id)?.name;
+  const custom = backend.getCustomEvents();
+  const hidden = new Set(custom.hidden);
+  const done = new Set(backend.getDoneDeadlines());
+  const wanted = (d) => d.kind === "abgabe" || d.kind === "klausur";
+  const list = backend
+    .getDeadlines()
+    .deadlines.filter((d) => wanted(d) && !d.done && !hidden.has(d.id) && !(d.seriesId && hidden.has(d.seriesId)))
+    .map((d) => ({ id: d.id, kind: d.kind, title: d.title, date: d.date, time: d.time, course: name(d.moduleId) }));
+  // Eigene Abgaben/Klausuren ohne Wiederholung (Wiederholungen löst nur die Oberfläche auf)
+  for (const ev of custom.events) {
+    if (!ev || !wanted(ev) || (ev.repeat && ev.repeat !== "none")) continue;
+    const id = `custom|${ev.id}|${ev.date}`;
+    if (done.has(id)) continue;
+    list.push({ id, kind: ev.kind, title: ev.title, date: ev.date, time: ev.start || "", course: name(ev.moduleId) });
+  }
+  return list;
+}
+
+const reminders = createReminders({
+  dataDir: backend.DATA_DIR,
+  items: reminderItems,
+  enabled: () => backend.loadConfig().notifications !== false && Notification.isSupported(),
+  show: ({ title, body }) => {
+    const n = new Notification({ title, body });
+    n.on("click", () => {
+      const win = BrowserWindow.getAllWindows()[0] ?? createWindow();
+      win.show();
+      win.focus();
+      win.webContents.send("studi:command", "week");
+    });
+    n.show();
+  },
+});
+
 /** App-Menü mit Tastenkürzeln (⌘R Sync, ⌘, Einstellungen, ⌘1–3 Ansichten). */
 function buildMenu() {
   const send = (cmd) => () => {
@@ -509,6 +550,9 @@ app.whenReady().then(async () => {
   const startCfg = backend.loadConfig();
   if (startCfg.schedule?.enabled) backend.applySchedule(packaged(), startCfg.schedule);
   setInterval(pushState, 700);
+  // Erinnerungen an Abgaben und Klausuren: kurz nach dem Start, dann jede Minute
+  setTimeout(() => reminders.check(), 20_000);
+  reminders.start(60_000);
   // Kurz nach dem Start Übungsblätter auswerten, die noch nicht ausgewertet sind (z. B. aus dem 7-Uhr-Sync).
   setTimeout(() => runAiDeadlines(), 15_000);
 

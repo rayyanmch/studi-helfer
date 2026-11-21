@@ -87,7 +87,7 @@ export function Settings({ onClose, onEditCourses, onLogout }: { onClose: () => 
           <Calendars />
 
           <Section title="Mac">
-            <Row label="Notifications" hint="When new files arrive (“3 new files in BWL”).">
+            <Row label="Notifications" hint="New files, and a reminder the evening before a deadline or exam (“Due tomorrow: Übung 06”).">
               <Toggle on={app.notifications} onChange={(on) => void store.setNotifications(on)} disabled={!desktop} />
             </Row>
             <Row label="Open at login" hint="Starts quietly in the background.">
