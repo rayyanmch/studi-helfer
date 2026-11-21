@@ -48,6 +48,7 @@ const MATH_RULES = [
   "Definitions and theorems must be exact and complete, including all conditions. Do not simplify them into something false.",
   "In worked examples, every step is its own line and says why (e.g. 'mit dem konjugierten Nenner erweitern').",
   "Calculations must be correct; check each step. If the material has no solution, solve it yourself carefully and say 'eigene Lösung'.",
+  "The material is extracted PDF text, so symbols like overlines, hats or arrows may be missing. Silently write the correct notation; never mention the PDF, the extraction or missing symbols.",
 ].join(" ");
 
 const LENGTHS = {
@@ -314,6 +315,12 @@ function sheetHtml(sheet, { moduleName, accent = "#22325c" }) {
     return list.length ? `<p class="sources">${L.sources}: ${[...new Set(list)].join(" · ")}</p>` : "";
   };
 
+  // „Satz (Re, Im)“ nicht als „Satz · Satz (Re, Im)“: steht die Art schon im Namen, nur den Namen zeigen
+  const boxTitle = (label, name) =>
+    /^(satz|theorem|definition|lemma|korollar|corollary|bemerkung|remark|proposition|folgerung|regel|rule)\b/i.test(String(name ?? "").trim())
+      ? rich(name)
+      : `${label} · ${rich(name)}`;
+
   // Mathe: Kästen für Definitionen und Sätze, Formeltabelle, Rezepte und Rechenwege
   const mathPartHtml = (p, i) => {
     const h = (key, body) => (body ? `<h3>${M[key]}</h3>${body}` : "");
@@ -322,8 +329,8 @@ function sheetHtml(sheet, { moduleName, accent = "#22325c" }) {
       <h2>${rich(p.title)}</h2>
       ${h("summary", leads(p.summary))}
       ${h("intuition", bullets(p.intuition, rich))}
-      ${h("definitions", (p.definitions || []).map((d) => `<div class="box def"><div class="box-h">${M.definition} · ${rich(d.name)}</div>${rich(d.text)}</div>`).join(""))}
-      ${h("theorems", (p.theorems || []).map((t) => `<div class="box thm"><div class="box-h">${M.theorem} · ${rich(t.name)}</div>${rich(t.statement)}</div>`).join(""))}
+      ${h("definitions", (p.definitions || []).map((d) => `<div class="box def"><div class="box-h">${boxTitle(M.definition, d.name)}</div>${rich(d.text)}</div>`).join(""))}
+      ${h("theorems", (p.theorems || []).map((t) => `<div class="box thm"><div class="box-h">${boxTitle(M.theorem, t.name)}</div>${rich(t.statement)}</div>`).join(""))}
       ${h(
         "formulas",
         p.formulas?.length
@@ -411,7 +418,7 @@ function sheetHtml(sheet, { moduleName, accent = "#22325c" }) {
   .box.thm { border-left-color: #3a5ba0; background: #eef3fb; }
   .box-h { font-weight: 650; color: ${accent}; font-size: 9.5pt; margin-bottom: 2px; }
   table.formulas td { border: none; border-bottom: 1px solid #e3e7ee; padding: 6px 7px; vertical-align: middle; }
-  td.f-name { font-weight: 650; width: 22%; } td.f-formula { width: 40%; }
+  td.f-name { font-weight: 650; width: 18%; } td.f-formula { width: 47%; }
   ol.steps { margin: 2px 0 6px; } ol.steps li { margin: 2px 0; }
   .example, .method { break-inside: avoid; margin: 0 0 8px; }
   .result { margin-top: 2px; }
