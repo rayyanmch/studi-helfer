@@ -49,8 +49,9 @@ function helperEnv() {
 /**
  * Führt einen Helfer-Befehl aus und liefert die letzte JSON-Zeile
  * ({type:"result",...} oder {type:"error",code,message}).
+ * Optional: onProgress(obj) für Zwischenstände ({type:"progress"}), onChild(child) zum Abbrechen.
  */
-function runHelper(isPackaged, args, { stdin, timeoutMs = 120_000 } = {}) {
+function runHelper(isPackaged, args, { stdin, timeoutMs = 120_000, onProgress, onChild } = {}) {
   return new Promise((resolve) => {
     let helper;
     try {
@@ -69,7 +70,23 @@ function runHelper(isPackaged, args, { stdin, timeoutMs = 120_000 } = {}) {
     let out = "";
     let err = "";
     const timer = setTimeout(() => child.kill("SIGTERM"), timeoutMs);
-    child.stdout.on("data", (d) => (out += d));
+    onChild?.(child);
+    let pending = "";
+    child.stdout.on("data", (d) => {
+      out += d;
+      if (!onProgress) return;
+      pending += d;
+      const lines = pending.split("\n");
+      pending = lines.pop();
+      for (const line of lines) {
+        try {
+          const obj = JSON.parse(line);
+          if (obj.type === "progress") onProgress(obj);
+        } catch {
+          // keine JSON-Zeile
+        }
+      }
+    });
     child.stderr.on("data", (d) => (err += d));
     child.on("error", (e) => {
       clearTimeout(timer);

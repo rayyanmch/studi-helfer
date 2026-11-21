@@ -18,6 +18,11 @@
     mail-modify                  stdin: {"id", "unread"?, "archive"?}
     mail-send                    stdin: {"to", "subject", "body", "inReplyTo"?}
     mail-attachment              stdin: {"id", "index"} → {"name", "data" (Base64)}
+    vpn-connect                  Uni-VPN: Cisco im Hintergrund „Connect“ drücken (Bedienungshilfen), Anmeldung macht der
+                                 Student im Browser; danach den Anmelde-Tab schließen. stdin: {"server"}.
+                                 Zwischenstände als {"type": "progress", "stage"}.
+    vpn-disconnect               Uni-VPN trennen; Ciscos Abmeldeseite im Browser abfangen und schließen.
+    vpn-inspect                  Fehlersuche: Aufbau der Cisco-Fenster (ohne Feldinhalte).
     file-text                    Text einer Kursdatei mit Seitenmarken (Lernbereich); stdin: {"path", "maxChars"?}
     pferd-run --config DATEI     Intern: PFERD mit Köln-Korrekturen starten.
 
@@ -210,6 +215,25 @@ def cmd_mail_attachment(args: argparse.Namespace) -> None:
     emit(unimail.attachment(*_mail_login(), str(data.get("id", "")), index))
 
 
+def cmd_vpn_connect(args: argparse.Namespace) -> None:
+    from . import vpnauto
+
+    server = str(_stdin_json().get("server") or "vpngate.uni-koeln.de")
+    emit(vpnauto.connect(server))
+
+
+def cmd_vpn_disconnect(args: argparse.Namespace) -> None:
+    from . import vpnauto
+
+    emit(vpnauto.disconnect())
+
+
+def cmd_vpn_inspect(args: argparse.Namespace) -> None:
+    from . import vpnauto
+
+    emit({"type": "result", **vpnauto.inspect()})
+
+
 def cmd_pferd_run(args: argparse.Namespace) -> None:
     from .pferd_run import run
 
@@ -230,7 +254,8 @@ def main() -> int:
     p = sub.add_parser("orga"); p.set_defaults(fn=cmd_orga)
     p = sub.add_parser("calendar-test"); p.add_argument("--url", required=True); p.set_defaults(fn=cmd_calendar_test)
     p = sub.add_parser("sync"); p.add_argument("--auto", action="store_true"); p.set_defaults(fn=cmd_sync)
-    for name, fn in (("mail-check", cmd_mail_check), ("mail-list", cmd_mail_list), ("mail-modify", cmd_mail_modify), ("mail-send", cmd_mail_send), ("mail-attachment", cmd_mail_attachment), ("file-text", cmd_file_text)):
+    for name, fn in (("mail-check", cmd_mail_check), ("mail-list", cmd_mail_list), ("mail-modify", cmd_mail_modify), ("mail-send", cmd_mail_send), ("mail-attachment", cmd_mail_attachment), ("file-text", cmd_file_text),
+                     ("vpn-connect", cmd_vpn_connect), ("vpn-disconnect", cmd_vpn_disconnect), ("vpn-inspect", cmd_vpn_inspect)):
         sub.add_parser(name).set_defaults(fn=fn)
     p = sub.add_parser("pferd-run"); p.add_argument("--config", required=True); p.set_defaults(fn=cmd_pferd_run)
     args = parser.parse_args()

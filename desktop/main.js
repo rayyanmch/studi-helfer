@@ -354,7 +354,7 @@ google.register(handle);
 unimail.register(handle, packaged);
 mailtools.register(handle, packaged); // Newsletter abbestellen, Anhang in den Kursordner
 // Uni-VPN-Assistent (lib/vpn.js)
-vpn.register(handle);
+vpn.register(handle, packaged);
 // Study places: Orte aus OpenStreetMap (lib/places.js)
 places.register(handle);
 // Lernbereich: Zusammenfassungen, Lernzettel, Karteikarten über Claude Code (lib/study.js)

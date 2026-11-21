@@ -116,6 +116,10 @@ contextBridge.exposeInMainWorld("studi", {
   vpn: {
     status: call("studi:vpn:status"),
     open: call("studi:vpn:open"),
+    connect: call("studi:vpn:connect"),
+    cancel: call("studi:vpn:cancel"),
+    allow: call("studi:vpn:allow"),
+    inspect: call("studi:vpn:inspect"), // nur Entwicklung
     disconnect: call("studi:vpn:disconnect"),
     front: call("studi:vpn:front"),
     guide: call("studi:vpn:guide"),

@@ -1,10 +1,14 @@
 // Uni-VPN-Assistent: Welche Uni nutzt welches VPN, ist das Programm installiert, ist die Verbindung an?
-// Die App verbindet nicht selbst (das macht das VPN-Programm der Uni mit eigener Anmeldung), sie führt nur hin.
+// Den Tunnel baut das VPN-Programm der Uni auf. Bei Cisco übernimmt die App den Cisco-Schritt (Helfer-Befehl
+// vpn-connect, studi_sync/vpnauto.py, braucht einmal „Bedienungshilfen“): Connect drücken, Cisco verstecken.
+// Uni-Login und Duo macht der Student selbst im Browser-Tab, den Cisco öffnet; sobald verbunden, schließt die App
+// diesen Tab und holt sich nach vorn. Beim Trennen schließt sie ebenso Ciscos Abmeldeseite.
 // Neue Unis: Eintrag in UNIS ergänzen (Programm, Server, Anleitung der Uni).
 
 const fs = require("fs");
 const { execFile } = require("child_process");
-const { app, BrowserWindow, shell } = require("electron");
+const { app, BrowserWindow, shell, systemPreferences } = require("electron");
+const backend = require("./backend");
 
 /** VPN-Programme, die Unis in Deutschland nutzen, mit typischen Orten auf dem Mac. */
 const CLIENTS = {
@@ -61,14 +65,49 @@ function extensionAllowed(bundleId) {
   });
 }
 
+/** Darf Studi-Helfer andere Programme bedienen (Bedienungshilfen)? prompt = macOS-Abfrage zeigen. */
+function axTrusted(prompt = false) {
+  try {
+    return systemPreferences.isTrustedAccessibilityClient(prompt);
+  } catch {
+    return false;
+  }
+}
+
+// Laufendes Verbinden: { running, stage (starting/browser/connecting/done/error/cancelled), since, error, child, cancelled }
+let auto = null;
+
+/** Beendet einen laufenden Versuch: Helfer stoppen (der drückt dann Ciscos „Cancel“). */
+function abortRun(run) {
+  if (run.child) run.child.kill("SIGTERM");
+}
+const autoView = () =>
+  auto ? { running: auto.running, stage: auto.stage, since: auto.since, error: auto.error || null } : null;
+
+// `vpn state` dauert ~2 s, `systemextensionsctl` auch: puffern, damit häufiges Nachsehen (1×/s beim Verbinden)
+// keine Aufrufe stapelt (das ließ Cisco und die App ruckeln)
+const cache = new Map(); // key → { at, value, pending }
+function cached(key, maxAgeMs, fn) {
+  const c = cache.get(key);
+  if (c?.pending) return c.pending;
+  if (c && Date.now() - c.at < maxAgeMs) return Promise.resolve(c.value);
+  const pending = fn().then((value) => {
+    cache.set(key, { at: Date.now(), value, pending: null });
+    return value;
+  });
+  cache.set(key, { ...(c || {}), pending });
+  return pending;
+}
+const forget = (key) => cache.delete(key);
+
 async function status() {
   const uni = UNIS.koeln;
   const client = CLIENTS[uni.client];
   const appPath = firstExisting(client.apps);
   const cli = firstExisting(client.cli);
-  const phase = appPath && cli && uni.client === "cisco" ? await ciscoPhase(cli) : null;
+  const phase = appPath && cli && uni.client === "cisco" ? await cached("phase", 2500, () => ciscoPhase(cli)) : null;
   const connected = phase === null ? null : phase === "connected";
-  const allowed = client.extension ? (appPath ? await extensionAllowed(client.extension) : false) : null;
+  const allowed = client.extension ? (appPath ? await cached("ext", 20_000, () => extensionAllowed(client.extension)) : false) : null;
   return {
     ok: true,
     uni: uni.name,
@@ -81,7 +120,57 @@ async function status() {
     secondFactor: uni.secondFactor || null,
     allowed, // true / false / null = braucht keine Erlaubnis
     connected, // true / false / null = unbekannt
+    canAuto: uni.client === "cisco", // App kann Cisco im Hintergrund bedienen (sobald installiert)
+    axTrusted: axTrusted(false),
+    auto: autoView(),
   };
+}
+
+/**
+ * Verbindet: Cisco-Schritt übernimmt die App, die Anmeldung im Browser macht der Student. Läuft bis verbunden oder
+ * Fehler (max. 5 min); den Zwischenstand liest die Oberfläche über status().auto.
+ */
+async function connectAuto(packaged) {
+  if (auto?.running) return { ok: false, code: "busy", message: "Already connecting." };
+  if (!axTrusted(false)) return { ok: false, code: "no_permission", message: "Studi-Helfer needs permission to operate Cisco for you." };
+  auto = { running: true, stage: "starting", since: Date.now(), error: null, child: null, cancelled: false };
+  const run = auto;
+  const res = await backend.runHelper(packaged(), ["vpn-connect"], {
+    stdin: JSON.stringify({ server: UNIS.koeln.server }),
+    timeoutMs: 330_000, // der Student meldet sich im Browser selbst an
+    onChild: (child) => (run.child = child),
+    onProgress: (p) => {
+      if (p.stage !== run.stage) run.since = Date.now();
+      run.stage = p.stage;
+    },
+  });
+  forget("phase");
+  const ok = res.type === "result";
+  const error = ok || run.cancelled ? null : { code: res.code || "failed", message: res.message || "Could not connect." };
+  auto = { running: false, stage: ok ? "done" : run.cancelled ? "cancelled" : "error", since: Date.now(), error };
+  bringToFront(); // verbunden (Anmelde-Tab ist zu) oder Fehler: zurück in unsere App
+  if (run.cancelled) return { ok: false, code: "cancelled" };
+  return ok ? { ok: true } : { ok: false, ...error };
+}
+
+/** Bricht die Hintergrund-Anmeldung ab und beendet den halben Verbindungsversuch bei Cisco. */
+async function cancelAuto() {
+  if (auto?.running) {
+    auto.cancelled = true;
+    abortRun(auto);
+  }
+  return { ok: true };
+}
+
+/** Fragt einmal nach „Bedienungshilfen“ und öffnet die passende Stelle in den Mac-Einstellungen. */
+async function allowAccess() {
+  if (axTrusted(true)) return { ok: true, allowed: true };
+  try {
+    await shell.openExternal("x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility");
+  } catch {
+    // die macOS-Abfrage von axTrusted(true) hat schon einen Knopf zu den Einstellungen
+  }
+  return { ok: true, allowed: false };
 }
 
 async function openClient() {
@@ -137,11 +226,24 @@ async function openGuide() {
   return { ok: true };
 }
 
-function register(handle) {
+function register(handle, packaged = () => app.isPackaged) {
   handle("studi:vpn:status", () => status());
+  handle("studi:vpn:connect", () => connectAuto(packaged));
+  handle("studi:vpn:cancel", () => cancelAuto());
+  handle("studi:vpn:allow", () => allowAccess());
+  // Nur Entwicklung: Aufbau der Cisco-Fenster (Rollen/Beschriftungen, keine Feldinhalte) zur Fehlersuche
+  if (!packaged()) handle("studi:vpn:inspect", () => backend.runHelper(false, ["vpn-inspect"], { timeoutMs: 30_000 }));
   handle("studi:vpn:open", () => openClient());
   handle("studi:vpn:disconnect", async () => {
+    // Mit Erlaubnis fängt der Helfer die Abmeldeseite ab, die Cisco danach im Browser öffnet (versteckt + schließt)
+    if (UNIS.koeln.client === "cisco" && axTrusted(false)) {
+      const res = await backend.runHelper(packaged(), ["vpn-disconnect"], { timeoutMs: 40_000 });
+      forget("phase");
+      bringToFront();
+      return res.type === "result" ? { ok: true } : { ok: false, code: res.code, message: res.message };
+    }
     const r = await disconnect();
+    forget("phase");
     bringToFront();
     return r;
   });
