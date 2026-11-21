@@ -69,10 +69,11 @@ import {
   useTodayCards,
   useReviewedWeeks,
   reviewedWeeksOf,
+  setWeekReviewed,
   hiddenWeeksOf,
   minutesFor,
 } from "@/lib/study";
-import { type Week, ROLE_LABEL, weekLabel, weeksOf } from "@/lib/weeks";
+import { type Week, ROLE_LABEL, lectureWeek, semesterStart, weekLabel, weeksOf } from "@/lib/weeks";
 
 /** Anzahl fälliger Karten für die Seitenleiste (lädt den Lernstand einmal beim Start). */
 export function useStudyDue() {
@@ -363,13 +364,31 @@ function CatchUp({ courses, onDeck }: { courses: Course[]; onDeck: (id: string) 
   const app = useApp();
   useReviewedWeeks(null);
   useHiddenWeeks(null);
+  // Erst ab dem Tag zählen, an dem es den Haken gibt (sonst wirkt man am ersten Tag „15 Wochen im Rückstand“)
+  const today = app.today || new Date().toISOString().slice(0, 10);
+  const since = (() => {
+    try {
+      return localStorage.getItem("studi.reviewSince") || today;
+    } catch {
+      return today;
+    }
+  })();
+  useEffect(() => {
+    try {
+      if (!localStorage.getItem("studi.reviewSince")) localStorage.setItem("studi.reviewSince", today);
+    } catch {
+      // egal
+    }
+  }, [today]);
   const behind = courses
     .map((c) => {
-      const weeks = weeksOf(c, { today: app.today || new Date().toISOString().slice(0, 10) });
+      const weeks = weeksOf(c, { today });
       const cur = weeks.find((w) => w.current && w.kind === "week")?.n;
+      const sinceWeek = lectureWeek(new Date(`${since}T12:00:00`), semesterStart(today));
       const done = reviewedWeeksOf(c.id);
       const hidden = hiddenWeeksOf(c.id);
-      const open = cur == null ? [] : weeks.filter((w) => w.kind === "week" && (w.n ?? 0) < cur && !done.includes(w.key) && !hidden.includes(w.key));
+      const open =
+        cur == null ? [] : weeks.filter((w) => w.kind === "week" && (w.n ?? 0) < cur && (w.n ?? 0) >= sinceWeek && !done.includes(w.key) && !hidden.includes(w.key));
       return { c, open };
     })
     .filter((x) => x.open.length >= 2)
@@ -385,6 +404,9 @@ function CatchUp({ courses, onDeck }: { courses: Course[]; onDeck: (id: string) 
             <span className="min-w-0 flex-1 truncate">
               <strong className="font-semibold">{c.name}:</strong> {open.length} past weeks not marked as reviewed ({open.map((w) => w.n).join(", ")})
             </span>
+            <button onClick={() => open.forEach((w) => setWeekReviewed(c.id, w.key, true))} className="shrink-0 text-muted hover:text-text hover:underline">
+              Mark all reviewed
+            </button>
             <button onClick={() => onDeck(c.id)} className="shrink-0 font-semibold hover:underline" style={{ color: tone(colorOf(c), "ink") }}>
               Open
             </button>
