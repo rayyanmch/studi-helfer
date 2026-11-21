@@ -7,6 +7,8 @@ Gemeinsames Gedächtnis für alle KI-Agenten und Menschen im Projekt. Wird über
 
 Wer gerade woran arbeitet (Person, Aufgabe, betroffene Dateien). Eintragen beim Start, löschen wenn fertig.
 
+- Rayyans Agent: Lernzettel vs. Spickzettel im Baukasten, Schreibstil, Folienverweise (`StudyHub.tsx`, `lib/study.ts`, `desktop/lib/study.js`, `desktop/lib/study-sheet.js`)
+
 
 
 
