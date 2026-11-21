@@ -838,12 +838,16 @@ function MonthView({ deadlines, events, done, onOpen }: { deadlines: Deadline[];
                 const c = d.color ?? colorOf(course);
                 const isDone = d.kind === "abgabe" && done.includes(d.id);
                 const exam = d.kind === "klausur";
-                const label = exam && d.title === "Exam" ? `Exam ${shortOf(course)}` : bare(d.title);
+                const plain = bare(d.title);
+                // „Lecture“, „Exercise · Group 3“ … sagen allein nicht, welcher Kurs: Kurzname davor (nicht nur Farbe)
+                const label =
+                  exam && d.title === "Exam" ? `Exam ${shortOf(course)}` : /^(lecture|exercise|tutorial|seminar|lab|class)\b/i.test(plain) ? `${shortOf(course)} ${plain}` : plain;
                 return (
                   <button
                     key={d.id}
                     onClick={() => openEvent(d, { onOpenCourse: () => onOpen(d.courseId) })}
                     title={`${d.title}, ${nameOf(course)}, ${d.time}`}
+                    aria-label={`${d.title}, ${nameOf(course)}, ${d.time}`}
                     className={`truncate rounded-[5px] px-1.5 py-0.5 text-left text-[11px] font-semibold ${isDone ? "line-through" : ""}`}
                     style={
                       isDone
