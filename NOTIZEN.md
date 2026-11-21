@@ -7,6 +7,8 @@ Gemeinsames Gedächtnis für alle KI-Agenten und Menschen im Projekt. Wird über
 
 Wer gerade woran arbeitet (Person, Aufgabe, betroffene Dateien). Eintragen beim Start, löschen wenn fertig.
 
+- 2026-11-21, Rayyans Agent: **KI-Lernbereich „Study“** (Zusammenfassung pro Datei, Lernzettel, Karteikarten mit Leitner + Anki-Export) über lokales Claude Code (Rayyans Abo, nur Demo). Neue Dateien: `desktop/lib/study.js`, `web/src/lib/study.ts`, `web/src/components/StudyView.tsx`; kleine Änderungen in `main.js`, `preload.js`, `desktop.ts`, `ModuleView.tsx` (Summary an Dateien, Reiter Study), `Settings.tsx` (Privacy), Seitenleiste in `Overview.tsx` (ein Eintrag).
+
 
 
 
