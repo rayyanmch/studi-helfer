@@ -26,6 +26,7 @@ import { CoursesView } from "./CoursesView";
 import { ModuleView } from "./ModuleView";
 import { openEvent, openNewEvent } from "./EventDialog";
 import { MensaView } from "./MensaView";
+import { Welcome } from "./Welcome";
 import { MailView } from "./MailView";
 import { Accounts } from "./Accounts";
 import { Settings } from "./Settings";
@@ -257,6 +258,7 @@ export function Overview({
               <SearchView query={query.trim()} list={list} deadlines={mine} done={done} onOpen={open} />
             ) : (
               <>
+                {view === "week" && <Welcome onMensa={() => open("mensa")} />}
                 {view === "week" && <WeekView list={list} deadlines={mine} done={done} onToggle={toggleDone} onOpen={open} />}
                 {view === "new" && <NewView list={list} onOpen={open} />}
                 {view === "courses" && <CoursesView onOpen={open} onEditCourses={onEditCourses} />}
