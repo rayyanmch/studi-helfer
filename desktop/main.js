@@ -350,7 +350,7 @@ updater.register(handle, () => windows);
 google.register(handle);
 // Uni-Postfach mit dem ILIAS-Login (lib/unimail.js → Python-Helfer)
 unimail.register(handle, packaged);
-mailtools.register(handle); // Newsletter abbestellen
+mailtools.register(handle, packaged); // Newsletter abbestellen, Anhang in den Kursordner
 // Lernbereich: Zusammenfassungen, Lernzettel, Karteikarten über Claude Code (lib/study.js)
 study.register(handle, { packaged, windows: () => windows, dialog, BrowserWindow, shell });
 

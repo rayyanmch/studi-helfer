@@ -41,6 +41,8 @@ export interface UniMailApi {
 /** Newsletter abbestellen: „done“ = direkt abbestellt, „opened“ = die Seite des Absenders ist im Browser offen. */
 export interface MailToolsApi {
   unsubscribe(arg: { url: string; oneClick: boolean }): Promise<{ ok: true; how: "done" | "opened" } | GoogleFail>;
+  /** Anhang in „<folder>/Mail attachments/“ speichern; `part` aus `MailMessage.files`. */
+  saveAttachment(arg: { account: "gmail" | "uni"; mailId: string; part: string; folder: string }): Promise<{ ok: true; path: string } | GoogleFail>;
 }
 
 declare module "./desktop" {

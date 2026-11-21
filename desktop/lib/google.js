@@ -399,14 +399,14 @@ function parseUnsubscribe(h) {
   return { ...(url ? { url } : {}), ...(mailto ? { mailto } : {}), oneClick: /one-click/i.test(h["list-unsubscribe-post"] || "") };
 }
 
-/** Namen der Anhänge (nur zur Anzeige). */
+/** Anhänge: Name, Teil der Mail (zum späteren Laden) und Größe. */
 function attachmentsOf(payload) {
   const names = [];
   (function walk(p) {
     if (!p) return;
     // Bilder, die nur im Text stehen (Signatur, Logo), zählen nicht
     const inlineImage = (p.headers || []).some((h) => /content-disposition/i.test(h.name) && /^\s*inline/i.test(h.value)) && /^image\//.test(p.mimeType || "");
-    if (p.filename && !inlineImage && !/\.(p7s|asc)$/i.test(p.filename)) names.push(p.filename);
+    if (p.filename && !inlineImage && !/\.(p7s|asc)$/i.test(p.filename)) names.push({ name: p.filename, part: p.partId || "", size: p.body?.size || 0 });
     (p.parts || []).forEach(walk);
   })(payload);
   return names.slice(0, 20);
@@ -432,7 +432,8 @@ function toMail(m, folder) {
     threadId: m.threadId,
     messageIdHeader: h["message-id"] || "",
     unsubscribe: parseUnsubscribe(h),
-    attachments: attachmentsOf(m.payload),
+    attachments: attachmentsOf(m.payload).map((a) => a.name),
+    files: attachmentsOf(m.payload),
   };
 }
 
@@ -511,6 +512,23 @@ function busyOr(r) {
   return lastMails ? { ok: true, mails: lastMails } : r;
 }
 
+/** Inhalt eines Anhangs (Buffer). `part` ist die partId aus `files`. */
+async function attachment(messageId, part) {
+  const r = await api(`${GMAIL}/messages/${encodeURIComponent(messageId)}?format=full`);
+  if (!r.ok) return r;
+  let found = null;
+  (function walk(p) {
+    if (!p || found) return;
+    if (p.partId === part) found = p;
+    (p.parts || []).forEach(walk);
+  })(r.data.payload);
+  if (!found) return fail("missing", "This attachment is no longer in the mail.");
+  if (found.body?.data) return { ok: true, name: found.filename, data: Buffer.from(found.body.data, "base64url") };
+  const a = await api(`${GMAIL}/messages/${encodeURIComponent(messageId)}/attachments/${encodeURIComponent(found.body?.attachmentId || "")}`);
+  if (!a.ok) return a;
+  return { ok: true, name: found.filename, data: Buffer.from(a.data.data || "", "base64url") };
+}
+
 /** Gelesen/ungelesen und Archivieren: Gmail-Etiketten ändern. */
 async function modify(id, { unread, archive }) {
   const add = [];
@@ -562,4 +580,4 @@ function register(handle) {
   handle("studi:google:send", (mail) => send(mail || {}));
 }
 
-module.exports = { register, status, connect, disconnect, events, mails, modify, send, _test: { toEvent, toMail, decodeWords, parseAddress, htmlToText, bodyOf } };
+module.exports = { register, status, connect, disconnect, events, mails, modify, send, attachment, _test: { toEvent, toMail, decodeWords, parseAddress, htmlToText, bodyOf } };

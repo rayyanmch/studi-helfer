@@ -266,3 +266,48 @@ export function weekStart(today: string): string {
   const d = parseDay(today);
   return day(addDays(d, -((d.getDay() + 6) % 7)));
 }
+
+// ------------------------------------------------------------------ Kurs erkennen
+
+interface CourseLike {
+  id: string;
+  name: string;
+  short?: string;
+  fullName?: string;
+  lecturer?: string;
+}
+
+const STOP = new Set(["einfuhrung", "introduction", "grundlagen", "fundamentals", "vorlesung", "lecture", "ubung", "exercise", "tutorium", "tutorial", "seminar", "modul", "fur", "und", "the", "and", "for", "studierende", "students", "informatik", "systems", "system", "management", "information", "data", "university", "uni"]);
+const foldWords = (s: string) => fold(s).split(/[^a-z0-9]+/).filter((w) => w.length >= 4 && !STOP.has(w));
+const hasWord = (text: string, word: string) => new RegExp(`(^|[^a-z0-9])${word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}([^a-z0-9]|$)`).test(text);
+
+/**
+ * Welcher Kurs gehört zu einer Mail? Ohne KI, nur Regeln: Absender = Dozent, Kurzname oder Kursname im Betreff,
+ * ILIAS-Benachrichtigung mit Kursnamen. Gibt die Kurs-Id zurück oder null, wenn es nicht eindeutig ist.
+ */
+export function guessCourse(m: { fromName: string; fromAddress: string; subject: string; body: string }, courses: CourseLike[]): string | null {
+  const from = fold(`${m.fromName} ${m.fromAddress}`);
+  const subject = fold(m.subject);
+  const body = fold(m.body.slice(0, 3000));
+  const ilias = from.includes("ilias");
+  const scored = courses.map((c) => {
+    let score = 0;
+    const surname = fold((c.lecturer ?? "").replace(/(prof|dr|apl|jun|pd)\.?\s*/gi, "").trim().split(/\s+/).pop() ?? "");
+    if (surname.length >= 4 && from.includes(surname)) score += 5;
+    const short = fold(c.short ?? "");
+    if (short.length >= 3) {
+      if (hasWord(subject, short)) score += 4;
+      else if (hasWord(body, short)) score += 2;
+    }
+    const words = [...new Set([...foldWords(c.name), ...foldWords(c.fullName ?? "")])];
+    const inSubject = words.filter((w) => subject.includes(w)).length;
+    const inBody = words.filter((w) => body.includes(w)).length;
+    score += Math.min(8, inSubject * 4) + Math.min(2, inBody);
+    if (ilias && inSubject + inBody > 0) score += 3;
+    return { id: c.id, score };
+  });
+  scored.sort((a, b) => b.score - a.score);
+  const [best, second] = scored;
+  if (!best || best.score < 4 || (second && best.score - second.score < 2)) return null;
+  return best.id;
+}

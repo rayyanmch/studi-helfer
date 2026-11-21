@@ -7,7 +7,7 @@ import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { Archive, BellOff, Calendar, CalendarPlus, Check, Clock, FileText, Inbox, Keyboard, Mail, Paperclip, Pencil, Reply, Search, Send, Undo2, X } from "lucide-react";
 import { Button, Spinner, colorOf, shortOf, tone } from "./ui";
 import { openNewEvent } from "./EventDialog";
-import { openFile, useApp } from "@/lib/app-store";
+import { openFile, revealFile, useApp } from "@/lib/app-store";
 import {
   UNDO_SECONDS,
   archiveMail,
@@ -16,6 +16,7 @@ import {
   mailDate,
   mailDateLong,
   queueSend,
+  saveAttachment,
   setMailRead,
   snoozeMail,
   undoSend,
@@ -28,14 +29,14 @@ import {
   type MailMessage,
   type Outbox,
 } from "@/lib/mail-data";
-import { findEvent, parseSearch, snoozeLabel, snoozeOptions, snoozePhrase, stamp, weekStart, type FoundEvent, type SnoozeOption } from "@/lib/mail-tools";
+import { findEvent, guessCourse, parseSearch, snoozeLabel, snoozeOptions, snoozePhrase, stamp, weekStart, type FoundEvent, type SnoozeOption } from "@/lib/mail-tools";
 import { matches, searchTerms } from "@/lib/search";
 import type { Course, CourseColor } from "@/lib/mock-data";
 
 type Box = "all" | MailAccountId;
 type FolderId = MailFolder | "snoozed";
 type Draft = { accountId: MailAccountId; to: string; subject: string; body: string; threadId?: string; inReplyTo?: string };
-type Toast = { text: string; undo?: () => void; error?: boolean };
+type Toast = { text: string; undo?: () => void; error?: boolean; action?: { label: string; run: () => void } };
 
 const FOLDERS: { id: FolderId; label: string; icon: typeof Inbox }[] = [
   { id: "inbox", label: "Inbox", icon: Inbox },
@@ -189,6 +190,9 @@ export function MailView({ onOpenAccounts }: { onOpenAccounts: () => void }) {
   };
 
   const courseById = (id?: string) => (id ? app.courses.find((c) => c.id === id) : undefined);
+  // Kurs einer Mail: vom Postfach gesetzt oder per Regeln erkannt (Absender = Dozent, Kursname im Betreff …)
+  const courses = app.courses.filter((c) => !c.semester || c.semester === "current");
+  const courseOf = (m: MailMessage) => m.courseId ?? guessCourse(m, courses) ?? undefined;
 
   const visibleAccounts = box === "all" ? connected.map((a) => a.id) : [box];
   const inScope = mail.messages.filter((m) => visibleAccounts.includes(m.accountId));
@@ -209,7 +213,7 @@ export function MailView({ onOpenAccounts }: { onOpenAccounts: () => void }) {
       if (folder === "inbox") return m.folder === "inbox" && !snoozedAt(m.id);
       return m.folder === folder;
     })
-    .filter((m) => !courseId || m.courseId === courseId)
+    .filter((m) => !courseId || courseOf(m) === courseId)
     .filter((m) => !parsed.text || matches(terms, m.fromName, m.fromAddress, m.to, m.subject, m.body))
     .filter((m) => !parsed.from || `${m.fromName} ${m.fromAddress}`.toLowerCase().includes(parsed.from.toLowerCase()))
     .filter((m) => !wantUnread || m.unread)
@@ -246,8 +250,8 @@ export function MailView({ onOpenAccounts }: { onOpenAccounts: () => void }) {
   const courseRows = app.courses
     .map((c) => ({
       course: c,
-      total: inScope.filter((m) => m.courseId === c.id && m.folder === "inbox").length,
-      unread: inScope.filter((m) => m.courseId === c.id && m.folder === "inbox" && m.unread && !mail.snoozed[m.id]).length,
+      total: inScope.filter((m) => courseOf(m) === c.id && m.folder === "inbox").length,
+      unread: inScope.filter((m) => courseOf(m) === c.id && m.folder === "inbox" && m.unread && !mail.snoozed[m.id]).length,
     }))
     .filter((r) => r.total > 0);
 
@@ -308,6 +312,19 @@ export function MailView({ onOpenAccounts }: { onOpenAccounts: () => void }) {
     if (res.error) setToast({ text: res.error, error: true });
     else setToast({ text: res.opened ? "The unsubscribe page is open in your browser. Finish it there." : `Unsubscribed from ${m.fromName}.` });
   };
+  const doSaveAttachment = async (m: MailMessage, index: number, course: Course) => {
+    const res = await saveAttachment(m, index, course);
+    if (res.error || !res.path) {
+      setToast({ text: res.error ?? "Could not save the file.", error: true });
+      return false;
+    }
+    const path = res.path;
+    setToast({
+      text: `Saved to ${shortOf(course)} › Mail attachments`,
+      action: app.mode === "desktop" ? { label: "Show in Finder", run: () => revealFile(path) } : undefined,
+    });
+    return true;
+  };
   const doAddEvent = (m: MailMessage, ev: FoundEvent) =>
     openNewEvent({
       title: m.subject.replace(/^((re|fw|fwd|aw|wg):\s*)+/i, ""),
@@ -315,7 +332,7 @@ export function MailView({ onOpenAccounts }: { onOpenAccounts: () => void }) {
       start: ev.start,
       end: ev.end,
       location: ev.location,
-      moduleId: m.courseId ?? null,
+      moduleId: courseOf(m) ?? null,
       kind: "termin",
     });
   const eventOf = (m: MailMessage) => (m.folder === "sent" || m.folder === "drafts" || mail.ignoredEvents.includes(m.id) ? null : findEvent(m.subject, m.body, m.date.slice(0, 10)));
@@ -584,7 +601,7 @@ export function MailView({ onOpenAccounts }: { onOpenAccounts: () => void }) {
               active={current?.id === m.id}
               today={app.today}
               showAccount={box === "all"}
-              courseColor={courseById(m.courseId) ? colorOf(courseById(m.courseId)!) : null}
+              courseColor={courseById(courseOf(m)) ? colorOf(courseById(courseOf(m))!) : null}
               outgoing={m.folder === "sent" || m.folder === "drafts"}
               snoozedUntil={snoozedAt(m.id)}
               swipeOpts={swipe?.id === m.id ? swipe.opts : null}
@@ -639,7 +656,7 @@ export function MailView({ onOpenAccounts }: { onOpenAccounts: () => void }) {
             key={current.id}
             m={current}
             account={mail.accounts.find((a) => a.id === current.accountId)}
-            course={courseById(current.courseId)}
+            course={courseById(courseOf(current))}
             today={app.today}
             snoozedUntil={snoozedAt(current.id)}
             snoozeOpen={snoozeOpen}
@@ -657,6 +674,8 @@ export function MailView({ onOpenAccounts }: { onOpenAccounts: () => void }) {
             onUnsubscribe={() => void doUnsubscribe(current)}
             onAddEvent={(ev) => doAddEvent(current, ev)}
             onIgnoreEvent={() => ignoreEvent(current.id)}
+            courses={courses}
+            onSaveAttachment={(i, c) => doSaveAttachment(current, i, c)}
           />
         ) : (
           <div className="flex flex-1 items-center justify-center text-muted">Select a message to read it.</div>
@@ -735,6 +754,17 @@ function Toasts({
       <div className="flex items-center gap-3 px-4 py-3.5">
         {toast.error ? <X size={18} aria-hidden /> : <Check size={18} className="text-[#8fd6a5]" aria-hidden />}
         <span className="min-w-0 flex-1 font-semibold">{toast.text}</span>
+        {toast.action && (
+          <button
+            onClick={() => {
+              toast.action?.run();
+              onDismissToast();
+            }}
+            className="shrink-0 rounded-md px-1 font-bold underline underline-offset-2 hover:opacity-80"
+          >
+            {toast.action.label}
+          </button>
+        )}
         {toast.undo && (
           <button
             onClick={() => {
@@ -963,6 +993,67 @@ function SnoozeMenu({ onPick, onClose }: { onPick: (when: string) => void; onClo
   );
 }
 
+// ------------------------------------------------------------------ Anhang speichern
+
+/** Anhang: Klick öffnet „Save to course folder“, der erkannte Kurs steht oben. */
+function AttachmentChip({ name, courses, suggested, onSave }: { name: string; courses: Course[]; suggested?: Course; onSave: (c: Course) => Promise<boolean> }) {
+  const [open, setOpen] = useState(false);
+  const [state, setState] = useState<{ busy: boolean; saved: Course | null }>({ busy: false, saved: null });
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const down = (e: MouseEvent) => {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const esc = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    window.addEventListener("mousedown", down);
+    window.addEventListener("keydown", esc);
+    return () => {
+      window.removeEventListener("mousedown", down);
+      window.removeEventListener("keydown", esc);
+    };
+  }, [open]);
+
+  const list = suggested ? [suggested, ...courses.filter((c) => c.id !== suggested.id)] : courses;
+  const save = async (c: Course) => {
+    setOpen(false);
+    setState({ busy: true, saved: null });
+    const ok = await onSave(c);
+    setState({ busy: false, saved: ok ? c : null });
+  };
+
+  return (
+    <div ref={ref} className="relative max-w-full">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        title="Save to a course folder"
+        className="press flex max-w-full items-center gap-1.5 rounded-lg bg-surface px-2.5 py-1.5 text-left text-[13px] shadow-[inset_0_0_0_1px_var(--line)] hover:bg-hover"
+      >
+        {state.busy ? <Spinner size={13} /> : state.saved ? <Check size={13} className="shrink-0 text-ok" aria-hidden /> : <Paperclip size={13} className="shrink-0 text-muted" aria-hidden />}
+        <span className="truncate">{name}</span>
+        <span className="shrink-0 text-[12px] font-semibold text-muted">
+          {state.saved ? `in ${shortOf(state.saved)}` : suggested ? `Save to ${shortOf(suggested)}` : "Save"}
+        </span>
+      </button>
+      {open && (
+        <div role="menu" aria-label="Save to course folder" className="absolute left-0 top-full z-30 mt-1.5 w-[260px] rounded-xl bg-surface p-1.5 shadow-[0_0_0_1px_var(--line),0_16px_40px_rgba(0,0,0,0.16)]">
+          <p className="px-3 pb-1 pt-1.5 text-[12px] text-muted">Save to course folder</p>
+          {list.length === 0 && <p className="px-3 py-2 text-[13px] text-muted">No courses yet.</p>}
+          {list.map((c) => (
+            <button key={c.id} role="menuitem" onClick={() => void save(c)} className="flex h-[34px] w-full items-center gap-2.5 rounded-[7px] px-3 text-left hover:bg-hover">
+              <span aria-hidden className="size-2.5 shrink-0 rounded-[3px]" style={{ background: tone(colorOf(c)) }} />
+              <span className="min-w-0 flex-1 truncate font-medium">{shortOf(c)}</span>
+              {c.id === suggested?.id && <span className="text-[11px] font-semibold text-muted">Suggested</span>}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ------------------------------------------------------------------ Lesebereich
 
 const Key = ({ children }: { children: React.ReactNode }) => <kbd className="font-sans text-[11px] font-medium opacity-60">{children}</kbd>;
@@ -988,6 +1079,8 @@ function Reader({
   onUnsubscribe,
   onAddEvent,
   onIgnoreEvent,
+  courses,
+  onSaveAttachment,
 }: {
   m: MailMessage;
   account?: MailAccount;
@@ -1009,6 +1102,8 @@ function Reader({
   onUnsubscribe: () => void;
   onAddEvent: (ev: FoundEvent) => void;
   onIgnoreEvent: () => void;
+  courses: Course[];
+  onSaveAttachment: (index: number, course: Course) => Promise<boolean>;
 }) {
   const outgoing = m.folder === "sent" || m.folder === "drafts";
   const amber = { background: tone("ochre", "soft"), color: tone("ochre", "ink") };
@@ -1109,9 +1204,7 @@ function Reader({
         {(m.attachments?.length ?? 0) > 0 && (
           <div className="mt-5 flex flex-wrap gap-2">
             {m.attachments!.map((name, i) => (
-              <span key={`${name}-${i}`} className="flex max-w-full items-center gap-1.5 rounded-lg bg-surface px-2.5 py-1.5 text-[13px] shadow-[inset_0_0_0_1px_var(--line)]">
-                <Paperclip size={13} className="shrink-0 text-muted" aria-hidden /> <span className="truncate">{name}</span>
-              </span>
+              <AttachmentChip key={`${m.id}-${i}`} name={name} courses={courses} suggested={course} onSave={(c) => onSaveAttachment(i, c)} />
             ))}
           </div>
         )}

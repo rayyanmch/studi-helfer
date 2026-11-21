@@ -37,6 +37,14 @@ export interface MailMessage {
   messageIdHeader?: string; // Gmail: „Message-ID“ der Mail, für „In-Reply-To“
   unsubscribe?: Unsubscribe; // Newsletter: Abmelde-Link aus dem Kopf der Mail („List-Unsubscribe“)
   attachments?: string[]; // Namen der Anhänge (nur zur Anzeige)
+  files?: MailFile[]; // Anhänge zum Speichern (Mac-App)
+}
+
+/** Anhang einer Mail: Name und Teil der Mail, über den der Hintergrundteil ihn lädt. */
+export interface MailFile {
+  name: string;
+  part: string;
+  size?: number;
 }
 
 /** Abmelden bei Newslettern: https-Adresse und/oder mailto; `oneClick` = ohne Webseite möglich (RFC 8058). */
@@ -545,6 +553,22 @@ export async function unsubscribeMail(m: MailMessage): Promise<{ error?: string;
   saveJson("unsubscribed", unsubscribed);
   set({ unsubscribed });
   return { opened };
+}
+
+/** Speichert einen Anhang im Kursordner (Unterordner „Mail attachments“). Gibt den Pfad oder einen Fehler zurück. */
+export async function saveAttachment(m: MailMessage, index: number, course: { name: string; folder?: string }): Promise<{ path?: string; error?: string }> {
+  const name = m.attachments?.[index] ?? "attachment";
+  if (mode === "demo") {
+    await new Promise((r) => setTimeout(r, 600));
+    return { path: `~/Uni/${course.name}/Mail attachments/${name}` };
+  }
+  const file = m.files?.[index];
+  const tools = getMailTools();
+  if (!tools?.saveAttachment) return { error: "Please update the app to save attachments." };
+  if (!file) return { error: "Refresh your mail, then try again." };
+  if (!course.folder) return { error: "This course has no folder on your Mac yet." };
+  const res = await tools.saveAttachment({ account: m.accountId, mailId: m.id, part: file.part, folder: course.folder });
+  return res.ok ? { path: res.path } : { error: res.message };
 }
 
 /** „Looks like an event“ nicht mehr zeigen. */

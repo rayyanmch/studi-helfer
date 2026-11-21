@@ -172,20 +172,50 @@ def _unsubscribe(msg: email.message.Message) -> dict[str, Any] | None:
     return out
 
 
-def _attachments(msg: email.message.Message) -> list[str]:
-    """Namen der Anhänge. Bilder, die nur im Text stehen (Signatur, Logo), zählen nicht."""
-    names: list[str] = []
+def _attachment_parts(msg: email.message.Message) -> list[email.message.Message]:
+    """Anhänge in Reihenfolge. Bilder, die nur im Text stehen (Signatur, Logo), und Unterschriften zählen nicht."""
+    parts: list[email.message.Message] = []
     try:
         for part in msg.walk():
             name = part.get_filename()
-            if not name or name.lower().endswith((".p7s", ".asc")):  # digitale Unterschriften sind keine Anhänge
+            if not name or name.lower().endswith((".p7s", ".asc")):
                 continue
             if part.get_content_disposition() == "inline" and part.get_content_maintype() == "image":
                 continue
-            names.append(name)
+            parts.append(part)
     except Exception:
         pass
-    return names[:20]
+    return parts[:20]
+
+
+def _attachments(msg: email.message.Message) -> list[str]:
+    return [p.get_filename() or "file" for p in _attachment_parts(msg)]
+
+
+def attachment(username: str, password: str, mail_id: str, index: int) -> dict[str, Any]:
+    """Lädt die ganze Mail und gibt Anhang Nr. `index` zurück (Base64)."""
+    import base64
+
+    folder, validity, uid = _split_id(mail_id)
+    imap = _connect(username, password)
+    try:
+        if _select(imap, folder) != validity:
+            raise AppError("invalid", "This mail has changed on the server. Refresh and try again.")
+        typ, data = imap.uid("FETCH", uid, "(BODY.PEEK[])")
+        raw = next((item[1] for item in data or [] if isinstance(item, tuple)), None)
+        if raw is None:
+            raise AppError("missing", "This mail is no longer on the server.")
+        parts = _attachment_parts(email.message_from_bytes(raw, policy=email.policy.default))
+        if index < 0 or index >= len(parts):
+            raise AppError("missing", "This attachment is no longer in the mail.")
+        part = parts[index]
+        content = part.get_payload(decode=True) or b""
+        return {"type": "result", "name": part.get_filename() or "file", "data": base64.b64encode(content).decode()}
+    finally:
+        try:
+            imap.logout()
+        except Exception:
+            pass
 
 
 def _date(msg: email.message.Message, fallback: float) -> str:
@@ -280,6 +310,7 @@ def list_mails(username: str, password: str, known: set[str]) -> dict[str, Any]:
                         "messageIdHeader": (msg["Message-ID"] or "").strip(),
                         "unsubscribe": _unsubscribe(msg),
                         "attachments": _attachments(msg),
+                        "files": [{"name": n, "part": str(k)} for k, n in enumerate(_attachments(msg))],
                     }
                 )
             imap.close()

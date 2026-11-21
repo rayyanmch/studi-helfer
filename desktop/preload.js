@@ -104,6 +104,7 @@ contextBridge.exposeInMainWorld("studi", {
   // Newsletter abbestellen (desktop/lib/mailtools.js)
   mailtools: {
     unsubscribe: call("studi:mail:unsubscribe"),
+    saveAttachment: call("studi:mail:saveAttachment"),
   },
   onDeadlinesChanged(callback) {
     const listener = () => callback();
