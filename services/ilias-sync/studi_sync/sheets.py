@@ -15,11 +15,14 @@ from typing import Any, Iterator, Optional
 
 from .common import DATA_DIR, load_config, read_json, write_json
 from .deadlines import deadline_id
+from .textfix import fix_year, normalize, weekday_before
 
-RULES_VERSION = 3  # erhöhen, wenn sich die Regeln ändern → alles wird neu ausgewertet
+RULES_VERSION = 5  # erhöhen, wenn sich die Regeln ändern → alles wird neu ausgewertet
 CACHE = DATA_DIR / "sheet-deadlines-cache.json"
 OUTPUT = DATA_DIR / "sheet-deadlines.json"
 MAX_PAGES = 8  # Fristen und Klausurtermine stehen fast immer auf den ersten Seiten (Orga-Folien)
+ORGA_PAGES = 25  # Orga-Folien/Einführung: Klausurtermine stehen oft weiter hinten (SE: Folie 12)
+ORGA_HINT = re.compile(r"(orga|modulinfo|allgemein|general|einf[üu]hrung|introduction|intro\b|overview|syllabus|_0_|^0?[01]_|vl_?0?[01]|info)", re.I)
 MAX_BYTES = 30 * 1024 * 1024
 
 SHEET_NAME = re.compile(
@@ -31,8 +34,10 @@ SOLUTION = re.compile(r"(lösung|loesung|losung|solution)", re.I)
 DEADLINE_WORDS = re.compile(
     r"\b(\w*abgabe\w*|abzugeben|einzureichen|einreich\w*|hochzuladen|deadline|due( date)?|submission( deadline)?|"
     r"submit( by)?|hand[- ]in|turn in|bearbeitungsfrist|frist)\b", re.I)
-EVENT_WORDS = re.compile(r"\b(testat\w*|präsentation\w*|presentation|vortrag|klausur(termin)?|exam|prüfung|zwischentest)\b", re.I)
-EXAM_WORDS = re.compile(r"\b(testat\w*|klausur\w*|exam|prüfung|zwischentest)\b", re.I)
+EVENT_WORDS = re.compile(
+    r"\b(testat\w*|präsentation\w*|presentation|vortrag|(?:nach|probe|wiederholungs)?klausur(?:termin|en)?|(?:resit |final |mock )?exam|"
+    r"prüfung|zwischentest|midterm)\b", re.I)
+EXAM_WORDS = re.compile(r"\b(testat\w*|(?:nach|wiederholungs)?klausur(?:termin|en)?|(?:resit |final )?exam|prüfung|zwischentest|midterm)\b", re.I)
 IGNORE_LINE = re.compile(r"\b(published|veröffentlicht|ausgabe|ausgegeben|issued|release[d]?|erstellt|stand)\b", re.I)
 
 MONTHS = {
@@ -99,20 +104,43 @@ def _find_date(text: str, ref: date) -> Optional[tuple[date, int, int]]:
 
 
 _NOISE = re.compile(
-    rf"(\d{{1,2}}\.\s?\d{{1,2}}\.(\d{{2,4}})?|\d{{4}}-\d{{2}}-\d{{2}}|\b\d{{1,2}}[:.]\d{{2}}\b|\b\d{{1,2}}\s?uhr\b|"
+    rf"(\b({_MONTH_RE})\.?\s+\d{{1,2}}(?:st|nd|rd|th)?\b|\b\d{{1,2}}\.?\s+({_MONTH_RE})\b\.?|\d{{1,2}}\.\s?\d{{1,2}}\.(\d{{2,4}})?|\d{{4}}-\d{{2}}-\d{{2}}|\b\d{{1,2}}[:.]\d{{2}}\b|\b\d{{1,2}}\s?uhr\b|"
     rf"\b({_MONTH_RE})\.?\b|\b\d{{4}}\b|\b(montag|dienstag|mittwoch|donnerstag|freitag|samstag|sonntag|mo|di|mi|do|fr|"
-    rf"monday|tuesday|wednesday|thursday|friday|am|um|uhr|bis|zum|spätestens|by|at|on|the|der|den|dem)\b|[•·▪●\-–—:,;()\[\]!])",
+    rf"monday|tuesday|wednesday|thursday|friday|saturday|sunday|mon|tue|wed|thu|fri|am|um|uhr|bis|zum|spätestens|by|at|on|the|der|den|dem)\b|"
+    rf"[•·▪●\-–—:,;()\[\]!|])",
     re.I,
 )
 
 
+# Häufige deutsche Wörter in Fristtiteln → Englisch (die App ist englisch; Rest bleibt im Original)
+_ENGLISH = [
+    (r"\bnachklausur\b", "Resit exam"), (r"\bprobeklausur\b", "Mock exam"), (r"\bklausur(?:termin)?\b", "Exam"),
+    (r"\bprüfung\b", "Exam"), (r"\bzwischentest\b", "Midterm test"), (r"\babgabefrist\b", "Deadline"),
+    (r"\babgabe\b", "Submit"), (r"\bpräsentation\b", "Presentation"), (r"\bvortrag\b", "Talk"),
+    (r"\bübungsblatt\b", "Exercise sheet"), (r"\bblatt\b", "Sheet"), (r"\bhausaufgabe\b", "Homework"),
+    (r"\banmeldung\b", "Registration"), (r"\b1\.\s*termin\b", "1st date"), (r"\b2\.\s*termin\b", "2nd date"),
+    (r"\berste[rn]?\b", "First"), (r"\bzweite[rn]?\b", "Second"), (r"\bund\b", "and"), (r"\bzur\b", "for"),
+]
+
+
+def english(label: str) -> str:
+    for pat, rep in _ENGLISH:
+        label = re.sub(pat, rep, label, flags=re.I)
+    label = re.sub(r"\s{2,}", " ", label).strip()
+    # GROSS GESCHRIEBENE Wörter („HOMEWORK PRESENTATION“) normal schreiben, Abkürzungen (SE, BWL) bleiben
+    label = re.sub(r"\b[A-ZÄÖÜ]{4,}\b", lambda m: m.group(0).lower(), label)
+    return label[:1].upper() + label[1:]
+
+
 def _label(evidence: str) -> Optional[str]:
-    """Kurzer Titel aus der Textstelle („21.01.27, 12:00 Uhr: Abgabe Designübung“ → „Abgabe Designübung“)."""
+    """Kurzer Titel aus der Textstelle („21.01.27, 12:00 Uhr: Abgabe Designübung“ → „Submit Designübung“)."""
     words = [w for w in _NOISE.sub(" ", evidence).split() if len(w) > 1 or w.isdigit()]
-    if len(words) < 2 or len(" ".join(words)) > 60:
+    if not words or len(" ".join(words)) > 60:
         return None
-    text = " ".join(words)
-    return text[0].upper() + text[1:]
+    if len(words) < 2 and not EVENT_WORDS.search(words[0]):
+        return None  # ein einzelnes Wort ist nur als Ereignis aussagekräftig („Klausur“ → „Exam“)
+    text = english(" ".join(words))
+    return text[0].upper() + text[1:].replace(" Exam", " exam")
 
 
 def _find_time(text: str) -> Optional[str]:
@@ -133,7 +161,7 @@ def _find_time(text: str) -> Optional[str]:
 
 def _lines(text: str) -> Iterator[str]:
     for raw in text.splitlines():
-        line = re.sub(r"\s+", " ", raw).strip()
+        line = normalize(raw)  # repariert kaputte PowerPoint-Schrift („ϭϭ͗ϬϬ“ → „11:00“)
         if line:
             yield line
 
@@ -152,24 +180,40 @@ def extract(text: str, ref: date) -> list[dict[str, Any]]:
         window = line[max(0, kw.start() - 40):]
         hits = _find_dates(window, ref)
         evidence = line
+        win_line = i
         if not hits and i + 1 < len(lines) and len(line) - kw.end() < 15:
             window = lines[i + 1]
+            win_line = i + 1
             hits = _find_dates(window, ref)
             evidence = f"{line} {lines[i + 1]}"
         if not hits:
             continue
         kind = ("klausur" if EXAM_WORDS.search(kw.group(0)) else "termin") if EVENT_WORDS.search(kw.group(0)) else "abgabe"
-        base_label = _label(evidence) if len(hits) == 1 else kw.group(0)[0].upper() + kw.group(0)[1:]
-        for n, (day, _, end) in enumerate(hits):
+        # Titel bevorzugt aus dem Text vor dem Datum („Klausur: 16.02., 10 Uhr, HS C“ → „Exam“, ohne Raum)
+        pre = window[: hits[0][1]] if win_line == i else f"{line} {window[: hits[0][1]]}"
+        base_label = (_label(pre) or _label(evidence)) if len(hits) == 1 else kw.group(0)[0].upper() + kw.group(0)[1:]
+        for n, (day, start, end) in enumerate(hits):
+            day = fix_year(day, weekday_before(window, start), ref)  # „Freitag, 16.10.2027“ → 2026
             # Mehrere Daten in einer Zeile („Klausur 16. Februar (1. Termin) und 24. März (2. Termin)“):
             # je Datum ein Eintrag, Klammerzusatz direkt dahinter wird Teil des Titels.
             nxt = hits[n + 1][1] if n + 1 < len(hits) else len(window)
             segment = window[end:nxt]
             extra = re.match(r"\s*\(([^)]{1,30})\)", segment)
-            label = f"{base_label} ({extra.group(1)})" if extra and len(hits) > 1 and base_label else base_label
+            label = f"{base_label} ({english(extra.group(1))})" if extra and len(hits) > 1 and base_label else base_label
+            label = english(label) if label else label
+            # „Exam (1st date)“ → „1st date“: die Oberfläche zeigt bei Klausuren ohnehin das Schild „Exam“
+            short = re.fullmatch(r"Exam \((.+)\)", label or "")
+            if short and kind == "klausur":
+                label = short.group(1)[:1].upper() + short.group(1)[1:]
+            when = _find_time(segment[:40])
+            if not when and n == len(hits) - 1:
+                # Uhrzeit in der nächsten Zeile (Tabellen: „First exam:“ / „Thursday Feb 11 |“ / „12:00 |“)
+                follow = lines[win_line + 1] if win_line + 1 < len(lines) else ""
+                if len(follow) < 25:
+                    when = _find_time(follow)
             found.append({
                 "date": day,
-                "time": _find_time(segment[:40]),
+                "time": when,
                 "kind": kind,
                 "label": label,
                 "evidence": evidence[:200],
@@ -183,7 +227,7 @@ def extract(text: str, ref: date) -> list[dict[str, Any]]:
     return list(best.values())
 
 
-def _pdf_text(path: Path) -> str:
+def _pdf_text(path: Path, pages: int = MAX_PAGES) -> str:
     import logging
 
     from pypdf import PdfReader
@@ -191,7 +235,7 @@ def _pdf_text(path: Path) -> str:
     logging.getLogger("pypdf").setLevel(logging.ERROR)  # Warnungen zu leicht kaputten PDFs nicht ausgeben
 
     reader = PdfReader(str(path))
-    return "\n".join((page.extract_text() or "") for page in reader.pages[:MAX_PAGES])
+    return "\n".join((page.extract_text() or "") for page in reader.pages[:pages])
 
 
 def _title(file_name: str, kind: str, label: Optional[str] = None) -> str:
@@ -246,7 +290,8 @@ def refresh() -> dict[str, Any]:
         if not entry or entry.get("version") != RULES_VERSION:
             ref = datetime.fromtimestamp(path.stat().st_mtime).date()
             try:
-                found = extract(_pdf_text(path), ref)
+                pages = ORGA_PAGES if ORGA_HINT.search(path.stem) else MAX_PAGES
+                found = extract(_pdf_text(path, pages), ref)
             except Exception:  # noqa: BLE001 – kaputte oder verschlüsselte PDFs überspringen
                 found = []
             entry = {"version": RULES_VERSION, "found": [

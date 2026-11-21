@@ -10,7 +10,7 @@
 // Alle Texte, die von hier kommen (message, time, title, updated), sind englisch.
 // Das Uni-Passwort geht nur an login() und landet im macOS-Schlüsselbund. Nie speichern oder loggen.
 
-import type { Course, CourseColor, CourseFile, Deadline, Folder } from "./mock-data";
+import type { ClassSlot, Course, CourseColor, CourseFile, Deadline, Folder } from "./mock-data";
 
 /** Fehlercodes, die die Oberfläche übersetzen sollte. */
 export type DesktopErrorCode =
@@ -132,6 +132,7 @@ export interface DesktopCourse extends Omit<Course, "folders" | "color" | "semes
   folder: string; // Modulordner auf dem Mac
   iliasUrl: string | null;
   parts: { courseId: string; label: string; folder: string | null }[];
+  slots: ClassSlot[]; // Wochenplan aus den Orga-Folien (leer, wenn nichts gefunden)
   folders: DesktopFolder[]; // lecturer ist leer, total = Anzahl lokaler Dateien
 }
 
@@ -145,7 +146,8 @@ export interface DesktopDeadline extends Deadline {
   // sheet = per Regeln lokal in einem Übungsblatt gefunden (source "Exercise sheet: <Datei>", dazu file + evidence)
   // ai = von der KI in einem Übungsblatt gefunden (nur mit Schlüssel; source "AI: <Datei>")
   // calendar = aus einem eingefügten Kalender (KLIPS-Stundenplan o. Ä.), moduleId per Namensabgleich (kann null sein)
-  category: "exercise" | "session" | "registration" | "sheet" | "calendar" | "ai";
+  // schedule = Wochentermin aus den Orga-Folien (Vorlesung, eigene Gruppe, ausgewählter Wahltermin), source "Course info: <Datei>"
+  category: "exercise" | "session" | "registration" | "sheet" | "calendar" | "ai" | "schedule";
   moduleId: string | null; // Modul, zu dem der Termin gehört
   start: string; // ISO-Zeitpunkt, z. B. "2026-11-23T10:00:00+01:00"
   url: string | null; // ILIAS-Seite (Übung/Sitzung), z. B. für „In ILIAS öffnen“
@@ -216,6 +218,8 @@ export interface StudiDesktop {
   renameModule(id: string, name: string): Promise<Ok<{ moved: number; deferred: boolean }> | Fail>;
   /** Farbe eines Moduls (null = automatisch). */
   setModuleColor(id: string, color: CourseColor | null): Promise<Ok | Fail>;
+  /** Wahltermin („Exercise Mon 12:00 or Wed 17:45“) als eigenen markieren (on) oder abwählen. Danach getDeadlines()/getFiles() neu holen. */
+  setSlotChoice(moduleId: string, key: string, on: boolean): Promise<Ok | Fail>;
   /** Dateien als gesehen markieren (verschwinden aus „New“). */
   markSeen(fileIds: string[]): Promise<Ok>;
   setNotifications(on: boolean): Promise<Ok>;

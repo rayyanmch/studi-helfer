@@ -31,6 +31,7 @@ contextBridge.exposeInMainWorld("studi", {
   refreshAiDeadlines: call("studi:refreshAiDeadlines"),
   renameModule: call("studi:renameModule"),
   setModuleColor: call("studi:setModuleColor"),
+  setSlotChoice: call("studi:setSlotChoice"),
   markSeen: call("studi:markSeen"),
   setNotifications: call("studi:setNotifications"),
   setLaunchAtLogin: call("studi:setLaunchAtLogin"),

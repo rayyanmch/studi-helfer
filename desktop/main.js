@@ -302,6 +302,7 @@ handle("studi:refreshAiDeadlines", () => runAiDeadlines());
 handle("studi:getDoneDeadlines", () => backend.getDoneDeadlines());
 handle("studi:renameModule", (id, name) => backend.renameModule(id, name));
 handle("studi:setModuleColor", (id, color) => backend.setModuleColor(id, color));
+handle("studi:setSlotChoice", (moduleId, key, on) => backend.setSlotChoice(moduleId, key, Boolean(on)));
 handle("studi:markSeen", (ids) => backend.markSeen(ids));
 handle("studi:setNotifications", (on) => backend.setNotifications(on));
 handle("studi:setLaunchAtLogin", (on) => {
@@ -353,7 +354,7 @@ let wasRunning = false;
 let deadlineStamp = "";
 /** Fristen-Dateien geändert (z. B. vorab beim ersten Import)? → Oberfläche lädt neu. */
 function watchDeadlineFiles() {
-  const stamp = ["deadlines.json", "sheet-deadlines.json", "calendar-events.json"]
+  const stamp = ["deadlines.json", "sheet-deadlines.json", "calendar-events.json", "orga-events.json"]
     .map((f) => {
       try {
         return fs.statSync(path.join(backend.DATA_DIR, f)).mtimeMs;

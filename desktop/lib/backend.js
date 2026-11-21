@@ -11,6 +11,7 @@ const os = require("node:os");
 const path = require("node:path");
 const { createAiDeadlines } = require("./ai-deadlines");
 const { buildModules, categoryOf, unitNumber, matchModule, CATEGORY_ORDER, CATEGORY_LABEL } = require("./modules");
+const { buildSchedule, overlaps } = require("./schedule");
 
 // STUDI_DATA_DIR nur für Tests (z. B. Ordner-Umzug in einem Temp-Ordner ausprobieren)
 const DATA_DIR = process.env.STUDI_DATA_DIR || path.join(os.homedir(), "Library", "Application Support", "Studi-Helfer");
@@ -472,7 +473,8 @@ async function listFiles() {
     perCourse.set(c.id, { root, files });
   }
   const names = Object.fromEntries([...perCourse].map(([id, v]) => [id, v.files.map((f) => path.basename(f.rel))]));
-  const { modules } = currentModules(cfg, names);
+  const { modules, moduleOfCourse } = currentModules(cfg, names);
+  const { slotsByModule } = scheduleFor(cfg, modules, moduleOfCourse);
 
   return modules.map((m) => {
     const cats = new Map();
@@ -539,6 +541,7 @@ async function listFiles() {
       folder: moduleFolder,
       iliasUrl: main ? `https://www.ilias.uni-koeln.de/ilias/goto.php/${main.kind}/${main.refId}` : null,
       parts: m.parts.map((p) => ({ courseId: p.courseId, label: p.label, folder: perCourse.get(p.courseId)?.root ?? null })),
+      slots: slotsByModule.get(m.id) || [],
       folders,
     };
   });
@@ -549,6 +552,29 @@ async function listFiles() {
 const DONE_DEADLINES = path.join(DATA_DIR, "deadlines-done.json");
 const DEADLINES = path.join(DATA_DIR, "deadlines.json");
 const SHEET_DEADLINES = path.join(DATA_DIR, "sheet-deadlines.json");
+const ORGA_EVENTS = path.join(DATA_DIR, "orga-events.json");
+
+/** Stundenplan aus den Orga-Folien (Wochentermine, eigene Gruppe, gewählte Wahltermine). */
+function scheduleFor(cfg, modules, moduleOfCourse) {
+  const moduleOf = (courseId) => (String(courseId).startsWith("mod-") ? courseId : moduleOfCourse.get(courseId));
+  return buildSchedule({ orga: readJson(ORGA_EVENTS, null), cfg, moduleOf, modules });
+}
+
+/** Wahltermin („Übung Mo 12:00 oder Mi 17:45“) als eigenen markieren bzw. wieder abwählen. */
+function setSlotChoice(moduleId, key, on) {
+  if (typeof moduleId !== "string" || !moduleId.startsWith("mod-") || typeof key !== "string" || key.length > 80) {
+    return { ok: false, code: "invalid", message: "Unknown class." };
+  }
+  const cfg = loadConfig();
+  cfg.slotChoices = cfg.slotChoices || {};
+  const set = new Set(cfg.slotChoices[moduleId] || []);
+  if (on) set.add(key);
+  else set.delete(key);
+  if (set.size) cfg.slotChoices[moduleId] = [...set];
+  else delete cfg.slotChoices[moduleId];
+  saveConfig(cfg);
+  return { ok: true };
+}
 
 const normTitle = (t) =>
   String(t || "")
@@ -559,6 +585,7 @@ const normTitle = (t) =>
 /**
  * Fristen/Termine aus allen Quellen, je mit Modul (moduleId) und abgehakt ja/nein:
  *   1. ILIAS-Kalender   2. Übungsblätter/Folien per Regeln   3. weitere Kalender (KLIPS …)   4. KI (nur mit Schlüssel)
+ *   5. Stundenplan aus Orga-Folien (nur, wenn zur selben Zeit nicht schon ein Termin aus 1.–4. da ist)
  * Doppelte fallen weg: gleiche Id; dieselbe Abgabe/Klausur im selben Modul am selben Tag; gleicher Titel am selben Tag.
  */
 function getDeadlines() {
@@ -590,6 +617,7 @@ function getDeadlines() {
   const ids = new Set();
   const sameDay = new Set();
   const all = [];
+  const termsByDay = new Map(); // Modul|Tag → Termine (für den Abgleich mit dem Stundenplan)
   const sources = [
     data.deadlines ?? [],
     readJson(SHEET_DEADLINES, { deadlines: [] }).deadlines ?? [],
@@ -608,7 +636,17 @@ function getDeadlines() {
       if (kindKey) sameDay.add(kindKey);
       sameDay.add(titleKey);
       all.push(d);
+      if (d.kind !== "abgabe") {
+        const k = `${scope}|${d.date}`;
+        termsByDay.set(k, [...(termsByDay.get(k) || []), d]);
+      }
     }
+  }
+  // Stundenplan zuletzt: ILIAS-Sitzungen und Kalender-Abos kennen Raum und Ausnahmen besser
+  for (const ev of scheduleFor(cfg, modules, moduleOfCourse).events) {
+    if (ids.has(ev.id) || overlaps(termsByDay.get(`${ev.moduleId}|${ev.date}`) || [], ev)) continue;
+    ids.add(ev.id);
+    all.push(ev);
   }
   all.sort((a, b) => (a.date === b.date ? String(a.start).localeCompare(String(b.start)) : a.date.localeCompare(b.date)));
   return {
@@ -794,6 +832,7 @@ module.exports = {
   setNotifications,
   aiDeadlines,
   getDeadlines,
+  setSlotChoice,
   getDoneDeadlines,
   setDeadlineDone,
   DATA_DIR,

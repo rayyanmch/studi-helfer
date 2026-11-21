@@ -42,6 +42,25 @@ export interface Course {
   parts?: { id: string; label: string }[]; // Teile des Moduls (Vorlesung, Übung, Übungsgruppe)
   renamed?: boolean; // Name selbst vergeben
   iliasUrl?: string | null; // Kursseite in ILIAS
+  slots?: ClassSlot[]; // Wochenplan aus den Orga-Folien (nur Mac-App); Wahltermine lassen sich auswählen
+}
+
+/**
+ * Wöchentlicher Termin aus den Orga-Folien („Exercise · Group 3, Tue 14:00–15:30, room S234“).
+ * state: fixed = gilt für alle (Vorlesung), mine = eigene ILIAS-Gruppe, chosen = selbst ausgewählt,
+ * option = Wahltermin, noch nicht ausgewählt (steht nicht im Kalender).
+ */
+export interface ClassSlot {
+  key: string;
+  type: "lecture" | "exercise" | "tutorial" | "seminar";
+  label: string; // "Exercise · Group 3"
+  weekday: number; // 0 = Montag
+  start: string; // "14:00"
+  end: string; // "15:30"
+  room: string | null;
+  group: number | null;
+  state: "fixed" | "mine" | "chosen" | "option";
+  source: string; // "Course info: 01_Introduction.pdf" oder "Your ILIAS group"
 }
 
 /** Frist aus dem ILIAS-Kalender oder von der KI in einem Übungsblatt gefunden. */
@@ -110,6 +129,14 @@ export const courses: Course[] = [
     lecturer: "Prof. Dr. Brandt",
     total: 18,
     color: "orange",
+    slots: [
+      { key: "lecture|4|10:00|", type: "lecture", label: "Lecture", weekday: 4, start: "10:00", end: "11:30", room: "hybrid", group: null, state: "fixed", source: "Course info: BWL_Begleittext_Woche_0.pdf" },
+      { key: "exercise|0|12:00|", type: "exercise", label: "Exercise", weekday: 0, start: "12:00", end: "13:30", room: "hybrid", group: null, state: "option", source: "Course info: BWL_Begleittext_Woche_0.pdf" },
+      { key: "exercise|2|17:45|", type: "exercise", label: "Exercise", weekday: 2, start: "17:45", end: "19:15", room: "hybrid", group: null, state: "option", source: "Course info: BWL_Begleittext_Woche_0.pdf" },
+      { key: "tutorial|3|10:00|", type: "tutorial", label: "Tutorial", weekday: 3, start: "10:00", end: "11:30", room: null, group: null, state: "option", source: "Course info: BWL_Begleittext_Woche_0.pdf" },
+      { key: "tutorial|3|14:00|", type: "tutorial", label: "Tutorial", weekday: 3, start: "14:00", end: "15:30", room: null, group: null, state: "chosen", source: "Course info: BWL_Begleittext_Woche_0.pdf" },
+      { key: "tutorial|3|16:00|", type: "tutorial", label: "Tutorial", weekday: 3, start: "16:00", end: "17:30", room: null, group: null, state: "option", source: "Course info: BWL_Begleittext_Woche_0.pdf" },
+    ],
     folders: [
       {
         id: "bwl-folien",

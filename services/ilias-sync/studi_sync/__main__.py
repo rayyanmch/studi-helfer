@@ -9,6 +9,7 @@
                                  danach Übungsblätter per Regeln auswerten (→ sheet-deadlines.json).
     sheet-deadlines              Nur Übungsblätter per Regeln auswerten (lokal, ohne Netz).
     calendars                    Zusätzliche Kalender (iCal-Links aus config.json) laden.
+    orga                         Stundenplan aus Orga-Folien/ersten Vorlesungen per Regeln (→ orga-events.json).
     calendar-test --url URL      Prüft einen iCal-Link (Anzahl Termine, Beispiele), speichert nichts.
     sync [--auto]                Ein Sync-Lauf (--auto: von launchd, mit Zufallsverzögerung,
                                  Netz-Wartezeit, Wiederholungen und Mitteilungen).
@@ -91,8 +92,11 @@ def cmd_deadlines(args: argparse.Namespace) -> None:
     from .calendars import refresh as refresh_calendars
 
     cals = refresh_calendars()
+    from .orga import refresh as refresh_orga
+
+    orga = refresh_orga()
     emit({"type": "result", "count": len(result["deadlines"]), "sheetCount": len(sheets["deadlines"]),
-          "calendarCount": len(cals["events"]), "updatedAt": result["updatedAt"]})
+          "calendarCount": len(cals["events"]), "orgaCourses": len(orga["courses"]), "updatedAt": result["updatedAt"]})
 
 
 def cmd_calendars(args: argparse.Namespace) -> None:
@@ -110,6 +114,14 @@ def cmd_calendar_test(args: argparse.Namespace) -> None:
     except Exception as e:  # noqa: BLE001
         raise AppError("invalid", str(e) or "This link did not work.") from None
     emit({"type": "result", "count": len(events), "sample": [e["title"] for e in events[:5]]})
+
+
+def cmd_orga(args: argparse.Namespace) -> None:
+    from .orga import refresh
+
+    result = refresh()
+    emit({"type": "result", "courses": len(result["courses"]),
+          "slots": sum(len(c["slots"]) for c in result["courses"].values()), "groups": result["myGroups"]})
 
 
 def cmd_sheet_deadlines(args: argparse.Namespace) -> None:
@@ -144,6 +156,7 @@ def main() -> int:
     p = sub.add_parser("deadlines"); p.set_defaults(fn=cmd_deadlines)
     p = sub.add_parser("sheet-deadlines"); p.set_defaults(fn=cmd_sheet_deadlines)
     p = sub.add_parser("calendars"); p.set_defaults(fn=cmd_calendars)
+    p = sub.add_parser("orga"); p.set_defaults(fn=cmd_orga)
     p = sub.add_parser("calendar-test"); p.add_argument("--url", required=True); p.set_defaults(fn=cmd_calendar_test)
     p = sub.add_parser("sync"); p.add_argument("--auto", action="store_true"); p.set_defaults(fn=cmd_sync)
     p = sub.add_parser("pferd-run"); p.add_argument("--config", required=True); p.set_defaults(fn=cmd_pferd_run)

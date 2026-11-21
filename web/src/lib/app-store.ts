@@ -13,7 +13,7 @@
 
 import { useEffect, useSyncExternalStore } from "react";
 import * as mock from "./mock-data";
-import type { Course, CourseColor, CourseFile, Deadline } from "./mock-data";
+import type { ClassSlot, Course, CourseColor, CourseFile, Deadline } from "./mock-data";
 import {
   getDesktop,
   type DesktopCourse,
@@ -212,6 +212,7 @@ function toCourse(c: DesktopCourse): Course {
     color: c.color ?? undefined,
     semester: c.semester === "past" ? "past" : "current",
     parts: c.parts.map((p) => ({ id: p.courseId, label: p.label })),
+    slots: c.slots ?? [],
     folders: c.folders.map((f) => ({
       id: f.id,
       name: f.name,
@@ -262,7 +263,7 @@ const OTHER_ID = "other";
 function toDeadline(d: DesktopDeadline): Deadline {
   // In der Oberfläche heißt source „wo“: Raum bei Terminen/Klausuren, Datei bei Fristen aus Übungsblättern.
   const fromFile = d.file ? `From ${displayName(d.file.split("/").pop() ?? "")}` : undefined;
-  const source = d.location ?? (d.category === "sheet" || d.category === "ai" ? fromFile : undefined);
+  const source = d.location ?? (d.category === "sheet" || d.category === "ai" || d.category === "schedule" ? fromFile : undefined);
   return { id: d.id, courseId: d.moduleId ?? OTHER_ID, title: d.title, date: d.date, time: d.time, kind: d.kind, source };
 }
 
@@ -606,6 +607,17 @@ export async function setModuleColor(id: string, color: CourseColor | null) {
   if (state.mode !== "desktop") return;
   set({ courses: state.courses.map((c) => (c.id === id ? { ...c, color: color ?? undefined } : c)) });
   await api().setModuleColor(id, color);
+}
+
+/** Wahltermin als eigenen markieren: erscheint dann jede Woche im Kalender. */
+export async function chooseSlot(moduleId: string, key: string, on: boolean) {
+  const picked: ClassSlot["state"] = on ? "chosen" : "option";
+  set({
+    courses: state.courses.map((c) => (c.id === moduleId ? { ...c, slots: (c.slots ?? []).map((s) => (s.key === key ? { ...s, state: picked } : s)) } : c)),
+  });
+  if (state.mode !== "desktop") return;
+  await api().setSlotChoice(moduleId, key, on);
+  await Promise.all([refresh(), refreshDeadlines()]);
 }
 
 export async function setSchedule(enabled: boolean, time: string) {

@@ -425,6 +425,13 @@ def sync(auto: bool) -> dict[str, Any]:
             log(f"Termine aus weiteren Kalendern: {len(refresh_calendars()['events'])}")
         except Exception as e:  # noqa: BLE001
             log(f"Weitere Kalender konnten nicht geladen werden: {type(e).__name__}: {e}")
+        try:
+            from .orga import refresh as refresh_orga
+
+            orga = refresh_orga()
+            log(f"Stundenplan aus Orga-Folien: {sum(len(c['slots']) for c in orga['courses'].values())} Wochentermine")
+        except Exception as e:  # noqa: BLE001
+            log(f"Orga-Folien konnten nicht ausgewertet werden: {type(e).__name__}: {e}")
 
     ended = time.time()
     record = {
