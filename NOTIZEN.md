@@ -7,6 +7,8 @@ Gemeinsames Gedächtnis für alle KI-Agenten und Menschen im Projekt. Wird über
 
 Wer gerade woran arbeitet (Person, Aufgabe, betroffene Dateien). Eintragen beim Start, löschen wenn fertig.
 
+- 2026-11-21, Rayyans Agent: **Themenwochen**: Dateien je Kurs nach Uni-Wochen ordnen (Regeln: „Woche N“ in ILIAS, Sitzungsdatum, Dateidatum, passende Themenwörter; KI nur für Titel). Neu `web/src/lib/weeks.ts`; Kursseite (Dateien „By week“), Study-Tab und Lernzettel wählen Wochen. Dateien: `ModuleView.tsx` (Dateiliste), `StudyHub.tsx`, `StudyView.tsx`, `lib/study.ts`, `desktop/lib/study.js`.
+
 
 
 
