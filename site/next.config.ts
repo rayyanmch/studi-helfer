@@ -5,6 +5,8 @@ const nextConfig: NextConfig = {
   output: "export",
   images: { unoptimized: true },
   devIndicators: false,
+  // Zwei Root-Layouts (/ und /de): 404 kommt aus app/global-not-found.tsx
+  experimental: { globalNotFound: true },
   turbopack: {
     rules: {
       "*.css": {

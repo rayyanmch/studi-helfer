@@ -6,6 +6,7 @@ import { Check } from "lucide-react";
 import { DocGlyph, TrafficLights, tone } from "./ui";
 import { useMedia, useReducedMotion } from "@/lib/hooks";
 import { COURSES, type CourseKey } from "@/lib/week";
+import { dict, type Lang } from "@/lib/i18n";
 
 type Platform = "ilias" | "moodle";
 
@@ -87,7 +88,8 @@ const ease = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 
 const bez = (a: number, b: number, c: number, d: number, t: number) =>
   (1 - t) ** 3 * a + 3 * (1 - t) ** 2 * t * b + 3 * (1 - t) * t ** 2 * c + t ** 3 * d;
 
-export function SortingStage() {
+export function SortingStage({ lang }: { lang: Lang }) {
+  const t = dict[lang].stage;
   const sectionRef = useRef<HTMLElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const fileRefs = useRef<(HTMLSpanElement | null)[]>([]);
@@ -185,8 +187,8 @@ export function SortingStage() {
             {/* Links: so liegt es auf der Plattform */}
             <div>
               <div className="flex items-center gap-3 text-[15px] font-semibold text-muted">
-                In
-                <PlatformSwitch value={platform} onChange={setPlatform} />
+                {t.in}
+                <PlatformSwitch label={t.platform} value={platform} onChange={setPlatform} />
               </div>
               <div className="relative mt-5 flex flex-col gap-2.5 md:block md:h-[420px]">
                 {FILES.map((f, i) => (
@@ -222,7 +224,7 @@ export function SortingStage() {
 
             {/* Rechts: so liegt es auf dem Mac */}
             <div>
-              <div className="flex h-[30px] items-center text-[15px] font-semibold text-muted">On your Mac</div>
+              <div className="flex h-[30px] items-center text-[15px] font-semibold text-muted">{t.onMac}</div>
               <div className="mt-5 overflow-hidden rounded-[14px] bg-surface text-[13.5px] shadow-[0_0_0_1px_var(--ring),0_24px_44px_-26px_rgb(var(--shadow-color)/0.45)]">
                 <div className="flex h-10 items-center gap-3 border-b border-line-soft px-3.5">
                   <TrafficLights size={10} />
@@ -264,7 +266,7 @@ export function SortingStage() {
                 className="m-0 mt-4 flex items-center gap-2 text-[15px] text-muted opacity-0 transition-opacity duration-500 data-[on=true]:opacity-100"
               >
                 <Check aria-hidden size={16} strokeWidth={2.4} style={{ color: "var(--c-green)" }} />
-                Sorted at 07:00, while you were asleep. Spotlight finds them too.
+                {t.caption}
               </p>
             </div>
 
@@ -290,9 +292,9 @@ export function SortingStage() {
   );
 }
 
-function PlatformSwitch({ value, onChange }: { value: Platform; onChange: (p: Platform) => void }) {
+function PlatformSwitch({ label, value, onChange }: { label: string; value: Platform; onChange: (p: Platform) => void }) {
   return (
-    <div role="radiogroup" aria-label="Learning platform" className="relative flex rounded-full bg-sunken p-[3px]">
+    <div role="radiogroup" aria-label={label} className="relative flex rounded-full bg-sunken p-[3px]">
       {(["ilias", "moodle"] as const).map((p) => (
         <button
           key={p}

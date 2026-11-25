@@ -78,7 +78,13 @@ export const dayLong = (d: Date) => `${WD_LONG[d.getDay()]}, ${MONTH[d.getMonth(
 export const weekdayName = (d: Date) => WD_LONG[d.getDay()];
 export const germanDate = (d: Date) =>
   `${WD_DE[d.getDay()]}, ${String(d.getDate()).padStart(2, "0")}.${String(d.getMonth() + 1).padStart(2, "0")}.${d.getFullYear()}`;
-export const menuBarDate = (d: Date) => `${WD[d.getDay()]} ${d.getDate()} ${MONTH[d.getMonth()].slice(0, 3)}`;
+const WD_DE_SHORT = ["So.", "Mo.", "Di.", "Mi.", "Do.", "Fr.", "Sa."];
+const MONTH_DE_SHORT = ["Jan.", "Feb.", "März", "Apr.", "Mai", "Juni", "Juli", "Aug.", "Sept.", "Okt.", "Nov.", "Dez."];
+/** Datum wie in der Menüleiste des Macs: „Wed 25 Nov“ bzw. „Mi. 25. Nov.“ */
+export const menuBarDate = (d: Date, lang: "en" | "de" = "en") =>
+  lang === "de"
+    ? `${WD_DE_SHORT[d.getDay()]} ${d.getDate()}. ${MONTH_DE_SHORT[d.getMonth()]}`
+    : `${WD[d.getDay()]} ${d.getDate()} ${MONTH[d.getMonth()].slice(0, 3)}`;
 
 /** „Tonight“, „tomorrow“ oder Wochentag, aus Sicht von heute. */
 export function relativeDay(today: Date, d: Date): string {

@@ -2,6 +2,7 @@ import type { CSSProperties, ReactNode } from "react";
 import Image from "next/image";
 import { ArrowDown } from "lucide-react";
 import { APP_STORE_URL, DOWNLOAD_URL } from "@/lib/links";
+import { dict, type Lang } from "@/lib/i18n";
 import type { Tone } from "@/lib/week";
 
 /** CSS-Variablen einer Kursfarbe für ein Element: --c (kräftig), --soft, --ink */
@@ -27,7 +28,16 @@ export function AppIcon({ size, className = "" }: { size: number; className?: st
   );
 }
 
-export function DownloadButtons({ size = "lg", align = "start" }: { size?: "lg" | "md"; align?: "start" | "center" }) {
+export function DownloadButtons({
+  lang,
+  size = "lg",
+  align = "start",
+}: {
+  lang: Lang;
+  size?: "lg" | "md";
+  align?: "start" | "center";
+}) {
+  const t = dict[lang].nav;
   const h = size === "lg" ? "h-[52px] text-[17px]" : "h-12 text-base";
   return (
     <div className={`flex flex-wrap gap-3 ${align === "center" ? "justify-center" : ""}`}>
@@ -36,13 +46,13 @@ export function DownloadButtons({ size = "lg", align = "start" }: { size?: "lg" 
         className={`press inline-flex items-center gap-2.5 rounded-full bg-accent px-[26px] font-semibold text-on-accent hover:bg-[color-mix(in_srgb,var(--accent)_86%,var(--bg))] ${h}`}
       >
         <ArrowDown aria-hidden className="nudge" size={18} strokeWidth={2.2} />
-        Download for Mac
+        {t.download}
       </a>
       <a
         href={APP_STORE_URL}
         className={`press inline-flex items-center rounded-full px-6 font-semibold text-ink shadow-[inset_0_0_0_1px_var(--line)] hover:bg-surface ${h}`}
       >
-        Mac App Store
+        {t.appStore}
       </a>
     </div>
   );

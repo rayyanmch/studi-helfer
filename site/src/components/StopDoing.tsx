@@ -3,22 +3,19 @@
 import { useEffect, useRef, useState } from "react";
 import { Section } from "./ui";
 import type { Tone } from "@/lib/week";
+import { dict, type Lang } from "@/lib/i18n";
 
 // Jede Zeile wird beim Hereinscrollen in ihrer Kursfarbe durchgestrichen.
-const LINES: { text: string; note: string; tone: Tone }[] = [
-  { text: "Checking for new slides.", note: "Ordo fetches them every morning, even when it is closed.", tone: "blue" },
-  { text: "Downloading Blatt_04 (2).pdf.", note: "Files land on your Mac, one folder per course.", tone: "orange" },
-  { text: "Copying deadlines into a calendar.", note: "Found in your course calendar and inside your sheets.", tone: "green" },
-  { text: "Missing the exam registration.", note: "Ordo asks weeks ahead whether you registered.", tone: "plum" },
-];
+const TONES: Tone[] = ["blue", "orange", "green", "plum"];
 
-export function StopDoing() {
+export function StopDoing({ lang }: { lang: Lang }) {
+  const t = dict[lang].stop;
   return (
     <Section className="pt-[200px]">
-      <h2 className="m-0 text-[22px] font-semibold text-muted">Things you can stop doing</h2>
+      <h2 className="m-0 text-[22px] font-semibold text-muted">{t.title}</h2>
       <ul className="m-0 mt-8 list-none border-b border-line p-0">
-        {LINES.map((l) => (
-          <Line key={l.text} {...l} />
+        {t.lines.map((l, i) => (
+          <Line key={l.text} {...l} tone={TONES[i]} />
         ))}
       </ul>
     </Section>

@@ -4,10 +4,10 @@ import { useLayoutEffect, useRef } from "react";
 import { animate, motion } from "motion/react";
 import { DownloadButtons, Section } from "./ui";
 import { useReducedMotion } from "@/lib/hooks";
+import { dict, type Lang } from "@/lib/i18n";
 
-const WORD = "sorted";
-// Beginnt alphabetisch sortiert („deorst“) und sortiert sich dann zum Wort.
-const START = [...WORD].map((_, i) => i).sort((a, b) => WORD[a].localeCompare(WORD[b]));
+// Das Wort beginnt alphabetisch sortiert („deorst“, „eiorrstt“) und sortiert sich dann zu sich selbst.
+const startOrder = (word: string) => [...word].map((_, i) => i).sort((a, b) => word[a].localeCompare(word[b]) || a - b);
 
 const rise = (delay: number) => ({
   initial: { opacity: 0, y: 14, filter: "blur(6px)" },
@@ -15,7 +15,9 @@ const rise = (delay: number) => ({
   transition: { duration: 0.8, delay, ease: [0.22, 1, 0.36, 1] as const },
 });
 
-export function Hero() {
+export function Hero({ lang }: { lang: Lang }) {
+  const t = dict[lang].hero;
+  const WORD = t.word;
   const wordRef = useRef<HTMLSpanElement>(null);
   const reduced = useReducedMotion();
 
@@ -31,7 +33,7 @@ export function Hero() {
     const widths = letters.map((el) => el.offsetWidth);
     const startX: number[] = [];
     let x = lefts[0];
-    for (const i of START) {
+    for (const i of startOrder(WORD)) {
       startX[i] = x;
       x += widths[i];
     }
@@ -50,16 +52,16 @@ export function Hero() {
     });
     host.dataset.ready = "";
     return () => controls.forEach((c) => c?.stop());
-  }, [reduced]);
+  }, [reduced, WORD]);
 
   return (
     <Section id="top" className="pt-[clamp(132px,20vh,220px)]">
-      <h1 className="m-0 text-[clamp(76px,13.6vw,188px)] font-medium leading-[0.9] tracking-[-0.055em]">
+      <h1 className={`m-0 ${t.size} font-medium leading-[0.9] tracking-[-0.055em]`}>
         <motion.span className="inline-block" {...(reduced ? {} : rise(0.1))}>
-          Uni,
+          {t.first}
         </motion.span>{" "}
         <motion.span className="inline-block" {...(reduced ? {} : rise(0.3))}>
-          <span ref={wordRef} data-sort-word className="relative inline-block whitespace-nowrap" aria-label="sorted.">
+          <span ref={wordRef} data-sort-word className="relative inline-block whitespace-nowrap" aria-label={`${WORD}.`}>
             {[...WORD].map((ch, i) => (
               <span key={i} data-l aria-hidden className="inline-block will-change-transform">
                 {ch}
@@ -73,12 +75,11 @@ export function Hero() {
         className="m-0 mt-10 max-w-[30em] text-[clamp(19px,1.6vw,22px)] leading-[1.45] text-muted text-pretty"
         {...(reduced ? {} : rise(1.05))}
       >
-        New slides land in the right folder on your Mac. Deadlines land in your week. You stop digging through ILIAS
-        and Moodle.
+        {t.sub}
       </motion.p>
       <motion.div className="mt-9" {...(reduced ? {} : rise(1.2))}>
-        <DownloadButtons />
-        <p className="m-0 mt-4 text-sm text-muted">For Macs with Apple silicon. Works with ILIAS and Moodle.</p>
+        <DownloadButtons lang={lang} />
+        <p className="m-0 mt-4 text-sm text-muted">{t.note}</p>
       </motion.div>
     </Section>
   );

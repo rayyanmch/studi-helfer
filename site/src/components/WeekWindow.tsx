@@ -17,11 +17,13 @@ import {
 } from "lucide-react";
 import { AppIcon, H2, Lead, TrafficLights, tone } from "./ui";
 import { useReducedMotion, useToday } from "@/lib/hooks";
+import { dict, type Lang } from "@/lib/i18n";
 import { COURSES, dayLong, dayShort, lectureWeek, nextDays, relativeDay, type Day, type Item } from "@/lib/week";
 
 // Das App-Fenster „Today“ mit den nächsten 4 Tagen. Richtet sich beim Hereinscrollen auf;
 // Abgaben lassen sich abhaken, der Satz oben passt sich an.
-export function WeekWindow() {
+export function WeekWindow({ lang }: { lang: Lang }) {
+  const copy = dict[lang].week;
   const today = useToday();
   const days = nextDays(today);
   const [done, setDone] = useState<Record<string, boolean>>({ sheet5: true });
@@ -37,15 +39,13 @@ export function WeekWindow() {
   return (
     <div className="pt-[200px]">
       <div className="max-w-[640px]">
-        <H2>Your week, at one glance.</H2>
-        <Lead className="mt-6">
-          Lectures, deadlines and exams in your course colours. Free days shrink so busy ones get the room. Tick off what
-          you have handed in.
-        </Lead>
+        <H2>{copy.title}</H2>
+        <Lead className="mt-6">{copy.lead}</Lead>
       </div>
       <div className="mt-16 [perspective:1800px]">
         <motion.div
           ref={frameRef}
+          lang="en"
           style={reduced ? undefined : { rotateX, scale, y, transformOrigin: "50% 0%" }}
           className="flex overflow-hidden rounded-[14px] bg-bg text-ink shadow-[0_0_0_1px_var(--ring),0_30px_60px_-24px_rgb(var(--shadow-color)/0.28),0_90px_140px_-70px_rgb(var(--shadow-color)/0.4)]"
         >

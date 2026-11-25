@@ -6,9 +6,11 @@ import { BatteryFull, Search, Wifi } from "lucide-react";
 import { AppIcon, H2, Lead, Section } from "./ui";
 import { useReducedMotion, useToday } from "@/lib/hooks";
 import { menuBarDate, nextDays } from "@/lib/week";
+import { dict, type Lang } from "@/lib/i18n";
 
 // Mitteilungen gleiten wie auf dem Mac von rechts herein, die zweite etwas später.
-export function Reminders() {
+export function Reminders({ lang }: { lang: Lang }) {
+  const copy = dict[lang].reminders;
   const today = useToday();
   const days = nextDays(today, 7);
   // Abend vor der BWL-Abgabe (zweiter Werktag); liegt der vor heute, eben heute
@@ -30,18 +32,15 @@ export function Reminders() {
     <Section id="reminders" className="pt-[200px]">
       <div className="grid items-center gap-16 md:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
         <div className="max-w-[460px]">
-          <H2>And taps you on the shoulder.</H2>
-          <Lead className="mt-6">
-            The evening before a deadline and three hours before. A week before each exam, with a nudge to register,
-            because being in the course is not enough.
-          </Lead>
+          <H2>{copy.title}</H2>
+          <Lead className="mt-6">{copy.lead}</Lead>
         </div>
-        <div ref={ref} className="min-h-[300px] overflow-hidden rounded-[20px] bg-[var(--desk)] shadow-[0_0_0_1px_var(--ring)]">
+        <div ref={ref} lang="en" className="min-h-[300px] overflow-hidden rounded-[20px] bg-[var(--desk)] shadow-[0_0_0_1px_var(--ring)]">
           <div className="flex h-[30px] items-center justify-end gap-4 bg-[color-mix(in_srgb,var(--surface)_55%,transparent)] px-4 text-[12.5px] font-semibold">
             <BatteryFull aria-hidden size={17} strokeWidth={1.8} />
             <Wifi aria-hidden size={15} strokeWidth={2.2} />
             <Search aria-hidden size={14} strokeWidth={2.4} />
-            <span className="tnum">{menuBarDate(shown)} 18:00</span>
+            <span className="tnum">{menuBarDate(shown, lang)} 18:00</span>
           </div>
           <div className="flex flex-col items-end gap-2.5 p-4">
             <motion.div {...slide(0.15)} className="w-full flex justify-end">

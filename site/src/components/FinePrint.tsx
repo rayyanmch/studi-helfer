@@ -5,9 +5,11 @@ import { motion, useInView } from "motion/react";
 import { H2, Lead, tone } from "./ui";
 import { useReducedMotion, useToday } from "@/lib/hooks";
 import { dayShort, firstWeekday, germanDate, keyOf } from "@/lib/week";
+import { dict, type Lang } from "@/lib/i18n";
 
 // Das Übungsblatt: Ein Textmarker fährt über die Abgabezeile, ein Faden führt zur Frist in der Woche.
-export function FinePrint() {
+export function FinePrint({ lang }: { lang: Lang }) {
+  const copy = dict[lang].fine;
   const today = useToday();
   const due = firstWeekday(today);
   const isToday = keyOf(due) === keyOf(today);
@@ -85,6 +87,7 @@ export function FinePrint() {
       </svg>
 
       <div
+        lang="de"
         className="relative mx-auto w-full max-w-[470px] rounded-[6px] bg-paper px-10 pt-10 pb-11 text-[13.5px] leading-[1.6] text-[var(--paper-ink)] transition-transform duration-500 ease-[var(--ease-out)] md:mx-0"
         style={{
           transform: hot ? "rotate(-1.4deg) translateY(-4px)" : "rotate(-2deg)",
@@ -119,12 +122,9 @@ export function FinePrint() {
       </div>
 
       <div className="max-w-[460px]">
-        <H2>Then it reads the fine print.</H2>
-        <Lead className="mt-6">
-          Ordo finds deadlines and exam dates in your course calendar and inside your exercise sheets, and puts them into
-          your week. Every date says where it was found.
-        </Lead>
-        <div className="mt-10 max-w-[330px] rounded-[14px] bg-surface p-3.5 shadow-[0_0_0_1px_var(--ring)]">
+        <H2>{copy.title}</H2>
+        <Lead className="mt-6">{copy.lead}</Lead>
+        <div lang="en" className="mt-10 max-w-[330px] rounded-[14px] bg-surface p-3.5 shadow-[0_0_0_1px_var(--ring)]">
           <div className="flex items-center justify-between text-[13px]">
             <span className="tnum font-semibold">{dayShort(due)}</span>
             {isToday && (
