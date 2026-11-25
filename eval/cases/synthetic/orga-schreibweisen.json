@@ -101,6 +101,24 @@
      {"type": "lecture", "weekday": 1, "start": "14:00", "end": "15:30", "alternative": false, "room": "Hörsaal 1"},
      {"type": "exercise", "weekday": 4, "start": "10:00", "end": "11:30", "alternative": false, "room": "Seminarraum 3"}]}},
 
+  {"id": "tabelle/zellen-englisch",
+   "files": {"Syllabus.pdf": [["Schedule", "Lecture", "Tuesday", "09:00-10:30", "Lecture Hall 1", "Tutorial", "Thursday", "16:00-17:30", "Room 2.04"]]},
+   "orga": {"slots": [
+     {"type": "lecture", "weekday": 1, "start": "09:00", "end": "10:30", "alternative": false, "room": "Lecture Hall 1"},
+     {"type": "tutorial", "weekday": 3, "start": "16:00", "end": "17:30", "alternative": false, "room": "2.04"}]}},
+
+  {"id": "tabelle/zellen-mit-strichen",
+   "files": {"00_Organisatorisches.pdf": [["Termine", "Vorlesung |", "Mittwoch |", "08:15 - 09:45 |", "HS 1 |"]]},
+   "orga": {"slots": [{"type": "lecture", "weekday": 2, "start": "08:15", "end": "09:45", "alternative": false, "room": "HS 1"}]}},
+
+  {"id": "tabelle/zellen-kurzform",
+   "files": {"00_Organisatorisches.pdf": [["Übung", "Mo.", "12-14 Uhr", "Raum 0.01"]]},
+   "orga": {"slots": [{"type": "exercise", "weekday": 0, "start": "12:00", "end": "14:00", "alternative": false, "room": "Raum 0.01"}]}},
+
+  {"id": "falle/sprechstunde-als-tabelle",
+   "files": {"00_Organisatorisches.pdf": [["Kontakt", "Sprechstunde", "Dienstag", "14:00 - 15:00", "Raum 3.12", "Vorlesung: Freitag, 10:00-11:30, Hörsaal 2"]]},
+   "orga": {"slots": [{"type": "lecture", "weekday": 4, "start": "10:00", "end": "11:30", "alternative": false, "room": "Hörsaal 2"}]}},
+
   {"id": "gruppen/mehrere-in-einer-zeile",
    "files": {"00_Organisatorisches.pdf": [["Übungsgruppen:", "Gruppe 1: Mo 8-10, Gruppe 2: Mo 10-12, Gruppe 3: Di 14-16"]]},
    "orga": {"slots": [

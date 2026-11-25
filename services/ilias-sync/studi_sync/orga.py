@@ -28,7 +28,7 @@ from .deadlines import PARENTS
 from .sheets import DEADLINE_WORDS, EVENT_WORDS, SOLUTION, _find_dates, _pdf_text
 from .textfix import WEEKDAY_RE, fix_year, normalize, weekday_before, weekday_of
 
-RULES_VERSION = 8  # 2: Überschrift „ROOM“ ist kein Raum, „start in lecture week 3“ gilt für die genannte Art; 3: Leistungspunkte (credits); 4: beides zusammen; 5: Beginn (Gruppen = Übung, Anmeldung zählt nicht, späte Planpunkte zählen nicht); 6: bis Seite 200; 7: Aufzählung von Wochentagen („Di/Do 14-16“); 8: erste Vorlesung ohne Orga-Namen (nur Termine mit Art oder Raum)
+RULES_VERSION = 9  # 2: Überschrift „ROOM“ ist kein Raum, „start in lecture week 3“ gilt für die genannte Art; 3: Leistungspunkte (credits); 4: beides zusammen; 5: Beginn (Gruppen = Übung, Anmeldung zählt nicht, späte Planpunkte zählen nicht); 6: bis Seite 200; 7: Aufzählung von Wochentagen („Di/Do 14-16“); 8: erste Vorlesung ohne Orga-Namen (nur Termine mit Art oder Raum); 9: Tabellenzellen Tag + Uhrzeit, Sprechstunde als Überschrift
 CACHE = DATA_DIR / "orga-cache.json"
 OUTPUT = DATA_DIR / "orga-events.json"
 # Orga-Folien ganz lesen: oft stehen die Zeiten erst nach Vorstellung und Motivation (Visualisierung: Folie 88 von 109).
@@ -197,8 +197,25 @@ def _hhmm(minutes: int) -> str:
     return f"{minutes // 60:02d}:{minutes % 60:02d}"
 
 
+def _join_cells(lines: list[str]) -> list[str]:
+    """Tabellen liefert pypdf oft Zelle für Zelle („Dienstag“ / „14:00–15:30“): Tag und Zeit wieder in eine Zeile."""
+    out: list[str] = []
+    i = 0
+    while i < len(lines):
+        cell = lines[i].strip(" |:,;·")
+        nxt = lines[i + 1].strip(" |") if i + 1 < len(lines) else ""
+        if WEEKDAY_RE.fullmatch(cell) and nxt and len(nxt) < 40 and RANGE_RE.match(nxt):
+            out.append(f"{cell} {nxt}")
+            i += 2
+            continue
+        out.append(lines[i])
+        i += 1
+    return out
+
+
 def find_slots(lines: list[str], default_type: str = "lecture") -> list[dict[str, Any]]:
     """Wöchentliche Termine in den (normalisierten) Zeilen einer Datei."""
+    lines = _join_cells(lines)
     slots: list[dict[str, Any]] = []
     header_type: Optional[str] = None  # aus einer Überschrift („Lectures:“, „Übungen:“)
     header_skip = False  # Überschrift „Klausur:“ / „Lehramt:“ → folgende Zeiten ignorieren
@@ -215,6 +232,8 @@ def find_slots(lines: list[str], default_type: str = "lecture") -> list[dict[str
                 header_type, header_skip = None, False
             elif headerish and SKIP.search(line) and line.rstrip().endswith(":"):
                 header_skip = True
+            elif headerish and OFFICE.search(line):
+                header_type, header_skip = None, True  # „Sprechstunde“ über einer Tabelle: Zeiten darunter sind keine Kurstermine
             room_line = not t or LECTURE_ROOM.search(line) or SMALL_ROOM.search(line)
             if roomless and len(line) < 50 and ROOM.search(line) and room_line and i - roomless[-1]["_line"] <= 2:
                 room = _room(line)

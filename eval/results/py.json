@@ -1,26 +1,26 @@
 {
  "when": "2026-11-25",
  "summary": {
-  "errors": 51,
-  "tp": 379,
+  "errors": 49,
+  "tp": 405,
   "fp": 23,
-  "fn": 28,
-  "passed": 85,
-  "ran": 100,
+  "fn": 26,
+  "passed": 90,
+  "ran": 104,
   "skipped": 0,
   "categories": {
    "orga.slots": [
-    100,
+    107,
     21,
-    13
+    11
    ],
    "orga.alt": [
-    100,
+    107,
     0,
     0
    ],
    "orga.first": [
-    75,
+    80,
     0,
     0
    ],
@@ -40,7 +40,7 @@
     1
    ],
    "orga.room": [
-    46,
+    53,
     0,
     13
    ],
@@ -50,7 +50,7 @@
     0
    ]
   },
-  "seconds": 18.1
+  "seconds": 34.8
  },
  "cases": {
   "real/bwl": {
@@ -431,12 +431,29 @@
    "details": []
   },
   "synthetic/tabelle/zellen-untereinander": {
-   "status": "fail",
-   "errors": 2,
-   "details": [
-    "orga.slots: verpasst lecture Di 14:00–15:30",
-    "orga.slots: verpasst exercise Fr 10:00–11:30"
-   ]
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/tabelle/zellen-englisch": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/tabelle/zellen-mit-strichen": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/tabelle/zellen-kurzform": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/falle/sprechstunde-als-tabelle": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
   },
   "synthetic/gruppen/mehrere-in-einer-zeile": {
    "status": "pass",
