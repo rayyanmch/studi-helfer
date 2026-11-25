@@ -17,7 +17,7 @@ from .common import DATA_DIR, load_config, read_json, write_json
 from .deadlines import deadline_id
 from .textfix import fix_year, normalize, weekday_before
 
-RULES_VERSION = 9  # erhöhen, wenn sich die Regeln ändern → alles wird neu ausgewertet; 7: Orga-Dateien bis Seite 200; 8: Prüfungstermin/Modulprüfung/examination, Anmeldeschluss ist keine Klausur; 9: Bonus-/Kurztests und Quiz als Termin, Zeitraum „12-12:30 Uhr“ beginnt um 12:00
+RULES_VERSION = 10  # erhöhen, wenn sich die Regeln ändern → alles wird neu ausgewertet; 7: Orga-Dateien bis Seite 200; 8: Prüfungstermin/Modulprüfung/examination, Anmeldeschluss ist keine Klausur; 9: Bonus-/Kurztests und Quiz als Termin, Zeitraum „12-12:30 Uhr“ beginnt um 12:00; 10: Bearbeitung bis, fällig am, upload … by
 CACHE = DATA_DIR / "sheet-deadlines-cache.json"
 OUTPUT = DATA_DIR / "sheet-deadlines.json"
 MAX_PAGES = 8  # Fristen und Klausurtermine stehen fast immer auf den ersten Seiten (Orga-Folien)
@@ -36,7 +36,9 @@ SOLUTION = re.compile(r"(lösung|loesung|losung|solution)", re.I)
 # Fristwort → Art. Reihenfolge egal; \b davor, damit z. B. „Ausgabe“ nicht als „Abgabe“ zählt.
 DEADLINE_WORDS = re.compile(
     r"\b(\w*abgabe\w*|abzugeben|einzureichen|einreich\w*|hochzuladen|deadline|due( date)?|submission( deadline)?|"
-    r"submit( by)?|hand[- ]in|turn in|bearbeitungsfrist|frist)\b", re.I)
+    r"submit( by)?|hand[- ]in|turn in|bearbeitungsfrist|frist|"
+    # „Bearbeitung bis Di. 15.12. 23:55“, „Bearbeitungszeit bis …“, „Fällig am …“, „upload your solutions by …“
+    r"bearbeitung(?:szeit)?\s+bis|bearbeiten\s+bis|fällig(?:\s+(?:am|bis|zum))?|upload\w*(?:\s+\w+){0,3}\s+(?:by|until|before))\b", re.I)
 # Klausur-Wörter auch zusammengesetzt („Prüfungstermin:“, „Modulprüfung“, „Klausurdatum“, „Written examination“), aber
 # nicht „Prüfungsanmeldung“/„Prüfungseinsicht“ (die Endungen sind aufgezählt, danach muss das Wort enden)
 _PRUEFUNG = r"(?:modul|abschluss|wiederholungs|nach|semester|end)?pr(?:ü|ue)fung(?:en|stermine?|sdatum|stag)?"

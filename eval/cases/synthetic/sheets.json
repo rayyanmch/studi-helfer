@@ -24,6 +24,23 @@
    "files": {"Blatt08.pdf": [["Übungsblatt 8", "Bearbeitung bis Di. 15.12.26 23:55 Uhr"]]},
    "sheets": {"Blatt08.pdf": [{"date": "2026-12-15", "kind": "abgabe", "time": "23:55"}]}},
 
+  {"id": "frist/bearbeitungszeit-bis", "ref": "2026-12-04",
+   "files": {"Blatt09.pdf": [["Übungsblatt 9", "Bearbeitungszeit bis Freitag, 11.12.2026, 18 Uhr"]]},
+   "sheets": {"Blatt09.pdf": [{"date": "2026-12-11", "kind": "abgabe", "time": "18:00"}]}},
+
+  {"id": "frist/faellig-am", "ref": "2026-12-14",
+   "files": {"Aufgabenblatt_10.pdf": [["Aufgabenblatt 10", "Fällig am 21.12.2026 um 10:00 Uhr"]]},
+   "sheets": {"Aufgabenblatt_10.pdf": [{"date": "2026-12-21", "kind": "abgabe", "time": "10:00"}]}},
+
+  {"id": "frist/upload-by-en", "ref": "2026-12-07",
+   "files": {"Problem Set 3.pdf": [["Problem Set 3", "Please upload your solutions by December 14, 2026, 11:59 pm."]]},
+   "sheets": {"Problem Set 3.pdf": [{"date": "2026-12-14", "kind": "abgabe", "time": "23:59"}]}},
+
+  {"id": "falle/korrektur-bis", "ref": "2026-12-10",
+   "note": "Klingt nach Frist, betrifft aber die Lehrenden bzw. ist keine Abgabe.",
+   "files": {"Blatt 11.pdf": [["Übungsblatt 11", "Die Korrekturen erhalten Sie bis spätestens 15.01.2027.", "Bearbeitung in Gruppen von bis zu 3 Personen", "Gültig bis 31.03.2027"]]},
+   "sheets": {"Blatt 11.pdf": []}},
+
   {"id": "frist/iso-datum", "ref": "2026-11-09",
    "files": {"Exercise Sheet 2.pdf": [["Exercise Sheet 2", "Deadline: 2026-11-16 23:59"]]},
    "sheets": {"Exercise Sheet 2.pdf": [{"date": "2026-11-16", "kind": "abgabe", "time": "23:59"}]}},

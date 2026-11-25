@@ -1,12 +1,12 @@
 {
  "when": "2026-11-25",
  "summary": {
-  "errors": 9,
-  "tp": 517,
+  "errors": 8,
+  "tp": 521,
   "fp": 4,
-  "fn": 5,
-  "passed": 116,
-  "ran": 121,
+  "fn": 4,
+  "passed": 121,
+  "ran": 125,
   "skipped": 0,
   "categories": {
    "orga.slots": [
@@ -35,9 +35,9 @@
     0
    ],
    "sheets": [
-    50,
+    54,
     2,
-    1
+    0
    ],
    "orga.room": [
     76,
@@ -50,7 +50,7 @@
     0
    ]
   },
-  "seconds": 34.8
+  "seconds": 34.7
  },
  "cases": {
   "real/bwl": {
@@ -549,11 +549,29 @@
    "details": []
   },
   "synthetic/frist/bearbeitung-bis": {
-   "status": "fail",
-   "errors": 1,
-   "details": [
-    "sheets: verpasst Blatt08.pdf: abgabe 2026-12-15 23:55"
-   ]
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/frist/bearbeitungszeit-bis": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/frist/faellig-am": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/frist/upload-by-en": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/falle/korrektur-bis": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
   },
   "synthetic/frist/iso-datum": {
    "status": "pass",
