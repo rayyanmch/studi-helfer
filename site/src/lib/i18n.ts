@@ -15,8 +15,6 @@ const en = {
     other: { label: "Deutsch", href: "/de", lang: "de" as Lang },
     download: "Download for Mac",
     appStore: "Mac App Store",
-    sectionsLabel: "Sections",
-    sections: { files: "Files", deadlines: "Deadlines", reminders: "Reminders", more: "More" },
   },
   hero: {
     first: "Uni,",
@@ -104,8 +102,6 @@ const de: Dict = {
     other: { label: "English", href: "/", lang: "en" },
     download: "Für Mac laden",
     appStore: "Mac App Store",
-    sectionsLabel: "Abschnitte",
-    sections: { files: "Dateien", deadlines: "Fristen", reminders: "Erinnerungen", more: "Mehr" },
   },
   hero: {
     first: "Uni,",

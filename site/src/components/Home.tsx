@@ -1,5 +1,4 @@
 import { Header } from "./Header";
-import { RegisterTabs } from "./RegisterTabs";
 import { Hero } from "./Hero";
 import { SortingStage } from "./SortingStage";
 import { FinePrint } from "./FinePrint";
@@ -16,7 +15,6 @@ export function Home({ lang }: { lang: Lang }) {
   return (
     <>
       <Header lang={lang} />
-      <RegisterTabs lang={lang} />
       <main>
         <Hero lang={lang} />
         <SortingStage lang={lang} />

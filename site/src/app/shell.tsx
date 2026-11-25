@@ -25,10 +25,8 @@ export function metadataFor(lang: Lang): Metadata {
 }
 
 export const viewport: Viewport = {
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f4f7fb" },
-    { media: "(prefers-color-scheme: dark)", color: "#121519" },
-  ],
+  themeColor: "#f4f7fb",
+  colorScheme: "light",
 };
 
 export function Shell({ lang, children }: { lang: Lang; children: ReactNode }) {

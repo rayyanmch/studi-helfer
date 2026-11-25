@@ -1,8 +1,9 @@
 @import "tailwindcss";
 
-/* Ordo-Website. Designsprache wie Richtung C (ruhig, hell, große Schrift in 500, Haarlinien),
+/* Ordo-Website. Designsprache wie Richtung C (ruhig, nur hell, große Schrift in 500, Haarlinien),
    Farben und Schrift aus der App (Wochenstreifen): Tinte als einzige UI-Farbe, Kursfarben für Inhalte. */
 :root {
+  color-scheme: light; /* bewusst nur hell (Rayyan) */
   --bg: #f4f7fb;
   --surface: #ffffff;
   --sunken: #e9eef3;
@@ -38,43 +39,6 @@
 
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #121519;
-    --surface: #1d2329;
-    --sunken: #171b20;
-    --line: #2a3139;
-    --line-soft: #232a31;
-    --ink: #e8ecf0;
-    --muted: #97a2ae;
-    --faint: #6c7783;
-    --accent: #e8ecf0;
-    --on-accent: #15191e;
-    --on-solid: #15191e;
-    --paper: #e4e2dc;
-    --paper-ink: #2a333d;
-    --marker: #f3d76b;
-    --desk: #1a2028;
-    --glass: rgba(44, 49, 56, 0.82);
-    --glass-2: rgba(44, 49, 56, 0.62);
-    --shadow-color: 0 0 0;
-    --ring: rgb(255 255 255 / 0.07);
-
-    --c-blue: #6b9fd6;
-    --c-blue-soft: #1f2c3b;
-    --c-blue-ink: #a9c8ea;
-    --c-orange: #e08e5a;
-    --c-orange-soft: #3a2a20;
-    --c-orange-ink: #f0bc98;
-    --c-green: #6cbf86;
-    --c-green-soft: #1e3326;
-    --c-green-ink: #a8dcb7;
-    --c-plum: #c983b6;
-    --c-plum-soft: #352331;
-    --c-plum-ink: #e6b8d9;
-  }
 }
 
 @theme inline {
