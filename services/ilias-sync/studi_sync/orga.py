@@ -28,7 +28,7 @@ from .deadlines import PARENTS
 from .sheets import _MONTH_RE, DEADLINE_WORDS, EVENT_WORDS, SOLUTION, _find_dates, _pdf_text
 from .textfix import WEEKDAY_RE, fix_year, normalize, weekday_before, weekday_of
 
-RULES_VERSION = 11  # 2: Überschrift „ROOM“ ist kein Raum, „start in lecture week 3“ gilt für die genannte Art; 3: Leistungspunkte (credits); 4: beides zusammen; 5: Beginn (Gruppen = Übung, Anmeldung zählt nicht, späte Planpunkte zählen nicht); 6: bis Seite 200; 7: Aufzählung von Wochentagen („Di/Do 14-16“); 8: erste Vorlesung ohne Orga-Namen (nur Termine mit Art oder Raum); 9: Tabellenzellen Tag + Uhrzeit, Sprechstunde als Überschrift; 10: Zusatz-/Nachholtermine, Datum mit Monatsnamen = Einzeltermin; 11: Gruppe ohne Art-Wort = Übung
+RULES_VERSION = 12  # 2: Überschrift „ROOM“ ist kein Raum, „start in lecture week 3“ gilt für die genannte Art; 3: Leistungspunkte (credits); 4: beides zusammen; 5: Beginn (Gruppen = Übung, Anmeldung zählt nicht, späte Planpunkte zählen nicht); 6: bis Seite 200; 7: Aufzählung von Wochentagen („Di/Do 14-16“); 8: erste Vorlesung ohne Orga-Namen (nur Termine mit Art oder Raum); 9: Tabellenzellen Tag + Uhrzeit, Sprechstunde als Überschrift; 10: Zusatz-/Nachholtermine, Datum mit Monatsnamen = Einzeltermin; 11: Gruppe ohne Art-Wort = Übung; 12: Gruppennummer aus Listenzeile davor
 CACHE = DATA_DIR / "orga-cache.json"
 OUTPUT = DATA_DIR / "orga-events.json"
 # Orga-Folien ganz lesen: oft stehen die Zeiten erst nach Vorstellung und Motivation (Visualisierung: Folie 88 von 109).
@@ -102,6 +102,7 @@ OFFICE = re.compile(r"\b(sprechstunden?|office hours?|sprechzeiten?)\b", re.I)
 EXAMPLE = re.compile(r"(\bbeispiel\w*|\bz\.\s?b\.|\be\.\s?g\.|\bfor example\b|\bexample\b)", re.I)
 SKIP = re.compile(r"(lehramt|didaktik|nur nach vereinbarung|ausgewählten terminen|selected dates|\bklausur\w*|\bexams?\b|\bprüfung\w*)", re.I)
 ALT = re.compile(r"\b(oder|or|alternativ\w*|wahlweise|choose|wählen|parallel\w*)\b", re.I)
+BULLETS = " \t•·-–—*◦▪>|"
 # Nur Verbindungswörter zwischen zwei Wochentagen („Mo und Mi“, „Di/Do“, „Montag, Mittwoch und Freitag“); „Mo–Fr“ zählt nicht
 DAY_CHAIN = re.compile(r"(?:\s*(?:,|/|&|\+|und|and|sowie|oder|or)\s*)+", re.I)
 GROUP = re.compile(r"\b(?:gruppe|group|grp\.?|übungsgruppe)\s*0*(\d{1,2})\b", re.I)
@@ -286,7 +287,8 @@ def find_slots(lines: list[str], default_type: str = "lecture") -> list[dict[str
             typ = typ or default_type
             # nächste Gruppennummer vor dem Wochentag („Gruppe 1: Mo 8-10, Gruppe 2: Mo 10-12“)
             grps = list(GROUP.finditer(before))
-            grp = grps[-1] if grps else (GROUP.search(prev) if not before.strip() and len(prev) < 40 else None)
+            # Nummer in der kurzen Listenzeile davor („• Gruppe 1“ / „• Mo 14:00 - 15:30“); Aufzählungszeichen zählen nicht
+            grp = grps[-1] if grps else (GROUP.search(prev) if not before.strip(BULLETS) and len(prev) < 40 else None)
             if grp and typ == "lecture" and not (_type_in(before) or line_type):
                 typ, conf = "exercise", max(conf, 1)  # „Gruppe 1: Mo 14-16“ ohne Art-Wort: Gruppen sind Übungsgruppen
             for rng in ranges:

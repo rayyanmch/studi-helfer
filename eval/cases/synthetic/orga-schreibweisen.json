@@ -158,6 +158,27 @@
      {"type": "exercise", "weekday": 0, "start": "14:00", "end": "15:30", "group": 1, "alternative": true},
      {"type": "exercise", "weekday": 1, "start": "10:00", "end": "11:30", "group": 2, "alternative": true}]}},
 
+  {"id": "gruppen/nummer-davor-mit-strich",
+   "files": {"00_Organisatorisches.pdf": [["Übungsgruppen", "- Gruppe 1", "- Di 08:00 - 09:30", "- Gruppe 2", "- Di 10:00 - 11:30"]]},
+   "orga": {"slots": [
+     {"type": "exercise", "weekday": 1, "start": "08:00", "end": "09:30", "group": 1, "alternative": true},
+     {"type": "exercise", "weekday": 1, "start": "10:00", "end": "11:30", "group": 2, "alternative": true}]}},
+
+  {"id": "gruppen/group-davor-englisch",
+   "files": {"Syllabus.pdf": [["Tutorial groups", "* Group 4", "* Thursday, 12:00 - 13:30", "* Group 5", "* Thursday, 14:00 - 15:30"]]},
+   "orga": {"slots": [
+     {"type": "tutorial", "weekday": 3, "start": "12:00", "end": "13:30", "group": 4, "alternative": true},
+     {"type": "tutorial", "weekday": 3, "start": "14:00", "end": "15:30", "group": 5, "alternative": true}]}},
+
+  {"id": "gruppen/nummer-mit-name-davor",
+   "files": {"00_Organisatorisches.pdf": [["Übungen", "• Gruppe 3 (Anna)", "• Fr 10:00 - 11:30, Raum S12"]]},
+   "orga": {"slots": [{"type": "exercise", "weekday": 4, "start": "10:00", "end": "11:30", "group": 3, "alternative": true, "room": "S12"}]}},
+
+  {"id": "falle/gruppe-in-langem-satz-davor",
+   "note": "Die Gruppennummer aus der Zeile davor zählt nur, wenn die Zeile kurz ist (eine Listenzeile, kein Satz).",
+   "files": {"00_Organisatorisches.pdf": [["Übungen", "Die Anmeldung zu Gruppe 1 bis 3 erfolgt über ILIAS ab sofort und bis Freitag", "Mi 12:00 - 13:30, Raum 1.02"]]},
+   "orga": {"slots": [{"type": "exercise", "weekday": 2, "start": "12:00", "end": "13:30", "alternative": false}]}},
+
   {"id": "gruppen/english-tutor-name",
    "files": {"01_Introduction.pdf": [["Exercises: Software Engineering", "1 Group 1 (Anna): Mondays, 10:00 - 11:30 · Main Building, Room S12", "2 Group 2 (Ben): Tuesdays, 12:00 - 13:30 · Main Building, Room S14"]]},
    "orga": {"slots": [

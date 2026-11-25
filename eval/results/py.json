@@ -1,26 +1,26 @@
 {
  "when": "2026-11-25",
  "summary": {
-  "errors": 31,
-  "tp": 457,
-  "fp": 12,
+  "errors": 23,
+  "tp": 474,
+  "fp": 4,
   "fn": 19,
-  "passed": 102,
-  "ran": 112,
+  "passed": 107,
+  "ran": 116,
   "skipped": 0,
   "categories": {
    "orga.slots": [
-    127,
-    10,
+    133,
+    2,
     2
    ],
    "orga.alt": [
-    127,
+    133,
     0,
     0
    ],
    "orga.first": [
-    88,
+    92,
     0,
     0
    ],
@@ -40,7 +40,7 @@
     1
    ],
    "orga.room": [
-    53,
+    54,
     0,
     16
    ],
@@ -50,7 +50,7 @@
     0
    ]
   },
-  "seconds": 34.6
+  "seconds": 34.8
  },
  "cases": {
   "real/bwl": {
@@ -87,7 +87,7 @@
   },
   "real/visualisierung-vorlesung": {
    "status": "fail",
-   "errors": 14,
+   "errors": 8,
    "details": [
     "orga.room: lecture Mi 10:00–11:30 Raum „None“, erwartet „Hörsaal 230“",
     "orga.room: lecture Mi 11:45–13:15 Raum „None“, erwartet „Hörsaal 230“",
@@ -96,13 +96,7 @@
     "orga.room: exercise Di 14:00–15:30 Gruppe 3 Raum „None“, erwartet „Weyertal 121“",
     "orga.room: exercise Do 10:00–11:30 Gruppe 4 Raum „None“, erwartet „Weyertal 121“",
     "orga.room: exercise Do 12:00–13:30 Gruppe 5 Raum „None“, erwartet „Weyertal 121“",
-    "orga.room: exercise Do 14:00–15:30 Gruppe 6 Raum „None“, erwartet „Weyertal 121“",
-    "orga.slots: Fehlalarm exercise Mo 14:00–15:30",
-    "orga.slots: Fehlalarm exercise Mo 16:00–17:30",
-    "orga.slots: Fehlalarm exercise Di 14:00–15:30",
-    "orga.slots: Fehlalarm exercise Do 10:00–11:30",
-    "orga.slots: Fehlalarm exercise Do 12:00–13:30",
-    "orga.slots: Fehlalarm exercise Do 14:00–15:30"
+    "orga.room: exercise Do 14:00–15:30 Gruppe 6 Raum „None“, erwartet „Weyertal 121“"
    ]
   },
   "real/visualisierung-uebung": {
@@ -483,12 +477,29 @@
    "details": []
   },
   "synthetic/gruppen/zweimal-aufgelistet": {
-   "status": "fail",
-   "errors": 2,
-   "details": [
-    "orga.slots: Fehlalarm lecture Mo 14:00–15:30 ← „• Mo 14:00 - 15:30“",
-    "orga.slots: Fehlalarm lecture Di 10:00–11:30 ← „• Di 10:00 - 11:30“"
-   ]
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/gruppen/nummer-davor-mit-strich": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/gruppen/group-davor-englisch": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/gruppen/nummer-mit-name-davor": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/falle/gruppe-in-langem-satz-davor": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
   },
   "synthetic/gruppen/english-tutor-name": {
    "status": "pass",
