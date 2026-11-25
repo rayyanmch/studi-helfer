@@ -28,7 +28,7 @@ from .deadlines import PARENTS
 from .sheets import DEADLINE_WORDS, EVENT_WORDS, SOLUTION, _find_dates, _pdf_text
 from .textfix import WEEKDAY_RE, fix_year, normalize, weekday_before, weekday_of
 
-RULES_VERSION = 7  # 2: Überschrift „ROOM“ ist kein Raum, „start in lecture week 3“ gilt für die genannte Art; 3: Leistungspunkte (credits); 4: beides zusammen; 5: Beginn (Gruppen = Übung, Anmeldung zählt nicht, späte Planpunkte zählen nicht); 6: bis Seite 200; 7: Aufzählung von Wochentagen („Di/Do 14-16“)
+RULES_VERSION = 8  # 2: Überschrift „ROOM“ ist kein Raum, „start in lecture week 3“ gilt für die genannte Art; 3: Leistungspunkte (credits); 4: beides zusammen; 5: Beginn (Gruppen = Übung, Anmeldung zählt nicht, späte Planpunkte zählen nicht); 6: bis Seite 200; 7: Aufzählung von Wochentagen („Di/Do 14-16“); 8: erste Vorlesung ohne Orga-Namen (nur Termine mit Art oder Raum)
 CACHE = DATA_DIR / "orga-cache.json"
 OUTPUT = DATA_DIR / "orga-events.json"
 # Orga-Folien ganz lesen: oft stehen die Zeiten erst nach Vorstellung und Motivation (Visualisierung: Folie 88 von 109).
@@ -45,6 +45,11 @@ ORGA_NAME = re.compile(
     r"lecture_?0?[01](?:_|\b)|v_?0?1(?:\.\d)?_|^0?[01]_|^00)", re.I)
 ORGA_DIR = re.compile(r"(grundlegende informationen|informationen zum modul|organisation|organisatorisches|allgemein|general info)", re.I)
 NOT_ORGA = re.compile(r"(literatur|klausur|exam|altklausur|lösung|loesung|solution|übungsblatt|blatt|sheet|selbststudium)", re.I)
+# Erste Vorlesung ohne Orga-Wort („Vorlesung_01_Grundlagen“, „Lecture 1 - Basics“, „VL 01 …“, „Week 1 slides“): oft steht
+# dort die Orga-Folie. Schwächerer Kandidat; daraus zählen nur Termine mit Art oder Raum (sonst Stoff wie „Kino Mo 20–22“).
+FIRST_UNIT = re.compile(
+    r"(?<![a-zäöü])(?:vorlesung|lecture|vl|vo|v|einheit|kapitel|chapter|session|sitzung|woche|week|teil|part|folien|slides|"
+    r"lektion|unit)[\s_\-.]*0?[01](?![\d.])", re.I)
 
 
 def candidates(cfg: dict[str, Any]) -> list[tuple[dict[str, Any], Path]]:
@@ -62,6 +67,8 @@ def candidates(cfg: dict[str, Any]) -> list[tuple[dict[str, Any], Path]]:
             if any(part.startswith(".") for part in rel.parts) or SOLUTION.search(p.name) or NOT_ORGA.search(p.name):
                 continue
             score = (2 if ORGA_NAME.search(p.stem) else 0) + (1 if any(ORGA_DIR.search(x) for x in rel.parts[:-1]) else 0)
+            if not score and FIRST_UNIT.search(p.stem):
+                score = 0.5
             if not score:
                 continue
             try:
@@ -485,7 +492,10 @@ def analyze_file(path: Path) -> dict[str, Any]:
     lines = [normalize(raw) for raw in text.splitlines()]
     lines = [ln for ln in lines if ln]
     default = "exercise" if re.search(r"(übung|uebung|exercise|ub_?\d|tutor)", path.stem, re.I) else "lecture"
-    return {"slots": find_slots(lines, default), **find_markers(lines, ref), "extras": find_extras(lines, ref), "credits": find_credits(lines)}
+    slots = find_slots(lines, default)
+    if not ORGA_NAME.search(path.stem) and FIRST_UNIT.search(path.stem):
+        slots = [s for s in slots if s["_conf"] > 0]  # erste Vorlesung: nur Termine mit Art oder Raum
+    return {"slots": slots, **find_markers(lines, ref), "extras": find_extras(lines, ref), "credits": find_credits(lines)}
 
 
 def _clean(slot: dict[str, Any]) -> dict[str, Any]:

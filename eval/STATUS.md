@@ -24,6 +24,7 @@ Filter: `… run.py beginn` (nur Fälle mit „beginn“ in der Id, speichert da
 |---|---|---|---|---|
 | 1 | 2026-11-25 | 57 · 51/71 | 13 · 11/17 | Prüfstand gebaut, noch keine Regel geändert |
 | 2 | 2026-11-25 | 67 → 59 · 51 → 55/76 | 13 · 11/17 | Beginn (orga.py, RULES_VERSION 5): „Gruppen“ = Übung, Beginn der Anmeldung zählt nicht, Beginn > 6 Wochen nach dem frühesten zählt nicht. 5 neue Fälle (67 = alter Code mit neuen Fällen). Seitenlimit verworfen, siehe unten |
+| 7 | 2026-11-25 | 57 → 51 · 81 → 85/100 | 13 · 11/17 | Erste Vorlesung ohne Orga-Namen ist Kandidat (orga.py RULES_VERSION 8, `FIRST_UNIT`: „Vorlesung_01“, „Lecture 1“, „VL 01“, „Week 1“, „Kapitel 1“ …), schwächer als Orga-Dateien; daraus zählen nur Termine mit Art oder Raum. 4 neue Fälle, davon 1 Falle (Stoff im ersten Kapitel). Echt neu gelesen: nur `ISM_…_UB01_…_Teil1.pdf`, ohne Wirkung |
 | 6 | 2026-11-25 | 58 → 53 · 75 → 80/96 | 13 · 11/17 | Aufzählung von Wochentagen (orga.py RULES_VERSION 7): „dienstags und donnerstags von 8:15 bis 9:45“, „Mo und Mi“, „Di/Do 14-16“, „Montag, Mittwoch und Freitag, 8–9“, „Tuesdays and Thursdays“; „Mo–Fr“ bleibt ein Zeitraum. 5 neue Fälle, davon 1 Falle. Echte Fälle unverändert |
 | 5 | 2026-11-25 | 60 → 53 · 69 → 74/91 | 13 · 11/17 | Tests (sheets.py RULES_VERSION 9): „Test 1“, „Bonus-/Kurz-/Online-Test“, „Quiz 1“ sind Termine, aber nur mit Uhrzeit (Testfälle und Sätze wie „Im Test am …“ bleiben draußen); Zeitraum „12-12:30 Uhr“ beginnt um 12:00 (vorher 12:30). 5 neue Fälle, davon 2 Fallen. Echter Fall Mathe besteht jetzt komplett |
 | 4 | 2026-11-25 | 64 → 57 · 61 → 67/86 | 13 · 11/17 | Klausur-Wörter (sheets.py RULES_VERSION 8): „Prüfungstermin/-datum“, „Modulprüfung“, „Klausurdatum“, „Written examination“; „Anmeldung zur Klausur bis …“, „Prüfungsanmeldung“, „Prüfungseinsicht“ sind keine Klausurtermine mehr (war ein Fehlalarm); „Mock exam“ ist Termin, nicht Klausur; englische Titel für die neuen Wörter. 6 neue Fälle. Mathe: beide Klausuren gefunden |
@@ -34,14 +35,14 @@ Laufzeit: orga 69 Dateien 1,3 s (langsamste 0,14 s), sheets 212 Dateien 13,6 s (
 ## Offene Fehler (nach Nutzen)
 
 1. ~~Seitenlimit 25~~ (Runde 3), ~~„Prüfungstermin“~~ (Runde 4), ~~Bonustests~~ (Runde 5).
-   - Nächster großer Nutzen: **Orga-Folie in Datei ohne Orga-Namen** (Punkt 8, verpasste Termine) und **Tabellen-Zellen untereinander** (Punkt 7); danach Übungsgruppen-Art (2) und Doppel (3), die viele Fehler auf einmal bringen.
+   - Nächster großer Nutzen: **Tabellen-Zellen untereinander** (Punkt 7, verpasste Termine); danach Übungsgruppen-Art (2) und Doppel (3), die viele Fehler auf einmal bringen, dann Räume (9) und Nachklausur (5) für Visualisierung.
 2. **Übungsgruppen werden zur Vorlesung**, wenn kein Art-Wort davorsteht („Übungstermine“ passt nicht auf `\w*übung\b`; „Gruppe N“ allein sagt Übung). `gruppen/zweimal-aufgelistet`, `raum/nach-der-liste`, `beginn/gruppen-ab-und-designuebung`.
 3. **Doppelte Gruppen ohne Nummer**, wenn Nummer und Zeit in getrennten Zeilen stehen (Visualisierung Folie 94).
 4. ~~Beginn falsch~~ (Runde 2 behoben).
 5. **„Nachklausur Montag … 09:00–12:00“ wird Wochentermin** (`SKIP` hat `\bklausur`, „Nachklausur“ hat davor keine Wortgrenze). `falle/klausur-ist-kein-wochentermin`, echt jetzt auch bei Visualisierung (als Wahltermin, nicht im Kalender).
 6. ~~Zwei Wochentage, eine Uhrzeit~~ (Runde 6). Rest: **„Room 101“ macht aus einem Termin eine Übung** (`SMALL_ROOM` hat `room\s+s?\d`, gedacht für Kölner „Room S234“). `zeit/two-days-one-range-en` („Class meetings … Room 101“ ist eine Vorlesung).
 7. **Tabellen-Zellen untereinander** (Art / Tag / Zeit / Raum je eine Zeile): `tabelle/zellen-untereinander`.
-8. **Orga-Folie in Datei ohne Orga-Namen** („Vorlesung_01_Grundlagen.pdf“): `seiten/erste-vorlesung-ohne-orga-namen`. Echt: Visualisierung wiederholt die Zeiten in `Vis-V02_ViewsTools.pdf` S. 3.
+8. ~~Orga-Folie in Datei ohne Orga-Namen~~ (Runde 7, erste Vorlesung). Nicht abgedeckt: Orga nur in einer späteren Vorlesung (Visualisierung wiederholt die Zeiten in `Vis-V02_ViewsTools.pdf` S. 3, steht aber auch in der Orga-Datei).
 9. **Raum**: Zeile davor („Veranstaltungsort: …“), unter der ganzen Liste („Abhaltungsort:“), englische Zeilen ohne Raum-Wort („Lecture Theatre 2“).
 10. **Zusatztermin** „Zusätzlicher Termin: Freitag, 20.11.2026, 12:00–13:30“ fehlt (`EXTRA_WORDS` kennt „Termin“ nicht).
 11. **sheets**: „Bearbeitung bis Di. … 23:55“ ist eine Abgabe; Fußzeilen-Datum unter „HOMEWORK PRESENTATION“ wird Termin (echt: `SSE_Exercise04.pdf`).

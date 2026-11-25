@@ -1,26 +1,26 @@
 {
  "when": "2026-11-25",
  "summary": {
-  "errors": 53,
-  "tp": 357,
+  "errors": 51,
+  "tp": 379,
   "fp": 23,
-  "fn": 30,
-  "passed": 80,
-  "ran": 96,
+  "fn": 28,
+  "passed": 85,
+  "ran": 100,
   "skipped": 0,
   "categories": {
    "orga.slots": [
-    94,
+    100,
     21,
-    15
+    13
    ],
    "orga.alt": [
-    94,
+    100,
     0,
     0
    ],
    "orga.first": [
-    71,
+    75,
     0,
     0
    ],
@@ -40,7 +40,7 @@
     1
    ],
    "orga.room": [
-    40,
+    46,
     0,
     13
    ],
@@ -50,7 +50,7 @@
     0
    ]
   },
-  "seconds": 17.5
+  "seconds": 18.1
  },
  "cases": {
   "real/bwl": {
@@ -206,12 +206,29 @@
    "details": []
   },
   "synthetic/seiten/erste-vorlesung-ohne-orga-namen": {
-   "status": "fail",
-   "errors": 2,
-   "details": [
-    "orga.slots: verpasst lecture Mo 10:00–11:30",
-    "orga.slots: verpasst exercise Mi 12:00–13:30"
-   ]
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/seiten/lecture-1-englisch": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/seiten/vl-01-mit-leerzeichen": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/seiten/week-1-slides": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/falle/inhalt-im-ersten-kapitel": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
   },
   "synthetic/seiten/klausur-auf-folie-36": {
    "status": "pass",

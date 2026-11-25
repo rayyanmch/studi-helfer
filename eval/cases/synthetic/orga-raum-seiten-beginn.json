@@ -41,6 +41,25 @@
      {"type": "lecture", "weekday": 0, "start": "10:00", "end": "11:30", "alternative": false, "room": "Hörsaal 5"},
      {"type": "exercise", "weekday": 2, "start": "12:00", "end": "13:30", "alternative": false, "room": "Seminarraum 1"}]}},
 
+  {"id": "seiten/lecture-1-englisch",
+   "files": {"Lecture 1 - Basics.pdf": [["Basics"], ["Organisation", "Lecture: Thursday, 10:00-11:30, Lecture Hall 2", "Exercise: Friday, 12:00-13:30, Room S12"], {"filler": 15}]},
+   "orga": {"slots": [
+     {"type": "lecture", "weekday": 3, "start": "10:00", "end": "11:30", "alternative": false, "room": "Lecture Hall 2"},
+     {"type": "exercise", "weekday": 4, "start": "12:00", "end": "13:30", "alternative": false, "room": "S12"}]}},
+
+  {"id": "seiten/vl-01-mit-leerzeichen",
+   "files": {"VL 01 Mengenlehre.pdf": [["Termine", "Vorlesung Di 12-14 Uhr, Hörsaal C"], {"filler": 20}]},
+   "orga": {"slots": [{"type": "lecture", "weekday": 1, "start": "12:00", "end": "14:00", "alternative": false, "room": "Hörsaal C"}]}},
+
+  {"id": "seiten/week-1-slides",
+   "files": {"Week 1 slides.pdf": [["Week 1"], ["Course schedule", "Lectures: Mondays, 14:00-15:30, Lecture Hall 3"], {"filler": 10}]},
+   "orga": {"slots": [{"type": "lecture", "weekday": 0, "start": "14:00", "end": "15:30", "alternative": false, "room": "Lecture Hall 3"}]}},
+
+  {"id": "falle/inhalt-im-ersten-kapitel",
+   "note": "Erstes Kapitel mit Stoff (Fahrplan, Kino): Wochentag und Uhrzeit ohne Art oder Raum sind kein Kurstermin.",
+   "files": {"Kapitel_01_Zeitplanung.pdf": [["Kapitel 1: Zeitplanung"], ["Ein Kino zeigt Filme Montag 20:00 - 21:45 Uhr", "Der Bus fährt Dienstag 08:00 - 08:45 Uhr"], {"filler": 10}]},
+   "orga": {"slots": []}},
+
   {"id": "seiten/klausur-auf-folie-36",
    "files": {"00_Modulinformationen.pdf": [{"filler": 35}, ["Prüfung", "Prüfungstermin: 18.02.2027 10:00 - 12:00 Uhr", "Nachklausurtermin: 25.03.2027 10:00 - 12:00 Uhr"]]},
    "orga": {"slots": []},
