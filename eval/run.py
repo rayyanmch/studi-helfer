@@ -262,8 +262,11 @@ def compare_list(cat: str, exp: list[dict], got: list[dict], fields: tuple, opti
             left.remove(hit)
             sc.add(cat, tp=1)
             for f, v in e.items():
-                if f not in fields and f != "note" and v is not None and hit.get(f) != v:
-                    sc.add(cat, fn=1, msg=f"{label(e)}: {f} {hit.get(f)!r}, erwartet {v!r}")
+                if f in fields or f == "note" or v is None:
+                    continue
+                if (hit.get(f) in v) if isinstance(v, list) else (hit.get(f) == v):
+                    continue
+                sc.add(cat + (".title" if f == "title" else ""), fn=1, msg=f"{label(e)}: {f} {hit.get(f)!r}, erwartet {v!r}")
         else:
             sc.add(cat, fn=1, msg=f"verpasst {label(e)}")
     for g in left:
@@ -314,7 +317,7 @@ def compare_first(exp: dict, got: dict, sem_start: date, sc: Score) -> None:
             sc.add("orga.first", tp=1)
 
 
-def evaluate(c: dict, orga_out: dict, sheet_cache: dict, uni_tree: Path) -> Score:
+def evaluate(c: dict, orga_out: dict, sheet_cache: dict, uni_tree: Path, title_of=lambda n, k, l: l) -> Score:
     sc = Score()
     opt = c.get("optional", {})
     if "orga" in c:
@@ -336,6 +339,8 @@ def evaluate(c: dict, orga_out: dict, sheet_cache: dict, uni_tree: Path) -> Scor
     for name, exp_list in c.get("sheets", {}).items():
         p = c["_files"].get(name)
         found = sheet_cache.get(sha256(p), {}).get("found", []) if p else []
+        # Titel, wie die App ihn zeigt (sheets._title aus Dateiname, Art und Textstelle)
+        found = [{**f, "title": title_of(p.name, f["kind"], f.get("label"))} for f in found] if p else found
         compare_list("sheets", exp_list, found, ("date", "kind"), opt.get("sheets", []), sc,
                      label=lambda x, n=name: label(x, n))
     # Alle übrigen PDFs im Ordner dürfen nichts liefern (sonst Fehlalarm)
@@ -419,7 +424,7 @@ def main() -> int:
             print(f"{c['id']:<{width}}  übersprungen ({skipped[c['id']]})")
             results[c["id"]] = {"status": "skip", "why": skipped[c["id"]]}
             continue
-        sc = evaluate(c, orga_out, sheet_cache, work / "uni")
+        sc = evaluate(c, orga_out, sheet_cache, work / "uni", sheets._title)
         for cat, v in sc.cats.items():
             t = totals.setdefault(cat, [0, 0, 0])
             for i in range(3):

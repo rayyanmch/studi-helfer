@@ -4,28 +4,94 @@
     "note": "Folie 4: zwei Vorlesungstermine. Folie 29: Bonustests (Termin, keine Klausur, keine KLIPS-Anmeldung). Folie 31: Klausur und Nachklausur mit Uhrzeit. Folie 19/22: Anmeldezeitraum und Beispiel-Abgabe Blatt 1 (beides offen gelassen).",
     "folder": "Mathe I/Lecture",
     "sources": [
-      {"name": "00_ModulinformationenMathe1.pdf", "sha256": "4d3fdead25a2b7489526ed388643519c7e56637f98c6c0136d9870a8a86fa6a8", "pages": "4, 19, 22, 29, 31"}
+      {
+        "name": "00_ModulinformationenMathe1.pdf",
+        "sha256": "4d3fdead25a2b7489526ed388643519c7e56637f98c6c0136d9870a8a86fa6a8",
+        "pages": "4, 19, 22, 29, 31"
+      }
     ],
     "orga": {
       "slots": [
-        {"type": "lecture", "weekday": 1, "start": "12:00", "end": "13:30", "alternative": false, "room": "Hörsaal II Physik"},
-        {"type": "lecture", "weekday": 2, "start": "12:00", "end": "13:30", "alternative": false, "room": "Hörsaal II Physik"}
+        {
+          "type": "lecture",
+          "weekday": 1,
+          "start": "12:00",
+          "end": "13:30",
+          "alternative": false,
+          "room": "Hörsaal II Physik"
+        },
+        {
+          "type": "lecture",
+          "weekday": 2,
+          "start": "12:00",
+          "end": "13:30",
+          "alternative": false,
+          "room": "Hörsaal II Physik"
+        }
       ],
       "extras": [],
       "credits": []
     },
     "sheets": {
       "00_ModulinformationenMathe1.pdf": [
-        {"date": "2027-02-16", "kind": "klausur", "time": "09:00"},
-        {"date": "2027-03-18", "kind": "klausur", "time": "09:00"},
-        {"date": "2026-12-02", "kind": "termin", "time": "12:00"},
-        {"date": "2027-01-20", "kind": "termin", "time": "12:00"}
+        {
+          "date": "2027-02-16",
+          "kind": "klausur",
+          "time": "09:00",
+          "title": [
+            "Exam"
+          ]
+        },
+        {
+          "date": "2027-03-18",
+          "kind": "klausur",
+          "time": "09:00",
+          "title": [
+            "Resit exam"
+          ]
+        },
+        {
+          "date": "2026-12-02",
+          "kind": "termin",
+          "time": "12:00",
+          "title": [
+            "Test 1"
+          ]
+        },
+        {
+          "date": "2027-01-20",
+          "kind": "termin",
+          "time": "12:00",
+          "title": [
+            "Test 2"
+          ]
+        }
       ]
     },
     "sheetsOthers": "none",
     "optional": {
-      "extras": [{"date": "2026-12-02"}, {"date": "2027-01-20"}],
-      "sheets": [{"date": "2026-10-20"}, {"date": "2026-10-27"}, {"date": "2026-10-13"}, {"date": "2026-10-14"}]
+      "extras": [
+        {
+          "date": "2026-12-02"
+        },
+        {
+          "date": "2027-01-20"
+        }
+      ],
+      "sheets": [
+        {
+          "date": "2026-10-20"
+        },
+        {
+          "date": "2026-10-27"
+        },
+        {
+          "date": "2026-10-13"
+        },
+        {
+          "date": "2026-10-14"
+        }
+      ]
     }
   },
   {
@@ -33,14 +99,20 @@
     "note": "Übungskurs: Blätter ohne Fristen im Text (Fristen kommen aus ILIAS), eigene Abgabe in der Gruppe.",
     "folder": "Mathe I/Exercises",
     "sources": [],
-    "orga": {"slots": [], "credits": []},
+    "orga": {
+      "slots": [],
+      "credits": []
+    },
     "sheetsOthers": "none"
   },
   {
     "id": "mathe-gruppe",
     "folder": "Mathe I/Tutorial group 05",
     "sources": [],
-    "orga": {"slots": [], "credits": []},
+    "orga": {
+      "slots": [],
+      "credits": []
+    },
     "sheetsOthers": "none"
   }
 ]

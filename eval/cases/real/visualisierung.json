@@ -4,38 +4,152 @@
     "note": "Anlass des Prüfstands: Zeiten stehen erst auf Folie 88 von 109, orga.py las nur 25 Seiten. Gleiche Seiten auch in Vis-V02 (S. 3, 7, 8).",
     "folder": "Visualisierung/Lecture",
     "sources": [
-      {"name": "Vis-V01.1_Orga.pdf", "sha256": "e83ed0ccf95566771afa145cb3a6b468016960d06f3771a9ec0c2e294ad97508", "pages": "88 Vorlesung, 93/94 Übungsgruppen, 96 Abgabe, 99 Klausur"},
-      {"name": "Vis-V02_ViewsTools.pdf", "sha256": "e80d0a8af247385da0af4db6838b4aa2c965e104e1f560dfc3eec3834791d3e0", "pages": "3 Vorlesung, 7 Gruppen, 8 Abgabe"}
+      {
+        "name": "Vis-V01.1_Orga.pdf",
+        "sha256": "e83ed0ccf95566771afa145cb3a6b468016960d06f3771a9ec0c2e294ad97508",
+        "pages": "88 Vorlesung, 93/94 Übungsgruppen, 96 Abgabe, 99 Klausur"
+      },
+      {
+        "name": "Vis-V02_ViewsTools.pdf",
+        "sha256": "e80d0a8af247385da0af4db6838b4aa2c965e104e1f560dfc3eec3834791d3e0",
+        "pages": "3 Vorlesung, 7 Gruppen, 8 Abgabe"
+      }
     ],
     "orga": {
       "slots": [
-        {"type": "lecture", "weekday": 2, "start": "10:00", "end": "11:30", "alternative": false, "room": "Hörsaal 230"},
-        {"type": "lecture", "weekday": 2, "start": "11:45", "end": "13:15", "alternative": false, "room": "Hörsaal 230"},
-        {"type": "exercise", "weekday": 0, "start": "14:00", "end": "15:30", "group": 1, "alternative": true, "room": "Weyertal 121"},
-        {"type": "exercise", "weekday": 0, "start": "16:00", "end": "17:30", "group": 2, "alternative": true, "room": "Weyertal 121"},
-        {"type": "exercise", "weekday": 1, "start": "14:00", "end": "15:30", "group": 3, "alternative": true, "room": "Weyertal 121"},
-        {"type": "exercise", "weekday": 3, "start": "10:00", "end": "11:30", "group": 4, "alternative": true, "room": "Weyertal 121"},
-        {"type": "exercise", "weekday": 3, "start": "12:00", "end": "13:30", "group": 5, "alternative": true, "room": "Weyertal 121"},
-        {"type": "exercise", "weekday": 3, "start": "14:00", "end": "15:30", "group": 6, "alternative": true, "room": "Weyertal 121"}
+        {
+          "type": "lecture",
+          "weekday": 2,
+          "start": "10:00",
+          "end": "11:30",
+          "alternative": false,
+          "room": "Hörsaal 230"
+        },
+        {
+          "type": "lecture",
+          "weekday": 2,
+          "start": "11:45",
+          "end": "13:15",
+          "alternative": false,
+          "room": "Hörsaal 230"
+        },
+        {
+          "type": "exercise",
+          "weekday": 0,
+          "start": "14:00",
+          "end": "15:30",
+          "group": 1,
+          "alternative": true,
+          "room": "Weyertal 121"
+        },
+        {
+          "type": "exercise",
+          "weekday": 0,
+          "start": "16:00",
+          "end": "17:30",
+          "group": 2,
+          "alternative": true,
+          "room": "Weyertal 121"
+        },
+        {
+          "type": "exercise",
+          "weekday": 1,
+          "start": "14:00",
+          "end": "15:30",
+          "group": 3,
+          "alternative": true,
+          "room": "Weyertal 121"
+        },
+        {
+          "type": "exercise",
+          "weekday": 3,
+          "start": "10:00",
+          "end": "11:30",
+          "group": 4,
+          "alternative": true,
+          "room": "Weyertal 121"
+        },
+        {
+          "type": "exercise",
+          "weekday": 3,
+          "start": "12:00",
+          "end": "13:30",
+          "group": 5,
+          "alternative": true,
+          "room": "Weyertal 121"
+        },
+        {
+          "type": "exercise",
+          "weekday": 3,
+          "start": "14:00",
+          "end": "15:30",
+          "group": 6,
+          "alternative": true,
+          "room": "Weyertal 121"
+        }
       ],
-      "first": {"lecture": "2026-10-12", "exercise": "2026-10-19"},
+      "first": {
+        "lecture": "2026-10-12",
+        "exercise": "2026-10-19"
+      },
       "extras": [],
       "credits": []
     },
     "sheets": {
       "Vis-V01.1_Orga.pdf": [
-        {"date": "2027-02-15", "kind": "klausur", "time": "08:00"},
-        {"date": "2027-03-15", "kind": "klausur", "time": "09:00"},
-        {"date": "2027-01-21", "kind": "abgabe", "time": "12:00"}
+        {
+          "date": "2027-02-15",
+          "kind": "klausur",
+          "time": "08:00",
+          "title": [
+            "Exam"
+          ]
+        },
+        {
+          "date": "2027-03-15",
+          "kind": "klausur",
+          "time": "09:00",
+          "title": [
+            "Resit exam"
+          ]
+        },
+        {
+          "date": "2027-01-21",
+          "kind": "abgabe",
+          "time": "12:00",
+          "title": [
+            "Submit Designübung",
+            "Submit design exercise"
+          ]
+        }
       ],
       "Vis-V02_ViewsTools.pdf": [
-        {"date": "2027-01-21", "kind": "abgabe", "time": "12:00"}
+        {
+          "date": "2027-01-21",
+          "kind": "abgabe",
+          "time": "12:00",
+          "title": [
+            "Submit Designübung",
+            "Submit design exercise"
+          ]
+        }
       ]
     },
     "sheetsOthers": "none",
     "optional": {
-      "extras": [{"date": "2027-02-03"}],
-      "sheets": [{"date": "2026-10-18"}, {"date": "2026-10-14"}]
+      "extras": [
+        {
+          "date": "2027-02-03"
+        }
+      ],
+      "sheets": [
+        {
+          "date": "2026-10-18"
+        },
+        {
+          "date": "2026-10-14"
+        }
+      ]
     }
   },
   {
@@ -43,9 +157,22 @@
     "note": "Übungskurs: Gruppen stehen in den Orga-Folien des Vorlesungskurses; hier nur die Designübung.",
     "folder": "Visualisierung/Exercises",
     "sources": [],
-    "orga": {"slots": [], "credits": []},
+    "orga": {
+      "slots": [],
+      "credits": []
+    },
     "sheets": {
-      "Uebung01.pdf": [{"date": "2027-01-21", "kind": "abgabe", "time": "12:00"}]
+      "Uebung01.pdf": [
+        {
+          "date": "2027-01-21",
+          "kind": "abgabe",
+          "time": "12:00",
+          "title": [
+            "Submit Designübung",
+            "Submit design exercise"
+          ]
+        }
+      ]
     },
     "sheetsOthers": "none"
   }

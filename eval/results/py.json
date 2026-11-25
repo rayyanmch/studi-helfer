@@ -2,11 +2,11 @@
  "when": "2026-11-25",
  "summary": {
   "errors": 0,
-  "tp": 570,
+  "tp": 573,
   "fp": 0,
   "fn": 0,
-  "passed": 138,
-  "ran": 138,
+  "passed": 141,
+  "ran": 141,
   "skipped": 0,
   "categories": {
    "orga.slots": [
@@ -35,7 +35,7 @@
     0
    ],
    "sheets": [
-    56,
+    59,
     0,
     0
    ],
@@ -50,7 +50,7 @@
     0
    ]
   },
-  "seconds": 35.0
+  "seconds": 34.8
  },
  "cases": {
   "real/bwl": {
@@ -739,6 +739,21 @@
    "details": []
   },
   "synthetic/termin/bonustest": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/titel/ueberschrift-mit-klausurwort": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/titel/section-exam-englisch": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/titel/ueberschrift-abgabe": {
    "status": "pass",
    "errors": 0,
    "details": []

@@ -17,7 +17,7 @@ from .common import DATA_DIR, load_config, read_json, write_json
 from .deadlines import deadline_id
 from .textfix import fix_year, normalize, weekday_before
 
-RULES_VERSION = 11  # erhöhen, wenn sich die Regeln ändern → alles wird neu ausgewertet; 7: Orga-Dateien bis Seite 200; 8: Prüfungstermin/Modulprüfung/examination, Anmeldeschluss ist keine Klausur; 9: Bonus-/Kurztests und Quiz als Termin, Zeitraum „12-12:30 Uhr“ beginnt um 12:00; 10: Bearbeitung bis, fällig am, upload … by; 11: Datum aus wiederholter Fußzeile gehört nicht zur Überschrift darüber
+RULES_VERSION = 12  # erhöhen, wenn sich die Regeln ändern → alles wird neu ausgewertet; 7: Orga-Dateien bis Seite 200; 8: Prüfungstermin/Modulprüfung/examination, Anmeldeschluss ist keine Klausur; 9: Bonus-/Kurztests und Quiz als Termin, Zeitraum „12-12:30 Uhr“ beginnt um 12:00; 10: Bearbeitung bis, fällig am, upload … by; 11: Datum aus wiederholter Fußzeile gehört nicht zur Überschrift darüber; 12: Titel vom Treffer in der Datumszeile (keine Überschrift im Titel)
 CACHE = DATA_DIR / "sheet-deadlines-cache.json"
 OUTPUT = DATA_DIR / "sheet-deadlines.json"
 MAX_PAGES = 8  # Fristen und Klausurtermine stehen fast immer auf den ersten Seiten (Orga-Folien)
@@ -232,7 +232,11 @@ def extract(text: str, ref: date) -> list[dict[str, Any]]:
         pre = window[: hits[0][1]] if win_line == i else f"{line} {window[: hits[0][1]]}"
         if kind != "abgabe" and NOT_EXAM_DATE.search(pre):
             continue  # Anmeldeschluss oder Einsicht, kein Klausurtermin
-        base_label = (_label(pre) or _label(evidence)) if len(hits) == 1 else kw.group(0)[0].upper() + kw.group(0)[1:]
+        # Ersatz: ganze Textstelle, aber nur wenn das Fristwort hinter dem Datum steht („21.01., 12 Uhr: Abgabe Designübung“);
+        # sonst steht dort nur Weg oder Ort („… 10 Uhr per ILIAS“) und der Titel kommt aus dem Dateinamen
+        post = window[hits[0][2]:] if win_line == i else ""
+        use_evidence = win_line != i or DEADLINE_WORDS.search(post) or EVENT_WORDS.search(post)
+        base_label = (_label(pre) or (_label(evidence) if use_evidence else None)) if len(hits) == 1 else kw.group(0)[0].upper() + kw.group(0)[1:]
         for n, (day, start, end) in enumerate(hits):
             day = fix_year(day, weekday_before(window, start), ref)  # „Freitag, 16.10.2027“ → 2026
             # Mehrere Daten in einer Zeile („Klausur 16. Februar (1. Termin) und 24. März (2. Termin)“):
@@ -260,14 +264,20 @@ def extract(text: str, ref: date) -> list[dict[str, Any]]:
                 "kind": kind,
                 "label": label,
                 "evidence": evidence[:200],
+                "_direct": win_line == i,  # Fristwort und Datum in derselben Zeile
             })
-    # Doppelte (gleicher Tag, gleiche Art) zusammenfassen, die mit Uhrzeit gewinnt.
+    # Doppelte (gleicher Tag, gleiche Art) zusammenfassen: Titel vom Treffer aus der Zeile mit dem Datum (sonst rutscht
+    # eine Überschrift wie „Organisatorisches: Klausur“ hinein), Uhrzeit von dem, der eine hat.
     best: dict[tuple[date, str], dict[str, Any]] = {}
     for f in found:
         key = (f["date"], f["kind"])
-        if key not in best or (f["time"] and not best[key]["time"]):
+        cur = best.get(key)
+        if not cur:
             best[key] = f
-    return list(best.values())
+            continue
+        main, other = (f, cur) if f["_direct"] and not cur["_direct"] else (cur, f)
+        best[key] = {**main, "time": main["time"] or other["time"]}
+    return [{k: v for k, v in f.items() if k != "_direct"} for f in best.values()]
 
 
 def _pdf_text(path: Path, pages: int = MAX_PAGES) -> str:

@@ -4,31 +4,114 @@
     "note": "Folien S. 2: Vorlesung, Übungen (oder), Lehramt-Übung (nicht für alle), Zusatztermin 16.10. (Jahr im Text falsch: 2027). Begleittext S. 4: Tabelle mit Tutorien (drei Zeiten). S. 3: 12 Leistungspunkte. S. 6 Klausuren ohne Uhrzeit; S. 7 mündliche Prüfungen nur Lehramt.",
     "folder": "BWL",
     "sources": [
-      {"name": "BWL26_0_Folien_WiSe_2026_27.pdf", "sha256": "7038f7fbaeb60a4917d52c8e21f30c3882eaf594e6413dba06e0ce0e0ffb8b9d", "pages": "2, 3, 6, 7"},
-      {"name": "BWL_Begleittext_Woche_0.pdf", "sha256": "3962929360c9ae0b58ea5cdb7f57fd46c6d5b4507f0106b39b8179dad8262a3a", "pages": "4"}
+      {
+        "name": "BWL26_0_Folien_WiSe_2026_27.pdf",
+        "sha256": "7038f7fbaeb60a4917d52c8e21f30c3882eaf594e6413dba06e0ce0e0ffb8b9d",
+        "pages": "2, 3, 6, 7"
+      },
+      {
+        "name": "BWL_Begleittext_Woche_0.pdf",
+        "sha256": "3962929360c9ae0b58ea5cdb7f57fd46c6d5b4507f0106b39b8179dad8262a3a",
+        "pages": "4"
+      }
     ],
     "orga": {
       "slots": [
-        {"type": "lecture", "weekday": 4, "start": "10:00", "end": "11:30", "alternative": false},
-        {"type": "exercise", "weekday": 0, "start": "12:00", "end": "13:30", "alternative": true},
-        {"type": "exercise", "weekday": 2, "start": "17:45", "end": "19:15", "alternative": true},
-        {"type": "tutorial", "weekday": 3, "start": "10:00", "end": "11:30", "alternative": true},
-        {"type": "tutorial", "weekday": 3, "start": "14:00", "end": "15:30", "alternative": true},
-        {"type": "tutorial", "weekday": 3, "start": "16:00", "end": "17:30", "alternative": true}
+        {
+          "type": "lecture",
+          "weekday": 4,
+          "start": "10:00",
+          "end": "11:30",
+          "alternative": false
+        },
+        {
+          "type": "exercise",
+          "weekday": 0,
+          "start": "12:00",
+          "end": "13:30",
+          "alternative": true
+        },
+        {
+          "type": "exercise",
+          "weekday": 2,
+          "start": "17:45",
+          "end": "19:15",
+          "alternative": true
+        },
+        {
+          "type": "tutorial",
+          "weekday": 3,
+          "start": "10:00",
+          "end": "11:30",
+          "alternative": true
+        },
+        {
+          "type": "tutorial",
+          "weekday": 3,
+          "start": "14:00",
+          "end": "15:30",
+          "alternative": true
+        },
+        {
+          "type": "tutorial",
+          "weekday": 3,
+          "start": "16:00",
+          "end": "17:30",
+          "alternative": true
+        }
       ],
-      "extras": [{"date": "2026-10-16", "start": "12:00", "end": "13:30"}],
-      "credits": [12]
+      "extras": [
+        {
+          "date": "2026-10-16",
+          "start": "12:00",
+          "end": "13:30"
+        }
+      ],
+      "credits": [
+        12
+      ]
     },
     "sheets": {
       "BWL26_0_Folien_WiSe_2026_27.pdf": [
-        {"date": "2027-02-16", "kind": "klausur"},
-        {"date": "2027-03-24", "kind": "klausur"}
+        {
+          "date": "2027-02-16",
+          "kind": "klausur",
+          "title": [
+            "1st date",
+            "First exam",
+            "Exam"
+          ]
+        },
+        {
+          "date": "2027-03-24",
+          "kind": "klausur",
+          "title": [
+            "2nd date",
+            "Second exam",
+            "Exam"
+          ]
+        }
       ],
-      "Essay-Wettbewerb 2026.pdf": [{"date": "2026-12-16", "kind": "abgabe"}]
+      "Essay-Wettbewerb 2026.pdf": [
+        {
+          "date": "2026-12-16",
+          "kind": "abgabe"
+        }
+      ]
     },
     "sheetsOthers": "none",
     "optional": {
-      "sheets": [{"date": "2027-02-11"}, {"date": "2027-02-19"}, {"date": "2026-12-18"}]
+      "sheets": [
+        {
+          "date": "2027-02-11"
+        },
+        {
+          "date": "2027-02-19"
+        },
+        {
+          "date": "2026-12-18"
+        }
+      ]
     }
   }
 ]
