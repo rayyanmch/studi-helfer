@@ -7,6 +7,7 @@ Gemeinsames Gedächtnis für alle KI-Agenten und Menschen im Projekt. Wird über
 
 Wer gerade woran arbeitet (Person, Aufgabe, betroffene Dateien). Eintragen beim Start, löschen wenn fertig.
 
+- 2026-11-25, Rayyans Agent: **Website für Ordo** (Landingpage, nur lokal, nichts veröffentlicht). Neuer Ordner `site/` (eigenes Next.js-Projekt, getrennt von `web/`), dazu `site/**` in `paths-ignore` von `.github/workflows/app-build.yml`, damit Website-Pushes keine neue App-Version auslösen. `web/` und `desktop/` fasse ich nicht an.
 
 
 

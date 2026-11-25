@@ -8,6 +8,7 @@ on:
     branches: [main]
     paths-ignore:
       - "**/*.md"
+      - "site/**" # Website, gehört nicht zur App
   workflow_dispatch:
 
 # Immer nur ein Build; kommt währenddessen ein neuer Push, wird der danach gebaut (ältere Wartende entfallen).
