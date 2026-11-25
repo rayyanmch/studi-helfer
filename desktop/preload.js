@@ -44,6 +44,7 @@ contextBridge.exposeInMainWorld("studi", {
   addCalendar: call("studi:addCalendar"),
   removeCalendar: call("studi:removeCalendar"),
   openIlias: call("studi:openIlias"),
+  notifyMail: call("studi:notifyMail"),
   onCommand(callback) {
     const listener = (_event, cmd) => callback(cmd);
     ipcRenderer.on("studi:command", listener);

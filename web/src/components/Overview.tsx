@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import {
   AlertTriangle,
   CalendarDays,
@@ -40,7 +40,7 @@ import { useEventMails, type EventMail } from "@/lib/event-mail";
 import type { WeatherDay } from "@/lib/weather";
 import { Welcome } from "./Welcome";
 import { TodayView, TodayWidgets, DayWeather, useWeatherDays } from "./TodayView";
-import { matches, searchTerms } from "@/lib/search";
+import { matches, matchesAll, searchTerms, suggestQuery, vocabulary, wordTerms } from "@/lib/search";
 
 import { MailView } from "./MailView";
 import { VpnDialogHost, VpnLine, openVpnDialog } from "./VpnPanel";
@@ -57,7 +57,7 @@ import { UpdateMenuItem } from "./UpdateNotice";
 import type { Problem } from "./AppShell";
 import { countFiles, countNew, type Course, type Deadline } from "@/lib/mock-data";
 import * as store from "@/lib/app-store";
-import { initMail, setCalendar, useMail } from "@/lib/mail-data";
+import { initMail, openMail, setCalendar, useMail } from "@/lib/mail-data";
 import { useRoomChanged } from "@/lib/room-changes";
 import { appStore, etaLabel, realCourses, useApp, useCommand } from "@/lib/app-store";
 
@@ -160,10 +160,11 @@ export function Overview({
   // Befehle aus dem App-Menü (⌘1–3, ⌘R, ⌘F, ⌘,)
   const onCommand = useCallback(
     (cmd: string) => {
-      if (cmd === "week" || cmd === "new" || cmd === "courses") {
+      if (cmd === "week" || cmd === "new" || cmd === "courses" || cmd === "mail") {
         setQuery("");
         setView(cmd);
-      } else if (cmd === "search") {
+      } else if (cmd.startsWith("mail:")) openMail(cmd.slice(5)); // Klick auf die Mitteilung zu einer neuen Mail
+      else if (cmd === "search") {
         searchRef.current?.focus();
         searchRef.current?.select();
       } else if (cmd === "settings") setSettingsOpen(true);
@@ -348,7 +349,7 @@ export function Overview({
               lastSync={lastSync}
             />
             {searching ? (
-              <SearchView query={query.trim()} list={list} deadlines={mine} done={done} onOpen={open} />
+              <SearchView query={query.trim()} list={list} deadlines={mine} done={done} onOpen={open} onSearch={setQuery} />
             ) : (
               <>
                 {view === "week" && <Welcome onMensa={() => open("mensa")} />}
@@ -1162,6 +1163,59 @@ function DeadlineBlock({
 // --- Suche ------------------------------------------------------------------
 
 type Filter = "alles" | "abgaben" | "dateien" | "kurse";
+type FoundFile = { file: Course["folders"][number]["files"][number]; course: Course; folder: string };
+type Found = { courses: Course[]; deadlines: Deadline[]; files: FoundFile[]; repeats: Map<string, number>; byWords: boolean };
+
+// Wiederkehrende Termine (Vorlesung jede Woche) nur einmal zeigen, mit dem nächsten Datum.
+const seriesKey = (d: Deadline) =>
+  d.seriesId ?? (d.kind === "termin" ? `${d.courseId}|${d.title}|${d.time}|${new Date(parseDay(d.date)).getUTCDay()}` : d.id);
+
+/** Nur eine Fassung je Serie, nach Datum sortiert; zählt mit, wie oft sich ein Termin wiederholt. */
+function oncePerSeries(list: Deadline[]): { items: Deadline[]; repeats: Map<string, number> } {
+  const repeats = new Map<string, number>();
+  const items = [...list]
+    .sort((x, y) => x.date.localeCompare(y.date))
+    .filter((d) => {
+      const k = seriesKey(d);
+      repeats.set(k, (repeats.get(k) ?? 0) + 1);
+      return repeats.get(k) === 1;
+    });
+  return { items, repeats };
+}
+
+/**
+ * Erst die Eingabe am Stück (versteht deutsche Wörter, siehe lib/search.ts). Findet das nichts und
+ * sind es mehrere Wörter („bwl klausur“), muss jedes Wort irgendwo passen; der Kursname zählt mit.
+ */
+function runSearch(query: string, list: Course[], deadlines: Deadline[]): Found {
+  const phrase = searchTerms(query);
+  const words = wordTerms(query);
+  const attempt = (byWords: boolean): Found => {
+    const hit = (own: (string | undefined)[], context: (string | undefined)[] = []) =>
+      byWords ? matchesAll(words, own, context) : matches(phrase, ...own);
+    const names = (c: Course | undefined) => (c ? [nameOf(c), shortOf(c), c.short, c.fullName] : []);
+    const courses = realCourses(list).filter((c) => hit(names(c)));
+    const { items, repeats } = oncePerSeries(
+      deadlines.filter((d) => {
+        if (d.kind === "termin" && daysFromToday(d.date) < 0) return false;
+        const kindWords = d.kind === "klausur" ? "exam" : d.kind === "abgabe" ? "deadline submission" : undefined;
+        // Kursname zählt bei Fristen voll („bwl“ zeigt alle BWL-Fristen)
+        return hit([d.title, kindWords, ...names(courseById(d.courseId))]);
+      }),
+    );
+    const files = list.flatMap((c) =>
+      c.folders.flatMap((f) =>
+        f.files.filter((x) => hit([x.name, displayName(x.name), f.name, f.category], names(c))).map((file) => ({ file, course: c, folder: f.name })),
+      ),
+    );
+    return { courses, deadlines: items, files, repeats, byWords };
+  };
+  const first = attempt(false);
+  if (words.length < 2 || first.courses.length + first.deadlines.length + first.files.length > 0) return first;
+  return attempt(true);
+}
+
+const countFound = (f: Found) => f.courses.length + f.deadlines.length + f.files.length;
 
 function SearchView({
   query,
@@ -1169,47 +1223,40 @@ function SearchView({
   deadlines,
   done,
   onOpen,
+  onSearch,
 }: {
   query: string;
   list: Course[];
   deadlines: Deadline[];
   done: string[];
   onOpen: (v: View) => void;
+  onSearch: (q: string) => void;
 }) {
   const [filter, setFilter] = useState<Filter>("alles");
-  // Versteht auch deutsche Wörter („Klausur“ findet Exams, „Folien“ findet Lecture slides), siehe lib/search.ts
-  const terms = searchTerms(query);
-  const q = query; // zum Hervorheben der Fundstelle
-  const hit = (...s: (string | undefined)[]) => matches(terms, ...s);
+  const found = runSearch(query, list, deadlines);
+  const total = countFound(found);
+  const q = found.byWords ? undefined : query; // Fundstelle hervorheben, nur wenn die Eingabe am Stück vorkommt
 
-  const foundCourses = realCourses(list).filter((c) => hit(nameOf(c)) || (c.short && hit(c.short)) || (c.fullName && hit(c.fullName)));
-  // Wiederkehrende Termine (Vorlesung jede Woche) nur einmal zeigen, mit dem nächsten Datum; vergangene Termine weglassen.
-  const seriesKey = (d: Deadline) =>
-    d.seriesId ?? (d.kind === "termin" ? `${d.courseId}|${d.title}|${d.time}|${new Date(parseDay(d.date)).getUTCDay()}` : d.id);
-  const repeats = new Map<string, number>();
-  const foundDeadlines = deadlines
-    .filter((d) => {
-      if (d.kind === "termin" && daysFromToday(d.date) < 0) return false;
-      const c = courseById(d.courseId);
-      const kindWords = d.kind === "klausur" ? "exam" : d.kind === "abgabe" ? "deadline submission" : undefined;
-      return hit(d.title, kindWords) || (c ? hit(nameOf(c), c.fullName) : false);
-    })
-    .sort((x, y) => x.date.localeCompare(y.date))
-    .filter((d) => {
-      const k = seriesKey(d);
-      repeats.set(k, (repeats.get(k) ?? 0) + 1);
-      return repeats.get(k) === 1;
-    });
-  const foundFiles = list.flatMap((c) =>
-    c.folders.flatMap((f) => f.files.filter((x) => hit(x.name, displayName(x.name), f.name, f.category)).map((file) => ({ file, course: c, folder: f.name }))),
+  // Bekannte Wörter für „Did you mean …?“ (nur gebraucht, wenn nichts gefunden wurde)
+  const vocab = useMemo(
+    () =>
+      total > 0
+        ? null
+        : vocabulary([
+            ...realCourses(list).flatMap((c) => [nameOf(c), shortOf(c), c.short, c.fullName]),
+            ...list.flatMap((c) => c.folders.flatMap((f) => [f.name, ...f.files.map((x) => displayName(x.name))])),
+            ...deadlines.map((d) => d.title),
+          ]),
+    [total, list, deadlines],
   );
-  const total = foundCourses.length + foundDeadlines.length + foundFiles.length;
+  const suggestion = vocab ? suggestQuery(query, vocab) : null;
+  const useful = suggestion && countFound(runSearch(suggestion, list, deadlines)) > 0 ? suggestion : null;
 
   const chips: { id: Filter; label: string; n: number }[] = [
     { id: "alles", label: "All", n: total },
-    { id: "abgaben", label: "Deadlines", n: foundDeadlines.length },
-    { id: "dateien", label: "Files", n: foundFiles.length },
-    { id: "kurse", label: "Courses", n: foundCourses.length },
+    { id: "abgaben", label: "Deadlines", n: found.deadlines.length },
+    { id: "dateien", label: "Files", n: found.files.length },
+    { id: "kurse", label: "Courses", n: found.courses.length },
   ];
   const show = (f: Filter) => filter === "alles" || filter === f;
 
@@ -1220,9 +1267,19 @@ function SearchView({
           {total === 0 ? "No results" : `${total} ${total === 1 ? "result" : "results"}`}
         </h1>
         <p className="mt-1 text-muted">
-          {total === 0
-            ? `No file, deadline or course matches “${query}”. Try a shorter word or a course name.`
-            : `for “${query}”`}
+          {total > 0 ? (
+            found.byWords ? `with all of “${query.split(/\s+/).join("”, “")}”` : `for “${query}”`
+          ) : useful ? (
+            <>
+              Nothing matches “{query}”. Did you mean{" "}
+              <button onClick={() => onSearch(useful)} className="rounded-[4px] font-semibold text-text underline decoration-line underline-offset-2 hover:decoration-current">
+                {useful}
+              </button>
+              ?
+            </>
+          ) : (
+            `No file, deadline or course matches “${query}”. Try a shorter word or a course name.`
+          )}
         </p>
       </header>
 
@@ -1244,77 +1301,143 @@ function SearchView({
         </div>
       )}
 
-      <div className="mt-6 flex flex-col gap-6">
-        {show("abgaben") && foundDeadlines.length > 0 && (
-          <section>
-            <h2 className="mb-2 text-[15px] font-bold">Deadlines</h2>
-            <ul className="rounded-[10px] bg-surface px-1.5 py-1">
-              {foundDeadlines.map((d) => {
-                const c = courseById(d.courseId)!;
-                const wd = new Date(parseDay(d.date)).getUTCDay();
-                const isDone = done.includes(d.id);
-                return (
-                  <li key={d.id}>
-                    <button onClick={() => onOpen(c.id)} className="flex min-h-[46px] w-full items-center gap-3 rounded-[7px] px-2.5 py-1.5 text-left hover:bg-hover">
-                      <Swatch color={colorOf(c)} />
-                      <span className="min-w-0 flex-1">
-                        <span className={`block truncate font-medium ${isDone ? "text-muted line-through" : ""}`}>
-                          <Highlight text={d.title} q={q} />
-                        </span>
-                        <span className="block truncate text-[12px] text-muted">
-                          {nameOf(c)}
-                          {(repeats.get(seriesKey(d)) ?? 0) > 1 ? " · repeats" : ""}
-                        </span>
-                      </span>
-                      <span className="text-[12px] text-muted">
-                        {isDone
-                          ? "done"
-                          : `${
-                              daysFromToday(d.date) >= 0 && daysFromToday(d.date) < 7
-                                ? LONG[wd]
-                                : new Date(parseDay(d.date)).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" })
-                            }, ${d.time}`}
-                      </span>
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          </section>
-        )}
-        {show("dateien") && foundFiles.length > 0 && (
-          <section>
-            <h2 className="mb-2 text-[15px] font-bold">Files</h2>
-            <ul className="rounded-[10px] bg-surface px-1.5 py-1">
-              {foundFiles.map(({ file, course, folder }) => (
-                <FileRow key={file.id} file={file} sub={[nameOf(course), file.part, folder].filter(Boolean).join(" · ")} courseId={course.id} highlight={q} />
-              ))}
-            </ul>
-          </section>
-        )}
-        {show("kurse") && foundCourses.length > 0 && (
-          <section>
-            <h2 className="mb-2 text-[15px] font-bold">Courses</h2>
-            <ul className="rounded-[10px] bg-surface px-1.5 py-1">
-              {foundCourses.map((c) => (
-                <li key={c.id}>
-                  <button onClick={() => onOpen(c.id)} className="flex min-h-[46px] w-full items-center gap-3 rounded-[7px] px-2.5 py-1.5 text-left hover:bg-hover">
-                    <Swatch color={colorOf(c)} />
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate font-medium">
-                        <Highlight text={nameOf(c)} q={q} />
-                      </span>
-                      <span className="block truncate text-[12px] text-muted">{c.lecturer}</span>
-                    </span>
-                    <span className="text-[12px] text-muted">{countFiles(c)} files</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
-      </div>
+      {total > 0 ? (
+        <div className="mt-6 flex flex-col gap-6">
+          {show("abgaben") && <DeadlineResults title="Deadlines" items={found.deadlines} repeats={found.repeats} done={done} q={q} onOpen={onOpen} />}
+          {show("dateien") && <FileResults title="Files" items={found.files} q={q} />}
+          {show("kurse") && <CourseResults title="Courses" items={found.courses} q={q} onOpen={onOpen} />}
+        </div>
+      ) : (
+        <NoResults list={list} deadlines={deadlines} done={done} onOpen={onOpen} />
+      )}
     </>
+  );
+}
+
+/** Statt einer leeren Seite: was ohnehin als Nächstes dran ist, was neu ist, und die Kurse. */
+function NoResults({ list, deadlines, done, onOpen }: { list: Course[]; deadlines: Deadline[]; done: string[]; onOpen: (v: View) => void }) {
+  const { items: upcoming, repeats } = oncePerSeries(
+    deadlines.filter((d) => d.kind !== "termin" && !done.includes(d.id) && daysFromToday(d.date) >= 0),
+  );
+  const recent = list
+    .flatMap((c) => c.folders.flatMap((f) => f.files.map((file) => ({ file, course: c, folder: f.name }))))
+    .filter((x) => x.file.modifiedAt || x.file.isNew) // ohne Datum (Beispieldaten): wenigstens die neuen
+    .sort((a, b) => (b.file.modifiedAt ?? 0) - (a.file.modifiedAt ?? 0) || Number(b.file.isNew) - Number(a.file.isNew))
+    .slice(0, 4);
+  const courses = realCourses(list);
+  return (
+    <div className="mt-8 flex flex-col gap-6">
+      <DeadlineResults title="Coming up" items={upcoming.slice(0, 4)} repeats={repeats} done={done} onOpen={onOpen} />
+      <FileResults title="Recently added" items={recent} />
+      {courses.length > 0 && (
+        <section>
+          <h2 className="mb-2 text-[15px] font-bold">Your courses</h2>
+          <div className="flex flex-wrap gap-2">
+            {courses.map((c) => (
+              <button key={c.id} onClick={() => onOpen(c.id)} className="hit flex h-8 items-center gap-2 rounded-full bg-surface px-3.5 font-medium hover:bg-hover">
+                <Swatch color={colorOf(c)} />
+                {nameOf(c)}
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
+    </div>
+  );
+}
+
+function DeadlineResults({
+  title,
+  items,
+  repeats,
+  done,
+  q,
+  onOpen,
+}: {
+  title: string;
+  items: Deadline[];
+  repeats: Map<string, number>;
+  done: string[];
+  q?: string;
+  onOpen: (v: View) => void;
+}) {
+  if (items.length === 0) return null;
+  return (
+    <section>
+      <h2 className="mb-2 text-[15px] font-bold">{title}</h2>
+      <ul className="rounded-[10px] bg-surface px-1.5 py-1">
+        {items.map((d) => {
+          const c = courseById(d.courseId);
+          if (!c) return null;
+          const wd = new Date(parseDay(d.date)).getUTCDay();
+          const isDone = done.includes(d.id);
+          return (
+            <li key={d.id}>
+              <button onClick={() => onOpen(c.id)} className="flex min-h-[46px] w-full items-center gap-3 rounded-[7px] px-2.5 py-1.5 text-left hover:bg-hover">
+                <Swatch color={colorOf(c)} />
+                <span className="min-w-0 flex-1">
+                  <span className={`block truncate font-medium ${isDone ? "text-muted line-through" : ""}`}>
+                    <Highlight text={d.title} q={q} />
+                  </span>
+                  <span className="block truncate text-[12px] text-muted">
+                    {nameOf(c)}
+                    {(repeats.get(seriesKey(d)) ?? 0) > 1 ? " · repeats" : ""}
+                  </span>
+                </span>
+                <span className="text-[12px] text-muted">
+                  {isDone
+                    ? "done"
+                    : `${
+                        daysFromToday(d.date) >= 0 && daysFromToday(d.date) < 7
+                          ? LONG[wd]
+                          : new Date(parseDay(d.date)).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" })
+                      }, ${d.time}`}
+                </span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+}
+
+function FileResults({ title, items, q }: { title: string; items: FoundFile[]; q?: string }) {
+  if (items.length === 0) return null;
+  return (
+    <section>
+      <h2 className="mb-2 text-[15px] font-bold">{title}</h2>
+      <ul className="rounded-[10px] bg-surface px-1.5 py-1">
+        {items.map(({ file, course, folder }) => (
+          <FileRow key={file.id} file={file} sub={[nameOf(course), file.part, folder].filter(Boolean).join(" · ")} courseId={course.id} highlight={q} />
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function CourseResults({ title, items, q, onOpen }: { title: string; items: Course[]; q?: string; onOpen: (v: View) => void }) {
+  if (items.length === 0) return null;
+  return (
+    <section>
+      <h2 className="mb-2 text-[15px] font-bold">{title}</h2>
+      <ul className="rounded-[10px] bg-surface px-1.5 py-1">
+        {items.map((c) => (
+          <li key={c.id}>
+            <button onClick={() => onOpen(c.id)} className="flex min-h-[46px] w-full items-center gap-3 rounded-[7px] px-2.5 py-1.5 text-left hover:bg-hover">
+              <Swatch color={colorOf(c)} />
+              <span className="min-w-0 flex-1">
+                <span className="block truncate font-medium">
+                  <Highlight text={nameOf(c)} q={q} />
+                </span>
+                <span className="block truncate text-[12px] text-muted">{c.lecturer}</span>
+              </span>
+              <span className="text-[12px] text-muted">{countFiles(c)} files</span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 

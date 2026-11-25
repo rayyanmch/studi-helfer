@@ -185,6 +185,21 @@ export function MailView({ onOpenAccounts }: { onOpenAccounts: () => void }) {
   const [fWeek, setFWeek] = useState(false);
   const [searchFocus, setSearchFocus] = useState(false);
   const [selected, setSelected] = useState<string | null>(opened?.id ?? null);
+  // Mail-Ansicht ist schon offen und eine Mail wird von außen geöffnet (Mac-Mitteilung, Hinweis am Termin): auswählen
+  useEffect(() => {
+    const onOpen = () => {
+      const id = takeOpenMail();
+      const m = id ? mail.messages.find((x) => x.id === id) : undefined;
+      if (!m) return;
+      setBox("all");
+      setCourseId(null);
+      setQuery("");
+      setFolder(m.folder === "inbox" && mail.snoozed[m.id] ? "snoozed" : m.folder);
+      setSelected(m.id);
+    };
+    window.addEventListener("studi:open-mail", onOpen);
+    return () => window.removeEventListener("studi:open-mail", onOpen);
+  }, [mail.messages, mail.snoozed]);
   const [compose, setCompose] = useState<null | (Draft & { uid: number })>(null);
   const [swipe, setSwipe] = useState<null | { id: string; opts: SnoozeOption[] }>(null);
   const [snoozeOpen, setSnoozeOpen] = useState(false);

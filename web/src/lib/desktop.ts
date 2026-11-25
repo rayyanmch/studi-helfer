@@ -248,8 +248,10 @@ export interface StudiDesktop {
   addCalendar(url: string, name: string): Promise<Ok<{ count: number }> | Fail>;
   removeCalendar(id: string): Promise<Ok>;
   openIlias(url: string): Promise<{ ok: boolean }>;
-  /** Befehle aus dem App-Menü/Tastenkürzeln: "sync", "settings", "search", "week", "new", "courses". */
+  /** Befehle aus dem App-Menü/Tastenkürzeln: "sync", "settings", "search", "week", "new", "courses", "mail", "mail:<Id>". */
   onCommand(callback: (cmd: string) => void): () => void;
+  /** Mac-Mitteilung zu neuer Mail (nur wenn die App nicht vorn ist und „Notifications“ an); Klick öffnet die Mail. Fehlt in älteren Fassungen. */
+  notifyMail?(n: { id?: string; title: string; body: string }): Promise<{ ok: boolean; shown?: boolean }>;
   /** Ids aller abgehakten Fristen. Lokal in den App-Daten gespeichert, übersteht Neustarts und Syncs. */
   getDoneDeadlines(): Promise<string[]>;
   /** Frist abhaken (done = true) oder wieder öffnen. Id am besten mit deadlineId() bilden. */

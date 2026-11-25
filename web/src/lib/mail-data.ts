@@ -8,7 +8,8 @@
 import { useSyncExternalStore } from "react";
 import { appStore } from "./app-store";
 import { getGoogle, getMailTools, getUniMail } from "./google";
-import { stamp } from "./mail-tools";
+import { guessCourse, stamp } from "./mail-tools";
+import { getDesktop } from "./desktop";
 
 export type MailAccountId = "gmail" | "uni";
 export type MailFolder = "inbox" | "sent" | "drafts" | "archive";
@@ -383,6 +384,7 @@ export async function refreshGoogle(quiet = false) {
     messages: ma.ok ? [...ma.mails, ...state.messages.filter((m) => m.accountId !== "gmail")] : state.messages,
     google: { available: st.available, expired: false, loading: false, error },
   });
+  if (ma.ok) announceNew("gmail");
 }
 
 // --- Uni-Postfach (nur Mac-App) ----------------------------------------------------
@@ -405,9 +407,57 @@ export async function refreshUni() {
     const res = await u.mails();
     if (!res.ok) return set({ uni: { error: res.message } });
     set({ messages: [...state.messages.filter((m) => m.accountId !== "uni"), ...res.mails], uni: { error: "" } });
+    announceNew("uni");
   } finally {
     uniBusy = false;
   }
+}
+
+// --- Mitteilung bei neuer Mail (nur Mac-App) ----------------------------------------
+// Je Postfach merkt sich die App, welche Mails im Posteingang schon bekannt sind (localStorage, übersteht Neustarts).
+// Beim allerersten Abruf eines Postfachs wird nur gemerkt. Danach gibt es für neue, ungelesene Mails eine
+// Mac-Mitteilung (main.js zeigt sie nur, wenn die App nicht vorn ist; Klick öffnet die Mail).
+// Ohne Newsletter, geschlummerte und über einen Tag alte Mails; Gmail nur mit erkanntem Kurs (privates
+// Postfach, das meldet sich meist selbst), Uni-Mail immer (Pflichtkanal für Prüfungsamt und Dozenten).
+
+const SEEN_KEY = "studi.mailSeen";
+
+function announceNew(account: MailAccountId) {
+  const d = getDesktop();
+  if (!d?.notifyMail) return;
+  let seen: Partial<Record<MailAccountId, string[]>> = {};
+  try {
+    seen = JSON.parse(localStorage.getItem(SEEN_KEY) || "{}");
+  } catch {
+    // kaputt oder gesperrt: dann wie beim ersten Mal nur merken
+  }
+  const known = seen[account];
+  const inbox = state.messages.filter((m) => m.accountId === account && m.folder === "inbox");
+  try {
+    const ids = [...new Set([...(known ?? []), ...inbox.map((m) => m.id)])].slice(-1500);
+    localStorage.setItem(SEEN_KEY, JSON.stringify({ ...seen, [account]: ids }));
+  } catch {
+    // ohne Speicher kommt eine Mitteilung schlimmstenfalls doppelt
+  }
+  if (!known) return;
+  const old = new Set(known);
+  const dayAgo = Date.now() - 86_400_000;
+  const courses = appStore.get().courses;
+  const fresh = inbox
+    .filter((m) => !old.has(m.id) && m.unread && !m.unsubscribe && !state.snoozed[m.id] && new Date(m.date).getTime() > dayAgo)
+    .map((m) => ({ m, course: courses.find((c) => c.id === (m.courseId ?? guessCourse(m, courses))) }))
+    .filter(({ course }) => account === "uni" || course);
+  if (fresh.length === 0) return;
+  // Wie bei den Erinnerungen: höchstens zwei einzeln, sonst eine Sammelmeldung
+  if (fresh.length <= 2) {
+    for (const { m, course } of fresh) {
+      const from = m.fromName || m.fromAddress;
+      void d.notifyMail({ id: m.id, title: course ? `${course.short || course.name} · ${from}` : from, body: m.subject || "(no subject)" });
+    }
+    return;
+  }
+  const names = [...new Set(fresh.map(({ m }) => m.fromName || m.fromAddress))];
+  void d.notifyMail({ title: `${fresh.length} new emails`, body: `From ${names.slice(0, 3).join(", ")}${names.length > 3 ? " and others" : ""}` });
 }
 
 /** „Connect“ beim Uni-Postfach: prüft den ILIAS-Login am Mailserver. Gibt einen Fehlertext zurück oder null. */

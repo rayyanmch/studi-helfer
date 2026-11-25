@@ -72,6 +72,21 @@ function dueNow(items, now, sent) {
 }
 
 /**
+ * Zahl fürs Dock-Symbol: offene Abgaben und Klausuren mit Datum heute, deren Uhrzeit noch nicht vorbei ist
+ * (ganztägige zählen den ganzen Tag). Vergangene, nicht abgehakte zählen nicht, sonst stapelt sich die Zahl.
+ * @param {{date: string, time?: string}[]} items
+ */
+function todayCount(items, now = Date.now()) {
+  const t = new Date(now);
+  const today = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}-${String(t.getDate()).padStart(2, "0")}`;
+  return items.filter((d) => {
+    if (d.date !== today) return false;
+    const hhmm = timeOf(d.time);
+    return !hhmm || at(d.date, hhmm) > now;
+  }).length;
+}
+
+/**
  * @param {{dataDir: string, items: () => object[], enabled: () => boolean, show: (r: {title: string, body: string}) => void}} opts
  */
 function createReminders({ dataDir, items, enabled, show }) {
@@ -112,4 +127,4 @@ function createReminders({ dataDir, items, enabled, show }) {
   return { check, start: (everyMs = 60_000) => setInterval(check, everyMs) };
 }
 
-module.exports = { createReminders, remindersFor, dueNow, timeOf };
+module.exports = { createReminders, remindersFor, dueNow, timeOf, todayCount };

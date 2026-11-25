@@ -22,7 +22,7 @@ const vpn = require("./lib/vpn");
 const places = require("./lib/places");
 const study = require("./lib/study");
 const { createMensa } = require("./lib/mensa");
-const { createReminders } = require("./lib/reminders");
+const { createReminders, todayCount } = require("./lib/reminders");
 const { createLearnmods } = require("./lib/learnmods");
 const mensa = createMensa({ dataDir: backend.DATA_DIR });
 const learnmods = createLearnmods({ backend, BrowserWindow });
@@ -330,12 +330,12 @@ handle("studi:renameModule", (id, name) => backend.renameModule(id, name));
 handle("studi:setModuleColor", (id, color) => backend.setModuleColor(id, color));
 handle("studi:setSlotChoice", (moduleId, key, on) => backend.setSlotChoice(moduleId, key, Boolean(on)));
 handle("studi:getCustomEvents", () => backend.getCustomEvents());
-handle("studi:saveCustomEvent", (ev) => backend.saveCustomEvent(ev));
-handle("studi:deleteCustomEvent", (id) => backend.deleteCustomEvent(String(id)));
-handle("studi:setEventHidden", (key, hidden) => backend.setEventHidden(key, Boolean(hidden)));
+handle("studi:saveCustomEvent", withBadge((ev) => backend.saveCustomEvent(ev)));
+handle("studi:deleteCustomEvent", withBadge((id) => backend.deleteCustomEvent(String(id))));
+handle("studi:setEventHidden", withBadge((key, hidden) => backend.setEventHidden(key, Boolean(hidden))));
 handle("studi:mensaThumb", (url, size) => mensa.thumb(url, size === "large" ? "large" : "small"));
 handle("studi:markSeen", (ids) => backend.markSeen(ids));
-handle("studi:setNotifications", (on) => backend.setNotifications(on));
+handle("studi:setNotifications", withBadge((on) => backend.setNotifications(on)));
 handle("studi:setLaunchAtLogin", (on) => {
   app.setLoginItemSettings({ openAtLogin: Boolean(on), openAsHidden: true });
   return { ok: true };
@@ -361,7 +361,22 @@ handle("studi:openIlias", (url) => {
   shell.openExternal(url);
   return { ok: true };
 });
-handle("studi:setDeadlineDone", (id, done) => backend.setDeadlineDone(id, Boolean(done)));
+// Neue Mail als Mac-Mitteilung. Was neu ist, weiß die Oberfläche (web/src/lib/mail-data.ts announceNew).
+handle("studi:notifyMail", (n) => {
+  if (!n || typeof n.title !== "string") return { ok: false };
+  if (backend.loadConfig().notifications === false || !Notification.isSupported()) return { ok: true, shown: false };
+  if (BrowserWindow.getFocusedWindow()) return { ok: true, shown: false }; // App ist vorn: die Liste zeigt es schon
+  const note = new Notification({ title: n.title.slice(0, 120), body: String(n.body ?? "").slice(0, 240) });
+  note.on("click", () => {
+    const win = BrowserWindow.getAllWindows()[0] ?? createWindow();
+    win.show();
+    win.focus();
+    win.webContents.send("studi:command", typeof n.id === "string" && n.id ? `mail:${n.id.slice(0, 500)}` : "mail");
+  });
+  note.show();
+  return { ok: true, shown: true };
+});
+handle("studi:setDeadlineDone", withBadge((id, done) => backend.setDeadlineDone(id, Boolean(done))));
 // Update-Knopf: neueste Fassung von GitHub (lib/updater.js)
 updater.register(handle, () => windows);
 // Google-Konto: Anmeldung, Kalender, Gmail (lib/google.js)
@@ -480,6 +495,31 @@ function reminderItems() {
   return list;
 }
 
+/**
+ * Rote Zahl am Dock-Symbol: wie viele Abgaben/Klausuren heute noch fällig sind (0 = keine Zahl).
+ * Aus mit dem Schalter „Notifications“ in Settings.
+ */
+let badgeShown = -1;
+function updateBadge() {
+  if (process.platform !== "darwin") return;
+  let n = 0;
+  try {
+    if (backend.loadConfig().notifications !== false) n = todayCount(reminderItems());
+  } catch (e) {
+    console.error("[badge]", e);
+  }
+  if (n === badgeShown) return;
+  badgeShown = n;
+  app.setBadgeCount(n);
+}
+
+/** IPC-Aktion, nach der sich die Dock-Zahl ändern kann (abhaken, eigene Termine, ausblenden). */
+const withBadge = (fn) => (...args) => {
+  const r = fn(...args);
+  setTimeout(updateBadge, 0);
+  return r;
+};
+
 const reminders = createReminders({
   dataDir: backend.DATA_DIR,
   items: reminderItems,
@@ -576,6 +616,9 @@ app.whenReady().then(async () => {
   // Erinnerungen an Abgaben und Klausuren: kurz nach dem Start, dann jede Minute
   setTimeout(() => reminders.check(), 20_000);
   reminders.start(60_000);
+  // Dock-Zahl: gleich beim Start, dann jede Minute (Frist vorbei, neuer Tag, neue Fristen nach dem Sync)
+  updateBadge();
+  setInterval(updateBadge, 60_000);
   // Kurz nach dem Start Übungsblätter auswerten, die noch nicht ausgewertet sind (z. B. aus dem 7-Uhr-Sync).
   setTimeout(() => runAiDeadlines(), 15_000);
   // Selbstlerneinheiten, die der Hintergrund-Sync bei geschlossener App geholt hat, als PDF drucken
