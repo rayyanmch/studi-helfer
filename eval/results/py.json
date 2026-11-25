@@ -1,12 +1,12 @@
 {
  "when": "2026-11-25",
  "summary": {
-  "errors": 58,
-  "tp": 308,
+  "errors": 57,
+  "tp": 313,
   "fp": 22,
-  "fn": 36,
-  "passed": 61,
-  "ran": 80,
+  "fn": 35,
+  "passed": 67,
+  "ran": 86,
   "skipped": 0,
   "categories": {
    "orga.slots": [
@@ -35,9 +35,9 @@
     0
    ],
    "sheets": [
-    38,
+    43,
     2,
-    6
+    5
    ],
    "orga.room": [
     30,
@@ -50,7 +50,7 @@
     0
    ]
   },
-  "seconds": 17.6
+  "seconds": 17.5
  },
  "cases": {
   "real/bwl": {
@@ -65,9 +65,8 @@
   },
   "real/mathe-vorlesung": {
    "status": "fail",
-   "errors": 3,
+   "errors": 2,
    "details": [
-    "sheets: verpasst 00_ModulinformationenMathe1.pdf: klausur 2027-02-16 09:00",
     "sheets: verpasst 00_ModulinformationenMathe1.pdf: termin 2026-12-02 12:00",
     "sheets: verpasst 00_ModulinformationenMathe1.pdf: termin 2027-01-20 12:00"
    ]
@@ -513,6 +512,36 @@
    "details": []
   },
   "synthetic/klausur/pruefungstermin": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/klausur/pruefungstermin-ohne-ueberschrift-davor": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/klausur/pruefungsdatum": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/klausur/modulpruefung-satz": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/klausur/examination-en": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/falle/pruefungsanmeldung-und-einsicht": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/falle/anmeldung-zur-klausur": {
    "status": "pass",
    "errors": 0,
    "details": []

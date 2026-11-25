@@ -17,7 +17,7 @@ from .common import DATA_DIR, load_config, read_json, write_json
 from .deadlines import deadline_id
 from .textfix import fix_year, normalize, weekday_before
 
-RULES_VERSION = 7  # erhöhen, wenn sich die Regeln ändern → alles wird neu ausgewertet; 7: Orga-Dateien bis Seite 200
+RULES_VERSION = 8  # erhöhen, wenn sich die Regeln ändern → alles wird neu ausgewertet; 7: Orga-Dateien bis Seite 200; 8: Prüfungstermin/Modulprüfung/examination, Anmeldeschluss ist keine Klausur
 CACHE = DATA_DIR / "sheet-deadlines-cache.json"
 OUTPUT = DATA_DIR / "sheet-deadlines.json"
 MAX_PAGES = 8  # Fristen und Klausurtermine stehen fast immer auf den ersten Seiten (Orga-Folien)
@@ -37,10 +37,18 @@ SOLUTION = re.compile(r"(lösung|loesung|losung|solution)", re.I)
 DEADLINE_WORDS = re.compile(
     r"\b(\w*abgabe\w*|abzugeben|einzureichen|einreich\w*|hochzuladen|deadline|due( date)?|submission( deadline)?|"
     r"submit( by)?|hand[- ]in|turn in|bearbeitungsfrist|frist)\b", re.I)
+# Klausur-Wörter auch zusammengesetzt („Prüfungstermin:“, „Modulprüfung“, „Klausurdatum“, „Written examination“), aber
+# nicht „Prüfungsanmeldung“/„Prüfungseinsicht“ (die Endungen sind aufgezählt, danach muss das Wort enden)
+_PRUEFUNG = r"(?:modul|abschluss|wiederholungs|nach|semester|end)?pr(?:ü|ue)fung(?:en|stermine?|sdatum|stag)?"
+_KLAUSUR = r"(?:nach|wiederholungs|end|abschluss)?klausur(?:termine?|en|datum|tag)?"
+_EXAM = r"(?:resit |final |written |re-?)?exam(?:ination)?s?"
 EVENT_WORDS = re.compile(
-    r"\b(testat\w*|präsentation\w*|presentation|vortrag|(?:nach|probe|wiederholungs)?klausur(?:termin|en)?|(?:resit |final |mock )?exam|"
-    r"prüfung|zwischentest|midterm)\b", re.I)
-EXAM_WORDS = re.compile(r"\b(testat\w*|(?:nach|wiederholungs)?klausur(?:termin|en)?|(?:resit |final )?exam|prüfung|zwischentest|midterm)\b", re.I)
+    r"\b(testat\w*|präsentation\w*|presentation|vortrag|probeklausur(?:en)?|mock exams?|" + _KLAUSUR + "|" + _EXAM + "|"
+    + _PRUEFUNG + r"|zwischentest|midterm)\b", re.I)
+EXAM_WORDS = re.compile(r"(testat\w*|" + _KLAUSUR + "|" + _EXAM + "|" + _PRUEFUNG + r"|zwischentest|midterm)", re.I)  # fullmatch
+# „Anmeldung zur Klausur bis 20.01.“, „Prüfungseinsicht: 10.03.“: Datum gehört nicht zur Klausur
+NOT_EXAM_DATE = re.compile(r"\b(\w*anmeld\w*|\w*abmeld\w*|rücktritt\w*|registr\w*|register\w*|einschreib\w*|sign[- ]?ups?|"
+                           r"enrol\w*|\w*einsicht\w*|exam review)\b", re.I)
 IGNORE_LINE = re.compile(r"\b(published|veröffentlicht|ausgabe|ausgegeben|issued|release[d]?|erstellt|stand)\b", re.I)
 
 MONTHS = {
@@ -117,8 +125,10 @@ _NOISE = re.compile(
 
 # Häufige deutsche Wörter in Fristtiteln → Englisch (die App ist englisch; Rest bleibt im Original)
 _ENGLISH = [
-    (r"\bnachklausur\b", "Resit exam"), (r"\bprobeklausur\b", "Mock exam"), (r"\bklausur(?:termin)?\b", "Exam"),
-    (r"\bprüfung\b", "Exam"), (r"\bzwischentest\b", "Midterm test"), (r"\babgabefrist\b", "Deadline"),
+    (r"\b(?:nachklausur|wiederholungsklausur|wiederholungsprüfung|nachprüfung)(?:termin|datum)?\b", "Resit exam"),
+    (r"\bprobeklausur\b", "Mock exam"), (r"\b(?:end|abschluss)?klausur(?:termin|datum|tag)?\b", "Exam"),
+    (r"\b(?:modul|abschluss|semester|end)?pr(?:ü|ue)fung(?:stermin|sdatum|stag)?\b", "Exam"),
+    (r"\b(?:written |final )?examination\b", "Exam"), (r"\bzwischentest\b", "Midterm test"), (r"\babgabefrist\b", "Deadline"),
     (r"\babgabe\b", "Submit"), (r"\bpräsentation\b", "Presentation"), (r"\bvortrag\b", "Talk"),
     (r"\bübungsblatt\b", "Exercise sheet"), (r"\bblatt\b", "Sheet"), (r"\bhausaufgabe\b", "Homework"),
     (r"\banmeldung\b", "Registration"), (r"\b1\.\s*termin\b", "1st date"), (r"\b2\.\s*termin\b", "2nd date"),
@@ -191,9 +201,11 @@ def extract(text: str, ref: date) -> list[dict[str, Any]]:
             evidence = f"{line} {lines[i + 1]}"
         if not hits:
             continue
-        kind = ("klausur" if EXAM_WORDS.search(kw.group(0)) else "termin") if EVENT_WORDS.search(kw.group(0)) else "abgabe"
+        kind = ("klausur" if EXAM_WORDS.fullmatch(kw.group(0)) else "termin") if EVENT_WORDS.search(kw.group(0)) else "abgabe"
         # Titel bevorzugt aus dem Text vor dem Datum („Klausur: 16.02., 10 Uhr, HS C“ → „Exam“, ohne Raum)
         pre = window[: hits[0][1]] if win_line == i else f"{line} {window[: hits[0][1]]}"
+        if kind != "abgabe" and NOT_EXAM_DATE.search(pre):
+            continue  # Anmeldeschluss oder Einsicht, kein Klausurtermin
         base_label = (_label(pre) or _label(evidence)) if len(hits) == 1 else kw.group(0)[0].upper() + kw.group(0)[1:]
         for n, (day, start, end) in enumerate(hits):
             day = fix_year(day, weekday_before(window, start), ref)  # „Freitag, 16.10.2027“ → 2026

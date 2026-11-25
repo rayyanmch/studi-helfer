@@ -71,6 +71,34 @@
      {"date": "2027-02-16", "kind": "klausur", "time": "09:00"},
      {"date": "2027-03-18", "kind": "klausur", "time": "09:00"}]}},
 
+  {"id": "klausur/pruefungstermin-ohne-ueberschrift-davor",
+   "note": "Wie Mathe Folie 31: Überschrift „Prüfung“ steht sechs Zeilen weiter oben, das Datum hinter „Prüfungstermin:“.",
+   "files": {"Modulinformationen.pdf": [["Prüfung", "Zulassung: aktive Mitarbeit in der Übung", "Prüfungsform: Klausur", "Dauer: 2 Stunden", "Erlaubte Hilfsmittel: ein handschriftliches Blatt", "Prüfungstermin: 17.02.2027 10:00 - 12:00 Uhr", "Prüfungsort: Hörsaal 1"]]},
+   "sheets": {"Modulinformationen.pdf": [{"date": "2027-02-17", "kind": "klausur", "time": "10:00"}]}},
+
+  {"id": "klausur/pruefungsdatum",
+   "files": {"00_Orga.pdf": [["Leistungsnachweis", "Prüfungsdatum: Freitag, 19. Februar 2027, 9 Uhr"]]},
+   "sheets": {"00_Orga.pdf": [{"date": "2027-02-19", "kind": "klausur", "time": "09:00"}]}},
+
+  {"id": "klausur/modulpruefung-satz",
+   "files": {"Organisatorisches.pdf": [["Die Modulprüfung findet am 22.02.2027 um 14:00 Uhr im Audimax statt."]]},
+   "sheets": {"Organisatorisches.pdf": [{"date": "2027-02-22", "kind": "klausur", "time": "14:00"}]}},
+
+  {"id": "klausur/examination-en",
+   "files": {"Syllabus.pdf": [["Assessment", "Written examination: 25 February 2027, 9:00, Lecture Hall 1"]]},
+   "sheets": {"Syllabus.pdf": [{"date": "2027-02-25", "kind": "klausur", "time": "09:00"}]}},
+
+  {"id": "falle/pruefungsanmeldung-und-einsicht",
+   "note": "Anmeldeschluss und Einsicht sind keine Klausurtermine (dürfen als Frist bzw. Termin erscheinen).",
+   "files": {"00_Orga.pdf": [["Prüfung", "Prüfungsanmeldung in KLIPS bis 20.01.2027", "Prüfungseinsicht: 10.03.2027, 14 Uhr"]]},
+   "sheets": {"00_Orga.pdf": []},
+   "optional": {"sheets": [{"date": "2027-01-20", "kind": "abgabe"}, {"date": "2027-03-10", "kind": "termin"}]}},
+
+  {"id": "falle/anmeldung-zur-klausur",
+   "files": {"00_Orga.pdf": [["Hinweise", "Bitte denken Sie an die Anmeldung zur Klausur bis 20.01.2027 in KLIPS."]]},
+   "sheets": {"00_Orga.pdf": []},
+   "optional": {"sheets": [{"date": "2027-01-20", "kind": "abgabe"}]}},
+
   {"id": "klausur/final-exam-en",
    "files": {"Syllabus.pdf": [["Final exam: February 18, 2027, 9:00 am, Main Hall"]]},
    "sheets": {"Syllabus.pdf": [{"date": "2027-02-18", "kind": "klausur", "time": "09:00"}]}},
