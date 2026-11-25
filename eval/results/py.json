@@ -1,26 +1,26 @@
 {
  "when": "2026-11-25",
  "summary": {
-  "errors": 6,
-  "tp": 523,
-  "fp": 2,
-  "fn": 4,
-  "passed": 127,
-  "ran": 129,
+  "errors": 2,
+  "tp": 548,
+  "fp": 0,
+  "fn": 2,
+  "passed": 132,
+  "ran": 133,
   "skipped": 0,
   "categories": {
    "orga.slots": [
-    141,
-    2,
-    2
+    148,
+    0,
+    0
    ],
    "orga.alt": [
-    141,
+    148,
     0,
     0
    ],
    "orga.first": [
-    97,
+    101,
     0,
     0
    ],
@@ -40,7 +40,7 @@
     0
    ],
    "orga.room": [
-    76,
+    83,
     0,
     2
    ],
@@ -50,7 +50,7 @@
     0
    ]
   },
-  "seconds": 34.9
+  "seconds": 34.7
  },
  "cases": {
   "real/bwl": {
@@ -179,6 +179,26 @@
    "details": []
   },
   "synthetic/falle/pruefungsort": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/raum/room-nummer-meeting-times": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/raum/room-nummer-class-schedule": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/raum/seminarraum-bleibt-uebung": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/raum/room-s-nummer-bleibt-uebung": {
    "status": "pass",
    "errors": 0,
    "details": []
@@ -384,14 +404,9 @@
    "details": []
   },
   "synthetic/zeit/two-days-one-range-en": {
-   "status": "fail",
-   "errors": 4,
-   "details": [
-    "orga.slots: verpasst lecture Mo 16:00–17:30 (gefunden: exercise Mo 16:00–17:30)",
-    "orga.slots: verpasst lecture Mi 16:00–17:30 (gefunden: exercise Mi 16:00–17:30)",
-    "orga.slots: Fehlalarm exercise Mo 16:00–17:30 ← „Class meetings: Mondays and Wednesdays, 4:00-5:30 pm, Room 101“",
-    "orga.slots: Fehlalarm exercise Mi 16:00–17:30 ← „Class meetings: Mondays and Wednesdays, 4:00-5:30 pm, Room 101“"
-   ]
+   "status": "pass",
+   "errors": 0,
+   "details": []
   },
   "synthetic/zeit/mo-und-mi-kurz": {
    "status": "pass",

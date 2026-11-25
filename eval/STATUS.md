@@ -24,6 +24,7 @@ Filter: `… run.py beginn` (nur Fälle mit „beginn“ in der Id, speichert da
 |---|---|---|---|---|
 | 1 | 2026-11-25 | 57 · 51/71 | 13 · 11/17 | Prüfstand gebaut, noch keine Regel geändert |
 | 2 | 2026-11-25 | 67 → 59 · 51 → 55/76 | 13 · 11/17 | Beginn (orga.py, RULES_VERSION 5): „Gruppen“ = Übung, Beginn der Anmeldung zählt nicht, Beginn > 6 Wochen nach dem frühesten zählt nicht. 5 neue Fälle (67 = alter Code mit neuen Fällen). Seitenlimit verworfen, siehe unten |
+| 15 | 2026-11-25 | 12 → 2 · 129 → 132/133 | 13 · 11/17 | „Room 101“ ist kein Seminarraum mehr (orga.py RULES_VERSION 14, `SMALL_ROOM`: nur „Room S…“); eine Raumnummer allein sagt nichts über die Art. Gegenproben Seminarraum und „Room S234“ bleiben Übung. 4 neue Fälle, davon 2 Gegenproben |
 | 14 | 2026-11-25 | 9 → 6 · 124 → 127/129 | 13 · 11/17 | Fußzeilen (sheets.py RULES_VERSION 11): Eine Zeile, die ohne Ziffern mehrfach im Dokument steht, ist Kopf-/Fußzeile; ihr Datum wird nicht an eine Überschrift in der Zeile darüber gehängt („HOMEWORK PRESENTATION“ / „… Engineering 19.11.2026“). Kopfzeile mit Fristwort auf jeder Seite zählt weiter. **Alle echten Fälle bestehen.** 4 neue Fälle, davon 2 Fallen |
 | 13 | 2026-11-25 | 12 → 8 · 117 → 121/125 | 13 · 11/17 | Fristwörter (sheets.py RULES_VERSION 10): „Bearbeitung(szeit) bis“, „bearbeiten bis“, „Fällig am/bis“, „upload … by/until/before“. „bis spätestens“ allein bewusst nicht (Falle „Korrekturen erhalten Sie bis spätestens …“). 4 neue Fälle, davon 1 Falle |
 | 12 | 2026-11-25 | 29 → 9 · 109 → 116/121 | 13 · 11/17 | Räume aus beschrifteten Ort-Zeilen (orga.py RULES_VERSION 13): „Veranstaltungsort:“, „Abhaltungsort:“ (+ nächste Zeile), „Ort:“, „Location:“, „Venue:“ gelten für alle Termine derselben Seite ohne eigenen Raum, davor oder danach; „Prüfungsort“ zählt nicht. Dafür liest `analyze_file` seitenweise (`PAGE` zwischen den Seiten). Prüfstand kann jetzt „kein Raum“ prüfen (`noRoom`). **Echter Fall Visualisierung besteht komplett.** 5 neue Fälle, davon 2 Fallen |
@@ -43,12 +44,12 @@ Runde 12: orga langsamste Datei 0,86 s (`00_AlgebraGrundwissen.pdf`, 84 Seiten).
 ## Offene Fehler (nach Nutzen)
 
 1. ~~Seitenlimit 25~~ (Runde 3), ~~„Prüfungstermin“~~ (Runde 4), ~~Bonustests~~ (Runde 5).
-   - Python-Prüfstand: noch 6 Fehler in 2 ausgedachten Fällen: „Room 101“ (6), „Lecture Theatre“ (9). Danach Web (12, 13 Fehler).
+   - Python-Prüfstand: noch 2 Fehler in 1 ausgedachtem Fall: „Lecture Theatre“ (9). Danach Web (12, 13 Fehler).
 2. ~~Übungsgruppen werden zur Vorlesung~~ (Runde 10).
 3. ~~Doppelte Gruppen ohne Nummer~~ (Runde 11).
 4. ~~Beginn falsch~~ (Runde 2 behoben).
 5. ~~„Nachklausur“ als Wochentermin~~ (Runde 9, über das Datum in der Zeile). `SKIP` kennt „Nachklausur“ weiterhin nicht (ohne Datum würde es wieder passieren).
-6. ~~Zwei Wochentage, eine Uhrzeit~~ (Runde 6). Rest: **„Room 101“ macht aus einem Termin eine Übung** (`SMALL_ROOM` hat `room\s+s?\d`, gedacht für Kölner „Room S234“). `zeit/two-days-one-range-en` („Class meetings … Room 101“ ist eine Vorlesung).
+6. ~~Zwei Wochentage, eine Uhrzeit~~ (Runde 6), ~~„Room 101“ als Übung~~ (Runde 15).
 7. ~~Tabellen-Zellen untereinander~~ (Runde 8).
 8. ~~Orga-Folie in Datei ohne Orga-Namen~~ (Runde 7, erste Vorlesung). Nicht abgedeckt: Orga nur in einer späteren Vorlesung (Visualisierung wiederholt die Zeiten in `Vis-V02_ViewsTools.pdf` S. 3, steht aber auch in der Orga-Datei).
 9. ~~Raum aus Ort-Zeile davor/danach~~ (Runde 12). Rest: englische Raum-Wörter fehlen in `ROOM` („Lecture Theatre 2“), `zeit/english-uk-zwei-zeilen`.

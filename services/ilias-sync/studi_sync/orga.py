@@ -28,7 +28,7 @@ from .deadlines import PARENTS
 from .sheets import _MONTH_RE, DEADLINE_WORDS, EVENT_WORDS, SOLUTION, _find_dates
 from .textfix import WEEKDAY_RE, fix_year, normalize, weekday_before, weekday_of
 
-RULES_VERSION = 13  # 2: Überschrift „ROOM“ ist kein Raum, „start in lecture week 3“ gilt für die genannte Art; 3: Leistungspunkte (credits); 4: beides zusammen; 5: Beginn (Gruppen = Übung, Anmeldung zählt nicht, späte Planpunkte zählen nicht); 6: bis Seite 200; 7: Aufzählung von Wochentagen („Di/Do 14-16“); 8: erste Vorlesung ohne Orga-Namen (nur Termine mit Art oder Raum); 9: Tabellenzellen Tag + Uhrzeit, Sprechstunde als Überschrift; 10: Zusatz-/Nachholtermine, Datum mit Monatsnamen = Einzeltermin; 11: Gruppe ohne Art-Wort = Übung; 12: Gruppennummer aus Listenzeile davor; 13: beschriftete Ort-Zeile gilt für alle Termine der Seite
+RULES_VERSION = 14  # 2: Überschrift „ROOM“ ist kein Raum, „start in lecture week 3“ gilt für die genannte Art; 3: Leistungspunkte (credits); 4: beides zusammen; 5: Beginn (Gruppen = Übung, Anmeldung zählt nicht, späte Planpunkte zählen nicht); 6: bis Seite 200; 7: Aufzählung von Wochentagen („Di/Do 14-16“); 8: erste Vorlesung ohne Orga-Namen (nur Termine mit Art oder Raum); 9: Tabellenzellen Tag + Uhrzeit, Sprechstunde als Überschrift; 10: Zusatz-/Nachholtermine, Datum mit Monatsnamen = Einzeltermin; 11: Gruppe ohne Art-Wort = Übung; 12: Gruppennummer aus Listenzeile davor; 13: beschriftete Ort-Zeile gilt für alle Termine der Seite; 14: „Room 101“ ist kein Seminarraum
 CACHE = DATA_DIR / "orga-cache.json"
 OUTPUT = DATA_DIR / "orga-events.json"
 # Orga-Folien ganz lesen: oft stehen die Zeiten erst nach Vorstellung und Motivation (Visualisierung: Folie 88 von 109).
@@ -112,7 +112,8 @@ ROOM = re.compile(
     r"hybrid|präsenz|mensa|labor|lecture hall|\bhall\b|\bsr\b|\bpc-?pool)", re.I)
 LABEL_ONLY = re.compile(r"(?:room|raum|ort|location|where|wo|place|venue)", re.I)
 LECTURE_ROOM = re.compile(r"(hörsaal|\bhs\b|\baula\b|lecture hall)", re.I)
-SMALL_ROOM = re.compile(r"(seminarraum|\bsr\b|\bs\d{2,4}\b|room\s+s?\d|pc-?pool|labor)", re.I)
+# „Room S234“ (Kölner Seminarräume) ja, „Room 101“ nicht: eine Raumnummer allein sagt nichts über die Art
+SMALL_ROOM = re.compile(r"(seminarraum|\bsr\b|\bs\d{2,4}\b|room\s+s\d|pc-?pool|labor)", re.I)
 
 
 def _type_in(text: str) -> Optional[str]:

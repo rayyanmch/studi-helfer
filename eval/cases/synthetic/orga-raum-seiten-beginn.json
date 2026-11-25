@@ -44,6 +44,26 @@
    "files": {"00_Organisatorisches.pdf": [["Vorlesung: Dienstag, 12:00-13:30", "Prüfungsort: Audimax"]]},
    "orga": {"slots": [{"type": "lecture", "weekday": 1, "start": "12:00", "end": "13:30", "alternative": false, "noRoom": true}]}},
 
+  {"id": "raum/room-nummer-meeting-times",
+   "files": {"Syllabus.pdf": [["Meeting times", "Tuesdays and Thursdays 9:30-10:45 am, Room 1.205"]]},
+   "orga": {"slots": [
+     {"type": "lecture", "weekday": 1, "start": "09:30", "end": "10:45", "alternative": false, "room": "Room 1.205"},
+     {"type": "lecture", "weekday": 3, "start": "09:30", "end": "10:45", "alternative": false, "room": "Room 1.205"}]}},
+
+  {"id": "raum/room-nummer-class-schedule",
+   "files": {"Course_Overview.pdf": [["Class schedule", "Monday 13:00-14:30, Room 0.08"]]},
+   "orga": {"slots": [{"type": "lecture", "weekday": 0, "start": "13:00", "end": "14:30", "alternative": false, "room": "Room 0.08"}]}},
+
+  {"id": "raum/seminarraum-bleibt-uebung",
+   "note": "Gegenprobe: Seminarraum ohne Art-Wort spricht weiter für eine Übung.",
+   "files": {"00_Organisatorisches.pdf": [["Termine", "Donnerstag 12:00-13:30, Seminarraum 2.03"]]},
+   "orga": {"slots": [{"type": "exercise", "weekday": 3, "start": "12:00", "end": "13:30", "alternative": false, "room": "Seminarraum 2.03"}]}},
+
+  {"id": "raum/room-s-nummer-bleibt-uebung",
+   "note": "Gegenprobe: Kölner Seminarraum „Room S234“ spricht weiter für eine Übung.",
+   "files": {"01_Introduction.pdf": [["Times", "Monday 10:00-11:30, Room S234"]]},
+   "orga": {"slots": [{"type": "exercise", "weekday": 0, "start": "10:00", "end": "11:30", "alternative": false, "room": "S234"}]}},
+
   {"id": "raum/label-zeile",
    "files": {"00_Organisatorisches.pdf": [["Vorlesung", "Zeit: Donnerstag, 12:00-13:30", "Raum: Hörsaal III"]]},
    "orga": {"slots": [{"type": "lecture", "weekday": 3, "start": "12:00", "end": "13:30", "alternative": false, "room": "Hörsaal III"}]}},
