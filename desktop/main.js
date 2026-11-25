@@ -37,6 +37,15 @@ async function renderLearnmods() {
   }
 }
 
+/** Seitenformat neuer PDFs lesen (Querformat = Folien, für die Dokument-Art), danach Dateien neu laden. */
+async function refreshShapes() {
+  try {
+    if (await backend.refreshShapes(packaged())) for (const win of windows) win.webContents.send("studi:filesChanged");
+  } catch (e) {
+    console.error("[pdf-shapes]", e);
+  }
+}
+
 let uiUrl = process.env.STUDI_UI_URL || "http://localhost:3000";
 let uiServer = null;
 const TEST_MODE = process.argv.includes("--test");
@@ -442,6 +451,7 @@ function pushState() {
     runAiDeadlines();
     // Erst die PDFs der Selbstlerneinheiten drucken, damit ein Klick auf die Mitteilung sie schon zeigt
     renderLearnmods().finally(() => notifyNewFiles());
+    refreshShapes();
   }
   wasRunning = Boolean(state.running);
 }
@@ -628,6 +638,8 @@ app.whenReady().then(async () => {
   setTimeout(() => runAiDeadlines(), 15_000);
   // Selbstlerneinheiten, die der Hintergrund-Sync bei geschlossener App geholt hat, als PDF drucken
   setTimeout(() => renderLearnmods(), 4_000);
+  // Seitenformat für Dateien, die seit dem letzten Start dazugekommen sind (auch aus dem Hintergrund-Sync)
+  setTimeout(() => refreshShapes(), 6_000);
 
   // Beim App-Start synchronisieren, wenn der letzte Lauf länger als 6 Stunden her ist.
   const cfg = backend.loadConfig();

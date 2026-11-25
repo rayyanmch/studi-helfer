@@ -16,6 +16,7 @@ export interface CourseFile {
   part?: string | null; // Teil des Moduls („Lecture“, „Exercises“, „Tutorial group 05“)
   where?: string; // Ordner in ILIAS, z. B. „Woche 3/Vorlesung“
   modifiedAt?: number; // ms, zum Sortieren nach Datum
+  shape?: "landscape" | "portrait"; // nur PDFs in der Mac-App: Format der ersten Seite (Querformat = Folien)
 }
 
 export interface Folder {

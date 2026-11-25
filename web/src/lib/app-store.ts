@@ -260,6 +260,7 @@ function toCourse(c: DesktopCourse): Course {
           part: x.part,
           where: x.where,
           modifiedAt: x.modifiedAt,
+          shape: x.shape,
           changeNote: x.isChanged ? "Updated on ILIAS. Your old copy was kept." : undefined,
         }),
       ),

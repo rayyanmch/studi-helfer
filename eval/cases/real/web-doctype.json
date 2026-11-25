@@ -288,35 +288,17 @@
     "reading",
     "exslides"
    ],
-   "Übungsmaterialien/Uebung01/Uebung01.pdf": [
-    "exslides",
-    "sheet"
-   ],
+   "Übungsmaterialien/Uebung01/Uebung01.pdf": "exslides",
    "Übungsmaterialien/Uebung01/Uebung01_Daten.json": "data",
-   "Übungsmaterialien/Uebung02/Uebung02.pdf": [
-    "exslides",
-    "sheet"
-   ],
+   "Übungsmaterialien/Uebung02/Uebung02.pdf": "exslides",
    "Übungsmaterialien/Uebung02/Uebung02_Daten.json": "data",
-   "Übungsmaterialien/Uebung03/Uebung03.pdf": [
-    "exslides",
-    "sheet"
-   ],
+   "Übungsmaterialien/Uebung03/Uebung03.pdf": "exslides",
    "Übungsmaterialien/Uebung03/Uebung03_Daten.json": "data",
-   "Übungsmaterialien/Uebung04/Uebung04.pdf": [
-    "exslides",
-    "sheet"
-   ],
+   "Übungsmaterialien/Uebung04/Uebung04.pdf": "exslides",
    "Übungsmaterialien/Uebung04/Uebung04_Daten.json": "data",
-   "Übungsmaterialien/Uebung05/Uebung05.pdf": [
-    "exslides",
-    "sheet"
-   ],
+   "Übungsmaterialien/Uebung05/Uebung05.pdf": "exslides",
    "Übungsmaterialien/Uebung05/Uebung05_Daten.json": "data",
-   "Übungsmaterialien/Uebung06/Uebung06.pdf": [
-    "exslides",
-    "sheet"
-   ],
+   "Übungsmaterialien/Uebung06/Uebung06.pdf": "exslides",
    "Übungsmaterialien/Uebung06/Uebung06_Daten.json": "data"
   }
  }

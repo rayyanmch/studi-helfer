@@ -295,6 +295,24 @@ async function walk(dir, base, out) {
 const PARENTS = path.join(DATA_DIR, "object-parents.json");
 const SEEN = path.join(DATA_DIR, "seen.json");
 const CALENDAR_EVENTS = path.join(DATA_DIR, "calendar-events.json");
+/** Gleiche Nummern im Titel („Submission HW 4“ ↔ „Submit Homework 4 SystemModelling“); ohne Nummer nur, wenn beide keine haben. */
+function sameNumber(a, b) {
+  const nums = (t) => (String(t).match(/\d+/g) || []).map(Number);
+  const na = nums(a);
+  const nb = nums(b);
+  return na.length ? na.every((n) => nb.includes(n)) : nb.length === 0;
+}
+
+const PDF_SHAPES = path.join(DATA_DIR, "pdf-shapes.json");
+
+/**
+ * Seitenformat der PDFs neu lesen (pdfshape.py, nur neue/geänderte Dateien). Querformat = Folien: entscheidet in
+ * doctype.ts bei Namen wie „Uebung03.pdf“, ob es Übungsfolien oder ein Übungsblatt sind. true = etwas hat sich geändert.
+ */
+async function refreshShapes(isPackaged) {
+  const res = await runHelper(isPackaged, ["pdf-shapes"], { timeoutMs: 120_000 });
+  return res.type === "result" && Boolean(res.changed);
+}
 const NEW_DAYS = 14; // so lange gilt eine Datei als „neu“, wenn man sie nicht angesehen hat
 
 /** Kurse aus config.json mit Elternkurs (Gruppen) – fehlt er, aus dem Brotkrumen-Cache des Helfers. */
@@ -501,6 +519,7 @@ async function listFiles() {
   const { modules, moduleOfCourse } = currentModules(cfg, names);
   const { slotsByModule } = scheduleFor(cfg, modules, moduleOfCourse);
   const credits = creditsByModule(modules);
+  const shapes = readJson(PDF_SHAPES, {}).files ?? {};
 
   return modules.map((m) => {
     const cats = new Map();
@@ -531,6 +550,7 @@ async function listFiles() {
           isChanged: changed.has(key) && !seen[id],
           previousVersion: changed.get(key) ?? undefined,
           path: f.full,
+          shape: shapes[f.full]?.shape ?? undefined,
           modifiedAt: f.mtime.getTime(),
           part: m.parts.length > 1 ? part.label : null,
           where: dir,
@@ -738,6 +758,7 @@ function getDeadlines() {
 
   const ids = new Set();
   const sameDay = new Set();
+  const keptByKey = new Map(); // Modul|Tag|Art → behaltene Frist
   const all = [];
   const termsByDay = new Map(); // Modul|Tag → Termine (für den Abgleich mit dem Stundenplan)
   // Kaputte oder halb geschriebene Dateien dürfen die Übersicht nicht leer lassen: nur brauchbare Einträge nehmen.
@@ -757,9 +778,18 @@ function getDeadlines() {
       const scope = moduleId ?? "none";
       const kindKey = d.kind !== "termin" ? `${scope}|${d.date}|${d.kind}` : null;
       const titleKey = `${scope}|${d.date}|${normTitle(d.title)}`;
-      if (ids.has(d.id) || (kindKey && sameDay.has(kindKey) && d.category !== "exercise") || sameDay.has(titleKey)) continue;
+      if (ids.has(d.id) || (kindKey && sameDay.has(kindKey) && d.category !== "exercise") || sameDay.has(titleKey)) {
+        // Doppelte Frist aus dem Übungsblatt: Die ILIAS-Frist gewinnt, bekommt aber den Verweis auf das Blatt
+        // („Open the sheet“, Abgabe neben dem Blatt in den Themenwochen), wenn die Nummer passt („Homework 3“).
+        const kept = kindKey && keptByKey.get(kindKey);
+        if (d.file && kept && !kept.file && sameNumber(kept.title, d.title)) kept.file = d.file;
+        continue;
+      }
       ids.add(d.id);
-      if (kindKey) sameDay.add(kindKey);
+      if (kindKey) {
+        sameDay.add(kindKey);
+        keptByKey.set(kindKey, d);
+      }
       sameDay.add(titleKey);
       all.push(d);
       if (d.kind !== "abgabe") {
@@ -997,6 +1027,7 @@ module.exports = {
   setEventHidden,
   getDoneDeadlines,
   setDeadlineDone,
+  refreshShapes,
   DATA_DIR,
   DEFAULT_TARGET,
   STATE,

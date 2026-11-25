@@ -98,6 +98,31 @@
   },
   {
     "algo": "doctype",
+    "id": "doctype/querformat",
+    "note": "Name sagt nicht, ob Folien oder Blatt: Querformat = Übungsfolien (Rayyan, 25.11.: Uebung01–06 der Visualisierung sind Folien). Ausdrückliche Blatt-Wörter in Name oder Ordner gewinnen; ohne Format bleibt es ein Blatt.",
+    "part": "Exercises",
+    "files": {
+      "Übungen/Übung 3.pdf": "exslides",
+      "Exercise02.pdf": "exslides",
+      "Tutorien/Tut_07.pdf": "tutorial",
+      "Übungen/uebung_05.pdf": "sheet",
+      "Übungen/Übung 6.pdf": "sheet",
+      "Übungen/Übungsblatt 4.pdf": "sheet",
+      "Homework/Exercise 2.pdf": "sheet",
+      "Aufgabenblätter/Übung 8.pdf": "sheet"
+    },
+    "shapes": {
+      "Übungen/Übung 3.pdf": "landscape",
+      "Exercise02.pdf": "landscape",
+      "Tutorien/Tut_07.pdf": "landscape",
+      "Übungen/uebung_05.pdf": "portrait",
+      "Übungen/Übungsblatt 4.pdf": "landscape",
+      "Homework/Exercise 2.pdf": "landscape",
+      "Aufgabenblätter/Übung 8.pdf": "landscape"
+    }
+  },
+  {
+    "algo": "doctype",
     "id": "doctype/ankuendigungen",
     "part": "Lecture",
     "files": {
@@ -654,6 +679,224 @@
       "Altklausur 2025.pdf": "exam",
       "Vorlesung 1.pdf": "w1",
       "Woche 0/Einführung.pdf": "info"
+    }
+  },
+  {
+    "algo": "weeks",
+    "id": "weeks/uebungstermine",
+    "part": "Course",
+    "name": "Algorithmen",
+    "note": "Übungen stehen beim Thema; der Hinweis sagt, wann die Übung ist: eigene Gruppe (nicht die nähere fremde), Tutorium, Abgabe bei Blättern. Blatt ohne Frist und Vorlesung bekommen keinen.",
+    "files": {
+      "Vorlesung/VL01_Einleitung.pdf": "2026-10-13",
+      "Vorlesung/VL02_Graphen.pdf": "2026-10-20",
+      "Vorlesung/VL03_Baeume.pdf": "2026-10-27",
+      "Übung/Uebung01.pdf": "2026-10-19",
+      "Übung/Uebung02.pdf": "2026-10-26",
+      "Tutorium/Tutorium 3.pdf": "2026-11-04",
+      "Übungsblätter/Blatt 2.pdf": "2026-10-26",
+      "Übungsblätter/Blatt 3.pdf": "2026-11-02"
+    },
+    "shapes": {
+      "Übung/Uebung01.pdf": "landscape",
+      "Übung/Uebung02.pdf": "landscape",
+      "Tutorium/Tutorium 3.pdf": "landscape",
+      "Übungsblätter/Blatt 2.pdf": "portrait",
+      "Übungsblätter/Blatt 3.pdf": "portrait",
+      "Vorlesung/VL01_Einleitung.pdf": "landscape",
+      "Vorlesung/VL02_Graphen.pdf": "landscape",
+      "Vorlesung/VL03_Baeume.pdf": "landscape"
+    },
+    "slots": [
+      {
+        "key": "e2",
+        "type": "exercise",
+        "label": "Exercise · Group 2",
+        "weekday": 3,
+        "start": "14:00",
+        "end": "",
+        "room": null,
+        "group": 2,
+        "state": "mine",
+        "source": ""
+      },
+      {
+        "key": "e1",
+        "type": "exercise",
+        "label": "Exercise · Group 1",
+        "weekday": 1,
+        "start": "10:00",
+        "end": "",
+        "room": null,
+        "group": 1,
+        "state": "fixed",
+        "source": ""
+      },
+      {
+        "key": "t",
+        "type": "tutorial",
+        "label": "Tutorial",
+        "weekday": 4,
+        "start": "12:00",
+        "end": "",
+        "room": null,
+        "group": null,
+        "state": "fixed",
+        "source": ""
+      },
+      {
+        "key": "o",
+        "type": "exercise",
+        "label": "Exercise",
+        "weekday": 0,
+        "start": "16:00",
+        "end": "",
+        "room": null,
+        "group": null,
+        "state": "option",
+        "source": ""
+      }
+    ],
+    "deadlines": [
+      {
+        "file": "Übungsblätter/Blatt 2.pdf",
+        "date": "2026-11-02",
+        "time": "by 10:00"
+      }
+    ],
+    "expect": {
+      "Vorlesung/VL01_Einleitung.pdf": "w1",
+      "Vorlesung/VL02_Graphen.pdf": "w2",
+      "Vorlesung/VL03_Baeume.pdf": "w3"
+    },
+    "hints": {
+      "Übung/Uebung01.pdf": "exercise 2026-10-22 14:00",
+      "Übung/Uebung02.pdf": "exercise 2026-10-29 14:00",
+      "Tutorium/Tutorium 3.pdf": "tutorial 2026-11-06 12:00",
+      "Übungsblätter/Blatt 2.pdf": "due 2026-11-02 10:00",
+      "Übungsblätter/Blatt 3.pdf": null,
+      "Vorlesung/VL01_Einleitung.pdf": null
+    }
+  },
+  {
+    "algo": "weeks",
+    "id": "weeks/uebungstermine-alles-auf-einmal",
+    "part": "Course",
+    "name": "Statistik",
+    "note": "Falle: alle Übungsfolien am selben Tag hochgeladen → der nächste Übungstermin sagt nichts darüber, wann welche Übung ist, also kein Hinweis. Vier Vorlesungen, weil „alles am selben Tag“ erst ab vier greift.",
+    "files": {
+      "Vorlesung 1.pdf": "2026-10-13",
+      "Vorlesung 2.pdf": "2026-10-13",
+      "Vorlesung 3.pdf": "2026-10-13",
+      "Vorlesung 4.pdf": "2026-10-13",
+      "Übung/Uebung01.pdf": "2026-10-13",
+      "Übung/Uebung02.pdf": "2026-10-13",
+      "Übung/Uebung03.pdf": "2026-10-13"
+    },
+    "shapes": {
+      "Übung/Uebung01.pdf": "landscape",
+      "Übung/Uebung02.pdf": "landscape",
+      "Übung/Uebung03.pdf": "landscape"
+    },
+    "slots": [
+      {
+        "key": "e2",
+        "type": "exercise",
+        "label": "Exercise · Group 2",
+        "weekday": 3,
+        "start": "14:00",
+        "end": "",
+        "room": null,
+        "group": 2,
+        "state": "mine",
+        "source": ""
+      },
+      {
+        "key": "e1",
+        "type": "exercise",
+        "label": "Exercise · Group 1",
+        "weekday": 1,
+        "start": "10:00",
+        "end": "",
+        "room": null,
+        "group": 1,
+        "state": "fixed",
+        "source": ""
+      },
+      {
+        "key": "t",
+        "type": "tutorial",
+        "label": "Tutorial",
+        "weekday": 4,
+        "start": "12:00",
+        "end": "",
+        "room": null,
+        "group": null,
+        "state": "fixed",
+        "source": ""
+      },
+      {
+        "key": "o",
+        "type": "exercise",
+        "label": "Exercise",
+        "weekday": 0,
+        "start": "16:00",
+        "end": "",
+        "room": null,
+        "group": null,
+        "state": "option",
+        "source": ""
+      }
+    ],
+    "expect": {
+      "Vorlesung 1.pdf": "w1",
+      "Vorlesung 2.pdf": "w2",
+      "Vorlesung 3.pdf": "w3",
+      "Vorlesung 4.pdf": "w4"
+    },
+    "hints": {
+      "Übung/Uebung01.pdf": null,
+      "Übung/Uebung02.pdf": null,
+      "Übung/Uebung03.pdf": null
+    }
+  },
+  {
+    "algo": "weeks",
+    "id": "weeks/uebungstermine-englisch",
+    "part": "Course",
+    "name": "Economics",
+    "note": "Englische Namen, Übungsfolien kurz nach der Übung hochgeladen (Abend nach dem Termin) → derselbe Tag, nicht die Woche danach.",
+    "files": {
+      "Lectures/Lecture 1 - Markets.pdf": "2026-10-14",
+      "Lectures/Lecture 2 - Demand.pdf": "2026-10-21",
+      "Exercise Sessions/Exercise 1.pdf": "2026-10-22",
+      "Exercise Sessions/Exercise 2.pdf": "2026-10-29"
+    },
+    "shapes": {
+      "Exercise Sessions/Exercise 1.pdf": "landscape",
+      "Exercise Sessions/Exercise 2.pdf": "landscape"
+    },
+    "slots": [
+      {
+        "key": "x",
+        "type": "exercise",
+        "label": "Exercise",
+        "weekday": 3,
+        "start": "10:00",
+        "end": "",
+        "room": null,
+        "group": null,
+        "state": "fixed",
+        "source": ""
+      }
+    ],
+    "expect": {
+      "Lectures/Lecture 1 - Markets.pdf": "w1",
+      "Lectures/Lecture 2 - Demand.pdf": "w2"
+    },
+    "hints": {
+      "Exercise Sessions/Exercise 1.pdf": "exercise 2026-10-22 10:00",
+      "Exercise Sessions/Exercise 2.pdf": "exercise 2026-10-29 10:00"
     }
   }
 ]

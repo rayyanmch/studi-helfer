@@ -6,7 +6,7 @@ Messlatte für die Regel-Erkennung (ohne KI). Der Loop „Erkennung“ liest die
 
 ```bash
 services/ilias-sync/.venv/bin/python eval/run.py      # orga.py + sheets.py (≈ 15 s, echte PDFs aus ~/Uni)
-node eval/run-web.mjs                                 # doctype.ts, solutions.ts, modules.js (< 1 s)
+node eval/run-web.mjs                                 # doctype.ts, solutions.ts, modules.js, weeks.ts + Hinweise (≈ 1,5 s)
 ```
 
 Filter: `… run.py beginn` (nur Fälle mit „beginn“ in der Id, speichert dann nichts). `-v` zeigt auch Details bestandener Fälle, `--no-save` lässt `results/*.json` unverändert. Exit-Code 2 = ein vorher bestandener Fall schlägt jetzt fehl.
@@ -24,6 +24,7 @@ Filter: `… run.py beginn` (nur Fälle mit „beginn“ in der Id, speichert da
 |---|---|---|---|---|
 | 1 | 2026-11-25 | 57 · 51/71 | 13 · 11/17 | Prüfstand gebaut, noch keine Regel geändert |
 | 2 | 2026-11-25 | 67 → 59 · 51 → 55/76 | 13 · 11/17 | Beginn (orga.py, RULES_VERSION 5): „Gruppen“ = Übung, Beginn der Anmeldung zählt nicht, Beginn > 6 Wochen nach dem frühesten zählt nicht. 5 neue Fälle (67 = alter Code mit neuen Fällen). Seitenlimit verworfen, siehe unten |
+| 26 | 2026-11-25 | 0 · 141/141 | 6 → 0 · 38 → 42/42 | Rayyans Antworten (Fragen 2, 3, 4, 6) eingetragen: `Uebung01–06` nur noch Übungsfolien (6 = alter Code mit der engeren Erwartung), ISM-Übungen nur Themenwoche. **Seitenformat** (`pdfshape.py`, `pdf-shapes.json`): Querformat entscheidet bei mehrdeutigen Namen für Übungsfolien, Blatt-Wörter in Name/Ordner gewinnen (bei Rayyan alle 157 PDFs eindeutig: Folien quer, Blätter hoch; 0,7 s für alle, danach gecacht). **Hinweis „wann ist die Übung“** (`sessionHints` in weeks.ts, neue Kategorie `hints`): ILIAS-Sitzung > Abgabe des Blatts > eigener Übungstermin nahe am Hochladen. 1 neuer doctype-Fall, 3 neue Wochen-Fälle (davon 1 Falle), Hinweise im echten ISM-Fall |
 | 25 | 2026-11-25 | 0 · 141/141 | 1 → 0 · 38/38 | Keine Regel geändert: Rayyan bestätigt „LinA I“ als Kurzname (Frage 5), Erwartung in `modules/uebungen-zur` ergänzt. **Alle Fälle bestehen.** |
 | 24 | 2026-11-25 | 0 · 141/141 | 1 · 37/38 | **Prüfstand für Themenwochen** (`weeks.ts`, run-web.mjs; `ts-resolve.mjs` ergänzt „.ts“ beim Import ohne Endung). Echt: BWL (75 Dateien, Woche aus „Woche N“) und ISM (16 Dateien, Woche aus dem Sitzungsdatum) stimmen; 5 ausgedachte Fälle (Week-Ordner, KW, alles am selben Tag, Übung zum Thema, Orga/Altklausur) bestehen. ISM-Übungen landen in der Themenwoche statt der Sitzungswoche → beides erlaubt, Frage 6. **Loop beendet:** einziger offener Fehler („LinA I“) wartet auf Frage 5 |
 | 23 | 2026-11-25 | 6 → 0 · 135 → 141/141 | 1 · 30/31 | **Titel werden jetzt geprüft** (run.py: `title` in erwarteten sheets-Einträgen, Liste erlaubter englischer Titel; 6 = alter Code mit den neuen Erwartungen). sheets.py RULES_VERSION 12: Beim Zusammenfassen kommt der Titel vom Treffer in der Datumszeile, die Uhrzeit von dem, der eine hat; Text hinter dem Datum wird nur Titel, wenn dort das Fristwort steht. Visualisierung-Klausur heißt jetzt „Exam“ statt „Organisatorisches exam exam“, alle anderen echten Titel unverändert. 3 neue Fälle |
@@ -56,7 +57,7 @@ Runde 12: orga langsamste Datei 0,86 s (`00_AlgebraGrundwissen.pdf`, 84 Seiten).
 1. ~~Seitenlimit 25~~ (Runde 3), ~~„Prüfungstermin“~~ (Runde 4), ~~Bonustests~~ (Runde 5).
    - **Python komplett grün (Runde 16), Web komplett grün (Runde 25, nach Rayyans Ja zu „LinA I“).**
    - ~~Titel prüfen~~ (Runde 23), ~~Prüfstand für `weeks.ts`~~ (Runde 24).
-   - **Loop beendet nach Runde 24.** Offen ist nur, was Rayyan entscheiden muss (Fragen 1–4 und 6). Ideen für später: Mikas Orga-Folien (Database Systems, Programmierung) und Folien anderer Fakultäten/Unis als echte Fälle; „Short test in Übung“ (halb übersetzter Titel); Wochen für SE/Mathe/Visualisierung (Wahrheit braucht Vorlesungsdaten).
+   - **Loop beendet nach Runde 24.** Offen ist nur Frage 1 (ISM, erste Übung). Ideen für später: Mikas Orga-Folien (Database Systems, Programmierung) und Folien anderer Fakultäten/Unis als echte Fälle; „Short test in Übung“ (halb übersetzter Titel); Wochen für SE/Mathe/Visualisierung (Wahrheit braucht Vorlesungsdaten).
    - Wichtig bei modules.js: Modulnamen sind Ordnernamen in `~/Uni` (`applyLayout` verschiebt). Vor dem Behalten immer alt/neu für Rayyans config.json vergleichen (Skript in Runde 17: `buildModules` mit `object-parents.json`).
 2. ~~Übungsgruppen werden zur Vorlesung~~ (Runde 10).
 3. ~~Doppelte Gruppen ohne Nummer~~ (Runde 11).
@@ -85,11 +86,11 @@ Hinweis zur App: Gleiche Gruppe aus ILIAS-Gruppe und Orga-Folie (Visualisierung 
 ## Fragen an Rayyan
 
 1. **ISM**: Folie 11 sagt „Beginn: Donnerstag, 15.10.2026“, Folie 12: am 21.10. ist im Übungsslot ausnahmsweise Vorlesung. Erwartet ist jetzt: erste Übung am 21.10. (Datum laut Folie). Soll die Übung erst ab 28.10. zählen?
-2. **Mathe**: Die Bonustests (02.12. und 20.01., 12:00) erwarte ich als normalen Termin, nicht als Klausur (keine KLIPS-Anmeldung). Passt das?
-3. **Visualisierung**: Raum der Übungsgruppen erwarte ich als „Weyertal 121, Raum 5.08“ (Folie 93). Stimmt das für deine Gruppe 6?
-4. **Visualisierung**: Sind `Uebung01.pdf` … `Uebung06.pdf` Übungsfolien oder Übungsblätter? (Im Moment ist beides erlaubt.)
-6. **Wochen von Übungen (ISM)**: „UB01_Informationssysteme“ liegt in ILIAS in der Sitzung vom 28.10. (3. Woche), `weeks.ts` ordnet es aber der Vorlesung mit gleichem Thema zu (VL01, 1. Woche) – so ist „Themenwoche“ gedacht. Soll eine Übung zur Woche ihres Themas gehören (jetzt) oder zur Woche, in der sie stattfindet? Im Moment ist beides erlaubt.
 
 ### Beantwortet
 
 - 5. **Kurzname „LinA I“** (25.11.): Rayyan: „LinA I passt.“ Gilt jetzt neben „Lineare Algebra I“ und „LA I“ als richtig.
+- 2. **Mathe** (25.11.): Rayyan: stimmt (Bonustests als normaler Termin).
+- 3. **Visualisierung** (25.11.): Rayyan: stimmt (Weyertal 121, Raum 5.08).
+- 4. **Visualisierung** (25.11.): Rayyan: Übungsfolien. Erwartung jetzt nur `exslides`; erkannt über das Querformat (`pdfshape.py`).
+- 6. **Wochen von Übungen (ISM)** (25.11.): Rayyan: Themenwoche, dazu ein Hinweis, wann die Übung/das Tutorium ist (`sessionHints`, Unterzeile der Datei in „By week“).

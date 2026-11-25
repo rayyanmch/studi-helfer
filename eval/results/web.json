@@ -2,15 +2,15 @@
  "when": "2026-11-25",
  "summary": {
   "errors": 0,
-  "tp": 378,
+  "tp": 412,
   "fp": 0,
   "fn": 0,
-  "passed": 38,
-  "ran": 38,
+  "passed": 42,
+  "ran": 42,
   "skipped": 0,
   "categories": {
    "doctype": [
-    215,
+    223,
     0,
     0
    ],
@@ -30,12 +30,17 @@
     0
    ],
    "weeks": [
-    109,
+    118,
+    0,
+    0
+   ],
+   "hints": [
+    17,
     0,
     0
    ]
   },
-  "seconds": 0.03
+  "seconds": 1.43
  },
  "cases": {
   "real/doctype/BWL": {
@@ -114,6 +119,11 @@
    "details": []
   },
   "synthetic/doctype/uebungsfolien-mit-nummer": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/doctype/querformat": {
    "status": "pass",
    "errors": 0,
    "details": []
@@ -224,6 +234,21 @@
    "details": []
   },
   "synthetic/weeks/orga-und-altklausur": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/weeks/uebungstermine": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/weeks/uebungstermine-alles-auf-einmal": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/weeks/uebungstermine-englisch": {
    "status": "pass",
    "errors": 0,
    "details": []

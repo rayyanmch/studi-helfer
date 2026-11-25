@@ -10,7 +10,7 @@
 // Titel: ILIAS-Wochentitel > aufgeräumte Dateinamen der Vorlesungen > Themen aus den KI-Zusammenfassungen > KI-Titel.
 // Bewusst ohne Abhängigkeiten, damit es auch in Node getestet werden kann.
 
-import type { Course, CourseFile, Folder } from "./mock-data";
+import type { ClassSlot, Course, CourseFile, Deadline, Folder } from "./mock-data";
 import { type DocType, docTypeOf } from "./doctype";
 
 export type Role = "lecture" | "exercise" | "solution" | "reading" | "selfstudy" | "recording" | "info" | "exam" | "other";
@@ -412,3 +412,111 @@ export const ROLE_LABEL: Record<Role, string> = {
   other: "File",
 };
 
+// ------------------------------------------------------------------ Wann ist die Übung?
+
+/**
+ * Themenwochen zeigen Übungen beim Thema, nicht beim Termin (Rayyan, 25.11.). Damit man trotzdem sieht, wann die
+ * Übung ist, bekommt jede Übungsdatei einen Hinweis, aber nur aus sicheren Quellen:
+ *   1. Datei liegt in einer ILIAS-Sitzung („2026-10-28, 17:45 - 19:15: ISM - Übung“) → genau dieser Termin
+ *   2. Übungsblatt mit erkannter Abgabe (Frist mit `file`) → „Due …“
+ *   3. Übungsfolien/Tutorium: eigener Übungs- bzw. Tutoriumstermin aus dem Stundenplan (`Course.slots`), der dem
+ *      Hochladen am nächsten liegt (höchstens 4 Tage). Folien werden kurz vor oder nach der Übung hochgeladen.
+ *      Landen Dateien verschiedener Wochen beim selben Termin, gibt es dort keinen Hinweis (kein Wochenrhythmus).
+ * Blätter ohne Frist bekommen keinen Termin aus dem Stundenplan: wann ein Blatt besprochen wird, ist nicht sicher.
+ */
+export interface SessionHint {
+  kind: "exercise" | "tutorial" | "due";
+  date: string; // YYYY-MM-DD
+  time: string | null; // "17:45"
+  from: "ilias" | "schedule" | "deadline";
+}
+
+const TUTORIAL_WORDS = /(tutorium|tutorien|tutorial|\btut\b)/i;
+// Nummer der Übung im Namen („Uebung03“, „Exercise 2“, „Tutorium_5“, „UB04“); „Tutorial_D3“ (Bibliothek) zählt nicht
+const UNIT_NO = /(?:übung|uebung|exercise|tutorium|tutorial|session|ub|tut)[\s_-]*0*(\d{1,2})(?!\d)/i;
+const SLOT_NEAR_MS = 4 * DAY;
+
+export function sessionHints(
+  course: Pick<Course, "slots">,
+  weeks: Week[],
+  deadlines: Pick<Deadline, "date" | "time" | "kind" | "file">[],
+  today: string,
+): Map<string, SessionHint> {
+  const out = new Map<string, SessionHint>();
+  const dueOf = new Map<string, Pick<Deadline, "date" | "time">>();
+  for (const d of deadlines) if (d.kind === "abgabe" && d.file && (!dueOf.has(d.file) || d.date < dueOf.get(d.file)!.date)) dueOf.set(d.file, d);
+
+  // Eigene Termine je Art: Gruppe/Auswahl vor festen Terminen, Wahltermine nie
+  const slots = (course.slots ?? []).filter((s) => s.state !== "option");
+  const own = (type: ClassSlot["type"]) => {
+    const all = slots.filter((s) => s.type === type);
+    const mine = all.filter((s) => s.state === "mine" || s.state === "chosen");
+    return mine.length ? mine : all;
+  };
+  const exerciseSlots = own("exercise");
+  const tutorialSlots = own("tutorial");
+  const lectureStart = semesterStart(today).getTime();
+
+  const fromSchedule: { id: string; week: string; unit: string | null; hint: SessionHint }[] = [];
+  for (const w of weeks) {
+    for (const x of w.files) {
+      if (x.role !== "exercise") continue;
+      const f = x.file;
+      const tutorial = x.type === "tutorial" || TUTORIAL_WORDS.test(`${f.where ?? ""} ${f.name}`);
+      const s = (f.where ?? "").match(/^(\d{4}-\d{2}-\d{2}),\s*(\d{1,2}:\d{2})?/);
+      if (s) {
+        out.set(f.id, { kind: tutorial ? "tutorial" : "exercise", date: s[1], time: s[2] ?? null, from: "ilias" });
+        continue;
+      }
+      const due = f.path ? dueOf.get(f.path) : undefined;
+      if (due) {
+        out.set(f.id, { kind: "due", date: due.date, time: due.time.match(/\d{1,2}:\d{2}/)?.[0] ?? null, from: "deadline" });
+        continue;
+      }
+      if (x.type === "sheet" || !f.modifiedAt) continue;
+      const pool = tutorial ? (tutorialSlots.length ? tutorialSlots : exerciseSlots) : exerciseSlots.length ? exerciseSlots : tutorialSlots;
+      let best: { at: number; slot: ClassSlot } | null = null;
+      for (const slot of pool) {
+        const [h, m] = slot.start.split(":").map(Number);
+        const mon = monday(new Date(f.modifiedAt));
+        for (const shift of [-7, 0, 7]) {
+          const at = new Date(mon.getFullYear(), mon.getMonth(), mon.getDate() + slot.weekday + shift, h, m).getTime();
+          if (at < lectureStart || Math.abs(at - f.modifiedAt) > SLOT_NEAR_MS) continue;
+          if (!best || Math.abs(at - f.modifiedAt) < Math.abs(best.at - f.modifiedAt)) best = { at, slot };
+        }
+      }
+      if (!best) continue;
+      const d = new Date(best.at);
+      fromSchedule.push({
+        id: f.id,
+        week: w.key,
+        unit: f.name.match(UNIT_NO)?.[1] ?? null,
+        hint: { kind: best.slot.type === "tutorial" ? "tutorial" : "exercise", date: isoOf(d), time: best.slot.start, from: "schedule" },
+      });
+    }
+  }
+  // Derselbe Termin für Dateien aus verschiedenen Wochen oder für verschiedene Übungsnummern → wohl alles auf
+  // einmal hochgeladen, dann lieber nichts sagen
+  const at = new Map<string, { weeks: Set<string>; units: Set<string> }>();
+  for (const x of fromSchedule) {
+    const k = `${x.hint.date} ${x.hint.time}`;
+    if (!at.has(k)) at.set(k, { weeks: new Set(), units: new Set() });
+    at.get(k)!.weeks.add(x.week);
+    if (x.unit) at.get(k)!.units.add(x.unit);
+  }
+  for (const x of fromSchedule) {
+    const g = at.get(`${x.hint.date} ${x.hint.time}`)!;
+    if (g.weeks.size <= 1 && g.units.size <= 1) out.set(x.id, x.hint);
+  }
+  return out;
+}
+
+const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+/** „Exercise session · Wed, Oct 28, 17:45“, „Tutorial · Thu, Nov 5, 14:00“, „Due Mon, Nov 16, 10:00“ */
+export function sessionHintText(h: SessionHint): string {
+  const d = parse(h.date);
+  const day = `${WEEKDAYS[d.getDay()]}, ${MONTHS[d.getMonth()]} ${d.getDate()}${h.time ? `, ${h.time}` : ""}`;
+  if (h.kind === "due") return `Due ${day}`;
+  return `${h.kind === "tutorial" ? "Tutorial" : "Exercise session"} · ${day}`;
+}

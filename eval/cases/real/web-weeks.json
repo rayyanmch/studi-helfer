@@ -92,7 +92,7 @@
   "part": "Course",
   "name": "ISM",
   "fullName": "Information Systems Management",
-  "note": "Woche aus dem Sitzungsdatum im ILIAS-Ordner (Vorlesungsbeginn 12.10.2026); Orga/Allgemeines darf auch Course info sein. Übungen: Themenwoche (gleiches Thema wie eine Vorlesung) oder Sitzungswoche erlaubt, bis Frage 6 entschieden ist.",
+  "note": "Woche aus dem Sitzungsdatum im ILIAS-Ordner (Vorlesungsbeginn 12.10.2026); Orga/Allgemeines darf auch Course info sein. Übungen gehören in die Themenwoche (gleiches Thema wie eine Vorlesung), nicht in die Sitzungswoche (Rayyan, 25.11., Frage 6). Hinweise: Übungen zeigen das Datum ihrer ILIAS-Sitzung (Vorlesungen bekommen keinen).",
   "expect": {
    "2026-10-15, 10:00 - 11:30: ISM - Vorlesung/ISM_WS26_27_VL00_Organisatorisches.pdf": [
     "w1",
@@ -105,35 +105,28 @@
     "w3",
     "info"
    ],
-   "2026-10-28, 17:45 - 19:15: ISM - Übung/ISM_WS26_27_UB01_Informationssysteme_Teil1.pdf": [
-    "w1",
-    "w3"
-   ],
+   "2026-10-28, 17:45 - 19:15: ISM - Übung/ISM_WS26_27_UB01_Informationssysteme_Teil1.pdf": "w1",
    "2026-10-29, 10:00 - 11:30: ISM - Vorlesung/ISM_WS26_27_VL04_Anwendungssysteme.pdf": "w3",
    "2026-10-29, 10:00 - 11:30: ISM - Vorlesung/ISM_WS26_27_VL05_IIV_Integrationsdimensionen.pdf": "w3",
-   "2026-11-04, 17:45 - 19:15: ISM - Übung/ISM_WS26_27_UB01_Informationssysteme.pdf": [
-    "w1",
-    "w4"
-   ],
-   "2026-11-04, 17:45 - 19:15: ISM - Übung/ISM_WS26_27_UB02_Disziplin_WI.pdf": [
-    "w2",
-    "w4"
-   ],
+   "2026-11-04, 17:45 - 19:15: ISM - Übung/ISM_WS26_27_UB01_Informationssysteme.pdf": "w1",
+   "2026-11-04, 17:45 - 19:15: ISM - Übung/ISM_WS26_27_UB02_Disziplin_WI.pdf": "w2",
    "2026-11-05, 10:00 - 11:30: ISM - Vorlesung/ISM_WS26_27_VL06_IIV_Innerbetrieblich.pdf": "w4",
-   "2026-11-11, 17:45 - 19:15: !!! Virtuell!!! ISM - Übung/ISM_WS26_27_UB03_Strategie_und_Organisation_der_Wertschöpfung.pdf": [
-    "w2",
-    "w5"
-   ],
+   "2026-11-11, 17:45 - 19:15: !!! Virtuell!!! ISM - Übung/ISM_WS26_27_UB03_Strategie_und_Organisation_der_Wertschöpfung.pdf": "w2",
    "2026-11-12, 10:00 - 11:30: ISM - Vorlesung/ISM_WS26_27_VL07_IIV_Überbetrieblich.pdf": "w5",
-   "2026-11-18, 17:45 - 19:15: ISM - Übung/ISM_WS26_27_UB04_Anwendungssysteme.pdf": [
-    "w3",
-    "w6"
-   ],
+   "2026-11-18, 17:45 - 19:15: ISM - Übung/ISM_WS26_27_UB04_Anwendungssysteme.pdf": "w3",
    "2026-11-19, 10:00 - 11:30: ISM - Vorlesung/ISM_WS26_27_VL08_Computer_Supported_Cooperative_Work_(CSCW).pdf": "w6",
    "ISM_Info-Folien zu Pruefungen_10_2026.pdf": [
     "exam",
     "info"
    ]
+  },
+  "hints": {
+   "2026-10-28, 17:45 - 19:15: ISM - Übung/ISM_WS26_27_UB01_Informationssysteme_Teil1.pdf": "exercise 2026-10-28 17:45",
+   "2026-11-04, 17:45 - 19:15: ISM - Übung/ISM_WS26_27_UB01_Informationssysteme.pdf": "exercise 2026-11-04 17:45",
+   "2026-11-04, 17:45 - 19:15: ISM - Übung/ISM_WS26_27_UB02_Disziplin_WI.pdf": "exercise 2026-11-04 17:45",
+   "2026-11-11, 17:45 - 19:15: !!! Virtuell!!! ISM - Übung/ISM_WS26_27_UB03_Strategie_und_Organisation_der_Wertschöpfung.pdf": "exercise 2026-11-11 17:45",
+   "2026-11-18, 17:45 - 19:15: ISM - Übung/ISM_WS26_27_UB04_Anwendungssysteme.pdf": "exercise 2026-11-18 17:45",
+   "2026-10-15, 10:00 - 11:30: ISM - Vorlesung/ISM_WS26_27_VL01_Informationssysteme.pdf": null
   }
  }
 ]

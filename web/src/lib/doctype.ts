@@ -54,6 +54,7 @@ const RE = {
   infoFolder: /^(grundlegende informationen|allgemein|organisator|orga\b|course info|course information|general|modul ?info|informationen zum modul|info\b)/i,
   tutorial: /(tutorium|tutorial|tutorien|\btut\b)/i,
   notes: /(mitschrift|skript|script\b|lecture notes|vorlesungsnotizen|handout|tafelbild|notes\b)/i,
+  sheetFolder: /(übungsbl[äa]tter|uebungsbl[äa]tter|aufgabenbl[äa]tter|aufgaben|hausaufgaben|sheets|homework|assignments|problem sets|worksheets)/i,
   sheet: /(übungsblatt|uebungsblatt|aufgabenblatt|\bblatt\b|sheet|homework|hausaufgabe|assignment|aufgaben|übungsaufgabe|uebungsaufgabe|exercise ?sheet|\bfall\b|fallstudie|case study|\bha ?\d|problem set|worksheet)/i,
   // auch mit Nummer oder Wörtern dazwischen: „Exercise 3 Slides“, „Exercise_05_slides“, „Slides Exercise Session 7“
   exslides:
@@ -66,7 +67,7 @@ const RE = {
 };
 
 /** Automatische Art (ohne Änderungen des Nutzers). */
-export function autoDocType(file: Pick<CourseFile, "name" | "where" | "kind">, folder?: Pick<Folder, "category" | "name">): DocType {
+export function autoDocType(file: Pick<CourseFile, "name" | "where" | "kind" | "shape">, folder?: Pick<Folder, "category" | "name">): DocType {
   const name = file.name;
   const where = file.where ?? "";
   const both = `${where} ${name}`;
@@ -85,6 +86,9 @@ export function autoDocType(file: Pick<CourseFile, "name" | "where" | "kind">, f
   if (cat === "exercises" || /(übung|uebung|exercise|tutorium)/i.test(both)) {
     if (RE.exslides.test(both) || /exercise slides|übungsfolien/i.test(where)) return "exslides";
     if (RE.tutorial.test(where)) return "tutorial";
+    // Name sagt nicht, ob Folien oder Blatt („Uebung03.pdf“, „Exercise 2“): Querformat = Folien der Übung,
+    // außer Name oder Ordner sagen ausdrücklich Blatt/Aufgaben/Hausaufgabe
+    if (file.shape === "landscape" && !RE.sheet.test(name) && !RE.sheetFolder.test(where)) return "exslides";
     return "sheet";
   }
   if (RE.notes.test(both)) return "notes";
@@ -137,6 +141,6 @@ export const docTypeStore = {
 };
 
 /** Art mit Änderung des Nutzers. */
-export function docTypeOf(file: Pick<CourseFile, "id" | "name" | "where" | "kind">, folder?: Pick<Folder, "category" | "name">): DocType {
+export function docTypeOf(file: Pick<CourseFile, "id" | "name" | "where" | "kind" | "shape">, folder?: Pick<Folder, "category" | "name">): DocType {
   return docTypeOverride(file.id) ?? autoDocType(file, folder);
 }

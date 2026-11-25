@@ -138,6 +138,12 @@ def cmd_orga(args: argparse.Namespace) -> None:
           "slots": sum(len(c["slots"]) for c in result["courses"].values()), "groups": result["myGroups"]})
 
 
+def cmd_pdf_shapes(args: argparse.Namespace) -> None:
+    from .pdfshape import refresh
+
+    emit({"type": "result", **refresh()})
+
+
 def cmd_sheet_deadlines(args: argparse.Namespace) -> None:
     from .sheets import refresh
 
@@ -259,6 +265,7 @@ def main() -> int:
     p = sub.add_parser("sheet-deadlines"); p.set_defaults(fn=cmd_sheet_deadlines)
     p = sub.add_parser("calendars"); p.set_defaults(fn=cmd_calendars)
     p = sub.add_parser("orga"); p.set_defaults(fn=cmd_orga)
+    p = sub.add_parser("pdf-shapes"); p.set_defaults(fn=cmd_pdf_shapes)
     p = sub.add_parser("calendar-test"); p.add_argument("--url", required=True); p.set_defaults(fn=cmd_calendar_test)
     p = sub.add_parser("sync"); p.add_argument("--auto", action="store_true"); p.set_defaults(fn=cmd_sync)
     for name, fn in (("mail-check", cmd_mail_check), ("mail-list", cmd_mail_list), ("mail-modify", cmd_mail_modify), ("mail-send", cmd_mail_send), ("mail-attachment", cmd_mail_attachment), ("file-text", cmd_file_text),

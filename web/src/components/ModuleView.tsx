@@ -4,14 +4,15 @@
 // Oben: Name (umbenennbar), Farbe, Teile, Aktionen. Dann „Coming up“ (Fristen + Wochenplan).
 // Dann Dateien nach Art („Lecture slides“, „Exercises“ …) mit Filter, Suche und Sortierung.
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { CalendarPlus, Check, GraduationCap, ChevronDown, ChevronLeft, ChevronRight, ExternalLink, FolderOpen, Pencil, RotateCcw, Search, X } from "lucide-react";
 import { Button, Swatch, colorOf, examPart, tone } from "./ui";
 import { CheckButton, DocTile, FileRow, FolderBadge, displayName } from "./files";
 import { linkSolutions } from "@/lib/solutions";
 import { openEvent, openNewEvent } from "./EventDialog";
 import { openStudy, setWeekReviewed, useReviewedWeeks, useWeeks } from "@/lib/study";
-import { type Role, type Week, weekLabel } from "@/lib/weeks";
+import { type Role, type Week, sessionHintText, sessionHints, weekLabel } from "@/lib/weeks";
+import { shortWhere } from "@/lib/names";
 import type { ClassSlot, Course, CourseColor, CourseFile, Deadline } from "@/lib/mock-data";
 import * as store from "@/lib/app-store";
 import { COURSE_COLORS, useApp } from "@/lib/app-store";
@@ -102,7 +103,7 @@ export function ModuleView({
 
       <ComingUp course={course} deadlines={deadlines} done={done} onToggle={onToggle} today={app.today} />
 
-      <Files course={course} files={files} freshIds={fresh.map((f) => f.id)} />
+      <Files course={course} files={files} freshIds={fresh.map((f) => f.id)} deadlines={deadlines} />
     </>
   );
 }
@@ -441,7 +442,7 @@ function SlotPicker({ course, slots }: { course: Course; slots: ClassSlot[] }) {
 
 type Sort = "name" | "newest";
 
-function Files({ course, files, freshIds }: { course: Course; files: CourseFile[]; freshIds: string[] }) {
+function Files({ course, files, freshIds, deadlines }: { course: Course; files: CourseFile[]; freshIds: string[]; deadlines: Deadline[] }) {
   const app = useApp();
   const color = colorOf(course);
   const [filter, setFilter] = useState<string>("all");
@@ -578,7 +579,7 @@ function Files({ course, files, freshIds }: { course: Course; files: CourseFile[
               </button>
             </div>
           )}
-          {group === "week" && <WeekFiles course={course} links={links} />}
+          {group === "week" && <WeekFiles course={course} links={links} deadlines={deadlines} />}
           {group === "type" && filter === "all" && recent.length > 0 && (
             <section>
               <h3 className="mb-2 text-[15px] font-bold">Recently added</h3>
@@ -626,9 +627,18 @@ function Files({ course, files, freshIds }: { course: Course; files: CourseFile[
 }
 
 // Dateien nach Themenwochen (lib/weeks.ts): neueste Woche oben, diese und letzte Woche offen; die Art steht als Tag an jeder Datei.
-function WeekFiles({ course, links }: { course: Course; links: ReturnType<typeof linkSolutions> }) {
+// Übungen stehen beim Thema; wann die Übung ist (oder die Abgabe), steht in der Unterzeile der Datei.
+function WeekFiles({ course, links, deadlines }: { course: Course; links: ReturnType<typeof linkSolutions>; deadlines: Deadline[] }) {
   const color = colorOf(course);
   const weeks = useWeeks(course);
+  const today = useApp().today;
+  const hints = useMemo(() => sessionHints(course, weeks, deadlines, today || new Date().toISOString().slice(0, 10)), [course, weeks, deadlines, today]);
+  const subOf = (f: CourseFile) => {
+    const h = hints.get(f.id);
+    if (!h) return undefined;
+    // Ordner einer ILIAS-Sitzung („Session Oct 28“) sagt dasselbe wie der Hinweis
+    return [sessionHintText(h), f.part, h.from === "ilias" ? null : shortWhere(f.where)].filter(Boolean).join(" · ");
+  };
   const reviewedWeeks = useReviewedWeeks(course.id);
   const ordered: Week[] = [...weeks.filter((w) => w.kind === "week").reverse(), ...weeks.filter((w) => w.kind !== "week")];
   const cur = Math.max(0, ordered.findIndex((w) => w.current));
@@ -678,7 +688,15 @@ function WeekFiles({ course, links }: { course: Course; links: ReturnType<typeof
             {open && (
               <ul className="px-1.5 pb-2">
                 {w.files.map((x) => (
-                  <FileRow key={x.file.id} file={x.file} folder={x.folder} color={color} solutions={links.solutionsOf.get(x.file.id)} sheet={links.sheetOf.get(x.file.id)} />
+                  <FileRow
+                    key={x.file.id}
+                    file={x.file}
+                    folder={x.folder}
+                    color={color}
+                    sub={subOf(x.file)}
+                    solutions={links.solutionsOf.get(x.file.id)}
+                    sheet={links.sheetOf.get(x.file.id)}
+                  />
                 ))}
               </ul>
             )}

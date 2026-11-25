@@ -4,7 +4,8 @@
 // Module bündeln + Kurznamen (desktop/lib/modules.js).
 //
 // Aufruf (aus dem Repo):  node eval/run-web.mjs [Filter] [-v] [--no-save]
-// Echte Fälle lesen Dateinamen aus ~/Uni ($EVAL_UNI_DIR), nie den Inhalt. Fehlt der Ordner, wird übersprungen.
+// Echte Fälle lesen Dateinamen aus ~/Uni ($EVAL_UNI_DIR) und das Seitenformat der PDFs (pdfshape.py), nie den
+// Inhalt. Fehlt der Ordner, wird übersprungen. Ausgedachte Fälle geben das Format in „shapes“ an.
 // Exit-Code 2, wenn ein vorher bestandener Fall jetzt fehlschlägt (Vergleich mit results/web.json).
 
 import { createRequire, register } from "node:module";
@@ -12,6 +13,7 @@ import { existsSync, readdirSync, readFileSync, statSync, writeFileSync, mkdirSy
 import { basename, dirname, join, relative, extname } from "node:path";
 import { homedir } from "node:os";
 import { fileURLToPath } from "node:url";
+import { spawnSync } from "node:child_process";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO = join(HERE, "..");
@@ -20,7 +22,7 @@ const { categoryOf, buildModules } = require(join(REPO, "desktop/lib/modules.js"
 register("./ts-resolve.mjs", import.meta.url); // „./doctype“ ohne Endung in weeks.ts
 const { autoDocType } = await import(join(REPO, "web/src/lib/doctype.ts"));
 const { linkSolutions } = await import(join(REPO, "web/src/lib/solutions.ts"));
-const { weeksOf } = await import(join(REPO, "web/src/lib/weeks.ts"));
+const { weeksOf, sessionHints } = await import(join(REPO, "web/src/lib/weeks.ts"));
 
 const args = process.argv.slice(2);
 const verbose = args.includes("-v") || args.includes("--verbose");
@@ -74,6 +76,21 @@ class Score {
   }
 }
 
+// Seitenformat wie in der App (pdfshape.py): echte PDFs über den Python-Helfer, ausgedachte Fälle über „shapes“.
+const PY = join(REPO, "services/ilias-sync/.venv/bin/python");
+const SHAPE_CODE = "import sys, json\nfrom pathlib import Path\nfrom studi_sync.pdfshape import shape_of\nroot = Path(sys.argv[1])\nprint(json.dumps({r: shape_of(root / r) for r in json.load(sys.stdin)}))";
+function shapesOf(c, root, rels) {
+  if (c.kind !== "real") return c.shapes ?? {};
+  const pdfs = rels.filter((r) => r.toLowerCase().endsWith(".pdf"));
+  if (!pdfs.length || !existsSync(PY)) return {};
+  const res = spawnSync(PY, ["-c", SHAPE_CODE, root], { cwd: join(REPO, "services/ilias-sync"), input: JSON.stringify(pdfs), encoding: "utf8" });
+  try {
+    return JSON.parse(res.stdout);
+  } catch {
+    return {};
+  }
+}
+
 const fileOf = (rel) => {
   const name = basename(rel);
   const where = dirname(rel) === "." ? "" : dirname(rel);
@@ -81,9 +98,10 @@ const fileOf = (rel) => {
   return { id: rel, name, where, kind: ext === "pdf" ? "pdf" : ext ? "other" : "other" };
 };
 
-function runDoctype(c, sc) {
+function runDoctype(c, sc, root) {
+  const shapes = shapesOf(c, root, Object.keys(c.files));
   for (const [rel, want] of Object.entries(c.files)) {
-    const f = fileOf(rel);
+    const f = { ...fileOf(rel), shape: shapes[rel] ?? undefined };
     const cat = categoryOf(f.name, f.where, c.part ?? "Course");
     const got = autoDocType(f, { category: cat, name: "" });
     const ok = Array.isArray(want) ? want.includes(got) : got === want;
@@ -142,8 +160,9 @@ function runWeeks(c, sc, uniRoot) {
     entries = Object.entries(c.files).map(([rel, day]) => ({ rel, mtime: new Date(`${day}T12:00:00`).getTime() }));
   }
   const cats = new Map();
+  const shapes = shapesOf(c, uniRoot, entries.map((e) => e.rel));
   for (const { rel, mtime } of entries) {
-    const f = { ...fileOf(rel), modifiedAt: mtime, updated: "", size: "", isNew: false };
+    const f = { ...fileOf(rel), path: rel, modifiedAt: mtime, updated: "", size: "", isNew: false, shape: shapes[rel] ?? undefined };
     const cat = categoryOf(f.name, f.where, c.part ?? "Course");
     if (!cats.has(cat)) cats.set(cat, { id: cat, name: cat, category: cat, files: [] });
     cats.get(cat).files.push(f);
@@ -152,6 +171,17 @@ function runWeeks(c, sc, uniRoot) {
   const weeks = weeksOf(course, { today: c.today ?? "2026-11-25" });
   const keyOf = new Map();
   for (const w of weeks) for (const x of w.files) keyOf.set(x.file.id, w.key);
+  // Wann ist die Übung? „exercise 2026-10-28 17:45“, „tutorial …“, „due …“ oder null (kein Hinweis)
+  if (c.hints) {
+    const deadlines = (c.deadlines ?? []).map((d) => ({ kind: "abgabe", time: "all day", ...d }));
+    const hints = sessionHints({ slots: c.slots ?? [] }, weeks, deadlines, c.today ?? "2026-11-25");
+    for (const [rel, want] of Object.entries(c.hints)) {
+      const h = hints.get(rel);
+      const got = h ? `${h.kind} ${h.date}${h.time ? ` ${h.time}` : ""}` : null;
+      if (got === want) sc.add("hints", { tp: 1 });
+      else sc.add("hints", want ? { fn: 1 } : { fp: 1 }, `${rel}: ${got ?? "kein Hinweis"}, erwartet ${want ?? "kein Hinweis"}`);
+    }
+  }
   for (const [rel, want] of Object.entries(c.expect)) {
     const got = keyOf.get(rel);
     if (got === undefined) {
@@ -182,7 +212,7 @@ for (const c of cases) {
     for (const r of missing) delete c.files[r];
   }
   const sc = new Score();
-  if (c.algo === "doctype") runDoctype(c, sc);
+  if (c.algo === "doctype") runDoctype(c, sc, root);
   else if (c.algo === "solutions") runSolutions(c, sc, root);
   else if (c.algo === "weeks") runWeeks(c, sc, root);
   else runModules(c, sc);
