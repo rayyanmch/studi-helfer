@@ -16,21 +16,24 @@ Filter: `… run.py beginn` (nur Fälle mit „beginn“ in der Id, speichert da
 - **Beginn** wird als „erster Termin je Art und Wochentag“ verglichen (Regel aus `schedule.js`), egal ob über „Beginn: …“ oder „ab Woche 3“ erkannt.
 - `optional` in einem Fall = darf gefunden werden, muss aber nicht (z. B. Anmeldefristen).
 - **Erwartete Werte nie an den Code anpassen.** Nur ändern, wenn Rayyan es bestätigt; Fragen unten sammeln.
+- **Fair vergleichen:** Neue Fälle zuerst mit dem alten Code laufen lassen und speichern (`run.py` ohne Filter), erst dann die Regel ändern und erneut laufen lassen. Sonst zählen die Fehler der neuen Fälle gegen die Änderung.
 
 ## Punktzahl
 
 | Runde | Datum | Python (Fehler · bestanden) | Web (Fehler · bestanden) | Änderung |
 |---|---|---|---|---|
 | 1 | 2026-11-25 | 57 · 51/71 | 13 · 11/17 | Prüfstand gebaut, noch keine Regel geändert |
+| 2 | 2026-11-25 | 67 → 59 · 51 → 55/76 | 13 · 11/17 | Beginn (orga.py, RULES_VERSION 5): „Gruppen“ = Übung, Beginn der Anmeldung zählt nicht, Beginn > 6 Wochen nach dem frühesten zählt nicht. 5 neue Fälle (67 = alter Code mit neuen Fällen). Seitenlimit verworfen, siehe unten |
 
 Laufzeit: orga 69 Dateien 1,3 s (langsamste 0,14 s), sheets 212 Dateien 13,6 s (langsamste 0,84 s: `uebung_1_rayyan_…pdf`, eigene eingescannte Abgabe). Pro Datei-Hash gecacht, läuft also je Datei einmal; nichts davon beim App-Start. Kein Handlungsbedarf bei der Geschwindigkeit.
 
 ## Offene Fehler (nach Nutzen)
 
-1. **Seitenlimit 25** (`orga.MAX_PAGES`, `sheets.ORGA_PAGES`): verpasste Vorlesungen und Klausuren. Echt: Visualisierung (Folie 88/99, 8 Termine + 2 Klausuren + Abgabe), Mathe (Klausuren + Bonustests Folie 29/31). Ausgedacht: `seiten/*`.
+1. **Seitenlimit 25** (`orga.MAX_PAGES`, `sheets.ORGA_PAGES`): verpasste Vorlesungen und Klausuren. Echt: Visualisierung (Folie 88/99, 8 Termine + 2 Klausuren + Abgabe), Mathe (Klausuren + Bonustests Folie 29/31). Ausgedacht: `seiten/*`. Runde 2 verworfen (siehe unten); nach dem Beginn-Fix sollte es sich lohnen, noch einmal versuchen. Danach bleiben bei Visualisierung Räume (9), doppelte Gruppen (3) und Nachklausur (5).
+   - Mathe-Klausur 16.02. hängt zusätzlich an „Prüfungstermin:“ (`EVENT_WORDS` hat `\bprüfung\b`, passt nicht auf das zusammengesetzte Wort).
 2. **Übungsgruppen werden zur Vorlesung**, wenn kein Art-Wort davorsteht („Übungstermine“ passt nicht auf `\w*übung\b`; „Gruppe N“ allein sagt Übung). `gruppen/zweimal-aufgelistet`, `raum/nach-der-liste`, `beginn/gruppen-ab-und-designuebung`.
 3. **Doppelte Gruppen ohne Nummer**, wenn Nummer und Zeit in getrennten Zeilen stehen (Visualisierung Folie 94).
-4. **Beginn falsch**: „Beginn der Gruppen ab 19.10.“ gilt für alles (auch die Vorlesung), „Ab 14.12.: Start Designübung“ wird Übungsbeginn. `beginn/gruppen-ab-und-designuebung`.
+4. ~~Beginn falsch~~ (Runde 2 behoben).
 5. **„Nachklausur Montag … 09:00–12:00“ wird Wochentermin** (`SKIP` hat `\bklausur`, „Nachklausur“ hat davor keine Wortgrenze). `falle/klausur-ist-kein-wochentermin`, Visualisierung nach Fix 1.
 6. **Zwei Wochentage, eine Uhrzeit** („dienstags und donnerstags von 8:15 bis 9:45“, „Mondays and Wednesdays, 4:00–5:30 pm“): erster Tag fehlt, im Englischen wird es eine Übung.
 7. **Tabellen-Zellen untereinander** (Art / Tag / Zeit / Raum je eine Zeile): `tabelle/zellen-untereinander`.
@@ -47,7 +50,7 @@ Laufzeit: orga 69 Dateien 1,3 s (langsamste 0,14 s), sheets 212 Dateien 13,6 s (
 
 ## Verworfene Versuche
 
-(noch keine)
+- **Runde 2, Seitenlimit auf 250** (orga + sheets): 57 → 58 Fehler. Visualisierung findet dann alle 8 Termine und die Klausuren, deckt aber Folgefehler im selben Fall auf (Räume fehlen 8×, Gruppen ohne Nummer doppelt 6×, Nachklausur als Wochentermin, Beginn falsch). Erst die Folgefehler beheben (Beginn: erledigt in Runde 2), dann erneut. Lesezeit war kein Problem: orga 2,3 s statt 1,3 s für alle Dateien, langsamste 0,43 s.
 
 ## Fragen an Rayyan
 

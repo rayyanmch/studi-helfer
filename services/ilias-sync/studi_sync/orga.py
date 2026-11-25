@@ -28,7 +28,7 @@ from .deadlines import PARENTS
 from .sheets import DEADLINE_WORDS, EVENT_WORDS, SOLUTION, _find_dates, _pdf_text
 from .textfix import WEEKDAY_RE, fix_year, normalize, weekday_before, weekday_of
 
-RULES_VERSION = 4  # 2: Überschrift „ROOM“ ist kein Raum, „start in lecture week 3“ gilt für die genannte Art; 3: Leistungspunkte (credits); 4: beides zusammen
+RULES_VERSION = 5  # 2: Überschrift „ROOM“ ist kein Raum, „start in lecture week 3“ gilt für die genannte Art; 3: Leistungspunkte (credits); 4: beides zusammen; 5: Beginn (Gruppen = Übung, Anmeldung zählt nicht, späte Planpunkte zählen nicht)
 CACHE = DATA_DIR / "orga-cache.json"
 OUTPUT = DATA_DIR / "orga-events.json"
 MAX_PAGES = 25  # Orga-Folien: Zeiten stehen meist auf den ersten 5–15 Folien
@@ -320,6 +320,12 @@ def _date_hits(text: str, ref: date) -> list[tuple[date, int, int]]:
 
 
 WEEK_WORDS = re.compile(r"\b(?:lecture|teaching|semester)\s+weeks?\b|vorlesungs(?:woche\w*|zeit)|semesterwoche\w*", re.I)
+# „Beginn der Gruppen ab 19.10.“, „Groups start on …“: Gruppen sind Übungsgruppen, nicht die Vorlesung
+GROUP_WORDS = re.compile(r"\b(?:gruppen?|groups?)\b", re.I)
+# „Die Anmeldung zu den Gruppen beginnt am 05.10.“ ist der Beginn der Anmeldung, nicht der Termine
+REGISTER = re.compile(r"\b(anmeld\w*|registr\w*|register\w*|einschreib\w*|sign[- ]?ups?|enrol\w*|belegung\w*)\b", re.I)
+# Ein Beginn liegt in den ersten Wochen; „Ab 14.12.: Start Projektübung“ ist ein Punkt im Semesterplan
+START_SPREAD_DAYS = 42
 
 
 def find_markers(lines: list[str], ref: date) -> dict[str, Any]:
@@ -328,8 +334,8 @@ def find_markers(lines: list[str], ref: date) -> dict[str, Any]:
     cancellations: list[dict[str, Any]] = []
     for i, line in enumerate(lines):
         window = f"{line} {lines[i + 1]}" if i + 1 < len(lines) and len(line) < 50 else line
-        if START_RE.search(line) and not SKIP.search(window):
-            typ = _type_in(WEEK_WORDS.sub(" ", window)) or "all"
+        if START_RE.search(line) and not SKIP.search(window) and not REGISTER.search(line):
+            typ = _type_in(WEEK_WORDS.sub(" ", window)) or ("exercise" if GROUP_WORDS.search(line) else "all")
             hits = _date_hits(window, ref)
             if hits:
                 d = hits[0][0].isoformat()
@@ -342,6 +348,9 @@ def find_markers(lines: list[str], ref: date) -> dict[str, Any]:
         if CANCEL_RE.search(line):
             for d, _, _ in _date_hits(window, ref):
                 cancellations.append({"date": d.isoformat(), "type": _type_in(line), "evidence": line[:160]})
+    if starts:
+        first = min(date.fromisoformat(v) for v in starts.values())
+        starts = {k: v for k, v in starts.items() if (date.fromisoformat(v) - first).days <= START_SPREAD_DAYS}
     return {"starts": starts, "weekOffsets": week_offsets, "cancellations": cancellations}
 
 

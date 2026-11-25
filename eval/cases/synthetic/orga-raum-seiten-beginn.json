@@ -72,6 +72,46 @@
      {"type": "exercise", "weekday": 3, "start": "10:00", "end": "11:30", "group": 2, "alternative": true}],
      "first": {"lecture": "2026-10-12", "exercise": "2026-10-19"}}},
 
+  {"id": "beginn/uebungsgruppen-starten",
+   "files": {"00_Organisatorisches.pdf": [["Vorlesung: Dienstag, 10:00-11:30, Hörsaal 1", "Gruppe 1: Mi 12:00 - 13:30", "Gruppe 2: Fr 08:00 - 09:30", "Die Gruppen starten am 26.10.2026."]]},
+   "orga": {"slots": [
+     {"type": "lecture", "weekday": 1, "start": "10:00", "end": "11:30", "alternative": false},
+     {"type": "exercise", "weekday": 2, "start": "12:00", "end": "13:30", "group": 1, "alternative": true},
+     {"type": "exercise", "weekday": 4, "start": "08:00", "end": "09:30", "group": 2, "alternative": true}],
+     "first": {"lecture": "2026-10-12", "exercise": "2026-10-26"}}},
+
+  {"id": "beginn/groups-start-english",
+   "files": {"Lecture_01_Introduction.pdf": [["Lectures: Thursdays, 14:00-15:30, Lecture Hall 4"], ["Exercises", "Group 1: Mondays, 12:00 - 13:30, Room 2.01", "Group 2: Tuesdays, 12:00 - 13:30, Room 2.01", "Groups start on Monday, 19.10.2026"]]},
+   "orga": {"slots": [
+     {"type": "lecture", "weekday": 3, "start": "14:00", "end": "15:30", "alternative": false},
+     {"type": "exercise", "weekday": 0, "start": "12:00", "end": "13:30", "group": 1, "alternative": true},
+     {"type": "exercise", "weekday": 1, "start": "12:00", "end": "13:30", "group": 2, "alternative": true}],
+     "first": {"lecture": "2026-10-12", "exercise": "2026-10-19"}}},
+
+  {"id": "beginn/gruppen-zweite-woche",
+   "files": {"00_Organisatorisches.pdf": [["Vorlesung: Mittwoch, 08:00-09:30, Hörsaal 3", "Übungsgruppen:", "Gruppe 1: Do 10:00 - 11:30", "Gruppe 2: Do 12:00 - 13:30", "Die Gruppen beginnen in der zweiten Woche."]]},
+   "orga": {"slots": [
+     {"type": "lecture", "weekday": 2, "start": "08:00", "end": "09:30", "alternative": false},
+     {"type": "exercise", "weekday": 3, "start": "10:00", "end": "11:30", "group": 1, "alternative": true},
+     {"type": "exercise", "weekday": 3, "start": "12:00", "end": "13:30", "group": 2, "alternative": true}],
+     "first": {"lecture": "2026-10-12", "exercise": "2026-10-19"}}},
+
+  {"id": "beginn/spaeter-planpunkt-falle",
+   "note": "„Ab 14.12.: Start Projektübung“ ist ein Punkt im Semesterplan, kein Beginn der wöchentlichen Übung.",
+   "files": {"00_Organisatorisches.pdf": [["Vorlesung: Mittwoch, 10:00-11:30, Hörsaal 1", "Übung: Montag, 16:00-17:30, Seminarraum 2", "Beginn: Mittwoch, 14.10.2026"], ["Semesterplan", "• Ab 14.12.26: Start Projektübung", "• Ab 11.01.27: Fragen zur Projektübung"]]},
+   "orga": {"slots": [
+     {"type": "lecture", "weekday": 2, "start": "10:00", "end": "11:30", "alternative": false},
+     {"type": "exercise", "weekday": 0, "start": "16:00", "end": "17:30", "alternative": false}],
+     "first": {"lecture": "2026-10-14", "exercise": "2026-10-14"}}},
+
+  {"id": "beginn/anmeldung-ist-kein-beginn-falle",
+   "note": "Beginn der Anmeldung (vor dem Semester) ist nicht der Beginn der Termine.",
+   "files": {"00_Organisatorisches.pdf": [["Vorlesung: Montag, 14:00-15:30, Hörsaal 2", "Übungsgruppen:", "Gruppe 1: Di 10:00 - 11:30", "Die Anmeldung zu den Gruppen beginnt am 05.10.2026 im ILIAS."]]},
+   "orga": {"slots": [
+     {"type": "lecture", "weekday": 0, "start": "14:00", "end": "15:30", "alternative": false},
+     {"type": "exercise", "weekday": 1, "start": "10:00", "end": "11:30", "group": 1, "alternative": true}],
+     "first": {"lecture": "2026-10-12", "exercise": "2026-10-12"}}},
+
   {"id": "beginn/english-week-3",
    "files": {"01_Introduction.pdf": [["Lectures: Wednesdays, 14:00-15:30, Lecture Hall 2"], ["Exercises", "Group 1: Mondays, 10:00 - 11:30, Room S234", "Exercise classes will start from week 3, on Monday 26th"]]},
    "orga": {"slots": [

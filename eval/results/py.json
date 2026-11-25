@@ -1,28 +1,28 @@
 {
  "when": "2026-11-25",
  "summary": {
-  "errors": 57,
-  "tp": 233,
-  "fp": 13,
+  "errors": 59,
+  "tp": 267,
+  "fp": 15,
   "fn": 44,
-  "passed": 51,
-  "ran": 71,
+  "passed": 55,
+  "ran": 76,
   "skipped": 0,
   "categories": {
    "orga.slots": [
-    59,
-    11,
-    25
+    70,
+    13,
+    27
    ],
    "orga.alt": [
-    59,
+    70,
     0,
     0
    ],
    "orga.first": [
-    51,
+    63,
     0,
-    3
+    1
    ],
    "orga.extras": [
     2,
@@ -50,7 +50,7 @@
     0
    ]
   },
-  "seconds": 15.1
+  "seconds": 15.6
  },
  "cases": {
   "real/bwl": {
@@ -237,15 +237,43 @@
   },
   "synthetic/beginn/gruppen-ab-und-designuebung": {
    "status": "fail",
-   "errors": 6,
+   "errors": 4,
    "details": [
     "orga.slots: verpasst exercise Mo 14:00–15:30 Gruppe 1 (gefunden: lecture Mo 14:00–15:30 Gruppe 1)",
     "orga.slots: verpasst exercise Do 10:00–11:30 Gruppe 2 (gefunden: lecture Do 10:00–11:30 Gruppe 2)",
     "orga.slots: Fehlalarm lecture Mo 14:00–15:30 Gruppe 1 ← „• Gruppe 1: Mo 14:00 - 15:30“",
-    "orga.slots: Fehlalarm lecture Do 10:00–11:30 Gruppe 2 ← „• Gruppe 2: Do 10:00 - 11:30“",
-    "orga.first: exercise Mo zuerst am 2026-10-12, erwartet 2026-10-19 (starts={'all': '2026-10-19', 'exercise': '2026-12-14'}, weekOffsets={})",
-    "orga.first: lecture Mi zuerst am 2026-10-21, erwartet 2026-10-14 (starts={'all': '2026-10-19', 'exercise': '2026-12-14'}, weekOffsets={})"
+    "orga.slots: Fehlalarm lecture Do 10:00–11:30 Gruppe 2 ← „• Gruppe 2: Do 10:00 - 11:30“"
    ]
+  },
+  "synthetic/beginn/uebungsgruppen-starten": {
+   "status": "fail",
+   "errors": 4,
+   "details": [
+    "orga.slots: verpasst exercise Mi 12:00–13:30 Gruppe 1 (gefunden: lecture Mi 12:00–13:30 Gruppe 1)",
+    "orga.slots: verpasst exercise Fr 08:00–09:30 Gruppe 2 (gefunden: lecture Fr 08:00–09:30 Gruppe 2)",
+    "orga.slots: Fehlalarm lecture Mi 12:00–13:30 Gruppe 1 ← „Gruppe 1: Mi 12:00 - 13:30“",
+    "orga.slots: Fehlalarm lecture Fr 08:00–09:30 Gruppe 2 ← „Gruppe 2: Fr 08:00 - 09:30“"
+   ]
+  },
+  "synthetic/beginn/groups-start-english": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/beginn/gruppen-zweite-woche": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/beginn/spaeter-planpunkt-falle": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/beginn/anmeldung-ist-kein-beginn-falle": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
   },
   "synthetic/beginn/english-week-3": {
    "status": "pass",
