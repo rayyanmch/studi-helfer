@@ -7,6 +7,7 @@ Gemeinsames Gedächtnis für alle KI-Agenten und Menschen im Projekt. Wird über
 
 Wer gerade woran arbeitet (Person, Aufgabe, betroffene Dateien). Eintragen beim Start, löschen wenn fertig.
 
+- 2026-11-25, Rayyans Agent (dritte Sitzung): **Drei Lücken aus dem Video „addictive apps“**: (1) leere Suche zeigt Vorschläge (`web/src/components/Overview.tsx` Suchansicht, `web/src/lib/search.ts`), (2) Zahl am Dock-Symbol für heute fällige Abgaben (`desktop/main.js`, `desktop/preload.js`, `web/src/lib/desktop.ts`), (3) Mac-Mitteilung bei neuer Mail (Mikas Bereich, Rayyans Wunsch: `web/src/lib/mail-data.ts` bzw. `desktop/lib/unimail.js`/`google.js`, nur klein). `backend.js` fasse ich nicht an.
 - 2026-11-25, Rayyans Agent (zweite Sitzung): **ILIAS-Lernmodule (Selbstlerneinheiten) als PDF** über die Druckansicht in den Ordner `Selbststudium` legen. Dateien: `services/ilias-sync/studi_sync/` (`pferd_run.py`, `sync.py`, neu `learnmods.py`), `desktop/lib/` (neu `learnmods.js`, `backend.js`).
 
 
