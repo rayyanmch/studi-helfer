@@ -48,6 +48,9 @@ const RE = {
   solution: /(l(?:ö|oe|o)sung(?!s?(?:verfahren|menge|ans[aä]tz|strategie|raum|methode))|solution|musterl|answers?(?![a-z])|antworten)/i,
   exam: /(altklausur|probeklausur|klausur|exam\b|exams\b|prüfung|pruefung|testat|midterm|final exam)/i,
   info: /(organisator|(?:^|[^a-zäöü])orga(?:[^a-zäöü]|$)|modulinfo|modul-?information|allgemeines|general information|course info|syllabus|einführungsveranstaltung)/i,
+  // Ankündigungen im Vorlesungsordner (Gremienwahlen, Lehrevaluation, Announcement); nicht „Wahlen“/„Evaluation“ allein,
+  // das sind auch Vorlesungsthemen
+  announce: /(gremienwahl|hochschulwahl|fachschaftswahl|senatswahl|stupa-?wahl|lehrevaluation|lehrveranstaltungsevaluation|course evaluation|ankündigung|announcement)/i,
   infoFolder: /^(grundlegende informationen|allgemein|organisator|orga\b|course info|course information|general|modul ?info|informationen zum modul|info\b)/i,
   tutorial: /(tutorium|tutorial|tutorien|\btut\b)/i,
   notes: /(mitschrift|skript|script\b|lecture notes|vorlesungsnotizen|handout|tafelbild|notes\b)/i,
@@ -74,7 +77,7 @@ export function autoDocType(file: Pick<CourseFile, "name" | "where" | "kind">, f
   if (RE.image.test(name)) return /(video|aufzeichnung|recording)/i.test(where) ? "video" : "other";
   if (RE.solution.test(name) || cat === "solutions") return "solution";
   if (cat === "exams" || RE.exam.test(name)) return "exam";
-  if (cat === "info" || RE.info.test(name) || (RE.infoFolder.test(where) && !/(woche|week)\s*\d/i.test(where) && cat !== "exams")) return "info";
+  if (cat === "info" || RE.info.test(name) || RE.announce.test(name) || (RE.infoFolder.test(where) && !/(woche|week)\s*\d/i.test(where) && cat !== "exams")) return "info";
   if (RE.tutorial.test(name)) return "tutorial";
   if (cat === "readings" || RE.reading.test(name)) return "reading";
   if (cat === "selfstudy" || RE.selfstudy.test(both)) return "selfstudy";

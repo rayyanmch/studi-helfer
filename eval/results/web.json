@@ -1,18 +1,18 @@
 {
  "when": "2026-11-25",
  "summary": {
-  "errors": 2,
-  "tp": 261,
+  "errors": 1,
+  "tp": 268,
   "fp": 0,
-  "fn": 2,
-  "passed": 28,
-  "ran": 30,
+  "fn": 1,
+  "passed": 30,
+  "ran": 31,
   "skipped": 0,
   "categories": {
    "doctype": [
-    208,
+    215,
     0,
-    1
+    0
    ],
    "solutions": [
     15,
@@ -64,11 +64,9 @@
    "details": []
   },
   "real/doctype/vis-vorlesung": {
-   "status": "fail",
-   "errors": 1,
-   "details": [
-    "doctype: Vorlesungsfolien/Vis-V02_Folien_Gremienwahlen_Vorlesung.pdf: lecture, erwartet info/other (Ordner-Art lectures)"
-   ]
+   "status": "pass",
+   "errors": 0,
+   "details": []
   },
   "real/doctype/vis-uebung": {
    "status": "pass",
@@ -101,6 +99,11 @@
    "details": []
   },
   "synthetic/doctype/uebungsfolien-mit-nummer": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/doctype/ankuendigungen": {
    "status": "pass",
    "errors": 0,
    "details": []

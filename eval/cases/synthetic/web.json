@@ -62,6 +62,16 @@
      "Slides Lecture 5.pdf": "lecture"
    }},
 
+  {"algo": "doctype", "id": "doctype/ankuendigungen", "part": "Lecture",
+   "files": {
+     "Vorlesungsfolien/Folien_Hochschulwahlen_2026.pdf": "info",
+     "Vorlesungen/Lehrevaluation_Ergebnisse.pdf": "info",
+     "Lectures/Announcement - room change.pdf": "info",
+     "Vorlesungen/Ankündigung Gastvortrag.pdf": "info",
+     "Vorlesungen/Vorlesung 5 - Wahlen und Wahlsysteme.pdf": "lecture",
+     "Lectures/Lecture 9 - Evaluation.pdf": "lecture"
+   }},
+
   {"algo": "doctype", "id": "doctype/bilder", "part": "Lecture",
    "files": {
      "Vorlesungen/Abbildung_3.png": "other",

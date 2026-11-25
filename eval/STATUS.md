@@ -24,6 +24,7 @@ Filter: `… run.py beginn` (nur Fälle mit „beginn“ in der Id, speichert da
 |---|---|---|---|---|
 | 1 | 2026-11-25 | 57 · 51/71 | 13 · 11/17 | Prüfstand gebaut, noch keine Regel geändert |
 | 2 | 2026-11-25 | 67 → 59 · 51 → 55/76 | 13 · 11/17 | Beginn (orga.py, RULES_VERSION 5): „Gruppen“ = Übung, Beginn der Anmeldung zählt nicht, Beginn > 6 Wochen nach dem frühesten zählt nicht. 5 neue Fälle (67 = alter Code mit neuen Fällen). Seitenlimit verworfen, siehe unten |
+| 22 | 2026-11-25 | 0 · 138/138 | 6 → 1 · 28 → 30/31 | Ankündigungen sind Kurs-Info (doctype.ts `RE.announce`): Gremien-/Hochschul-/Fachschaftswahl, Lehrevaluation, Ankündigung, Announcement. „Wahlen und Wahlsysteme“ und „Lecture 9 - Evaluation“ bleiben Vorlesung (Fallen). Echter Fall Visualisierung besteht jetzt auch bei der Dokument-Art. lint + build ok. 1 neuer Fall mit 6 Dateien |
 | 21 | 2026-11-25 | 0 · 138/138 | 7 → 2 · 27 → 28/30 | Bilder (doctype.ts `RE.image`: gif, png, jpg, svg, webp …) sind „File“, in Video-/Aufzeichnungsordnern „Video“, nie Vorlesung (echt: GIF bei Visualisierung). Gegenproben: PDFs mit „Bilder“ im Namen bleiben Vorlesung. lint + build ok. 1 neuer Fall mit 6 Dateien |
 | 20 | 2026-11-25 | 0 · 138/138 | 6 → 3 · 25 → 27/29 | Übungsfolien mit Nummer oder Wörtern dazwischen (doctype.ts `exslides`): „Exercise 3 Slides“, „Exercise_05_slides“, „Slides Exercise Session 7“. Gegenproben „Exercises 3“ (Blatt) und „Slides Lecture 5“ (Vorlesung) halten. lint + build ok. 1 neuer Fall mit 5 Dateien |
 | 19 | 2026-11-25 | 0 · 138/138 | 10 → 4 · 23 → 25/28 | Lösungs-Wort (solutions.ts, doctype.ts, modules.js `CATEGORIES`): „answers_week3“, „Answers-Sheet4“, „HW2_answer_key“ zählen; „Lösungsverfahren/-mengen/-strategien/-ansatz/-raum/-methode“ sind keine Lösung (Vorlesungsthemen); „Lösungsvorschlag“ bleibt Lösung. lint + build in web/ ok. 2 neue Fälle mit 8 Dateien, davon 3 Fallen |
@@ -50,7 +51,8 @@ Runde 12: orga langsamste Datei 0,86 s (`00_AlgebraGrundwissen.pdf`, 84 Seiten).
 ## Offene Fehler (nach Nutzen)
 
 1. ~~Seitenlimit 25~~ (Runde 3), ~~„Prüfungstermin“~~ (Runde 4), ~~Bonustests~~ (Runde 5).
-   - **Python-Prüfstand komplett grün (Runde 16).** Web noch 2 Fehler: „Gremienwahlen“-Folien (echt Visualisierung, Ankündigung statt Vorlesung), Kurzname „LinA I“ (wartet auf Frage 5, kann der Loop nicht selbst lösen).
+   - **Python komplett grün (Runde 16), Web bis auf „LinA I“ grün (Runde 22).** Der letzte Fehler wartet auf Frage 5 und lässt sich nach Regel 5 nicht im Loop lösen.
+   - Nächster sinnvoller Schritt: **Titel prüfen** (Punkt 13). Echter sichtbarer Fehler: Visualisierung-Klausur heißt „Organisatorisches exam exam“. Dafür `title` in erwarteten sheets-Einträgen prüfen (run.py), dann beheben. Danach Prüfstand für `weeks.ts`.
    - Wichtig bei modules.js: Modulnamen sind Ordnernamen in `~/Uni` (`applyLayout` verschiebt). Vor dem Behalten immer alt/neu für Rayyans config.json vergleichen (Skript in Runde 17: `buildModules` mit `object-parents.json`).
 2. ~~Übungsgruppen werden zur Vorlesung~~ (Runde 10).
 3. ~~Doppelte Gruppen ohne Nummer~~ (Runde 11).
