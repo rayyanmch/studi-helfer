@@ -1,33 +1,33 @@
 {
  "when": "2026-11-25",
  "summary": {
-  "errors": 49,
-  "tp": 405,
-  "fp": 23,
-  "fn": 26,
-  "passed": 90,
-  "ran": 104,
+  "errors": 46,
+  "tp": 421,
+  "fp": 21,
+  "fn": 25,
+  "passed": 96,
+  "ran": 108,
   "skipped": 0,
   "categories": {
    "orga.slots": [
-    107,
-    21,
+    111,
+    19,
     11
    ],
    "orga.alt": [
-    107,
+    111,
     0,
     0
    ],
    "orga.first": [
-    80,
+    84,
     0,
     0
    ],
    "orga.extras": [
-    2,
+    6,
     0,
-    1
+    0
    ],
    "orga.credits": [
     5,
@@ -50,7 +50,7 @@
     0
    ]
   },
-  "seconds": 34.8
+  "seconds": 36.2
  },
  "cases": {
   "real/bwl": {
@@ -87,7 +87,7 @@
   },
   "real/visualisierung-vorlesung": {
    "status": "fail",
-   "errors": 15,
+   "errors": 14,
    "details": [
     "orga.room: lecture Mi 10:00–11:30 Raum „None“, erwartet „Hörsaal 230“",
     "orga.room: lecture Mi 11:45–13:15 Raum „None“, erwartet „Hörsaal 230“",
@@ -97,7 +97,6 @@
     "orga.room: exercise Do 10:00–11:30 Gruppe 4 Raum „None“, erwartet „Weyertal 121“",
     "orga.room: exercise Do 12:00–13:30 Gruppe 5 Raum „None“, erwartet „Weyertal 121“",
     "orga.room: exercise Do 14:00–15:30 Gruppe 6 Raum „None“, erwartet „Weyertal 121“",
-    "orga.slots: Fehlalarm exercise Mo 09:00–12:00",
     "orga.slots: Fehlalarm exercise Mo 14:00–15:30",
     "orga.slots: Fehlalarm exercise Mo 16:00–17:30",
     "orga.slots: Fehlalarm exercise Di 14:00–15:30",
@@ -122,11 +121,9 @@
    "details": []
   },
   "synthetic/falle/klausur-ist-kein-wochentermin": {
-   "status": "fail",
-   "errors": 1,
-   "details": [
-    "orga.slots: Fehlalarm lecture Mo 09:00–12:00 ← „• Nachklausur Montag, 15. März 2027 09:00 - 12:00 Uhr“"
-   ]
+   "status": "pass",
+   "errors": 0,
+   "details": []
   },
   "synthetic/falle/lehramt": {
    "status": "pass",
@@ -320,12 +317,30 @@
    "errors": 0,
    "details": []
   },
+  "synthetic/zusatz/weiterer-termin": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/zusatz/nachholtermin": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/zusatz/extra-meeting-en": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/falle/zusaetzliche-sprechstunde": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
   "synthetic/zusatz/termin": {
-   "status": "fail",
-   "errors": 1,
-   "details": [
-    "orga.extras: verpasst {\"date\": \"2026-11-20\", \"start\": \"12:00\", \"end\": \"13:30\"}"
-   ]
+   "status": "pass",
+   "errors": 0,
+   "details": []
   },
   "synthetic/zeit/mittwochs-gedankenstrich": {
    "status": "pass",

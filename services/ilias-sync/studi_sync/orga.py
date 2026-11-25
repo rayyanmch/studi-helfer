@@ -25,10 +25,10 @@ from typing import Any, Optional
 
 from .common import DATA_DIR, load_config, read_json, write_json
 from .deadlines import PARENTS
-from .sheets import DEADLINE_WORDS, EVENT_WORDS, SOLUTION, _find_dates, _pdf_text
+from .sheets import _MONTH_RE, DEADLINE_WORDS, EVENT_WORDS, SOLUTION, _find_dates, _pdf_text
 from .textfix import WEEKDAY_RE, fix_year, normalize, weekday_before, weekday_of
 
-RULES_VERSION = 9  # 2: Überschrift „ROOM“ ist kein Raum, „start in lecture week 3“ gilt für die genannte Art; 3: Leistungspunkte (credits); 4: beides zusammen; 5: Beginn (Gruppen = Übung, Anmeldung zählt nicht, späte Planpunkte zählen nicht); 6: bis Seite 200; 7: Aufzählung von Wochentagen („Di/Do 14-16“); 8: erste Vorlesung ohne Orga-Namen (nur Termine mit Art oder Raum); 9: Tabellenzellen Tag + Uhrzeit, Sprechstunde als Überschrift
+RULES_VERSION = 10  # 2: Überschrift „ROOM“ ist kein Raum, „start in lecture week 3“ gilt für die genannte Art; 3: Leistungspunkte (credits); 4: beides zusammen; 5: Beginn (Gruppen = Übung, Anmeldung zählt nicht, späte Planpunkte zählen nicht); 6: bis Seite 200; 7: Aufzählung von Wochentagen („Di/Do 14-16“); 8: erste Vorlesung ohne Orga-Namen (nur Termine mit Art oder Raum); 9: Tabellenzellen Tag + Uhrzeit, Sprechstunde als Überschrift; 10: Zusatz-/Nachholtermine, Datum mit Monatsnamen = Einzeltermin
 CACHE = DATA_DIR / "orga-cache.json"
 OUTPUT = DATA_DIR / "orga-events.json"
 # Orga-Folien ganz lesen: oft stehen die Zeiten erst nach Vorstellung und Motivation (Visualisierung: Folie 88 von 109).
@@ -157,6 +157,11 @@ def _minutes(h: str, m: Optional[str]) -> int:
     return int(h) * 60 + int(m or 0)
 
 
+# Datum zwischen Wochentag und Uhrzeit → Einzeltermin, kein Wochentermin („Wednesday, 25 November 2026, 18:00“)
+DATE_IN_GAP = re.compile(
+    r"\d{1,2}\.\s?\d{1,2}\.|\d{4}-\d{2}-\d{2}|\b\d{1,2}\.?\s+(?:" + _MONTH_RE + r")\b|\b(?:" + _MONTH_RE + r")\.?\s+\d{1,2}\b", re.I)
+
+
 def _ranges_after(text: str) -> list[re.Match]:
     """Zeitspannen direkt hinter einem Wochentag, bis zum nächsten Wochentag."""
     out: list[re.Match] = []
@@ -170,7 +175,7 @@ def _ranges_after(text: str) -> list[re.Match]:
         gap = text[pos:m.start()]
         if (not out and m.start() > 26) or (out and len(gap) > 14):
             break
-        if re.search(r"\d{1,2}\.\d{1,2}\.", gap):
+        if DATE_IN_GAP.search(gap):
             break  # Datum dazwischen → Einzeltermin, kein Wochentermin
         out.append(m)
         pos = m.end()
@@ -340,7 +345,9 @@ CANCEL_RE = re.compile(
     r"\b(entfällt|entfallen|fällt\s+(?:\w+\s+){0,2}aus|fallen\s+(?:\w+\s+){0,2}aus|ausfall|cancel+ed|no (?:lecture|class|exercise|tutorial)s?|"
     r"keine (?:vorlesung|übung|veranstaltung|tutorien|tutorium))\b", re.I)
 EXTRA_WORDS = re.compile(
-    r"\b(probeklausur|mock exam|klausureinsicht|einsicht|exam review|fragestunde|q\s?&\s?a|repetitorium|"
+    # „Zusätzlicher Termin“, „Weiterer Termin“, „Nachholtermin“, „Extra meeting“
+    r"\b((?:zusätzliche[rsn]?|weitere[rsn]?|extra|additional|ersatz|nachhol)\s*(?:termine?|sitzung|session|class|meeting|lecture)|"
+    r"probeklausur|mock exam|klausureinsicht|einsicht|exam review|fragestunde|q\s?&\s?a|repetitorium|"
     r"einführungsveranstaltung|einführung|kick.?off|zusatztermin|ersatztermin|sondertermin|gastvortrag|guest lecture|exkursion|"
     r"\w*veranstaltung|\w*sitzung|session|\w*vorlesung|\w*übung|tutorium|lecture|exercise|tutorial)\b", re.I)
 EXTRA_TITLES = [
@@ -351,7 +358,7 @@ EXTRA_TITLES = [
     (re.compile(r"gastvortrag|guest lecture", re.I), "Guest lecture"),
     (re.compile(r"exkursion", re.I), "Field trip"),
 ]
-EXTRA_HINT = re.compile(r"\b(ausnahmsweise|zusätzlich|zudem|außerdem|extra|additional|zusatz\w*|ersatz\w*|sonder\w*)\b", re.I)
+EXTRA_HINT = re.compile(r"\b(ausnahmsweise|zusätzlich\w*|zudem|außerdem|extra|additional|zusatz\w*|ersatz\w*|sonder\w*|weitere[rsn]?|nachhol\w*)\b", re.I)
 EXAM_ONLY = re.compile(r"\b(klausur|exam|prüfung|testat|zwischentest)\b", re.I)
 
 
@@ -441,7 +448,7 @@ def find_extras(lines: list[str], ref: date) -> list[dict[str, Any]]:
             continue
         if EVENT_WORDS.search(window) and not re.search(r"probeklausur|einsicht", window, re.I):
             continue
-        if CANCEL_RE.search(window) or START_RE.search(line) or re.search(r"lehramt|didaktik", window, re.I):
+        if CANCEL_RE.search(window) or START_RE.search(line) or OFFICE.search(window) or re.search(r"lehramt|didaktik", window, re.I):
             continue
         for d, _, e in _date_hits(line, ref):
             seg = line[e:e + 70]
