@@ -103,6 +103,27 @@
    "files": {"Syllabus.pdf": [["Final exam: February 18, 2027, 9:00 am, Main Hall"]]},
    "sheets": {"Syllabus.pdf": [{"date": "2027-02-18", "kind": "klausur", "time": "09:00"}]}},
 
+  {"id": "termin/kurztest",
+   "files": {"Organisatorisches.pdf": [["Leistungen", "Kurztest: Donnerstag, 03.12.2026, 10:15 Uhr (in der Übung)"]]},
+   "sheets": {"Organisatorisches.pdf": [{"date": "2026-12-03", "kind": "termin", "time": "10:15"}]}},
+
+  {"id": "termin/online-test-en",
+   "files": {"Syllabus.pdf": [["Assessment", "Online test 2: 14 January 2027, 18:00 (Moodle)"]]},
+   "sheets": {"Syllabus.pdf": [{"date": "2027-01-14", "kind": "termin", "time": "18:00"}]}},
+
+  {"id": "termin/quiz",
+   "files": {"Lecture_01_Introduction.pdf": [["Grading", "Quiz 1 on Nov 26, 2026 at 9:00 am"]]},
+   "sheets": {"Lecture_01_Introduction.pdf": [{"date": "2026-11-26", "kind": "termin", "time": "09:00"}]}},
+
+  {"id": "falle/testfall-mit-datum",
+   "note": "Testfall-Tabelle aus Softwaretechnik: Datum ist Eingabe, kein Termin.",
+   "files": {"01_Introduction.pdf": [["Testfälle", "Test 3: Eingabe 05.11.2026 → Ausgabe ungültig", "Test 4: Eingabe 31.02.2026 → Fehler"]]},
+   "sheets": {"01_Introduction.pdf": []}},
+
+  {"id": "falle/test-in-studie",
+   "files": {"00_Organisatorisches.pdf": [["Motivation", "Im Test am 12.11.2026 lag die Fehlerquote bei 3 %", "Unit tests for the release on 01.12.2026 must pass"]]},
+   "sheets": {"00_Organisatorisches.pdf": []}},
+
   {"id": "termin/bonustest",
    "note": "Bonustests sind Termine, keine Klausur (keine KLIPS-Anmeldung).",
    "files": {"Modulinfo.pdf": [["Tests für Bonuspunkte", "Test 1 Mi. 02.12.2026 12-12:30 Uhr: Beweisverfahren", "Test 2 Mi. 20.01.2027 12-12:30 Uhr: Folgen und Reihen"]]},

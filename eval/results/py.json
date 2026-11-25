@@ -1,12 +1,12 @@
 {
  "when": "2026-11-25",
  "summary": {
-  "errors": 57,
-  "tp": 313,
+  "errors": 53,
+  "tp": 320,
   "fp": 22,
-  "fn": 35,
-  "passed": 67,
-  "ran": 86,
+  "fn": 31,
+  "passed": 74,
+  "ran": 91,
   "skipped": 0,
   "categories": {
    "orga.slots": [
@@ -35,9 +35,9 @@
     0
    ],
    "sheets": [
-    43,
+    50,
     2,
-    5
+    1
    ],
    "orga.room": [
     30,
@@ -50,7 +50,7 @@
     0
    ]
   },
-  "seconds": 17.5
+  "seconds": 17.8
  },
  "cases": {
   "real/bwl": {
@@ -64,12 +64,9 @@
    "details": []
   },
   "real/mathe-vorlesung": {
-   "status": "fail",
-   "errors": 2,
-   "details": [
-    "sheets: verpasst 00_ModulinformationenMathe1.pdf: termin 2026-12-02 12:00",
-    "sheets: verpasst 00_ModulinformationenMathe1.pdf: termin 2027-01-20 12:00"
-   ]
+   "status": "pass",
+   "errors": 0,
+   "details": []
   },
   "real/mathe-uebung": {
    "status": "pass",
@@ -551,13 +548,35 @@
    "errors": 0,
    "details": []
   },
+  "synthetic/termin/kurztest": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/termin/online-test-en": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/termin/quiz": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/falle/testfall-mit-datum": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/falle/test-in-studie": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
   "synthetic/termin/bonustest": {
-   "status": "fail",
-   "errors": 2,
-   "details": [
-    "sheets: verpasst Modulinfo.pdf: termin 2026-12-02 12:00",
-    "sheets: verpasst Modulinfo.pdf: termin 2027-01-20 12:00"
-   ]
+   "status": "pass",
+   "errors": 0,
+   "details": []
   }
  }
 }

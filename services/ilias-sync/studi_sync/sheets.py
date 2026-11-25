@@ -17,7 +17,7 @@ from .common import DATA_DIR, load_config, read_json, write_json
 from .deadlines import deadline_id
 from .textfix import fix_year, normalize, weekday_before
 
-RULES_VERSION = 8  # erhöhen, wenn sich die Regeln ändern → alles wird neu ausgewertet; 7: Orga-Dateien bis Seite 200; 8: Prüfungstermin/Modulprüfung/examination, Anmeldeschluss ist keine Klausur
+RULES_VERSION = 9  # erhöhen, wenn sich die Regeln ändern → alles wird neu ausgewertet; 7: Orga-Dateien bis Seite 200; 8: Prüfungstermin/Modulprüfung/examination, Anmeldeschluss ist keine Klausur; 9: Bonus-/Kurztests und Quiz als Termin, Zeitraum „12-12:30 Uhr“ beginnt um 12:00
 CACHE = DATA_DIR / "sheet-deadlines-cache.json"
 OUTPUT = DATA_DIR / "sheet-deadlines.json"
 MAX_PAGES = 8  # Fristen und Klausurtermine stehen fast immer auf den ersten Seiten (Orga-Folien)
@@ -49,6 +49,9 @@ EXAM_WORDS = re.compile(r"(testat\w*|" + _KLAUSUR + "|" + _EXAM + "|" + _PRUEFUN
 # „Anmeldung zur Klausur bis 20.01.“, „Prüfungseinsicht: 10.03.“: Datum gehört nicht zur Klausur
 NOT_EXAM_DATE = re.compile(r"\b(\w*anmeld\w*|\w*abmeld\w*|rücktritt\w*|registr\w*|register\w*|einschreib\w*|sign[- ]?ups?|"
                            r"enrol\w*|\w*einsicht\w*|exam review)\b", re.I)
+# Bonus-/Kurztests und Quizze sind Termine. Nur nummeriert oder zusammengesetzt („Test 1“, „Kurztest“, „Online test“),
+# und nur mit Uhrzeit, sonst sind es Testfälle („Test 3: Eingabe 05.11.2026“) oder Sätze („Im Test am 12.11.“).
+TEST_WORDS = re.compile(r"\b((?:bonus|kurz|online|e|lern|eingangs|übungs)[- ]?tests?|tests?\s+\d{1,2}|quiz(?:zes)?(?:\s+\d{1,2})?)\b", re.I)
 IGNORE_LINE = re.compile(r"\b(published|veröffentlicht|ausgabe|ausgegeben|issued|release[d]?|erstellt|stand)\b", re.I)
 
 MONTHS = {
@@ -126,7 +129,7 @@ _NOISE = re.compile(
 # Häufige deutsche Wörter in Fristtiteln → Englisch (die App ist englisch; Rest bleibt im Original)
 _ENGLISH = [
     (r"\b(?:nachklausur|wiederholungsklausur|wiederholungsprüfung|nachprüfung)(?:termin|datum)?\b", "Resit exam"),
-    (r"\bprobeklausur\b", "Mock exam"), (r"\b(?:end|abschluss)?klausur(?:termin|datum|tag)?\b", "Exam"),
+    (r"\bprobeklausur\b", "Mock exam"), (r"\bkurztest\b", "Short test"), (r"\bbonustest\b", "Bonus test"), (r"\b(?:end|abschluss)?klausur(?:termin|datum|tag)?\b", "Exam"),
     (r"\b(?:modul|abschluss|semester|end)?pr(?:ü|ue)fung(?:stermin|sdatum|stag)?\b", "Exam"),
     (r"\b(?:written |final )?examination\b", "Exam"), (r"\bzwischentest\b", "Midterm test"), (r"\babgabefrist\b", "Deadline"),
     (r"\babgabe\b", "Submit"), (r"\bpräsentation\b", "Presentation"), (r"\bvortrag\b", "Talk"),
@@ -161,7 +164,11 @@ def _find_time(text: str) -> Optional[str]:
     for m in TIME_PATTERN.finditer(text):
         h, minute, uhr = int(m.group("h")), m.group("min"), (m.group("uhr") or "").lower()
         if minute is None and not uhr:
-            continue  # nackte Zahl ist keine Uhrzeit
+            # Anfang eines Zeitraums („12-12:30 Uhr“, „2–3:30 pm“): die Uhr-Angabe am Ende gilt für beide Zeiten
+            rng = re.match(r"\s*(?:-|–|bis|to)\s*(?:[01]?\d|2[0-3])(?:[:.][0-5]\d)?\s*(uhr|h\b|am\b|pm\b)", text[m.end():], re.I)
+            if not rng:
+                continue  # nackte Zahl ist keine Uhrzeit
+            uhr = rng.group(1).lower()
         if m.group("min") and "." in m.group(0) and not uhr:
             continue  # „10.11“ wäre eher ein Datum
         if uhr == "pm" and h < 12:
@@ -187,6 +194,9 @@ def extract(text: str, ref: date) -> list[dict[str, Any]]:
         if IGNORE_LINE.search(line) and not DEADLINE_WORDS.search(line):
             continue
         kw = DEADLINE_WORDS.search(line) or EVENT_WORDS.search(line)
+        weak = None  # „Test 1“, „Quiz“: zählt nur mit Uhrzeit (sonst Testfälle, Studien, „Unit tests“)
+        if not kw:
+            kw = weak = TEST_WORDS.search(line)
         if not kw:
             continue
         # Datum in derselben Zeile hinter/um das Fristwort, sonst in der nächsten Zeile („Abgabe:\n24.11.“).
@@ -201,7 +211,10 @@ def extract(text: str, ref: date) -> list[dict[str, Any]]:
             evidence = f"{line} {lines[i + 1]}"
         if not hits:
             continue
-        kind = ("klausur" if EXAM_WORDS.fullmatch(kw.group(0)) else "termin") if EVENT_WORDS.search(kw.group(0)) else "abgabe"
+        if weak:
+            kind = "termin"
+        else:
+            kind = ("klausur" if EXAM_WORDS.fullmatch(kw.group(0)) else "termin") if EVENT_WORDS.search(kw.group(0)) else "abgabe"
         # Titel bevorzugt aus dem Text vor dem Datum („Klausur: 16.02., 10 Uhr, HS C“ → „Exam“, ohne Raum)
         pre = window[: hits[0][1]] if win_line == i else f"{line} {window[: hits[0][1]]}"
         if kind != "abgabe" and NOT_EXAM_DATE.search(pre):
@@ -226,6 +239,8 @@ def extract(text: str, ref: date) -> list[dict[str, Any]]:
                 follow = lines[win_line + 1] if win_line + 1 < len(lines) else ""
                 if len(follow) < 25:
                     when = _find_time(follow)
+            if weak and not when:
+                continue
             found.append({
                 "date": day,
                 "time": when,

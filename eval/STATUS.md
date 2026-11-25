@@ -24,6 +24,7 @@ Filter: `… run.py beginn` (nur Fälle mit „beginn“ in der Id, speichert da
 |---|---|---|---|---|
 | 1 | 2026-11-25 | 57 · 51/71 | 13 · 11/17 | Prüfstand gebaut, noch keine Regel geändert |
 | 2 | 2026-11-25 | 67 → 59 · 51 → 55/76 | 13 · 11/17 | Beginn (orga.py, RULES_VERSION 5): „Gruppen“ = Übung, Beginn der Anmeldung zählt nicht, Beginn > 6 Wochen nach dem frühesten zählt nicht. 5 neue Fälle (67 = alter Code mit neuen Fällen). Seitenlimit verworfen, siehe unten |
+| 5 | 2026-11-25 | 60 → 53 · 69 → 74/91 | 13 · 11/17 | Tests (sheets.py RULES_VERSION 9): „Test 1“, „Bonus-/Kurz-/Online-Test“, „Quiz 1“ sind Termine, aber nur mit Uhrzeit (Testfälle und Sätze wie „Im Test am …“ bleiben draußen); Zeitraum „12-12:30 Uhr“ beginnt um 12:00 (vorher 12:30). 5 neue Fälle, davon 2 Fallen. Echter Fall Mathe besteht jetzt komplett |
 | 4 | 2026-11-25 | 64 → 57 · 61 → 67/86 | 13 · 11/17 | Klausur-Wörter (sheets.py RULES_VERSION 8): „Prüfungstermin/-datum“, „Modulprüfung“, „Klausurdatum“, „Written examination“; „Anmeldung zur Klausur bis …“, „Prüfungsanmeldung“, „Prüfungseinsicht“ sind keine Klausurtermine mehr (war ein Fehlalarm); „Mock exam“ ist Termin, nicht Klausur; englische Titel für die neuen Wörter. 6 neue Fälle. Mathe: beide Klausuren gefunden |
 | 3 | 2026-11-25 | 63 → 58 · 56 → 61/80 | 13 · 11/17 | Seitenlimit: Orga-Dateien bis Seite 200 (orga.py RULES_VERSION 6, sheets.py 7, `ORGA_HINT` kennt jetzt auch Kick-off/Überblick/Woche 0), Zeilen mit „Beispiel/z. B./example“ sind keine Wochentermine. 4 neue Fälle. Visualisierung: alle 8 Termine, Beginn und beide Klausuren + Abgabe gefunden; offen dort nur noch Räume und Wahltermin-Doppel |
 
@@ -31,8 +32,8 @@ Laufzeit: orga 69 Dateien 1,3 s (langsamste 0,14 s), sheets 212 Dateien 13,6 s (
 
 ## Offene Fehler (nach Nutzen)
 
-1. ~~Seitenlimit 25~~ (Runde 3), ~~„Prüfungstermin“~~ (Runde 4).
-   - **Bonustests** („Test 1 Mi. 02.12.2026 12-12:30 Uhr“) fehlen: verpasste Termine (echt Mathe, `termin/bonustest`). Größter Nutzen unter den offenen.
+1. ~~Seitenlimit 25~~ (Runde 3), ~~„Prüfungstermin“~~ (Runde 4), ~~Bonustests~~ (Runde 5).
+   - Nächster großer Nutzen: **Orga-Folie in Datei ohne Orga-Namen** (Punkt 8, verpasste Termine) und **zwei Wochentage, eine Uhrzeit** (Punkt 6, verpasster Termin); danach Übungsgruppen-Art (2) und Doppel (3), die viele Fehler auf einmal bringen.
 2. **Übungsgruppen werden zur Vorlesung**, wenn kein Art-Wort davorsteht („Übungstermine“ passt nicht auf `\w*übung\b`; „Gruppe N“ allein sagt Übung). `gruppen/zweimal-aufgelistet`, `raum/nach-der-liste`, `beginn/gruppen-ab-und-designuebung`.
 3. **Doppelte Gruppen ohne Nummer**, wenn Nummer und Zeit in getrennten Zeilen stehen (Visualisierung Folie 94).
 4. ~~Beginn falsch~~ (Runde 2 behoben).
@@ -43,7 +44,7 @@ Laufzeit: orga 69 Dateien 1,3 s (langsamste 0,14 s), sheets 212 Dateien 13,6 s (
 9. **Raum**: Zeile davor („Veranstaltungsort: …“), unter der ganzen Liste („Abhaltungsort:“), englische Zeilen ohne Raum-Wort („Lecture Theatre 2“).
 10. **Zusatztermin** „Zusätzlicher Termin: Freitag, 20.11.2026, 12:00–13:30“ fehlt (`EXTRA_WORDS` kennt „Termin“ nicht).
 11. **sheets**: „Bearbeitung bis Di. … 23:55“ ist eine Abgabe; Fußzeilen-Datum unter „HOMEWORK PRESENTATION“ wird Termin (echt: `SSE_Exercise04.pdf`).
-13. **Titel** (Prüfstand misst sie noch nicht): Visualisierung-Klausur heißt „Organisatorisches exam exam“, weil die Überschrift „Organisatorisches: Klausur“ mit der Zeile darunter verbunden wird und der Eintrag mit der direkten Zeile beim Zusammenfassen verliert. Idee: beim Zusammenfassen Treffer mit Fristwort und Datum in derselben Zeile bevorzugen; im Prüfstand `title` in erwarteten Einträgen prüfen.
+13. **Titel** (Prüfstand misst sie noch nicht): Visualisierung-Klausur heißt „Organisatorisches exam exam“, weil die Überschrift „Organisatorisches: Klausur“ mit der Zeile darunter verbunden wird und der Eintrag mit der direkten Zeile beim Zusammenfassen verliert. Idee: beim Zusammenfassen Treffer mit Fristwort und Datum in derselben Zeile bevorzugen; im Prüfstand `title` in erwarteten Einträgen prüfen. Ebenso „Kurztest … (in der Übung)“ → „Short test in Übung“ (Rest nach dem Fristwort halb übersetzt).
 12. **Web**: `.gif` im Vorlesungsordner wird „Lecture“; „Gremienwahlen“-Folien sind keine Vorlesung; „Lösungsverfahren …“ ist keine Lösung; `answers_week3` wird nicht als Lösung erkannt; „Exercise 3 Slides“ → Übungsfolien; Module: „Übungen zur Linearen Algebra I“ gehört zu „Lineare Algebra I“, „WS 26/27 Datenbanksysteme“ (Semester vorn ohne Klammer) braucht einen Namen ohne Semester, „… – Tutorials“ gehört zum Kurs.
 
 Hinweis zur App: Gleiche Gruppe aus ILIAS-Gruppe und Orga-Folie (Visualisierung Gruppe 6) ergibt dieselbe Termin-Id, `backend.js` zeigt sie nur einmal. Wahltermine ohne eigene Gruppe erscheinen nur in der Auswahl der Übungszeiten, nicht im Kalender.
