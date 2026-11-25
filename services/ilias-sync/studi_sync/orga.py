@@ -28,7 +28,7 @@ from .deadlines import PARENTS
 from .sheets import _MONTH_RE, DEADLINE_WORDS, EVENT_WORDS, SOLUTION, _find_dates
 from .textfix import WEEKDAY_RE, fix_year, normalize, weekday_before, weekday_of
 
-RULES_VERSION = 14  # 2: Überschrift „ROOM“ ist kein Raum, „start in lecture week 3“ gilt für die genannte Art; 3: Leistungspunkte (credits); 4: beides zusammen; 5: Beginn (Gruppen = Übung, Anmeldung zählt nicht, späte Planpunkte zählen nicht); 6: bis Seite 200; 7: Aufzählung von Wochentagen („Di/Do 14-16“); 8: erste Vorlesung ohne Orga-Namen (nur Termine mit Art oder Raum); 9: Tabellenzellen Tag + Uhrzeit, Sprechstunde als Überschrift; 10: Zusatz-/Nachholtermine, Datum mit Monatsnamen = Einzeltermin; 11: Gruppe ohne Art-Wort = Übung; 12: Gruppennummer aus Listenzeile davor; 13: beschriftete Ort-Zeile gilt für alle Termine der Seite; 14: „Room 101“ ist kein Seminarraum
+RULES_VERSION = 15  # 2: Überschrift „ROOM“ ist kein Raum, „start in lecture week 3“ gilt für die genannte Art; 3: Leistungspunkte (credits); 4: beides zusammen; 5: Beginn (Gruppen = Übung, Anmeldung zählt nicht, späte Planpunkte zählen nicht); 6: bis Seite 200; 7: Aufzählung von Wochentagen („Di/Do 14-16“); 8: erste Vorlesung ohne Orga-Namen (nur Termine mit Art oder Raum); 9: Tabellenzellen Tag + Uhrzeit, Sprechstunde als Überschrift; 10: Zusatz-/Nachholtermine, Datum mit Monatsnamen = Einzeltermin; 11: Gruppe ohne Art-Wort = Übung; 12: Gruppennummer aus Listenzeile davor; 13: beschriftete Ort-Zeile gilt für alle Termine der Seite; 14: „Room 101“ ist kein Seminarraum; 15: englische Raum-Wörter (Lecture Theatre, Auditorium, Audimax, Seminar Room)
 CACHE = DATA_DIR / "orga-cache.json"
 OUTPUT = DATA_DIR / "orga-events.json"
 # Orga-Folien ganz lesen: oft stehen die Zeiten erst nach Vorstellung und Motivation (Visualisierung: Folie 88 von 109).
@@ -94,7 +94,7 @@ TYPES = [
     ("tutorial", re.compile(r"\b(tutori(?:um|en|al|als)|tutorenübung)\b", re.I)),
     ("exercise", re.compile(r"(\b(?:\w*übung(?:en)?|uebung(?:en)?|übungsgruppen?|exercises?|exercise groups?|praktikum|labs?)\b|übungsslot)", re.I)),
     ("lecture", re.compile(r"\b(\w*vorlesung(?:en)?|vl|lectures?)\b", re.I)),
-    ("seminar", re.compile(r"\b(seminar(?:e)?|seminarsitzung)\b(?!raum)", re.I)),
+    ("seminar", re.compile(r"\b(seminar(?:e)?|seminarsitzung)\b(?!raum|\s+room)", re.I)),  # „Seminar Room 3“ ist ein Raum
 ]
 LABELS = {"lecture": "Lecture", "exercise": "Exercise", "tutorial": "Tutorial", "seminar": "Seminar"}
 OFFICE = re.compile(r"\b(sprechstunden?|office hours?|sprechzeiten?)\b", re.I)
@@ -109,11 +109,12 @@ GROUP = re.compile(r"\b(?:gruppe|group|grp\.?|übungsgruppe)\s*0*(\d{1,2})\b", r
 GENERIC_HEADER = re.compile(r"\b(termine?|zeiten|dates|times|schedule|zeit und ort|ort und zeit|when and where)\b", re.I)
 ROOM = re.compile(
     r"(hörsaal|\bhs\b|\braum\b|\broom\b|\baula\b|seminarraum|\bs\d{2,4}\b|gebäude|building|str\.|straße|strasse|online|zoom|"
-    r"hybrid|präsenz|mensa|labor|lecture hall|\bhall\b|\bsr\b|\bpc-?pool)", re.I)
+    r"hybrid|präsenz|mensa|labor|lecture hall|\bhall\b|\bsr\b|\bpc-?pool|lecture\s+theat(?:re|er)|auditorium|audimax|classroom|"
+    r"seminar\s+room|tutorial\s+room)", re.I)
 LABEL_ONLY = re.compile(r"(?:room|raum|ort|location|where|wo|place|venue)", re.I)
-LECTURE_ROOM = re.compile(r"(hörsaal|\bhs\b|\baula\b|lecture hall)", re.I)
+LECTURE_ROOM = re.compile(r"(hörsaal|\bhs\b|\baula\b|lecture hall|lecture\s+theat(?:re|er)|auditorium|audimax)", re.I)
 # „Room S234“ (Kölner Seminarräume) ja, „Room 101“ nicht: eine Raumnummer allein sagt nichts über die Art
-SMALL_ROOM = re.compile(r"(seminarraum|\bsr\b|\bs\d{2,4}\b|room\s+s\d|pc-?pool|labor)", re.I)
+SMALL_ROOM = re.compile(r"(seminarraum|seminar\s+room|tutorial\s+room|\bsr\b|\bs\d{2,4}\b|room\s+s\d|pc-?pool|labor)", re.I)
 
 
 def _type_in(text: str) -> Optional[str]:
@@ -274,7 +275,8 @@ def find_slots(lines: list[str], default_type: str = "lecture") -> list[dict[str
             elif headerish and OFFICE.search(line):
                 header_type, header_skip = None, True  # „Sprechstunde“ über einer Tabelle: Zeiten darunter sind keine Kurstermine
             room_line = not t or LECTURE_ROOM.search(line) or SMALL_ROOM.search(line)
-            if roomless and len(line) < 50 and ROOM.search(line) and room_line and i - roomless[-1]["_line"] <= 2:
+            # „Prüfungsort: Audimax“ in der Zeile darunter ist nicht der Raum des Kurstermins
+            if roomless and len(line) < 50 and ROOM.search(line) and room_line and not SKIP.search(line) and i - roomless[-1]["_line"] <= 2:
                 room = _room(line)
                 if room:  # bloße Überschrift („ROOM“): weiter in der nächsten Zeile suchen
                     for s in roomless:

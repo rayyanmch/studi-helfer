@@ -1,26 +1,26 @@
 {
  "when": "2026-11-25",
  "summary": {
-  "errors": 2,
-  "tp": 548,
+  "errors": 0,
+  "tp": 570,
   "fp": 0,
-  "fn": 2,
-  "passed": 132,
-  "ran": 133,
+  "fn": 0,
+  "passed": 138,
+  "ran": 138,
   "skipped": 0,
   "categories": {
    "orga.slots": [
-    148,
+    153,
     0,
     0
    ],
    "orga.alt": [
-    148,
+    153,
     0,
     0
    ],
    "orga.first": [
-    101,
+    106,
     0,
     0
    ],
@@ -40,9 +40,9 @@
     0
    ],
    "orga.room": [
-    83,
+    90,
     0,
-    2
+    0
    ],
    "orga.cancellations": [
     1,
@@ -50,7 +50,7 @@
     0
    ]
   },
-  "seconds": 34.7
+  "seconds": 35.0
  },
  "cases": {
   "real/bwl": {
@@ -199,6 +199,31 @@
    "details": []
   },
   "synthetic/raum/room-s-nummer-bleibt-uebung": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/raum/auditorium": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/raum/audimax": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/raum/seminar-room-englisch": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/raum/lecture-theater-us": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/falle/theater-im-thema": {
    "status": "pass",
    "errors": 0,
    "details": []
@@ -434,12 +459,9 @@
    "details": []
   },
   "synthetic/zeit/english-uk-zwei-zeilen": {
-   "status": "fail",
-   "errors": 2,
-   "details": [
-    "orga.room: lecture Di 09:00–10:30 Raum „None“, erwartet „Lecture Theatre 2“",
-    "orga.room: lecture Do 09:00–10:30 Raum „None“, erwartet „Lecture Theatre 2“"
-   ]
+   "status": "pass",
+   "errors": 0,
+   "details": []
   },
   "synthetic/tabelle/eine-zeile-je-termin": {
    "status": "pass",

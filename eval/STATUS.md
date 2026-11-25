@@ -24,6 +24,7 @@ Filter: `… run.py beginn` (nur Fälle mit „beginn“ in der Id, speichert da
 |---|---|---|---|---|
 | 1 | 2026-11-25 | 57 · 51/71 | 13 · 11/17 | Prüfstand gebaut, noch keine Regel geändert |
 | 2 | 2026-11-25 | 67 → 59 · 51 → 55/76 | 13 · 11/17 | Beginn (orga.py, RULES_VERSION 5): „Gruppen“ = Übung, Beginn der Anmeldung zählt nicht, Beginn > 6 Wochen nach dem frühesten zählt nicht. 5 neue Fälle (67 = alter Code mit neuen Fällen). Seitenlimit verworfen, siehe unten |
+| 16 | 2026-11-25 | 7 → 0 · 133 → 138/138 | 13 · 11/17 | Englische Raum-Wörter (orga.py RULES_VERSION 15): „Lecture Theatre/Theater“, „Auditorium“, „Audimax“, „Classroom“, „Seminar/Tutorial Room“ (Seminar Room → Übung wie Seminarraum, nicht Art „Seminar“). „Prüfungsort: …“ in der Zeile darunter ist nicht der Raum des Kurstermins (war nach der Erweiterung ein Rückschritt, sofort behoben). 5 neue Fälle, davon 1 Falle. **Python-Prüfstand komplett grün** |
 | 15 | 2026-11-25 | 12 → 2 · 129 → 132/133 | 13 · 11/17 | „Room 101“ ist kein Seminarraum mehr (orga.py RULES_VERSION 14, `SMALL_ROOM`: nur „Room S…“); eine Raumnummer allein sagt nichts über die Art. Gegenproben Seminarraum und „Room S234“ bleiben Übung. 4 neue Fälle, davon 2 Gegenproben |
 | 14 | 2026-11-25 | 9 → 6 · 124 → 127/129 | 13 · 11/17 | Fußzeilen (sheets.py RULES_VERSION 11): Eine Zeile, die ohne Ziffern mehrfach im Dokument steht, ist Kopf-/Fußzeile; ihr Datum wird nicht an eine Überschrift in der Zeile darüber gehängt („HOMEWORK PRESENTATION“ / „… Engineering 19.11.2026“). Kopfzeile mit Fristwort auf jeder Seite zählt weiter. **Alle echten Fälle bestehen.** 4 neue Fälle, davon 2 Fallen |
 | 13 | 2026-11-25 | 12 → 8 · 117 → 121/125 | 13 · 11/17 | Fristwörter (sheets.py RULES_VERSION 10): „Bearbeitung(szeit) bis“, „bearbeiten bis“, „Fällig am/bis“, „upload … by/until/before“. „bis spätestens“ allein bewusst nicht (Falle „Korrekturen erhalten Sie bis spätestens …“). 4 neue Fälle, davon 1 Falle |
@@ -44,7 +45,7 @@ Runde 12: orga langsamste Datei 0,86 s (`00_AlgebraGrundwissen.pdf`, 84 Seiten).
 ## Offene Fehler (nach Nutzen)
 
 1. ~~Seitenlimit 25~~ (Runde 3), ~~„Prüfungstermin“~~ (Runde 4), ~~Bonustests~~ (Runde 5).
-   - Python-Prüfstand: noch 2 Fehler in 1 ausgedachtem Fall: „Lecture Theatre“ (9). Danach Web (12, 13 Fehler).
+   - **Python-Prüfstand komplett grün (Runde 16).** Weiter mit Web (12, 13 Fehler): Module zuerst (falsch gebündelte Kurse wirken auf Ordner und Kalender), dann Lösungen, dann Dokument-Art.
 2. ~~Übungsgruppen werden zur Vorlesung~~ (Runde 10).
 3. ~~Doppelte Gruppen ohne Nummer~~ (Runde 11).
 4. ~~Beginn falsch~~ (Runde 2 behoben).
@@ -52,7 +53,7 @@ Runde 12: orga langsamste Datei 0,86 s (`00_AlgebraGrundwissen.pdf`, 84 Seiten).
 6. ~~Zwei Wochentage, eine Uhrzeit~~ (Runde 6), ~~„Room 101“ als Übung~~ (Runde 15).
 7. ~~Tabellen-Zellen untereinander~~ (Runde 8).
 8. ~~Orga-Folie in Datei ohne Orga-Namen~~ (Runde 7, erste Vorlesung). Nicht abgedeckt: Orga nur in einer späteren Vorlesung (Visualisierung wiederholt die Zeiten in `Vis-V02_ViewsTools.pdf` S. 3, steht aber auch in der Orga-Datei).
-9. ~~Raum aus Ort-Zeile davor/danach~~ (Runde 12). Rest: englische Raum-Wörter fehlen in `ROOM` („Lecture Theatre 2“), `zeit/english-uk-zwei-zeilen`.
+9. ~~Raum aus Ort-Zeile davor/danach~~ (Runde 12), ~~englische Raum-Wörter~~ (Runde 16).
 10. ~~Zusatztermin~~ (Runde 9).
 11. ~~„Bearbeitung bis“~~ (Runde 13), ~~Fußzeilen-Datum~~ (Runde 14).
 13. **Titel** (Prüfstand misst sie noch nicht): Visualisierung-Klausur heißt „Organisatorisches exam exam“, weil die Überschrift „Organisatorisches: Klausur“ mit der Zeile darunter verbunden wird und der Eintrag mit der direkten Zeile beim Zusammenfassen verliert. Idee: beim Zusammenfassen Treffer mit Fristwort und Datum in derselben Zeile bevorzugen; im Prüfstand `title` in erwarteten Einträgen prüfen. Ebenso „Kurztest … (in der Übung)“ → „Short test in Übung“ (Rest nach dem Fristwort halb übersetzt).
