@@ -25,10 +25,10 @@ from typing import Any, Optional
 
 from .common import DATA_DIR, load_config, read_json, write_json
 from .deadlines import PARENTS
-from .sheets import _MONTH_RE, DEADLINE_WORDS, EVENT_WORDS, SOLUTION, _find_dates, _pdf_text
+from .sheets import _MONTH_RE, DEADLINE_WORDS, EVENT_WORDS, SOLUTION, _find_dates
 from .textfix import WEEKDAY_RE, fix_year, normalize, weekday_before, weekday_of
 
-RULES_VERSION = 12  # 2: Überschrift „ROOM“ ist kein Raum, „start in lecture week 3“ gilt für die genannte Art; 3: Leistungspunkte (credits); 4: beides zusammen; 5: Beginn (Gruppen = Übung, Anmeldung zählt nicht, späte Planpunkte zählen nicht); 6: bis Seite 200; 7: Aufzählung von Wochentagen („Di/Do 14-16“); 8: erste Vorlesung ohne Orga-Namen (nur Termine mit Art oder Raum); 9: Tabellenzellen Tag + Uhrzeit, Sprechstunde als Überschrift; 10: Zusatz-/Nachholtermine, Datum mit Monatsnamen = Einzeltermin; 11: Gruppe ohne Art-Wort = Übung; 12: Gruppennummer aus Listenzeile davor
+RULES_VERSION = 13  # 2: Überschrift „ROOM“ ist kein Raum, „start in lecture week 3“ gilt für die genannte Art; 3: Leistungspunkte (credits); 4: beides zusammen; 5: Beginn (Gruppen = Übung, Anmeldung zählt nicht, späte Planpunkte zählen nicht); 6: bis Seite 200; 7: Aufzählung von Wochentagen („Di/Do 14-16“); 8: erste Vorlesung ohne Orga-Namen (nur Termine mit Art oder Raum); 9: Tabellenzellen Tag + Uhrzeit, Sprechstunde als Überschrift; 10: Zusatz-/Nachholtermine, Datum mit Monatsnamen = Einzeltermin; 11: Gruppe ohne Art-Wort = Übung; 12: Gruppennummer aus Listenzeile davor; 13: beschriftete Ort-Zeile gilt für alle Termine der Seite
 CACHE = DATA_DIR / "orga-cache.json"
 OUTPUT = DATA_DIR / "orga-events.json"
 # Orga-Folien ganz lesen: oft stehen die Zeiten erst nach Vorstellung und Motivation (Visualisierung: Folie 88 von 109).
@@ -219,6 +219,23 @@ def _join_cells(lines: list[str]) -> list[str]:
     return out
 
 
+PAGE = "\x00page"  # Seitenwechsel zwischen den Zeilen (setzt analyze_file)
+# Beschriftete Ort-Zeile („Veranstaltungsort: Hörsaal 230“, „Abhaltungsort:“ + nächste Zeile, „Location: …“, „Venue: …“):
+# gilt für alle Termine derselben Seite ohne eigenen Raum, egal ob sie davor oder danach steht. „Prüfungsort“ zählt nicht.
+LOCATION_LINE = re.compile(
+    r"^[\s•·\-–*]*(?:veranstaltungs|abhaltungs|vorlesungs|übungs|tutoriums?)?(?:ort|location|venue|where|place|raum|room)\s*:\s*(.*)$", re.I)
+
+
+def _location(value: str) -> Optional[str]:
+    value = re.sub(r"\s{2,}", " ", value).strip(" ,;:|·-.")
+    if not value or LABEL_ONLY.fullmatch(value) or not (ROOM.search(value) or re.search(r"\d", value)):
+        return None
+    if len(value) > 60:
+        cut = value.rfind(", ", 0, 60)
+        value = value[:cut] if cut > 10 else value[:60]
+    return value
+
+
 def find_slots(lines: list[str], default_type: str = "lecture") -> list[dict[str, Any]]:
     """Wöchentliche Termine in den (normalisierten) Zeilen einer Datei."""
     lines = _join_cells(lines)
@@ -227,8 +244,23 @@ def find_slots(lines: list[str], default_type: str = "lecture") -> list[dict[str
     header_skip = False  # Überschrift „Klausur:“ / „Lehramt:“ → folgende Zeiten ignorieren
     carry: tuple[int, Optional[str]] = (-9, None)  # Art der vorigen Terminzeile (Zeilenumbruch mitten im Satz)
     roomless: list[dict[str, Any]] = []  # Termine ohne Raum, Raum steht evtl. in der nächsten Zeile
+    page_slots: list[dict[str, Any]] = []  # Termine der aktuellen Seite
+    page_loc: Optional[str] = None  # Ort aus einer beschrifteten Ort-Zeile dieser Seite
     for i, line in enumerate(lines):
+        if line == PAGE:
+            page_slots, page_loc, roomless = [], None, []
+            continue
         has_range = bool(RANGE_RE.search(line)) and bool(WEEKDAY_RE.search(line))
+        loc = None if has_range else LOCATION_LINE.match(line)
+        if loc:
+            nxt = lines[i + 1] if i + 1 < len(lines) else ""
+            value = loc.group(1) or (nxt if nxt != PAGE and not WEEKDAY_RE.search(nxt) and len(nxt) < 70 else "")
+            room = _location(value)
+            if room:
+                page_loc = room
+                for s in page_slots:
+                    if not s["room"]:
+                        s["room"] = room
         if not has_range:
             headerish = line.rstrip().endswith(":") or len(line) < 45
             t = _type_in(line)
@@ -309,6 +341,10 @@ def find_slots(lines: list[str], default_type: str = "lecture") -> list[dict[str
                 })
         if new_slots:
             carry = (i, new_slots[-1]["type"])
+            if page_loc:
+                for s in new_slots:
+                    s["room"] = s["room"] or page_loc
+            page_slots.extend(new_slots)
             slots.extend(new_slots)
             roomless = [s for s in new_slots if not s["room"]] + [s for s in roomless if not s["room"] and i - s["_line"] <= 1]
     return _merge(slots)
@@ -516,11 +552,23 @@ def my_groups(cfg: dict[str, Any]) -> tuple[dict[str, int], list[dict[str, Any]]
 
 # ------------------------------------------------------------------ Gesamtlauf
 
+def _page_lines(path: Path) -> list[str]:
+    """Normalisierte Zeilen aller Seiten, mit PAGE zwischen den Seiten (Ort-Zeilen gelten je Seite)."""
+    import logging
+
+    from pypdf import PdfReader
+
+    logging.getLogger("pypdf").setLevel(logging.ERROR)
+    out: list[str] = []
+    for page in PdfReader(str(path)).pages[:MAX_PAGES]:
+        out += [ln for ln in (normalize(raw) for raw in (page.extract_text() or "").splitlines()) if ln]
+        out.append(PAGE)
+    return out
+
+
 def analyze_file(path: Path) -> dict[str, Any]:
     ref = datetime.fromtimestamp(path.stat().st_mtime).date()
-    text = _pdf_text(path, MAX_PAGES)
-    lines = [normalize(raw) for raw in text.splitlines()]
-    lines = [ln for ln in lines if ln]
+    lines = _page_lines(path)
     default = "exercise" if re.search(r"(übung|uebung|exercise|ub_?\d|tutor)", path.stem, re.I) else "lecture"
     slots = find_slots(lines, default)
     if not ORGA_NAME.search(path.stem) and FIRST_UNIT.search(path.stem):

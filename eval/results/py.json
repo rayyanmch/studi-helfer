@@ -1,26 +1,26 @@
 {
  "when": "2026-11-25",
  "summary": {
-  "errors": 23,
-  "tp": 474,
+  "errors": 9,
+  "tp": 517,
   "fp": 4,
-  "fn": 19,
-  "passed": 107,
-  "ran": 116,
+  "fn": 5,
+  "passed": 116,
+  "ran": 121,
   "skipped": 0,
   "categories": {
    "orga.slots": [
-    133,
+    141,
     2,
     2
    ],
    "orga.alt": [
-    133,
+    141,
     0,
     0
    ],
    "orga.first": [
-    92,
+    97,
     0,
     0
    ],
@@ -40,9 +40,9 @@
     1
    ],
    "orga.room": [
-    54,
+    76,
     0,
-    16
+    2
    ],
    "orga.cancellations": [
     1,
@@ -86,18 +86,9 @@
    ]
   },
   "real/visualisierung-vorlesung": {
-   "status": "fail",
-   "errors": 8,
-   "details": [
-    "orga.room: lecture Mi 10:00–11:30 Raum „None“, erwartet „Hörsaal 230“",
-    "orga.room: lecture Mi 11:45–13:15 Raum „None“, erwartet „Hörsaal 230“",
-    "orga.room: exercise Mo 14:00–15:30 Gruppe 1 Raum „None“, erwartet „Weyertal 121“",
-    "orga.room: exercise Mo 16:00–17:30 Gruppe 2 Raum „None“, erwartet „Weyertal 121“",
-    "orga.room: exercise Di 14:00–15:30 Gruppe 3 Raum „None“, erwartet „Weyertal 121“",
-    "orga.room: exercise Do 10:00–11:30 Gruppe 4 Raum „None“, erwartet „Weyertal 121“",
-    "orga.room: exercise Do 12:00–13:30 Gruppe 5 Raum „None“, erwartet „Weyertal 121“",
-    "orga.room: exercise Do 14:00–15:30 Gruppe 6 Raum „None“, erwartet „Weyertal 121“"
-   ]
+   "status": "pass",
+   "errors": 0,
+   "details": []
   },
   "real/visualisierung-uebung": {
    "status": "pass",
@@ -155,11 +146,9 @@
    "details": []
   },
   "synthetic/raum/zeile-davor": {
-   "status": "fail",
-   "errors": 1,
-   "details": [
-    "orga.room: lecture Mo 14:00–15:30 Raum „None“, erwartet „Hörsaal B“"
-   ]
+   "status": "pass",
+   "errors": 0,
+   "details": []
   },
   "synthetic/raum/zeile-danach-fuer-zwei": {
    "status": "pass",
@@ -167,13 +156,34 @@
    "details": []
   },
   "synthetic/raum/nach-der-liste": {
-   "status": "fail",
-   "errors": 3,
-   "details": [
-    "orga.room: exercise Mo 14:00–15:30 Gruppe 1 Raum „None“, erwartet „Weyertal 121“",
-    "orga.room: exercise Mo 16:00–17:30 Gruppe 2 Raum „None“, erwartet „Weyertal 121“",
-    "orga.room: exercise Di 14:00–15:30 Gruppe 3 Raum „None“, erwartet „Weyertal 121“"
-   ]
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/raum/location-zeile-davor-englisch": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/raum/ort-unter-gruppen": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/raum/venue-weiter-unten": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/falle/ort-auf-anderer-folie": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/falle/pruefungsort": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
   },
   "synthetic/raum/label-zeile": {
    "status": "pass",
@@ -181,12 +191,9 @@
    "details": []
   },
   "synthetic/seiten/orga-folie-88": {
-   "status": "fail",
-   "errors": 2,
-   "details": [
-    "orga.room: lecture Mi 10:00–11:30 Raum „None“, erwartet „Hörsaal 230“",
-    "orga.room: lecture Mi 11:45–13:15 Raum „None“, erwartet „Hörsaal 230“"
-   ]
+   "status": "pass",
+   "errors": 0,
+   "details": []
   },
   "synthetic/seiten/introduction-folie-41": {
    "status": "pass",

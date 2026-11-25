@@ -17,6 +17,33 @@
      {"type": "exercise", "weekday": 0, "start": "16:00", "end": "17:30", "group": 2, "alternative": true, "room": "Weyertal 121"},
      {"type": "exercise", "weekday": 1, "start": "14:00", "end": "15:30", "group": 3, "alternative": true, "room": "Weyertal 121"}]}},
 
+  {"id": "raum/location-zeile-davor-englisch",
+   "files": {"Syllabus.pdf": [["Lectures", "Location: Main Building, Lecture Hall 2", "Monday, 10:00-11:30", "Thursday, 10:00-11:30"]]},
+   "orga": {"slots": [
+     {"type": "lecture", "weekday": 0, "start": "10:00", "end": "11:30", "alternative": false, "room": "Main Building"},
+     {"type": "lecture", "weekday": 3, "start": "10:00", "end": "11:30", "alternative": false, "room": "Main Building"}]}},
+
+  {"id": "raum/ort-unter-gruppen",
+   "files": {"00_Organisatorisches.pdf": [["Tutorien", "Gruppe 1: Mo 12-14", "Gruppe 2: Di 12-14", "Ort:", "Seminarraum 1.11, Gebäude 101"]]},
+   "orga": {"slots": [
+     {"type": "tutorial", "weekday": 0, "start": "12:00", "end": "14:00", "group": 1, "alternative": true, "room": "Seminarraum 1.11"},
+     {"type": "tutorial", "weekday": 1, "start": "12:00", "end": "14:00", "group": 2, "alternative": true, "room": "Seminarraum 1.11"}]}},
+
+  {"id": "raum/venue-weiter-unten",
+   "files": {"Lecture_01_Introduction.pdf": [["Exercise classes:", "Wednesdays 16:00-17:30", "Fridays 16:00-17:30", "Please bring your laptop.", "Slides are on Moodle.", "Venue: Building 3, Room 0.12"]]},
+   "orga": {"slots": [
+     {"type": "exercise", "weekday": 2, "start": "16:00", "end": "17:30", "alternative": true, "room": "Building 3"},
+     {"type": "exercise", "weekday": 4, "start": "16:00", "end": "17:30", "alternative": true, "room": "Building 3"}]}},
+
+  {"id": "falle/ort-auf-anderer-folie",
+   "note": "Ort einer Exkursion auf der nächsten Folie gilt nicht für die Vorlesung.",
+   "files": {"00_Organisatorisches.pdf": [["Vorlesung: Montag, 10:00-11:30"], ["Exkursion", "Ort: Museum Ludwig, Heinrich-Böll-Platz"]]},
+   "orga": {"slots": [{"type": "lecture", "weekday": 0, "start": "10:00", "end": "11:30", "alternative": false, "noRoom": true}]}},
+
+  {"id": "falle/pruefungsort",
+   "files": {"00_Organisatorisches.pdf": [["Vorlesung: Dienstag, 12:00-13:30", "Prüfungsort: Audimax"]]},
+   "orga": {"slots": [{"type": "lecture", "weekday": 1, "start": "12:00", "end": "13:30", "alternative": false, "noRoom": true}]}},
+
   {"id": "raum/label-zeile",
    "files": {"00_Organisatorisches.pdf": [["Vorlesung", "Zeit: Donnerstag, 12:00-13:30", "Raum: Hörsaal III"]]},
    "orga": {"slots": [{"type": "lecture", "weekday": 3, "start": "12:00", "end": "13:30", "alternative": false, "room": "Hörsaal III"}]}},

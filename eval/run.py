@@ -200,7 +200,7 @@ def _slot_txt(s: dict) -> str:
 
 
 def _matches(item: dict, pattern: dict) -> bool:
-    return all(item.get(k) == v for k, v in pattern.items() if k not in ("room", "note"))
+    return all(item.get(k) == v for k, v in pattern.items() if k not in ("room", "noRoom", "note"))
 
 
 def compare_slots(exp: list[dict], got: list[dict], optional: list[dict], sc: Score) -> None:
@@ -221,6 +221,11 @@ def compare_slots(exp: list[dict], got: list[dict], optional: list[dict], sc: Sc
                 sc.add("orga.alt", tp=1)
             else:
                 sc.add("orga.alt", fn=1, msg=f"{_slot_txt(e)} Wahltermin={hit.get('alternative')}, erwartet {e['alternative']}")
+        if e.get("noRoom"):
+            if hit.get("room"):
+                sc.add("orga.room", fp=1, msg=f"{_slot_txt(e)} Raum „{hit.get('room')}“, erwartet keiner")
+            else:
+                sc.add("orga.room", tp=1)
         if e.get("room"):
             room = re.sub(r"\s+", " ", hit.get("room") or "").lower()
             if re.sub(r"\s+", " ", e["room"]).lower() in room:

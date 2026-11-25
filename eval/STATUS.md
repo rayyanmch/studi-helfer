@@ -24,6 +24,7 @@ Filter: `… run.py beginn` (nur Fälle mit „beginn“ in der Id, speichert da
 |---|---|---|---|---|
 | 1 | 2026-11-25 | 57 · 51/71 | 13 · 11/17 | Prüfstand gebaut, noch keine Regel geändert |
 | 2 | 2026-11-25 | 67 → 59 · 51 → 55/76 | 13 · 11/17 | Beginn (orga.py, RULES_VERSION 5): „Gruppen“ = Übung, Beginn der Anmeldung zählt nicht, Beginn > 6 Wochen nach dem frühesten zählt nicht. 5 neue Fälle (67 = alter Code mit neuen Fällen). Seitenlimit verworfen, siehe unten |
+| 12 | 2026-11-25 | 29 → 9 · 109 → 116/121 | 13 · 11/17 | Räume aus beschrifteten Ort-Zeilen (orga.py RULES_VERSION 13): „Veranstaltungsort:“, „Abhaltungsort:“ (+ nächste Zeile), „Ort:“, „Location:“, „Venue:“ gelten für alle Termine derselben Seite ohne eigenen Raum, davor oder danach; „Prüfungsort“ zählt nicht. Dafür liest `analyze_file` seitenweise (`PAGE` zwischen den Seiten). Prüfstand kann jetzt „kein Raum“ prüfen (`noRoom`). **Echter Fall Visualisierung besteht komplett.** 5 neue Fälle, davon 2 Fallen |
 | 11 | 2026-11-25 | 41 → 23 · 103 → 107/116 | 13 · 11/17 | Gruppennummer aus der kurzen Listenzeile davor auch mit Aufzählungszeichen („• Gruppe 1“ / „• Mo 14:00“, „- Gruppe 1“, „* Group 4“) (orga.py RULES_VERSION 12). Echt Visualisierung: 6 Wahltermin-Doppel weg (14 → 8, nur noch Räume). 4 neue Fälle, davon 1 Falle |
 | 10 | 2026-11-25 | 56 → 31 · 97 → 102/112 | 13 · 11/17 | Gruppen ohne Art-Wort sind Übungen (orga.py RULES_VERSION 11): „Gruppe 1: Mo 14-16“, „Group 1: Monday …“, „Grp. 1 Do …“, Gruppennummer über einer Tabellenzeile; „Vorlesung Gruppe 1: …“ bleibt Vorlesung (Art steht in der Zeile). 4 neue Fälle, davon 1 Falle |
 | 9 | 2026-11-25 | 53 → 46 · 91 → 96/108 | 13 · 11/17 | Zusatztermine (orga.py RULES_VERSION 10): „Zusätzlicher/Weiterer Termin“, „Nachholtermin“, „Extra meeting“; zusätzliche Sprechstunden zählen nicht; Datum mit Monatsnamen zwischen Wochentag und Uhrzeit („Wednesday, 25 November 2026, 18:00“, „Montag, 15. März 2027 09:00“) macht einen Einzeltermin statt eines Wochentermins. Damit auch „Nachklausur“ als Wochentermin behoben (echt Visualisierung). 4 neue Fälle, davon 1 Falle |
@@ -35,11 +36,12 @@ Filter: `… run.py beginn` (nur Fälle mit „beginn“ in der Id, speichert da
 | 3 | 2026-11-25 | 63 → 58 · 56 → 61/80 | 13 · 11/17 | Seitenlimit: Orga-Dateien bis Seite 200 (orga.py RULES_VERSION 6, sheets.py 7, `ORGA_HINT` kennt jetzt auch Kick-off/Überblick/Woche 0), Zeilen mit „Beispiel/z. B./example“ sind keine Wochentermine. 4 neue Fälle. Visualisierung: alle 8 Termine, Beginn und beide Klausuren + Abgabe gefunden; offen dort nur noch Räume und Wahltermin-Doppel |
 
 Laufzeit: orga 69 Dateien 1,3 s (langsamste 0,14 s), sheets 212 Dateien 13,6 s (langsamste 0,84 s: `uebung_1_rayyan_…pdf`, eigene eingescannte Abgabe). Pro Datei-Hash gecacht, läuft also je Datei einmal; nichts davon beim App-Start. Kein Handlungsbedarf bei der Geschwindigkeit.
+Runde 12: orga langsamste Datei 0,86 s (`00_AlgebraGrundwissen.pdf`, 84 Seiten). Gemessen: Lesen mit pypdf 0,85–0,87 s (alter und neuer Weg gleich), Regeln 0,03 s. In Runde 7 waren es 0,43 s für dasselbe Lesen → schwankt mit der Auslastung des Macs, kein Rückschritt der Regeln.
 
 ## Offene Fehler (nach Nutzen)
 
 1. ~~Seitenlimit 25~~ (Runde 3), ~~„Prüfungstermin“~~ (Runde 4), ~~Bonustests~~ (Runde 5).
-   - Verpasste Termine sind abgearbeitet. Nächster großer Nutzen: Räume (9, echt Visualisierung 8 Fehler + 3 ausgedachte Fälle), dann sheets-Reste (11), „Room 101“ (6) und Web (12).
+   - Python-Prüfstand: noch 9 Fehler in 5 Fällen: „Room 101“ (6), „Lecture Theatre“ (9), „Bearbeitung bis“ und Fußzeilen-Datum (11). Danach Web (12, 13 Fehler).
 2. ~~Übungsgruppen werden zur Vorlesung~~ (Runde 10).
 3. ~~Doppelte Gruppen ohne Nummer~~ (Runde 11).
 4. ~~Beginn falsch~~ (Runde 2 behoben).
@@ -47,7 +49,7 @@ Laufzeit: orga 69 Dateien 1,3 s (langsamste 0,14 s), sheets 212 Dateien 13,6 s (
 6. ~~Zwei Wochentage, eine Uhrzeit~~ (Runde 6). Rest: **„Room 101“ macht aus einem Termin eine Übung** (`SMALL_ROOM` hat `room\s+s?\d`, gedacht für Kölner „Room S234“). `zeit/two-days-one-range-en` („Class meetings … Room 101“ ist eine Vorlesung).
 7. ~~Tabellen-Zellen untereinander~~ (Runde 8).
 8. ~~Orga-Folie in Datei ohne Orga-Namen~~ (Runde 7, erste Vorlesung). Nicht abgedeckt: Orga nur in einer späteren Vorlesung (Visualisierung wiederholt die Zeiten in `Vis-V02_ViewsTools.pdf` S. 3, steht aber auch in der Orga-Datei).
-9. **Raum**: Zeile davor („Veranstaltungsort: …“), unter der ganzen Liste („Abhaltungsort:“), englische Zeilen ohne Raum-Wort („Lecture Theatre 2“).
+9. ~~Raum aus Ort-Zeile davor/danach~~ (Runde 12). Rest: englische Raum-Wörter fehlen in `ROOM` („Lecture Theatre 2“), `zeit/english-uk-zwei-zeilen`.
 10. ~~Zusatztermin~~ (Runde 9).
 11. **sheets**: „Bearbeitung bis Di. … 23:55“ ist eine Abgabe; Fußzeilen-Datum unter „HOMEWORK PRESENTATION“ wird Termin (echt: `SSE_Exercise04.pdf`).
 13. **Titel** (Prüfstand misst sie noch nicht): Visualisierung-Klausur heißt „Organisatorisches exam exam“, weil die Überschrift „Organisatorisches: Klausur“ mit der Zeile darunter verbunden wird und der Eintrag mit der direkten Zeile beim Zusammenfassen verliert. Idee: beim Zusammenfassen Treffer mit Fristwort und Datum in derselben Zeile bevorzugen; im Prüfstand `title` in erwarteten Einträgen prüfen. Ebenso „Kurztest … (in der Übung)“ → „Short test in Übung“ (Rest nach dem Fristwort halb übersetzt).
