@@ -28,7 +28,7 @@ from .deadlines import PARENTS
 from .sheets import DEADLINE_WORDS, EVENT_WORDS, SOLUTION, _find_dates, _pdf_text
 from .textfix import WEEKDAY_RE, fix_year, normalize, weekday_before, weekday_of
 
-RULES_VERSION = 6  # 2: Überschrift „ROOM“ ist kein Raum, „start in lecture week 3“ gilt für die genannte Art; 3: Leistungspunkte (credits); 4: beides zusammen; 5: Beginn (Gruppen = Übung, Anmeldung zählt nicht, späte Planpunkte zählen nicht); 6: bis Seite 200
+RULES_VERSION = 7  # 2: Überschrift „ROOM“ ist kein Raum, „start in lecture week 3“ gilt für die genannte Art; 3: Leistungspunkte (credits); 4: beides zusammen; 5: Beginn (Gruppen = Übung, Anmeldung zählt nicht, späte Planpunkte zählen nicht); 6: bis Seite 200; 7: Aufzählung von Wochentagen („Di/Do 14-16“)
 CACHE = DATA_DIR / "orga-cache.json"
 OUTPUT = DATA_DIR / "orga-events.json"
 # Orga-Folien ganz lesen: oft stehen die Zeiten erst nach Vorstellung und Motivation (Visualisierung: Folie 88 von 109).
@@ -95,6 +95,8 @@ OFFICE = re.compile(r"\b(sprechstunden?|office hours?|sprechzeiten?)\b", re.I)
 EXAMPLE = re.compile(r"(\bbeispiel\w*|\bz\.\s?b\.|\be\.\s?g\.|\bfor example\b|\bexample\b)", re.I)
 SKIP = re.compile(r"(lehramt|didaktik|nur nach vereinbarung|ausgewählten terminen|selected dates|\bklausur\w*|\bexams?\b|\bprüfung\w*)", re.I)
 ALT = re.compile(r"\b(oder|or|alternativ\w*|wahlweise|choose|wählen|parallel\w*)\b", re.I)
+# Nur Verbindungswörter zwischen zwei Wochentagen („Mo und Mi“, „Di/Do“, „Montag, Mittwoch und Freitag“); „Mo–Fr“ zählt nicht
+DAY_CHAIN = re.compile(r"(?:\s*(?:,|/|&|\+|und|and|sowie|oder|or)\s*)+", re.I)
 GROUP = re.compile(r"\b(?:gruppe|group|grp\.?|übungsgruppe)\s*0*(\d{1,2})\b", re.I)
 GENERIC_HEADER = re.compile(r"\b(termine?|zeiten|dates|times|schedule|zeit und ort|ort und zeit|when and where)\b", re.I)
 ROOM = re.compile(
@@ -223,11 +225,19 @@ def find_slots(lines: list[str], default_type: str = "lecture") -> list[dict[str
             continue
         prev = lines[i - 1] if i else ""
         new_slots = []
-        for wd in WEEKDAY_RE.finditer(line):
-            if len(wd.group(0).rstrip(".")) <= 2 and not re.match(r"\s*[.,:]|\s+\d", line[wd.end():]):
+        wds = list(WEEKDAY_RE.finditer(line))
+        for idx, wd in enumerate(wds):
+            chained = idx + 1 < len(wds) and bool(DAY_CHAIN.fullmatch(line[wd.end():wds[idx + 1].start()]))
+            if len(wd.group(0).rstrip(".")) <= 2 and not chained and not re.match(r"\s*[.,:]|\s+\d", line[wd.end():]):
                 continue  # „Do“/„Mo“ nur mit Satzzeichen oder direkt folgender Uhrzeit
             after = line[wd.end():]
             ranges = _ranges_after(after)
+            # „dienstags und donnerstags von 8:15 bis 9:45“, „Di/Do 14-16“: die Zeit hinter dem letzten Tag gilt für alle
+            j = idx
+            while not ranges and j + 1 < len(wds) and DAY_CHAIN.fullmatch(line[wds[j].end():wds[j + 1].start()]):
+                j += 1
+                after = line[wds[j].end():]
+                ranges = _ranges_after(after)
             if not ranges:
                 continue
             if len(wd.group(0).rstrip(".")) <= 3 and not re.fullmatch(r"[\s.,:]*(?:von|from|ab|um)?\s*", after[: ranges[0].start()], re.I):

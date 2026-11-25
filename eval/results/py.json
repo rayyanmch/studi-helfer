@@ -2,25 +2,25 @@
  "when": "2026-11-25",
  "summary": {
   "errors": 53,
-  "tp": 320,
-  "fp": 22,
-  "fn": 31,
-  "passed": 74,
-  "ran": 91,
+  "tp": 357,
+  "fp": 23,
+  "fn": 30,
+  "passed": 80,
+  "ran": 96,
   "skipped": 0,
   "categories": {
    "orga.slots": [
-    83,
-    20,
-    16
+    94,
+    21,
+    15
    ],
    "orga.alt": [
-    83,
+    94,
     0,
     0
    ],
    "orga.first": [
-    66,
+    71,
     0,
     0
    ],
@@ -40,7 +40,7 @@
     1
    ],
    "orga.room": [
-    30,
+    40,
     0,
     13
    ],
@@ -50,7 +50,7 @@
     0
    ]
   },
-  "seconds": 17.8
+  "seconds": 17.5
  },
  "cases": {
   "real/bwl": {
@@ -361,20 +361,44 @@
    "details": []
   },
   "synthetic/zeit/zwei-tage-ein-zeitraum-de": {
-   "status": "fail",
-   "errors": 1,
-   "details": [
-    "orga.slots: verpasst lecture Di 08:15–09:45"
-   ]
+   "status": "pass",
+   "errors": 0,
+   "details": []
   },
   "synthetic/zeit/two-days-one-range-en": {
    "status": "fail",
-   "errors": 3,
+   "errors": 4,
    "details": [
-    "orga.slots: verpasst lecture Mo 16:00–17:30",
+    "orga.slots: verpasst lecture Mo 16:00–17:30 (gefunden: exercise Mo 16:00–17:30)",
     "orga.slots: verpasst lecture Mi 16:00–17:30 (gefunden: exercise Mi 16:00–17:30)",
+    "orga.slots: Fehlalarm exercise Mo 16:00–17:30 ← „Class meetings: Mondays and Wednesdays, 4:00-5:30 pm, Room 101“",
     "orga.slots: Fehlalarm exercise Mi 16:00–17:30 ← „Class meetings: Mondays and Wednesdays, 4:00-5:30 pm, Room 101“"
    ]
+  },
+  "synthetic/zeit/mo-und-mi-kurz": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/zeit/di-schraegstrich-do": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/zeit/drei-tage-aufzaehlung": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/zeit/tuesdays-and-thursdays": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/falle/tag-im-satz-ohne-zeit": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
   },
   "synthetic/zeit/english-uk-zwei-zeilen": {
    "status": "fail",

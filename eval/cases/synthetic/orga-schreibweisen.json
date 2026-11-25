@@ -52,6 +52,36 @@
      {"type": "lecture", "weekday": 0, "start": "16:00", "end": "17:30", "alternative": false, "room": "Room 101"},
      {"type": "lecture", "weekday": 2, "start": "16:00", "end": "17:30", "alternative": false, "room": "Room 101"}]}},
 
+  {"id": "zeit/mo-und-mi-kurz",
+   "files": {"00_Organisatorisches.pdf": [["Vorlesung: Mo und Mi 10:00-11:30, Hörsaal A"]]},
+   "orga": {"slots": [
+     {"type": "lecture", "weekday": 0, "start": "10:00", "end": "11:30", "alternative": false, "room": "Hörsaal A"},
+     {"type": "lecture", "weekday": 2, "start": "10:00", "end": "11:30", "alternative": false, "room": "Hörsaal A"}]}},
+
+  {"id": "zeit/di-schraegstrich-do",
+   "files": {"00_Organisatorisches.pdf": [["Vorlesung Di/Do 14-16 Uhr, HS 2"]]},
+   "orga": {"slots": [
+     {"type": "lecture", "weekday": 1, "start": "14:00", "end": "16:00", "alternative": false, "room": "HS 2"},
+     {"type": "lecture", "weekday": 3, "start": "14:00", "end": "16:00", "alternative": false, "room": "HS 2"}]}},
+
+  {"id": "zeit/drei-tage-aufzaehlung",
+   "files": {"00_Organisatorisches.pdf": [["Vorlesung: Montag, Mittwoch und Freitag, 8:00 - 9:00 Uhr, Hörsaal 1"]]},
+   "orga": {"slots": [
+     {"type": "lecture", "weekday": 0, "start": "08:00", "end": "09:00", "alternative": false, "room": "Hörsaal 1"},
+     {"type": "lecture", "weekday": 2, "start": "08:00", "end": "09:00", "alternative": false, "room": "Hörsaal 1"},
+     {"type": "lecture", "weekday": 4, "start": "08:00", "end": "09:00", "alternative": false, "room": "Hörsaal 1"}]}},
+
+  {"id": "zeit/tuesdays-and-thursdays",
+   "files": {"Lecture_01_Introduction.pdf": [["Lectures: Tuesdays and Thursdays 11:00-12:30, Lecture Hall 5"]]},
+   "orga": {"slots": [
+     {"type": "lecture", "weekday": 1, "start": "11:00", "end": "12:30", "alternative": false, "room": "Lecture Hall 5"},
+     {"type": "lecture", "weekday": 3, "start": "11:00", "end": "12:30", "alternative": false, "room": "Lecture Hall 5"}]}},
+
+  {"id": "falle/tag-im-satz-ohne-zeit",
+   "note": "„montags“ gehört zum Erscheinen der Blätter, nicht zur Übung.",
+   "files": {"00_Organisatorisches.pdf": [["Übung", "Die Blätter erscheinen montags und werden in der Übung am Mittwoch 12:00-13:30 besprochen."]]},
+   "orga": {"slots": [{"type": "exercise", "weekday": 2, "start": "12:00", "end": "13:30", "alternative": false}]}},
+
   {"id": "zeit/english-uk-zwei-zeilen",
    "files": {"Lecture_01_Introduction.pdf": [["Lectures:", "Tuesday 09:00 - 10:30, Lecture Theatre 2", "Thursday 09:00 - 10:30, Lecture Theatre 2"]]},
    "orga": {"slots": [
