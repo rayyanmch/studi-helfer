@@ -24,6 +24,7 @@ Filter: `… run.py beginn` (nur Fälle mit „beginn“ in der Id, speichert da
 |---|---|---|---|---|
 | 1 | 2026-11-25 | 57 · 51/71 | 13 · 11/17 | Prüfstand gebaut, noch keine Regel geändert |
 | 2 | 2026-11-25 | 67 → 59 · 51 → 55/76 | 13 · 11/17 | Beginn (orga.py, RULES_VERSION 5): „Gruppen“ = Übung, Beginn der Anmeldung zählt nicht, Beginn > 6 Wochen nach dem frühesten zählt nicht. 5 neue Fälle (67 = alter Code mit neuen Fällen). Seitenlimit verworfen, siehe unten |
+| 14 | 2026-11-25 | 9 → 6 · 124 → 127/129 | 13 · 11/17 | Fußzeilen (sheets.py RULES_VERSION 11): Eine Zeile, die ohne Ziffern mehrfach im Dokument steht, ist Kopf-/Fußzeile; ihr Datum wird nicht an eine Überschrift in der Zeile darüber gehängt („HOMEWORK PRESENTATION“ / „… Engineering 19.11.2026“). Kopfzeile mit Fristwort auf jeder Seite zählt weiter. **Alle echten Fälle bestehen.** 4 neue Fälle, davon 2 Fallen |
 | 13 | 2026-11-25 | 12 → 8 · 117 → 121/125 | 13 · 11/17 | Fristwörter (sheets.py RULES_VERSION 10): „Bearbeitung(szeit) bis“, „bearbeiten bis“, „Fällig am/bis“, „upload … by/until/before“. „bis spätestens“ allein bewusst nicht (Falle „Korrekturen erhalten Sie bis spätestens …“). 4 neue Fälle, davon 1 Falle |
 | 12 | 2026-11-25 | 29 → 9 · 109 → 116/121 | 13 · 11/17 | Räume aus beschrifteten Ort-Zeilen (orga.py RULES_VERSION 13): „Veranstaltungsort:“, „Abhaltungsort:“ (+ nächste Zeile), „Ort:“, „Location:“, „Venue:“ gelten für alle Termine derselben Seite ohne eigenen Raum, davor oder danach; „Prüfungsort“ zählt nicht. Dafür liest `analyze_file` seitenweise (`PAGE` zwischen den Seiten). Prüfstand kann jetzt „kein Raum“ prüfen (`noRoom`). **Echter Fall Visualisierung besteht komplett.** 5 neue Fälle, davon 2 Fallen |
 | 11 | 2026-11-25 | 41 → 23 · 103 → 107/116 | 13 · 11/17 | Gruppennummer aus der kurzen Listenzeile davor auch mit Aufzählungszeichen („• Gruppe 1“ / „• Mo 14:00“, „- Gruppe 1“, „* Group 4“) (orga.py RULES_VERSION 12). Echt Visualisierung: 6 Wahltermin-Doppel weg (14 → 8, nur noch Räume). 4 neue Fälle, davon 1 Falle |
@@ -42,7 +43,7 @@ Runde 12: orga langsamste Datei 0,86 s (`00_AlgebraGrundwissen.pdf`, 84 Seiten).
 ## Offene Fehler (nach Nutzen)
 
 1. ~~Seitenlimit 25~~ (Runde 3), ~~„Prüfungstermin“~~ (Runde 4), ~~Bonustests~~ (Runde 5).
-   - Python-Prüfstand: noch 8 Fehler in 4 Fällen: Fußzeilen-Datum (11, echt), „Room 101“ (6), „Lecture Theatre“ (9). Danach Web (12, 13 Fehler).
+   - Python-Prüfstand: noch 6 Fehler in 2 ausgedachten Fällen: „Room 101“ (6), „Lecture Theatre“ (9). Danach Web (12, 13 Fehler).
 2. ~~Übungsgruppen werden zur Vorlesung~~ (Runde 10).
 3. ~~Doppelte Gruppen ohne Nummer~~ (Runde 11).
 4. ~~Beginn falsch~~ (Runde 2 behoben).
@@ -52,7 +53,7 @@ Runde 12: orga langsamste Datei 0,86 s (`00_AlgebraGrundwissen.pdf`, 84 Seiten).
 8. ~~Orga-Folie in Datei ohne Orga-Namen~~ (Runde 7, erste Vorlesung). Nicht abgedeckt: Orga nur in einer späteren Vorlesung (Visualisierung wiederholt die Zeiten in `Vis-V02_ViewsTools.pdf` S. 3, steht aber auch in der Orga-Datei).
 9. ~~Raum aus Ort-Zeile davor/danach~~ (Runde 12). Rest: englische Raum-Wörter fehlen in `ROOM` („Lecture Theatre 2“), `zeit/english-uk-zwei-zeilen`.
 10. ~~Zusatztermin~~ (Runde 9).
-11. ~~„Bearbeitung bis“~~ (Runde 13). Rest: **Fußzeilen-Datum unter „HOMEWORK PRESENTATION“ wird Termin** (echt: `SSE_Exercise04.pdf`, steht als Termin am 19.11. in Rayyans Kalender). **Nächster Kandidat** (echter Fehlalarm).
+11. ~~„Bearbeitung bis“~~ (Runde 13), ~~Fußzeilen-Datum~~ (Runde 14).
 13. **Titel** (Prüfstand misst sie noch nicht): Visualisierung-Klausur heißt „Organisatorisches exam exam“, weil die Überschrift „Organisatorisches: Klausur“ mit der Zeile darunter verbunden wird und der Eintrag mit der direkten Zeile beim Zusammenfassen verliert. Idee: beim Zusammenfassen Treffer mit Fristwort und Datum in derselben Zeile bevorzugen; im Prüfstand `title` in erwarteten Einträgen prüfen. Ebenso „Kurztest … (in der Übung)“ → „Short test in Übung“ (Rest nach dem Fristwort halb übersetzt).
 12. **Web**: `.gif` im Vorlesungsordner wird „Lecture“; „Gremienwahlen“-Folien sind keine Vorlesung; „Lösungsverfahren …“ ist keine Lösung; `answers_week3` wird nicht als Lösung erkannt; „Exercise 3 Slides“ → Übungsfolien; Module: „Übungen zur Linearen Algebra I“ gehört zu „Lineare Algebra I“, „WS 26/27 Datenbanksysteme“ (Semester vorn ohne Klammer) braucht einen Namen ohne Semester, „… – Tutorials“ gehört zum Kurs.
 

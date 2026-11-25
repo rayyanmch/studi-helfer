@@ -17,7 +17,7 @@ from .common import DATA_DIR, load_config, read_json, write_json
 from .deadlines import deadline_id
 from .textfix import fix_year, normalize, weekday_before
 
-RULES_VERSION = 10  # erhöhen, wenn sich die Regeln ändern → alles wird neu ausgewertet; 7: Orga-Dateien bis Seite 200; 8: Prüfungstermin/Modulprüfung/examination, Anmeldeschluss ist keine Klausur; 9: Bonus-/Kurztests und Quiz als Termin, Zeitraum „12-12:30 Uhr“ beginnt um 12:00; 10: Bearbeitung bis, fällig am, upload … by
+RULES_VERSION = 11  # erhöhen, wenn sich die Regeln ändern → alles wird neu ausgewertet; 7: Orga-Dateien bis Seite 200; 8: Prüfungstermin/Modulprüfung/examination, Anmeldeschluss ist keine Klausur; 9: Bonus-/Kurztests und Quiz als Termin, Zeitraum „12-12:30 Uhr“ beginnt um 12:00; 10: Bearbeitung bis, fällig am, upload … by; 11: Datum aus wiederholter Fußzeile gehört nicht zur Überschrift darüber
 CACHE = DATA_DIR / "sheet-deadlines-cache.json"
 OUTPUT = DATA_DIR / "sheet-deadlines.json"
 MAX_PAGES = 8  # Fristen und Klausurtermine stehen fast immer auf den ersten Seiten (Orga-Folien)
@@ -188,9 +188,19 @@ def _lines(text: str) -> Iterator[str]:
             yield line
 
 
+def _footer_key(line: str) -> str:
+    """Zeile ohne Ziffern, Datum und Trennzeichen: gleich auf mehreren Seiten = Kopf- oder Fußzeile."""
+    if len(line) > 80:
+        return ""
+    return re.sub(r"[\d\s./:|·,\-–]+", " ", line.lower()).strip()
+
+
 def extract(text: str, ref: date) -> list[dict[str, Any]]:
     """Fristen aus dem Text eines Übungsblatts. ref = Bezugsdatum für fehlende Jahreszahlen."""
     lines = list(_lines(text))
+    # Kopf-/Fußzeilen („Software and Systems Engineering 19.11.2026“ auf jeder Folie): ohne Ziffern mehrfach gleich
+    keys = [_footer_key(ln) for ln in lines]
+    repeated = {k for k in keys if k and keys.count(k) >= 2}
     found = []
     for i, line in enumerate(lines):
         if IGNORE_LINE.search(line) and not DEADLINE_WORDS.search(line):
@@ -206,7 +216,8 @@ def extract(text: str, ref: date) -> list[dict[str, Any]]:
         hits = _find_dates(window, ref)
         evidence = line
         win_line = i
-        if not hits and i + 1 < len(lines) and len(line) - kw.end() < 15:
+        # Datum aus der nächsten Zeile, aber nicht aus einer Fußzeile („HOMEWORK PRESENTATION“ / Fußzeile mit Foliendatum)
+        if not hits and i + 1 < len(lines) and len(line) - kw.end() < 15 and keys[i + 1] not in repeated:
             window = lines[i + 1]
             win_line = i + 1
             hits = _find_dates(window, ref)

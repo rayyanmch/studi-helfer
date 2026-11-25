@@ -1,12 +1,12 @@
 {
  "when": "2026-11-25",
  "summary": {
-  "errors": 8,
-  "tp": 521,
-  "fp": 4,
+  "errors": 6,
+  "tp": 523,
+  "fp": 2,
   "fn": 4,
-  "passed": 121,
-  "ran": 125,
+  "passed": 127,
+  "ran": 129,
   "skipped": 0,
   "categories": {
    "orga.slots": [
@@ -35,8 +35,8 @@
     0
    ],
    "sheets": [
-    54,
-    2,
+    56,
+    0,
     0
    ],
    "orga.room": [
@@ -50,7 +50,7 @@
     0
    ]
   },
-  "seconds": 34.7
+  "seconds": 34.9
  },
  "cases": {
   "real/bwl": {
@@ -79,11 +79,9 @@
    "details": []
   },
   "real/softwaretechnik": {
-   "status": "fail",
-   "errors": 1,
-   "details": [
-    "sheets: Fehlalarm SSE_Exercise04.pdf: termin 2026-11-19"
-   ]
+   "status": "pass",
+   "errors": 0,
+   "details": []
   },
   "real/visualisierung-vorlesung": {
    "status": "pass",
@@ -599,11 +597,29 @@
    "details": []
   },
   "synthetic/falle/foliendatum-unter-titel": {
-   "status": "fail",
-   "errors": 1,
-   "details": [
-    "sheets: Fehlalarm SSE_Exercise05.pdf: termin 2026-11-19 ← „HOMEWORK PRESENTATION Software and Systems Engineering 19.11.2026“"
-   ]
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/falle/fusszeile-unter-klausur-titel": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/falle/fusszeile-unter-deadlines-titel": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/frist/kopfzeile-mit-abgabe-auf-jeder-seite": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/klausur/ueberschrift-und-datum-darunter": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
   },
   "synthetic/klausur/tabelle-in-einer-zeile": {
    "status": "pass",

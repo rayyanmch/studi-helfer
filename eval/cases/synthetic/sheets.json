@@ -66,6 +66,25 @@
    "files": {"SSE_Exercise05.pdf": [["SSE EXERCISE 5", "Software and Systems Engineering 19.11.2026"], ["HOMEWORK PRESENTATION", "Software and Systems Engineering 19.11.2026"]]},
    "sheets": {"SSE_Exercise05.pdf": []}},
 
+  {"id": "falle/fusszeile-unter-klausur-titel", "ref": "2026-11-03",
+   "note": "Abschnittsfolie „KLAUSUR“, darunter die Fußzeile mit Datum, die auf jeder Folie steht.",
+   "files": {"Datenbanken_VL05.pdf": [["Datenbanken · WS 26/27 · 03.11.2026", "Normalformen"], ["KLAUSUR", "Datenbanken · WS 26/27 · 03.11.2026"], ["Was kommt dran?", "Datenbanken · WS 26/27 · 03.11.2026"]]},
+   "sheets": {"Datenbanken_VL05.pdf": []}},
+
+  {"id": "falle/fusszeile-unter-deadlines-titel", "ref": "2026-11-10",
+   "files": {"Uebung_04.pdf": [["DEADLINES", "Programmierung I | 10.11.2026"], ["Aufgabe 1", "Programmierung I | 10.11.2026"]]},
+   "sheets": {"Uebung_04.pdf": []}},
+
+  {"id": "frist/kopfzeile-mit-abgabe-auf-jeder-seite", "ref": "2026-11-16",
+   "note": "Darf nicht als Fußzeile verworfen werden: Fristwort und Datum stehen in derselben Zeile.",
+   "files": {"Blatt 3.pdf": [["Übungsblatt 3 – Abgabe bis 23.11.2026, 10 Uhr", "Aufgabe 1"], ["Übungsblatt 3 – Abgabe bis 23.11.2026, 10 Uhr", "Aufgabe 2"]]},
+   "sheets": {"Blatt 3.pdf": [{"date": "2026-11-23", "kind": "abgabe", "time": "10:00"}]}},
+
+  {"id": "klausur/ueberschrift-und-datum-darunter",
+   "note": "Datum in der Zeile unter „Klausur:“ zählt weiter, wenn es keine wiederholte Fußzeile ist.",
+   "files": {"00_Orga.pdf": [["Klausur:", "Montag, 15.02.2027, 10:00 Uhr, Audimax", "Software Engineering 2026"], ["Weitere Infos", "Software Engineering 2026"]]},
+   "sheets": {"00_Orga.pdf": [{"date": "2027-02-15", "kind": "klausur", "time": "10:00"}]}},
+
   {"id": "klausur/tabelle-in-einer-zeile",
    "files": {"00_Orga.pdf": [["Prüfung", "Klausur | 16.02.2027 | 10:00 | HS C"]]},
    "sheets": {"00_Orga.pdf": [{"date": "2027-02-16", "kind": "klausur", "time": "10:00"}]}},
