@@ -53,6 +53,15 @@
      "Lösungsvorschlag Blatt 5.pdf": "Blatt 5.pdf"
    }},
 
+  {"algo": "doctype", "id": "doctype/uebungsfolien-mit-nummer", "part": "Course",
+   "files": {
+     "Exercise_05_slides.pdf": "exslides",
+     "Slides Exercise Session 7.pdf": "exslides",
+     "Übung 4 – Folien.pdf": "exslides",
+     "Exercises 3.pdf": "sheet",
+     "Slides Lecture 5.pdf": "lecture"
+   }},
+
   {"algo": "doctype", "id": "doctype/loesungs-woerter", "part": "Course",
    "files": {
      "Answers-Sheet4.pdf": "solution",

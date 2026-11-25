@@ -1,18 +1,18 @@
 {
  "when": "2026-11-25",
  "summary": {
-  "errors": 4,
-  "tp": 248,
+  "errors": 3,
+  "tp": 254,
   "fp": 0,
-  "fn": 4,
-  "passed": 25,
-  "ran": 28,
+  "fn": 3,
+  "passed": 27,
+  "ran": 29,
   "skipped": 0,
   "categories": {
    "doctype": [
-    195,
+    201,
     0,
-    3
+    2
    ],
    "solutions": [
     15,
@@ -87,11 +87,9 @@
    "details": []
   },
   "synthetic/doctype/andere-unis": {
-   "status": "fail",
-   "errors": 1,
-   "details": [
-    "doctype: Exercise 3 Slides.pdf: sheet, erwartet exslides (Ordner-Art exercises)"
-   ]
+   "status": "pass",
+   "errors": 0,
+   "details": []
   },
   "synthetic/solutions/andere-unis": {
    "status": "pass",
@@ -99,6 +97,11 @@
    "details": []
   },
   "synthetic/solutions/schreibweisen": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/doctype/uebungsfolien-mit-nummer": {
    "status": "pass",
    "errors": 0,
    "details": []

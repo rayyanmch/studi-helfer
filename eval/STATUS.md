@@ -24,6 +24,7 @@ Filter: `… run.py beginn` (nur Fälle mit „beginn“ in der Id, speichert da
 |---|---|---|---|---|
 | 1 | 2026-11-25 | 57 · 51/71 | 13 · 11/17 | Prüfstand gebaut, noch keine Regel geändert |
 | 2 | 2026-11-25 | 67 → 59 · 51 → 55/76 | 13 · 11/17 | Beginn (orga.py, RULES_VERSION 5): „Gruppen“ = Übung, Beginn der Anmeldung zählt nicht, Beginn > 6 Wochen nach dem frühesten zählt nicht. 5 neue Fälle (67 = alter Code mit neuen Fällen). Seitenlimit verworfen, siehe unten |
+| 20 | 2026-11-25 | 0 · 138/138 | 6 → 3 · 25 → 27/29 | Übungsfolien mit Nummer oder Wörtern dazwischen (doctype.ts `exslides`): „Exercise 3 Slides“, „Exercise_05_slides“, „Slides Exercise Session 7“. Gegenproben „Exercises 3“ (Blatt) und „Slides Lecture 5“ (Vorlesung) halten. lint + build ok. 1 neuer Fall mit 5 Dateien |
 | 19 | 2026-11-25 | 0 · 138/138 | 10 → 4 · 23 → 25/28 | Lösungs-Wort (solutions.ts, doctype.ts, modules.js `CATEGORIES`): „answers_week3“, „Answers-Sheet4“, „HW2_answer_key“ zählen; „Lösungsverfahren/-mengen/-strategien/-ansatz/-raum/-methode“ sind keine Lösung (Vorlesungsthemen); „Lösungsvorschlag“ bleibt Lösung. lint + build in web/ ok. 2 neue Fälle mit 8 Dateien, davon 3 Fallen |
 | 18 | 2026-11-25 | 0 · 138/138 | 21 → 7 · 18 → 22/26 | Module: „Übung(en) zu/zur/zum (den) …“, „Tutorium zur …“, „Exercises for …“ markieren den Teil; gebeugte Endungen zählen beim Vergleich nicht („Linearen“ = „Lineare“). 5 neue Fälle, davon 1 Falle. Rayyans 15 Module unverändert. Rest bei „Übungen zur Linearen Algebra I“: Kurzname „LinA I“ (Frage 5) |
 | 17 | 2026-11-25 | 0 · 138/138 | 18 → 9 · 12 → 17/21 | Module (desktop/lib/modules.js): Semester vorn ohne Klammern („WS 26/27 …“, „SoSe 2027: …“, „Wintersemester 2026/27 – …“) und hinten in mehr Schreibweisen („(Winter 2026)“, „(Fall 2026)“, auch vor „- Exercises“); gebündelt wird nach Grundnamen, getrennt nur bei verschiedenen bekannten Semestern (`normSemester`: „[WS26/27]“ = „WiSe 2026/27“ = „Winter 2026“). 4 neue Fälle, davon 1 Falle. Für Rayyans echte config.json alle 15 Module unverändert (kein Ordner wird umbenannt) |
@@ -48,7 +49,7 @@ Runde 12: orga langsamste Datei 0,86 s (`00_AlgebraGrundwissen.pdf`, 84 Seiten).
 ## Offene Fehler (nach Nutzen)
 
 1. ~~Seitenlimit 25~~ (Runde 3), ~~„Prüfungstermin“~~ (Runde 4), ~~Bonustests~~ (Runde 5).
-   - **Python-Prüfstand komplett grün (Runde 16).** Web noch 4 Fehler: Dokument-Art „Exercise 3 Slides“ (Übungsfolien), `.gif` im Vorlesungsordner, „Gremienwahlen“-Folien (echt Visualisierung), Kurzname „LinA I“ (wartet auf Frage 5).
+   - **Python-Prüfstand komplett grün (Runde 16).** Web noch 3 Fehler: `.gif` im Vorlesungsordner und „Gremienwahlen“-Folien (beide echt Visualisierung), Kurzname „LinA I“ (wartet auf Frage 5, kann der Loop nicht selbst lösen).
    - Wichtig bei modules.js: Modulnamen sind Ordnernamen in `~/Uni` (`applyLayout` verschiebt). Vor dem Behalten immer alt/neu für Rayyans config.json vergleichen (Skript in Runde 17: `buildModules` mit `object-parents.json`).
 2. ~~Übungsgruppen werden zur Vorlesung~~ (Runde 10).
 3. ~~Doppelte Gruppen ohne Nummer~~ (Runde 11).

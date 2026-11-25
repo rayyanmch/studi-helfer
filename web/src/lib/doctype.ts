@@ -52,7 +52,9 @@ const RE = {
   tutorial: /(tutorium|tutorial|tutorien|\btut\b)/i,
   notes: /(mitschrift|skript|script\b|lecture notes|vorlesungsnotizen|handout|tafelbild|notes\b)/i,
   sheet: /(übungsblatt|uebungsblatt|aufgabenblatt|\bblatt\b|sheet|homework|hausaufgabe|assignment|aufgaben|übungsaufgabe|uebungsaufgabe|exercise ?sheet|\bfall\b|fallstudie|case study|\bha ?\d|problem set|worksheet)/i,
-  exslides: /(übungsfolien|uebungsfolien|exercise slides|übung.*folien|folien.*übung|\bub\d{1,2}\b|_ub\d)/i,
+  // auch mit Nummer oder Wörtern dazwischen: „Exercise 3 Slides“, „Exercise_05_slides“, „Slides Exercise Session 7“
+  exslides:
+    /(übungsfolien|uebungsfolien|übung.*folien|folien.*übung|\bub\d{1,2}\b|_ub\d|(?:exercise|uebung)(?:[\s_\-]+[\w.]+){0,2}[\s_\-]+(?:slides|folien)|(?:slides|folien)(?:[\s_\-]+[\w.]+){0,1}[\s_\-]+(?:exercise|uebung))/i,
   reading: /(begleittext|literatur|reading|paper|artikel|article|kapitel aus|chapter from|lektüre|lektuere)/i,
   selfstudy: /(selbststudium|selbstlern|self-?study|lerneinheit)/i,
   video: /\.(mp4|mov|avi|m4v|webm|mkv)$/i,
