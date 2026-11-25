@@ -28,10 +28,12 @@ from .deadlines import PARENTS
 from .sheets import DEADLINE_WORDS, EVENT_WORDS, SOLUTION, _find_dates, _pdf_text
 from .textfix import WEEKDAY_RE, fix_year, normalize, weekday_before, weekday_of
 
-RULES_VERSION = 5  # 2: Überschrift „ROOM“ ist kein Raum, „start in lecture week 3“ gilt für die genannte Art; 3: Leistungspunkte (credits); 4: beides zusammen; 5: Beginn (Gruppen = Übung, Anmeldung zählt nicht, späte Planpunkte zählen nicht)
+RULES_VERSION = 6  # 2: Überschrift „ROOM“ ist kein Raum, „start in lecture week 3“ gilt für die genannte Art; 3: Leistungspunkte (credits); 4: beides zusammen; 5: Beginn (Gruppen = Übung, Anmeldung zählt nicht, späte Planpunkte zählen nicht); 6: bis Seite 200
 CACHE = DATA_DIR / "orga-cache.json"
 OUTPUT = DATA_DIR / "orga-events.json"
-MAX_PAGES = 25  # Orga-Folien: Zeiten stehen meist auf den ersten 5–15 Folien
+# Orga-Folien ganz lesen: oft stehen die Zeiten erst nach Vorstellung und Motivation (Visualisierung: Folie 88 von 109).
+# 200 Seiten kosten mit pypdf unter 0,5 s und laufen je Datei nur einmal (Cache pro Datei-Hash).
+MAX_PAGES = 200
 MAX_BYTES = 40 * 1024 * 1024
 MAX_FILES = 8  # je Kurs
 
@@ -89,6 +91,8 @@ TYPES = [
 ]
 LABELS = {"lecture": "Lecture", "exercise": "Exercise", "tutorial": "Tutorial", "seminar": "Seminar"}
 OFFICE = re.compile(r"\b(sprechstunden?|office hours?|sprechzeiten?)\b", re.I)
+# Stoff auf späteren Folien („Beispiel: Das Kino zeigt den Film Mittwoch 20:00 – 21:45“) ist kein Kurstermin
+EXAMPLE = re.compile(r"(\bbeispiel\w*|\bz\.\s?b\.|\be\.\s?g\.|\bfor example\b|\bexample\b)", re.I)
 SKIP = re.compile(r"(lehramt|didaktik|nur nach vereinbarung|ausgewählten terminen|selected dates|\bklausur\w*|\bexams?\b|\bprüfung\w*)", re.I)
 ALT = re.compile(r"\b(oder|or|alternativ\w*|wahlweise|choose|wählen|parallel\w*)\b", re.I)
 GROUP = re.compile(r"\b(?:gruppe|group|grp\.?|übungsgruppe)\s*0*(\d{1,2})\b", re.I)
@@ -212,7 +216,7 @@ def find_slots(lines: list[str], default_type: str = "lecture") -> list[dict[str
                             s["type"], s["_conf"] = _room_type(room), 1
                     roomless = []
             continue
-        if OFFICE.search(line) or SKIP.search(line):
+        if OFFICE.search(line) or SKIP.search(line) or EXAMPLE.search(line):
             continue
         line_type = _type_in(line)
         if header_skip and not line_type:

@@ -1,28 +1,28 @@
 {
  "when": "2026-11-25",
  "summary": {
-  "errors": 59,
-  "tp": 267,
-  "fp": 15,
-  "fn": 44,
-  "passed": 55,
-  "ran": 76,
+  "errors": 58,
+  "tp": 308,
+  "fp": 22,
+  "fn": 36,
+  "passed": 61,
+  "ran": 80,
   "skipped": 0,
   "categories": {
    "orga.slots": [
-    70,
-    13,
-    27
+    83,
+    20,
+    16
    ],
    "orga.alt": [
-    70,
+    83,
     0,
     0
    ],
    "orga.first": [
-    63,
+    66,
     0,
-    1
+    0
    ],
    "orga.extras": [
     2,
@@ -35,14 +35,14 @@
     0
    ],
    "sheets": [
-    29,
+    38,
     2,
-    12
+    6
    ],
    "orga.room": [
-    27,
+    30,
     0,
-    3
+    13
    ],
    "orga.cancellations": [
     1,
@@ -50,7 +50,7 @@
     0
    ]
   },
-  "seconds": 15.6
+  "seconds": 17.6
  },
  "cases": {
   "real/bwl": {
@@ -65,10 +65,9 @@
   },
   "real/mathe-vorlesung": {
    "status": "fail",
-   "errors": 4,
+   "errors": 3,
    "details": [
     "sheets: verpasst 00_ModulinformationenMathe1.pdf: klausur 2027-02-16 09:00",
-    "sheets: verpasst 00_ModulinformationenMathe1.pdf: klausur 2027-03-18 09:00",
     "sheets: verpasst 00_ModulinformationenMathe1.pdf: termin 2026-12-02 12:00",
     "sheets: verpasst 00_ModulinformationenMathe1.pdf: termin 2027-01-20 12:00"
    ]
@@ -92,20 +91,23 @@
   },
   "real/visualisierung-vorlesung": {
    "status": "fail",
-   "errors": 12,
+   "errors": 15,
    "details": [
-    "orga.slots: verpasst lecture Mi 10:00–11:30",
-    "orga.slots: verpasst lecture Mi 11:45–13:15",
-    "orga.slots: verpasst exercise Mo 14:00–15:30 Gruppe 1",
-    "orga.slots: verpasst exercise Mo 16:00–17:30 Gruppe 2",
-    "orga.slots: verpasst exercise Di 14:00–15:30 Gruppe 3",
-    "orga.slots: verpasst exercise Do 10:00–11:30 Gruppe 4",
-    "orga.slots: verpasst exercise Do 12:00–13:30 Gruppe 5",
-    "orga.slots: verpasst exercise Do 14:00–15:30 Gruppe 6",
-    "orga.first: exercise Mo zuerst am 2026-10-12, erwartet 2026-10-19 (starts={}, weekOffsets={})",
-    "sheets: verpasst Vis-V01.1_Orga.pdf: klausur 2027-02-15 08:00",
-    "sheets: verpasst Vis-V01.1_Orga.pdf: klausur 2027-03-15 09:00",
-    "sheets: verpasst Vis-V01.1_Orga.pdf: abgabe 2027-01-21 12:00"
+    "orga.room: lecture Mi 10:00–11:30 Raum „None“, erwartet „Hörsaal 230“",
+    "orga.room: lecture Mi 11:45–13:15 Raum „None“, erwartet „Hörsaal 230“",
+    "orga.room: exercise Mo 14:00–15:30 Gruppe 1 Raum „None“, erwartet „Weyertal 121“",
+    "orga.room: exercise Mo 16:00–17:30 Gruppe 2 Raum „None“, erwartet „Weyertal 121“",
+    "orga.room: exercise Di 14:00–15:30 Gruppe 3 Raum „None“, erwartet „Weyertal 121“",
+    "orga.room: exercise Do 10:00–11:30 Gruppe 4 Raum „None“, erwartet „Weyertal 121“",
+    "orga.room: exercise Do 12:00–13:30 Gruppe 5 Raum „None“, erwartet „Weyertal 121“",
+    "orga.room: exercise Do 14:00–15:30 Gruppe 6 Raum „None“, erwartet „Weyertal 121“",
+    "orga.slots: Fehlalarm exercise Mo 09:00–12:00",
+    "orga.slots: Fehlalarm exercise Mo 14:00–15:30",
+    "orga.slots: Fehlalarm exercise Mo 16:00–17:30",
+    "orga.slots: Fehlalarm exercise Di 14:00–15:30",
+    "orga.slots: Fehlalarm exercise Do 10:00–11:30",
+    "orga.slots: Fehlalarm exercise Do 12:00–13:30",
+    "orga.slots: Fehlalarm exercise Do 14:00–15:30"
    ]
   },
   "real/visualisierung-uebung": {
@@ -198,16 +200,14 @@
    "status": "fail",
    "errors": 2,
    "details": [
-    "orga.slots: verpasst lecture Mi 10:00–11:30",
-    "orga.slots: verpasst lecture Mi 11:45–13:15"
+    "orga.room: lecture Mi 10:00–11:30 Raum „None“, erwartet „Hörsaal 230“",
+    "orga.room: lecture Mi 11:45–13:15 Raum „None“, erwartet „Hörsaal 230“"
    ]
   },
   "synthetic/seiten/introduction-folie-41": {
-   "status": "fail",
-   "errors": 1,
-   "details": [
-    "orga.slots: verpasst lecture Di 12:00–13:30"
-   ]
+   "status": "pass",
+   "errors": 0,
+   "details": []
   },
   "synthetic/seiten/erste-vorlesung-ohne-orga-namen": {
    "status": "fail",
@@ -218,12 +218,29 @@
    ]
   },
   "synthetic/seiten/klausur-auf-folie-36": {
-   "status": "fail",
-   "errors": 2,
-   "details": [
-    "sheets: verpasst 00_Modulinformationen.pdf: klausur 2027-02-18 10:00",
-    "sheets: verpasst 00_Modulinformationen.pdf: klausur 2027-03-25 10:00"
-   ]
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/seiten/syllabus-englisch-folie-60": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/seiten/klausur-folie-50": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/seiten/abgabe-folie-31": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/seiten/beispiel-auf-spaeter-folie-falle": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
   },
   "synthetic/beginn/uebungen-zweite-woche": {
    "status": "pass",

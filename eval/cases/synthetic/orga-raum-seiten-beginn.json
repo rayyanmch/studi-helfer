@@ -48,6 +48,25 @@
      {"date": "2027-02-18", "kind": "klausur", "time": "10:00"},
      {"date": "2027-03-25", "kind": "klausur", "time": "10:00"}]}},
 
+  {"id": "seiten/syllabus-englisch-folie-60",
+   "files": {"Syllabus_Intro.pdf": [{"filler": 59}, ["Schedule", "Lectures: Mondays 2:00-3:30 pm, Room 1.101", "Final exam: February 20, 2027, 10:00 am, Main Hall"], {"filler": 5}]},
+   "orga": {"slots": [{"type": "lecture", "weekday": 0, "start": "14:00", "end": "15:30", "alternative": false, "room": "Room 1.101"}]},
+   "sheets": {"Syllabus_Intro.pdf": [{"date": "2027-02-20", "kind": "klausur", "time": "10:00"}]}},
+
+  {"id": "seiten/klausur-folie-50",
+   "files": {"Kickoff.pdf": [{"filler": 49}, ["Prüfung", "Klausur: Donnerstag, 11.02.2027, 14:00 Uhr, Aula"]]},
+   "sheets": {"Kickoff.pdf": [{"date": "2027-02-11", "kind": "klausur", "time": "14:00"}]}},
+
+  {"id": "seiten/abgabe-folie-31",
+   "ref": "2026-10-20",
+   "files": {"Organisation.pdf": [{"filler": 30}, ["Übungsplan", "• Ab 26.10.26: Übungen zum Stoff der Vorlesung", "• 21.01.27, 12:00 Uhr: Abgabe Projekt"]]},
+   "sheets": {"Organisation.pdf": [{"date": "2027-01-21", "kind": "abgabe", "time": "12:00"}]}},
+
+  {"id": "seiten/beispiel-auf-spaeter-folie-falle",
+   "note": "Einführungs-Folien enthalten hinten oft schon Stoff; ein Beispiel mit Wochentag und Uhrzeit ist kein Kurstermin.",
+   "files": {"01_Einfuehrung.pdf": [["Organisatorisches", "Vorlesung: Dienstag, 12:00-13:30, Hörsaal 4"], {"filler": 38}, ["Beispiel: Terminplanung", "Beispiel: Das Kino zeigt den Film Mittwoch 20:00 - 21:45 Uhr", "Ein Patient hat z. B. Termine am Freitag 09:00 - 10:00 Uhr"]]},
+   "orga": {"slots": [{"type": "lecture", "weekday": 1, "start": "12:00", "end": "13:30", "alternative": false, "room": "Hörsaal 4"}]}},
+
   {"id": "beginn/uebungen-zweite-woche",
    "files": {"00_Organisatorisches.pdf": [["Termine", "Vorlesung: Montag, 10:00-11:30, Hörsaal 1", "Übung: Donnerstag, 14:00-15:30, Seminarraum 2", "Die Übungen beginnen in der zweiten Vorlesungswoche."]]},
    "orga": {"slots": [

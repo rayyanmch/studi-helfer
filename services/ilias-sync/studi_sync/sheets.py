@@ -17,12 +17,15 @@ from .common import DATA_DIR, load_config, read_json, write_json
 from .deadlines import deadline_id
 from .textfix import fix_year, normalize, weekday_before
 
-RULES_VERSION = 6  # erhöhen, wenn sich die Regeln ändern → alles wird neu ausgewertet
+RULES_VERSION = 7  # erhöhen, wenn sich die Regeln ändern → alles wird neu ausgewertet; 7: Orga-Dateien bis Seite 200
 CACHE = DATA_DIR / "sheet-deadlines-cache.json"
 OUTPUT = DATA_DIR / "sheet-deadlines.json"
 MAX_PAGES = 8  # Fristen und Klausurtermine stehen fast immer auf den ersten Seiten (Orga-Folien)
-ORGA_PAGES = 25  # Orga-Folien/Einführung: Klausurtermine stehen oft weiter hinten (SE: Folie 12)
-ORGA_HINT = re.compile(r"(orga|modulinfo|allgemein|general|einf[üu]hrung|introduction|intro\b|overview|syllabus|_0_|^0?[01]_|vl_?0?[01]|info)", re.I)
+# Orga-Folien/Einführung ganz lesen: Klausurtermine stehen oft weit hinten (SE: Folie 14, Mathe: 31, Visualisierung: 99
+# von 109, nach Vorstellung und Motivation). 200 Seiten kosten mit pypdf unter 0,5 s und laufen je Datei nur einmal.
+ORGA_PAGES = 200
+ORGA_HINT = re.compile(r"(orga|modulinfo|allgemein|general|einf[üu]hrung|introduction|intro\b|overview|überblick|syllabus|"
+                       r"kick.?off|woche_?0\b|week_?0\b|_0_|^0?[01]_|vl_?0?[01]|info)", re.I)
 MAX_BYTES = 30 * 1024 * 1024
 
 SHEET_NAME = re.compile(

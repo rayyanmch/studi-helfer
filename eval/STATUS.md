@@ -24,17 +24,17 @@ Filter: `… run.py beginn` (nur Fälle mit „beginn“ in der Id, speichert da
 |---|---|---|---|---|
 | 1 | 2026-11-25 | 57 · 51/71 | 13 · 11/17 | Prüfstand gebaut, noch keine Regel geändert |
 | 2 | 2026-11-25 | 67 → 59 · 51 → 55/76 | 13 · 11/17 | Beginn (orga.py, RULES_VERSION 5): „Gruppen“ = Übung, Beginn der Anmeldung zählt nicht, Beginn > 6 Wochen nach dem frühesten zählt nicht. 5 neue Fälle (67 = alter Code mit neuen Fällen). Seitenlimit verworfen, siehe unten |
+| 3 | 2026-11-25 | 63 → 58 · 56 → 61/80 | 13 · 11/17 | Seitenlimit: Orga-Dateien bis Seite 200 (orga.py RULES_VERSION 6, sheets.py 7, `ORGA_HINT` kennt jetzt auch Kick-off/Überblick/Woche 0), Zeilen mit „Beispiel/z. B./example“ sind keine Wochentermine. 4 neue Fälle. Visualisierung: alle 8 Termine, Beginn und beide Klausuren + Abgabe gefunden; offen dort nur noch Räume und Wahltermin-Doppel |
 
 Laufzeit: orga 69 Dateien 1,3 s (langsamste 0,14 s), sheets 212 Dateien 13,6 s (langsamste 0,84 s: `uebung_1_rayyan_…pdf`, eigene eingescannte Abgabe). Pro Datei-Hash gecacht, läuft also je Datei einmal; nichts davon beim App-Start. Kein Handlungsbedarf bei der Geschwindigkeit.
 
 ## Offene Fehler (nach Nutzen)
 
-1. **Seitenlimit 25** (`orga.MAX_PAGES`, `sheets.ORGA_PAGES`): verpasste Vorlesungen und Klausuren. Echt: Visualisierung (Folie 88/99, 8 Termine + 2 Klausuren + Abgabe), Mathe (Klausuren + Bonustests Folie 29/31). Ausgedacht: `seiten/*`. Runde 2 verworfen (siehe unten); nach dem Beginn-Fix sollte es sich lohnen, noch einmal versuchen. Danach bleiben bei Visualisierung Räume (9), doppelte Gruppen (3) und Nachklausur (5).
-   - Mathe-Klausur 16.02. hängt zusätzlich an „Prüfungstermin:“ (`EVENT_WORDS` hat `\bprüfung\b`, passt nicht auf das zusammengesetzte Wort).
+1. ~~Seitenlimit 25~~ (Runde 3 behoben). Rest bei Mathe: Klausur 16.02. hängt an „Prüfungstermin:“ (`EVENT_WORDS` hat `\bprüfung\b`, passt nicht auf das zusammengesetzte Wort) → **neu vorn in der Liste, verpasste Klausur**.
 2. **Übungsgruppen werden zur Vorlesung**, wenn kein Art-Wort davorsteht („Übungstermine“ passt nicht auf `\w*übung\b`; „Gruppe N“ allein sagt Übung). `gruppen/zweimal-aufgelistet`, `raum/nach-der-liste`, `beginn/gruppen-ab-und-designuebung`.
 3. **Doppelte Gruppen ohne Nummer**, wenn Nummer und Zeit in getrennten Zeilen stehen (Visualisierung Folie 94).
 4. ~~Beginn falsch~~ (Runde 2 behoben).
-5. **„Nachklausur Montag … 09:00–12:00“ wird Wochentermin** (`SKIP` hat `\bklausur`, „Nachklausur“ hat davor keine Wortgrenze). `falle/klausur-ist-kein-wochentermin`, Visualisierung nach Fix 1.
+5. **„Nachklausur Montag … 09:00–12:00“ wird Wochentermin** (`SKIP` hat `\bklausur`, „Nachklausur“ hat davor keine Wortgrenze). `falle/klausur-ist-kein-wochentermin`, echt jetzt auch bei Visualisierung (als Wahltermin, nicht im Kalender).
 6. **Zwei Wochentage, eine Uhrzeit** („dienstags und donnerstags von 8:15 bis 9:45“, „Mondays and Wednesdays, 4:00–5:30 pm“): erster Tag fehlt, im Englischen wird es eine Übung.
 7. **Tabellen-Zellen untereinander** (Art / Tag / Zeit / Raum je eine Zeile): `tabelle/zellen-untereinander`.
 8. **Orga-Folie in Datei ohne Orga-Namen** („Vorlesung_01_Grundlagen.pdf“): `seiten/erste-vorlesung-ohne-orga-namen`. Echt: Visualisierung wiederholt die Zeiten in `Vis-V02_ViewsTools.pdf` S. 3.
@@ -43,6 +43,8 @@ Laufzeit: orga 69 Dateien 1,3 s (langsamste 0,14 s), sheets 212 Dateien 13,6 s (
 11. **sheets**: „Bearbeitung bis Di. … 23:55“ ist eine Abgabe; Bonustests („Test 1 Mi. 02.12.2026 12-12:30“) fehlen; Fußzeilen-Datum unter „HOMEWORK PRESENTATION“ wird Termin (echt: `SSE_Exercise04.pdf`).
 12. **Web**: `.gif` im Vorlesungsordner wird „Lecture“; „Gremienwahlen“-Folien sind keine Vorlesung; „Lösungsverfahren …“ ist keine Lösung; `answers_week3` wird nicht als Lösung erkannt; „Exercise 3 Slides“ → Übungsfolien; Module: „Übungen zur Linearen Algebra I“ gehört zu „Lineare Algebra I“, „WS 26/27 Datenbanksysteme“ (Semester vorn ohne Klammer) braucht einen Namen ohne Semester, „… – Tutorials“ gehört zum Kurs.
 
+Hinweis zur App: Gleiche Gruppe aus ILIAS-Gruppe und Orga-Folie (Visualisierung Gruppe 6) ergibt dieselbe Termin-Id, `backend.js` zeigt sie nur einmal. Wahltermine ohne eigene Gruppe erscheinen nur in der Auswahl der Übungszeiten, nicht im Kalender.
+
 ## Noch nicht abgedeckt
 
 - `web/src/lib/weeks.ts` (Themenwochen): eigener Prüfstand fehlt noch (braucht Dateien mit Datum und ILIAS-Sitzungen; gut als ausgedachte Fälle).
@@ -50,7 +52,7 @@ Laufzeit: orga 69 Dateien 1,3 s (langsamste 0,14 s), sheets 212 Dateien 13,6 s (
 
 ## Verworfene Versuche
 
-- **Runde 2, Seitenlimit auf 250** (orga + sheets): 57 → 58 Fehler. Visualisierung findet dann alle 8 Termine und die Klausuren, deckt aber Folgefehler im selben Fall auf (Räume fehlen 8×, Gruppen ohne Nummer doppelt 6×, Nachklausur als Wochentermin, Beginn falsch). Erst die Folgefehler beheben (Beginn: erledigt in Runde 2), dann erneut. Lesezeit war kein Problem: orga 2,3 s statt 1,3 s für alle Dateien, langsamste 0,43 s.
+- **Runde 2, Seitenlimit auf 250** (orga + sheets): 57 → 58 Fehler. In Runde 3 nach dem Beginn-Fix gelungen (mit Beispiel-Regel). Visualisierung findet dann alle 8 Termine und die Klausuren, deckt aber Folgefehler im selben Fall auf (Räume fehlen 8×, Gruppen ohne Nummer doppelt 6×, Nachklausur als Wochentermin, Beginn falsch). Erst die Folgefehler beheben (Beginn: erledigt in Runde 2), dann erneut. Lesezeit war kein Problem: orga 2,3 s statt 1,3 s für alle Dateien, langsamste 0,43 s.
 
 ## Fragen an Rayyan
 
