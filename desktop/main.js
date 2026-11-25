@@ -513,12 +513,17 @@ function updateBadge() {
   app.setBadgeCount(n);
 }
 
-/** IPC-Aktion, nach der sich die Dock-Zahl ändern kann (abhaken, eigene Termine, ausblenden). */
-const withBadge = (fn) => (...args) => {
-  const r = fn(...args);
-  setTimeout(updateBadge, 0);
-  return r;
-};
+/**
+ * IPC-Aktion, nach der sich die Dock-Zahl ändern kann (abhaken, eigene Termine, ausblenden).
+ * Als function-Deklaration, weil die handle(...)-Aufrufe weiter oben sie schon beim Laden brauchen.
+ */
+function withBadge(fn) {
+  return (...args) => {
+    const r = fn(...args);
+    setTimeout(updateBadge, 0);
+    return r;
+  };
+}
 
 const reminders = createReminders({
   dataDir: backend.DATA_DIR,
