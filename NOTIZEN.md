@@ -7,6 +7,8 @@ Gemeinsames Gedächtnis für alle KI-Agenten und Menschen im Projekt. Wird über
 
 Wer gerade woran arbeitet (Person, Aufgabe, betroffene Dateien). Eintragen beim Start, löschen wenn fertig.
 
+- 2026-11-25, Rayyans Agent (Loop „Erkennung“): **Prüfstand + Regel-Erkennung verbessern** (Anlass: Visualisierung-Vorlesung Mi 10 nie erkannt, Zeiten auf Folie 88, `orga.py` liest nur 25 Seiten). Läuft als Loop mit `[skip ci]`-Commits, am Ende ein App-Build. Dateien: neu `eval/`, `services/ilias-sync/studi_sync/orga.py`, `sheets.py`, `textfix.py`, `web/src/lib/weeks.ts`, `doctype.ts`, `solutions.ts`, `desktop/lib/modules.js`. Stand und Fragen an Rayyan in `eval/STATUS.md`.
+
 - 2026-11-25, Rayyans Agent (zweite Sitzung): **ILIAS-Lernmodule (Selbstlerneinheiten) als PDF** über die Druckansicht in den Ordner `Selbststudium` legen. Dateien: `services/ilias-sync/studi_sync/` (`pferd_run.py`, `sync.py`, neu `learnmods.py`), `desktop/lib/` (neu `learnmods.js`, `backend.js`).
 
 
