@@ -1,12 +1,12 @@
 import { Header } from "./Header";
 import { Hero } from "./Hero";
+import { LivePreview } from "./LivePreview";
 import { SortingStage } from "./SortingStage";
 import { FinePrint } from "./FinePrint";
-import { WeekWindow } from "./WeekWindow";
 import { Reminders } from "./Reminders";
 import { StopDoing } from "./StopDoing";
 import { LangHint } from "./LangHint";
-import { Download, Everyday, Footer, Privacy, Setup } from "./Sections";
+import { Download, Footer, Privacy, Setup } from "./Sections";
 import { Section } from "./ui";
 import type { Lang } from "@/lib/i18n";
 
@@ -17,16 +17,13 @@ export function Home({ lang }: { lang: Lang }) {
       <Header lang={lang} />
       <main>
         <Hero lang={lang} />
+        <LivePreview lang={lang} />
         <SortingStage lang={lang} />
         <Section id="deadlines" className="pt-[120px]">
           <FinePrint lang={lang} />
-          <WeekWindow lang={lang} />
         </Section>
         <Reminders lang={lang} />
-        <div id="more">
-          <Everyday lang={lang} />
-          <StopDoing lang={lang} />
-        </div>
+        <StopDoing lang={lang} />
         <Setup lang={lang} />
         <Privacy lang={lang} />
         <Download lang={lang} />

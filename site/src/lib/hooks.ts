@@ -31,3 +31,19 @@ export function useMedia(query: string, serverValue = false): boolean {
 }
 
 export const useReducedMotion = () => useMedia("(prefers-reduced-motion: reduce)");
+
+// Aktuelle Uhrzeit in Minuten (für die „Jetzt“-Linie im Kalender). Beim Bauen unbekannt.
+const everyHalfMinute = (cb: () => void) => {
+  const id = setInterval(cb, 30_000);
+  return () => clearInterval(id);
+};
+export function useNowMinutes(): number | null {
+  return useSyncExternalStore(
+    everyHalfMinute,
+    () => {
+      const d = new Date();
+      return d.getHours() * 60 + d.getMinutes();
+    },
+    () => null,
+  );
+}

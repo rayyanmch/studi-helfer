@@ -17,6 +17,7 @@ const en = {
     appStore: "Mac App Store",
     linksLabel: "Sections",
     links: [
+      { id: "app", label: "App" },
       { id: "files", label: "Files" },
       { id: "deadlines", label: "Deadlines" },
       { id: "reminders", label: "Reminders" },
@@ -26,9 +27,9 @@ const en = {
   hero: {
     first: "Uni,",
     word: "sorted",
-    size: "text-[clamp(76px,13.6vw,188px)]",
+    size: "text-[clamp(64px,10vw,148px)]",
     sub: "New slides land in the right folder on your Mac. Deadlines land in your week. You stop digging through ILIAS and Moodle.",
-    note: "For Macs with Apple silicon. Works with ILIAS and Moodle.",
+    trust: ["For Macs with Apple silicon", "Works with ILIAS and Moodle", "Your password stays in the Keychain"],
   },
   stage: {
     in: "In",
@@ -40,22 +41,15 @@ const en = {
     title: "Then it reads the fine print.",
     lead: "Ordo finds deadlines and exam dates in your course calendar and inside your exercise sheets, and puts them into your week. Every date says where it was found.",
   },
-  week: {
-    title: "Your week, at one glance.",
-    lead: "Lectures, deadlines and exams in your course colours. Free days shrink so busy ones get the room. Tick off what you have handed in.",
+  live: {
+    title: "Everything you'd otherwise have five tabs open for.",
+    tabsLabel: "Parts of the app",
+    sample: "Sample data",
+    tabs: { files: "Files", deadlines: "Deadlines", calendar: "Calendar", mail: "Mail", mensa: "Mensa", study: "Study" },
   },
   reminders: {
     title: "And taps you on the shoulder.",
     lead: "The evening before a deadline and three hours before. A week before each exam, with a nudge to register, because being in the course is not enough.",
-  },
-  everyday: {
-    title: "And the things you check ten times a day.",
-    items: [
-      { title: "Mail", text: "Uni mail and Gmail in one inbox. Mails from your lecturers show their course." },
-      { title: "Mensa", text: "Today's menu with photos. Vegan and vegetarian at a glance." },
-      { title: "Study", text: "Flashcards and one-page study sheets made from your own slides." },
-      { title: "Places", text: "Libraries that are open right now and the walk to your lecture hall." },
-    ],
   },
   stop: {
     title: "Things you can stop doing",
@@ -111,6 +105,7 @@ const de: Dict = {
     appStore: "Mac App Store",
     linksLabel: "Abschnitte",
     links: [
+      { id: "app", label: "App" },
       { id: "files", label: "Dateien" },
       { id: "deadlines", label: "Fristen" },
       { id: "reminders", label: "Erinnerungen" },
@@ -120,9 +115,9 @@ const de: Dict = {
   hero: {
     first: "Uni,",
     word: "sortiert",
-    size: "text-[clamp(68px,11.4vw,158px)]",
+    size: "text-[clamp(60px,9.4vw,136px)]",
     sub: "Neue Folien landen im richtigen Ordner auf deinem Mac. Fristen landen in deiner Woche. Du musst dich nicht mehr durch ILIAS und Moodle klicken.",
-    note: "Für Macs mit Apple Silicon. Funktioniert mit ILIAS und Moodle.",
+    trust: ["Für Macs mit Apple Silicon", "Funktioniert mit ILIAS und Moodle", "Passwort bleibt im Schlüsselbund"],
   },
   stage: {
     in: "In",
@@ -134,22 +129,15 @@ const de: Dict = {
     title: "Dann liest es das Kleingedruckte.",
     lead: "Ordo findet Abgabetermine und Klausurdaten im Kurskalender und in deinen Übungsblättern und trägt sie in deine Woche ein. Bei jedem Termin steht, wo er gefunden wurde.",
   },
-  week: {
-    title: "Deine Woche auf einen Blick.",
-    lead: "Vorlesungen, Abgaben und Klausuren in den Farben deiner Kurse. Freie Tage werden schmal, damit volle Tage Platz haben. Was du abgegeben hast, hakst du ab.",
+  live: {
+    title: "Alles, wofür du sonst fünf Seiten offen hast.",
+    tabsLabel: "Bereiche der App",
+    sample: "Beispieldaten",
+    tabs: { files: "Dateien", deadlines: "Fristen", calendar: "Kalender", mail: "Mail", mensa: "Mensa", study: "Lernen" },
   },
   reminders: {
     title: "Und tippt dir auf die Schulter.",
     lead: "Am Abend vor einer Abgabe und drei Stunden vorher. Eine Woche vor jeder Klausur, mit der Frage, ob du angemeldet bist. Im Kurs eingetragen zu sein, reicht nämlich nicht.",
-  },
-  everyday: {
-    title: "Und alles, wo du zehnmal am Tag nachschaust.",
-    items: [
-      { title: "Mail", text: "Uni-Mail und Gmail in einem Postfach. Mails deiner Dozenten zeigen ihren Kurs." },
-      { title: "Mensa", text: "Der Speiseplan von heute mit Fotos. Vegan und vegetarisch auf einen Blick." },
-      { title: "Lernen", text: "Karteikarten und einseitige Lernzettel aus deinen eigenen Folien." },
-      { title: "Orte", text: "Bibliotheken, die gerade offen haben, und der Weg zu deinem Hörsaal." },
-    ],
   },
   stop: {
     title: "Was du dir sparen kannst",

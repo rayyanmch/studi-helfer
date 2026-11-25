@@ -121,3 +121,19 @@ export function lectureWeek(d: Date): number | null {
   if (d < start || d > end) return null;
   return weeksSince(start);
 }
+
+/** Montag bis Freitag der Woche von heute (am Wochenende die nächste Woche). */
+export function workWeek(today: Date): Date[] {
+  const wd = today.getDay();
+  const offset = wd === 0 ? 1 : wd === 6 ? 2 : 1 - wd;
+  const monday = addDays(today, offset);
+  return [0, 1, 2, 3, 4].map((i) => addDays(monday, i));
+}
+
+/** „November 23–27“ bzw. „November 30–December 4“ */
+export function rangeLabel(days: Date[]): string {
+  const a = days[0];
+  const b = days[days.length - 1];
+  const end = a.getMonth() === b.getMonth() ? `${b.getDate()}` : `${MONTH[b.getMonth()]} ${b.getDate()}`;
+  return `${MONTH[a.getMonth()]} ${a.getDate()}–${end}`;
+}

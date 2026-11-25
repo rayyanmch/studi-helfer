@@ -12,11 +12,11 @@ const onScroll = (cb: () => void) => {
   return () => window.removeEventListener("scroll", cb);
 };
 
-// Kopfzeile: oben durchsichtig, beim Scrollen Glas mit weicher Kante statt harter Linie.
-// In der Mitte schlichte Links zu den Abschnitten; der, in dem man gerade ist, steht in Tinte.
+// Schwebende Navigation als Pille (Idee D). Beim Scrollen wird der Schatten etwas kräftiger,
+// damit sie sich vom Inhalt darunter löst. Der aktuelle Abschnitt steht in Tinte.
 export function Header({ lang }: { lang: Lang }) {
   const t = dict[lang].nav;
-  const scrolled = useSyncExternalStore(onScroll, () => window.scrollY > 8, () => false);
+  const scrolled = useSyncExternalStore(onScroll, () => window.scrollY > 24, () => false);
   const [active, setActive] = useState<string | null>(null);
 
   useEffect(() => {
@@ -34,21 +34,22 @@ export function Header({ lang }: { lang: Lang }) {
   }, [t.links]);
 
   return (
-    <header className="fixed inset-x-0 top-0 z-40">
+    <header className="pointer-events-none fixed inset-x-0 top-0 z-40 flex justify-center px-6 pt-[26px]">
       <div
-        aria-hidden
-        className={`glass absolute inset-0 transition-opacity duration-300 ${scrolled ? "opacity-100" : "opacity-0"}`}
-        style={{ maskImage: "linear-gradient(black 70%, transparent)" }}
-      />
-      <div className="relative mx-auto grid h-16 max-w-[1160px] grid-cols-[1fr_auto] items-center gap-6 px-6 sm:px-8 lg:grid-cols-[1fr_auto_1fr]">
+        className={`pill pointer-events-auto flex h-14 w-full max-w-[940px] items-center gap-6 rounded-full pr-2 pl-[18px] transition-shadow duration-300 ${
+          scrolled
+            ? "shadow-[0_0_0_1px_var(--ring),0_14px_36px_-14px_rgb(var(--shadow-color)/0.35)]"
+            : "shadow-[0_0_0_1px_var(--ring),0_10px_28px_-16px_rgb(var(--shadow-color)/0.25)]"
+        }`}
+      >
         <a
           href={`${t.home === "/" ? "" : t.home}#top`}
-          className="flex items-center gap-2.5 justify-self-start text-[19px] font-semibold tracking-[-0.01em] text-ink"
+          className="flex flex-none items-center gap-2.5 text-[17px] font-semibold tracking-[-0.01em] text-ink"
         >
-          <AppIcon size={30} />
+          <AppIcon size={26} />
           Ordo
         </a>
-        <nav aria-label={t.linksLabel} className="hidden items-center gap-7 lg:flex">
+        <nav aria-label={t.linksLabel} className="ml-auto hidden items-center gap-6 min-[1100px]:flex">
           {t.links.map((l) => (
             <a
               key={l.id}
@@ -60,11 +61,11 @@ export function Header({ lang }: { lang: Lang }) {
             </a>
           ))}
         </nav>
-        <div className="flex items-center gap-6 justify-self-end">
+        <div className="ml-auto flex items-center gap-5 min-[1100px]:ml-0">
           <LangLink lang={lang} className="hidden text-sm text-muted hover:text-ink sm:block" />
           <a
             href={DOWNLOAD_URL}
-            className="press inline-flex h-9 items-center gap-2 rounded-full px-4 text-sm font-semibold text-ink shadow-[inset_0_0_0_1px_var(--line)] hover:bg-surface"
+            className="press inline-flex h-10 items-center gap-2 rounded-full bg-accent px-[18px] text-sm font-semibold text-on-accent"
           >
             <ArrowDown aria-hidden className="nudge" size={15} strokeWidth={2.2} />
             {t.download}

@@ -1,39 +1,9 @@
 import Link from "next/link";
-import { Layers, Lock, Mail, MapPin, Utensils, type LucideIcon } from "lucide-react";
-import { AppIcon, DownloadButtons, H2, Lead, Section, tone } from "./ui";
+import { Lock } from "lucide-react";
+import { AppIcon, DownloadButtons, H2, Lead, Section } from "./ui";
 import { LangLink } from "./LangHint";
 import { dict, type Lang } from "@/lib/i18n";
 import type { Tone } from "@/lib/week";
-
-const EVERYDAY: { icon: LucideIcon; tone: Tone }[] = [
-  { icon: Mail, tone: "blue" },
-  { icon: Utensils, tone: "orange" },
-  { icon: Layers, tone: "green" },
-  { icon: MapPin, tone: "plum" },
-];
-
-export function Everyday({ lang }: { lang: Lang }) {
-  const t = dict[lang].everyday;
-  return (
-    <Section className="pt-[200px]">
-      <H2 className="max-w-[14em] text-[clamp(32px,3.6vw,48px)]">{t.title}</H2>
-      <div className="mt-12 grid gap-x-12 gap-y-11 sm:grid-cols-2 lg:grid-cols-4">
-        {t.items.map((item, i) => {
-          const { icon: Icon, tone: c } = EVERYDAY[i];
-          return (
-            <div key={item.title} className="flex flex-col gap-3 border-t border-line pt-6" style={tone(c)}>
-              <span className="grid size-11 place-items-center rounded-[12px]" style={{ background: "var(--soft)" }}>
-                <Icon aria-hidden size={22} strokeWidth={1.8} style={{ color: "var(--ink-c)" }} />
-              </span>
-              <span className="text-[19px] font-semibold">{item.title}</span>
-              <span className="text-base leading-[1.5] text-muted">{item.text}</span>
-            </div>
-          );
-        })}
-      </div>
-    </Section>
-  );
-}
 
 const STEP_TONES: Tone[] = ["blue", "orange", "green"];
 
