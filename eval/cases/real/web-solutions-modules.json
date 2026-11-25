@@ -1,0 +1,38 @@
+[
+  {"algo": "solutions", "id": "solutions/bwl", "folder": "BWL",
+   "note": "Alle PDFs des Moduls; Woche 3 hat zwei Lösungen, Woche 6 und 7 keine.",
+   "filesFromFolder": true,
+   "expect": {
+     "Woche 1 - In Unternehmen wirtschaftlich denken und handeln!/Übung/BWL_Übung_Einheit 1_Lösungen_WiSe26_27.pdf": "Woche 1 - In Unternehmen wirtschaftlich denken und handeln!/Übung/BWL_Übung_Woche 1_WiSe26_27.pdf",
+     "Woche 2 - Auftragsabwicklung als Geschäftsprozess charakterisieren/Übung/BWL_Fall_Woche_2_Lösungen_Green_Basket_GmbH.pdf": "Woche 2 - Auftragsabwicklung als Geschäftsprozess charakterisieren/Übung/BWL_Fall_Woche_2.pdf",
+     "Woche 3 - Absatzmärkte gestalten/Übung/BWL_Fall_Woche_3_Lösung_der_Lehramtsstudierenden.pdf": "Woche 3 - Absatzmärkte gestalten/Übung/BWL_Fall_Woche_3.pdf",
+     "Woche 3 - Absatzmärkte gestalten/Übung/BWL_Fall_Woche_3_umfassende_Lösungen.pdf": "Woche 3 - Absatzmärkte gestalten/Übung/BWL_Fall_Woche_3.pdf",
+     "Woche 4 - Beschaffungsmärkte gestalten/Übung/BWL_Fall_Woche_4_Lösungen.pdf": "Woche 4 - Beschaffungsmärkte gestalten/Übung/BWL_Fall_Woche_4.pdf",
+     "Woche 5 - Mit internen Informationen die Auftragsabwicklung unterstützen/Übung/BWL_Fall_Woche_5_Lösungen.pdf": "Woche 5 - Mit internen Informationen die Auftragsabwicklung unterstützen/Übung/BWL_Fall_Woche_5.pdf"
+   }},
+
+  {"algo": "modules", "id": "modules/rayyan-ws2627",
+   "note": "Rayyans Kurse aus config.json (Gruppe 05 hängt laut ILIAS an der Mathe-Übung).",
+   "courses": [
+     {"id": "crs-6999750", "kind": "crs", "title": "[WS26/27] Grundlagen der Betriebswirtschaftslehre"},
+     {"id": "crs-6997182", "kind": "crs", "title": "[WS26/27] Information Systems Management"},
+     {"id": "crs-6999275", "kind": "crs", "title": "[WS26/27] Mathematik für Studierende der Informatik I"},
+     {"id": "crs-6999276", "kind": "crs", "title": "[WS26/27] Mathematik für Studierende der Informatik I - Übung"},
+     {"id": "crs-6997658", "kind": "crs", "title": "[WS26/27] Softwaretechnik"},
+     {"id": "crs-6996734", "kind": "crs", "title": "[WS26/27] Visualisierung"},
+     {"id": "crs-6996789", "kind": "crs", "title": "[WS26/27] Visualisierung - Übungen"},
+     {"id": "grp-7035851", "kind": "grp", "title": "Gruppe 05 WiSe 2026", "parent": "crs-6999276"},
+     {"id": "crs-6744234", "kind": "crs", "title": "[SoSe26] Algorithmen und Datenstrukturen"},
+     {"id": "crs-6743818", "kind": "crs", "title": "[SoSe26] Algorithmen und Datenstrukturen - Übungen"}
+   ],
+   "filesFrom": {"crs-6999750": "BWL", "crs-6997182": "ISM", "crs-6999275": "Mathe I/Lecture", "crs-6999276": "Mathe I/Exercises",
+                 "crs-6997658": "Softwaretechnik", "crs-6996734": "Visualisierung/Lecture", "crs-6996789": "Visualisierung/Exercises"},
+   "expect": [
+     {"parts": ["crs-6999750"], "name": ["BWL"]},
+     {"parts": ["crs-6997182"], "name": ["ISM"]},
+     {"parts": ["crs-6999275", "crs-6999276", "grp-7035851"], "name": ["Mathe I"]},
+     {"parts": ["crs-6997658"], "name": ["Softwaretechnik"]},
+     {"parts": ["crs-6996734", "crs-6996789"], "name": ["Visualisierung"]},
+     {"parts": ["crs-6744234", "crs-6743818"]}
+   ]}
+]

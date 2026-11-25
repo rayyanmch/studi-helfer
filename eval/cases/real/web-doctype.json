@@ -1,0 +1,323 @@
+[
+ {
+  "algo": "doctype",
+  "id": "doctype/BWL",
+  "folder": "BWL",
+  "part": "Course",
+  "files": {
+   "Grundlegende Informationen zum Modul/Alte Klausuren/BWL Themenstellugn 90min Shaping New Tomorrow.pdf": "exam",
+   "Grundlegende Informationen zum Modul/Alte Klausuren/BWL Themenstellung 60min Cafe Osterspey.pdf": "exam",
+   "Grundlegende Informationen zum Modul/Alte Klausuren/BWL Themenstellung 60min YOUNGSTAR TRAVEL.pdf": "exam",
+   "Grundlegende Informationen zum Modul/Alte Klausuren/BWL Themenstellung 90min Breera.pdf": "exam",
+   "Grundlegende Informationen zum Modul/Alte Klausuren/BWL_Hinweis_alte Prüfungen.pdf": "exam",
+   "Grundlegende Informationen zum Modul/BWL26_0_Folien_WiSe_2026_27.pdf": "info",
+   "Grundlegende Informationen zum Modul/BWL_Begleittext_Woche_0.pdf": [
+    "info",
+    "reading"
+   ],
+   "Grundlegende Informationen zum Modul/BWL_allgemeine_Literaturhinweise.pdf": [
+    "reading",
+    "info"
+   ],
+   "Grundlegende Informationen zum Modul/Essay-Wettbewerb 2026.pdf": [
+    "info",
+    "other"
+   ],
+   "Woche 1 - In Unternehmen wirtschaftlich denken und handeln!/Begleittext/BWL_Begleittext_Woche_1.pdf": "reading",
+   "Woche 1 - In Unternehmen wirtschaftlich denken und handeln!/Selbststudium/Lerneinheit \"Rechtsformen\".pdf": "selfstudy",
+   "Woche 1 - In Unternehmen wirtschaftlich denken und handeln!/Selbststudium/Lerneinheit \"St. Galler Management Modell\".pdf": "selfstudy",
+   "Woche 1 - In Unternehmen wirtschaftlich denken und handeln!/Selbststudium/Woche_1_Information zum Selbststudium.pdf": [
+    "selfstudy",
+    "info",
+    "other"
+   ],
+   "Woche 1 - In Unternehmen wirtschaftlich denken und handeln!/Vorlesung/BWL26_01_Folien_WiSe_2026_27.pdf": "lecture",
+   "Woche 1 - In Unternehmen wirtschaftlich denken und handeln!/Zur Vertiefung/BWL_Literatur_Woche1.pdf": "reading",
+   "Woche 1 - In Unternehmen wirtschaftlich denken und handeln!/Zur Vertiefung/Übungsaufgaben_Woche_1.pdf": "sheet",
+   "Woche 1 - In Unternehmen wirtschaftlich denken und handeln!/Übung/BWL_Übung_Einheit 1_Lösungen_WiSe26_27.pdf": "solution",
+   "Woche 1 - In Unternehmen wirtschaftlich denken und handeln!/Übung/BWL_Übung_Woche 1_WiSe26_27.pdf": "sheet",
+   "Woche 2 - Auftragsabwicklung als Geschäftsprozess charakterisieren/Begleittext/BWL_Begleittext_Woche_2.pdf": "reading",
+   "Woche 2 - Auftragsabwicklung als Geschäftsprozess charakterisieren/Selbststudium/Informationen zum Selbststudium Woche 2.pdf": [
+    "selfstudy",
+    "info",
+    "other"
+   ],
+   "Woche 2 - Auftragsabwicklung als Geschäftsprozess charakterisieren/Selbststudium/Prozesse strukturiert darstellen.pdf": "selfstudy",
+   "Woche 2 - Auftragsabwicklung als Geschäftsprozess charakterisieren/Selbststudium/Prozesslandkarte.pdf": "selfstudy",
+   "Woche 2 - Auftragsabwicklung als Geschäftsprozess charakterisieren/Vorlesung/BWL_W2026_02.pdf": "lecture",
+   "Woche 2 - Auftragsabwicklung als Geschäftsprozess charakterisieren/Zur Vertiefung/BWL_Literatur_Woche2.pdf": "reading",
+   "Woche 2 - Auftragsabwicklung als Geschäftsprozess charakterisieren/Zur Vertiefung/Übungsaufgaben_Woche_2.pdf": "sheet",
+   "Woche 2 - Auftragsabwicklung als Geschäftsprozess charakterisieren/Übung/BWL_Fall_Woche_2.pdf": "sheet",
+   "Woche 2 - Auftragsabwicklung als Geschäftsprozess charakterisieren/Übung/BWL_Fall_Woche_2_Lösungen_Green_Basket_GmbH.pdf": "solution",
+   "Woche 3 - Absatzmärkte gestalten/Begleittext/BWL_Begleittext_Woche_3.pdf": "reading",
+   "Woche 3 - Absatzmärkte gestalten/Selbststudium/Aufbau einer Kundenbeziehung.pdf": "selfstudy",
+   "Woche 3 - Absatzmärkte gestalten/Selbststudium/Info zum Selbststudium Woche 3.pdf": [
+    "selfstudy",
+    "info",
+    "other"
+   ],
+   "Woche 3 - Absatzmärkte gestalten/Selbststudium/Lerneinheit \"Kaufverträge\".pdf": "selfstudy",
+   "Woche 3 - Absatzmärkte gestalten/Selbststudium/Lerneinheit \"Marketing-Mix\".pdf": "selfstudy",
+   "Woche 3 - Absatzmärkte gestalten/Vorlesung/BWL_W2026_03.pdf": "lecture",
+   "Woche 3 - Absatzmärkte gestalten/Zur Vertiefung/BWL_Literatur_Woche3.pdf": "reading",
+   "Woche 3 - Absatzmärkte gestalten/Zur Vertiefung/Übungsaufgaben Woche 3.pdf": "sheet",
+   "Woche 3 - Absatzmärkte gestalten/Übung/BWL_Fall_Woche_3.pdf": "sheet",
+   "Woche 3 - Absatzmärkte gestalten/Übung/BWL_Fall_Woche_3_Lösung_der_Lehramtsstudierenden.pdf": "solution",
+   "Woche 3 - Absatzmärkte gestalten/Übung/BWL_Fall_Woche_3_umfassende_Lösungen.pdf": "solution",
+   "Woche 4 - Beschaffungsmärkte gestalten/Begleittext/BWL_Begleittext_Woche_4.pdf": "reading",
+   "Woche 4 - Beschaffungsmärkte gestalten/Selbststudium/Grundfragen der Beschaffung.pdf": "selfstudy",
+   "Woche 4 - Beschaffungsmärkte gestalten/Selbststudium/Information zum Selbststudium Woche 4.pdf": [
+    "selfstudy",
+    "info",
+    "other"
+   ],
+   "Woche 4 - Beschaffungsmärkte gestalten/Selbststudium/Lager- und Beschaffungsprogramm optimieren.pdf": "selfstudy",
+   "Woche 4 - Beschaffungsmärkte gestalten/Vorlesung/BWL26_04.pdf": "lecture",
+   "Woche 4 - Beschaffungsmärkte gestalten/Zur Vertiefung/BWL_Literatur_Woche4.pdf": "reading",
+   "Woche 4 - Beschaffungsmärkte gestalten/Zur Vertiefung/Übungsaufgaben Woche 4.pdf": "sheet",
+   "Woche 4 - Beschaffungsmärkte gestalten/Übung/BWL_Fall_Woche_4.pdf": "sheet",
+   "Woche 4 - Beschaffungsmärkte gestalten/Übung/BWL_Fall_Woche_4_Lösungen.pdf": "solution",
+   "Woche 5 - Mit internen Informationen die Auftragsabwicklung unterstützen/Begleittext/BWL_Begleittext_Woche_5.pdf": "reading",
+   "Woche 5 - Mit internen Informationen die Auftragsabwicklung unterstützen/Selbststudium/Informationen zum Selbststudium Woche 5.pdf": [
+    "selfstudy",
+    "info",
+    "other"
+   ],
+   "Woche 5 - Mit internen Informationen die Auftragsabwicklung unterstützen/Selbststudium/Kosten und Leistungen.pdf": "selfstudy",
+   "Woche 5 - Mit internen Informationen die Auftragsabwicklung unterstützen/Selbststudium/Wissensmanagement.pdf": "selfstudy",
+   "Woche 5 - Mit internen Informationen die Auftragsabwicklung unterstützen/Selbststudium/Über interne Informationen berichten.pdf": "selfstudy",
+   "Woche 5 - Mit internen Informationen die Auftragsabwicklung unterstützen/Vorlesung/BWL26_05_Folien_WiSe_2026_27.pdf": "lecture",
+   "Woche 5 - Mit internen Informationen die Auftragsabwicklung unterstützen/Zur Vertiefung/BWL_Literatur_Woche5.pdf": "reading",
+   "Woche 5 - Mit internen Informationen die Auftragsabwicklung unterstützen/Zur Vertiefung/Übungsaufgaben Woche 5.pdf": "sheet",
+   "Woche 5 - Mit internen Informationen die Auftragsabwicklung unterstützen/Übung/BWL_Fall_Woche_5.pdf": "sheet",
+   "Woche 5 - Mit internen Informationen die Auftragsabwicklung unterstützen/Übung/BWL_Fall_Woche_5_Lösungen.pdf": "solution",
+   "Woche 6 - Mit internen Informationen die Auftragsabwicklung steuern (Operatives Controlling)/Begleittext/BWL_Begleittext_Woche_6.pdf": "reading",
+   "Woche 6 - Mit internen Informationen die Auftragsabwicklung steuern (Operatives Controlling)/Selbststudium/Controlling-Systeme in Unternehmen.pdf": "selfstudy",
+   "Woche 6 - Mit internen Informationen die Auftragsabwicklung steuern (Operatives Controlling)/Selbststudium/Informationen zum Selbststudium Woche 6.pdf": [
+    "selfstudy",
+    "info",
+    "other"
+   ],
+   "Woche 6 - Mit internen Informationen die Auftragsabwicklung steuern (Operatives Controlling)/Selbststudium/Lerneinheit \"Teilkostenrechnung\".pdf": "selfstudy",
+   "Woche 6 - Mit internen Informationen die Auftragsabwicklung steuern (Operatives Controlling)/Vorlesung/BWL26_06_Folien_WiSe_2026_27.pdf": "lecture",
+   "Woche 6 - Mit internen Informationen die Auftragsabwicklung steuern (Operatives Controlling)/Zur Vertiefung/BWL_Literatur_Woche6.pdf": "reading",
+   "Woche 6 - Mit internen Informationen die Auftragsabwicklung steuern (Operatives Controlling)/Zur Vertiefung/Übungsaufgaben Woche 6.pdf": "sheet",
+   "Woche 6 - Mit internen Informationen die Auftragsabwicklung steuern (Operatives Controlling)/Übung/BWL_Fall_Woche_6.pdf": "sheet",
+   "Woche 7 - Durch Liquiditätsplanung die Bereitstellung von Ressourcen sichern/Begleittext/BWL_Begleittext_Woche_7.pdf": "reading",
+   "Woche 7 - Durch Liquiditätsplanung die Bereitstellung von Ressourcen sichern/Selbststudium/In Zahlungsströmen denken.pdf": "selfstudy",
+   "Woche 7 - Durch Liquiditätsplanung die Bereitstellung von Ressourcen sichern/Selbststudium/Information zum Selbststudium Woche 7.pdf": [
+    "selfstudy",
+    "info",
+    "other"
+   ],
+   "Woche 7 - Durch Liquiditätsplanung die Bereitstellung von Ressourcen sichern/Selbststudium/Lerneinheit \"Ein- und Auszahlungen\".pdf": "selfstudy",
+   "Woche 7 - Durch Liquiditätsplanung die Bereitstellung von Ressourcen sichern/Selbststudium/Lerneinheit \"externe Rechnungslegung\".pdf": "selfstudy",
+   "Woche 7 - Durch Liquiditätsplanung die Bereitstellung von Ressourcen sichern/Selbststudium/Lerneinheit \"kurzfristige Finanzplanung\".pdf": "selfstudy",
+   "Woche 7 - Durch Liquiditätsplanung die Bereitstellung von Ressourcen sichern/Vorlesung/BWL26_07_Folien_WiSe_2026_27.pdf": "lecture",
+   "Woche 7 - Durch Liquiditätsplanung die Bereitstellung von Ressourcen sichern/Zur Vertiefung/BWL_Literatur_Woche7.pdf": "reading",
+   "Woche 7 - Durch Liquiditätsplanung die Bereitstellung von Ressourcen sichern/Zur Vertiefung/Übungsaufgaben Woche 7.pdf": "sheet",
+   "Woche 7 - Durch Liquiditätsplanung die Bereitstellung von Ressourcen sichern/Übung/BWL_Fall_Woche_7.pdf": "sheet"
+  }
+ },
+ {
+  "algo": "doctype",
+  "id": "doctype/ISM",
+  "folder": "ISM",
+  "part": "Course",
+  "files": {
+   "2026-10-15, 10:00 - 11:30: ISM - Vorlesung/ISM_WS26_27_VL00_Organisatorisches.pdf": "info",
+   "2026-10-15, 10:00 - 11:30: ISM - Vorlesung/ISM_WS26_27_VL01_Informationssysteme.pdf": "lecture",
+   "2026-10-21, 17:45 - 19:15: ISM - !Vorlesung! Ausnahme/ISM_WS26_27_VL02_Disziplin_Wirtschaftsinformatik.pdf": "lecture",
+   "2026-10-22, 10:00 - 11:30: ISM - Vorlesung/ISM_WS26_27_VL03_IS_Strategie_und_Organisation_der_Wertschöpfung.pdf": "lecture",
+   "2026-10-28, 17:45 - 19:15: ISM - Übung/ISM_WS26_27_UB00_Allgemeines.pdf": [
+    "exslides",
+    "info"
+   ],
+   "2026-10-28, 17:45 - 19:15: ISM - Übung/ISM_WS26_27_UB01_Informationssysteme_Teil1.pdf": "exslides",
+   "2026-10-29, 10:00 - 11:30: ISM - Vorlesung/ISM_WS26_27_VL04_Anwendungssysteme.pdf": "lecture",
+   "2026-10-29, 10:00 - 11:30: ISM - Vorlesung/ISM_WS26_27_VL05_IIV_Integrationsdimensionen.pdf": "lecture",
+   "2026-11-04, 17:45 - 19:15: ISM - Übung/ISM_WS26_27_UB01_Informationssysteme.pdf": "exslides",
+   "2026-11-04, 17:45 - 19:15: ISM - Übung/ISM_WS26_27_UB02_Disziplin_WI.pdf": "exslides",
+   "2026-11-05, 10:00 - 11:30: ISM - Vorlesung/ISM_WS26_27_VL06_IIV_Innerbetrieblich.pdf": "lecture",
+   "2026-11-11, 17:45 - 19:15: !!! Virtuell!!! ISM - Übung/ISM_WS26_27_UB03_Strategie_und_Organisation_der_Wertschöpfung.pdf": "exslides",
+   "2026-11-12, 10:00 - 11:30: ISM - Vorlesung/ISM_WS26_27_VL07_IIV_Überbetrieblich.pdf": "lecture",
+   "2026-11-18, 17:45 - 19:15: ISM - Übung/ISM_WS26_27_UB04_Anwendungssysteme.pdf": "exslides",
+   "2026-11-19, 10:00 - 11:30: ISM - Vorlesung/ISM_WS26_27_VL08_Computer_Supported_Cooperative_Work_(CSCW).pdf": "lecture",
+   "ISM_Info-Folien zu Pruefungen_10_2026.pdf": [
+    "exam",
+    "info"
+   ]
+  }
+ },
+ {
+  "algo": "doctype",
+  "id": "doctype/mathe-vorlesung",
+  "folder": "Mathe I/Lecture",
+  "part": "Lecture",
+  "files": {
+   "Folien/00_AlgebraGrundwissen.pdf": [
+    "lecture",
+    "selfstudy"
+   ],
+   "Folien/00_ModulinformationenMathe1.pdf": "info",
+   "Folien/01_Beweisverfahren.pdf": "lecture",
+   "Folien/02_AussagenMengen.pdf": "lecture",
+   "Folien/03_Abbildungen.pdf": "lecture",
+   "Folien/04_Gleichungen.pdf": "lecture",
+   "Folien/05_KomplexeZahlen.pdf": "lecture",
+   "Folien/06a_Folgen.pdf": "lecture",
+   "Folien/06b_Reihen.pdf": "lecture",
+   "Mitschriften/V02_Beweise.pdf": "notes",
+   "Mitschriften/V03_AussagenMengen.pdf": "notes",
+   "Mitschriften/V04_MengenStrukturen.pdf": "notes",
+   "Mitschriften/V05_Abbildungen.pdf": "notes",
+   "Mitschriften/V06_AbbildungenGleichungen.pdf": "notes",
+   "Mitschriften/V07_Ungleichungen.pdf": "notes",
+   "Mitschriften/V08_KomplexeZahlen.pdf": "notes",
+   "Mitschriften/V09_KomplexeZahlen.pdf": "notes",
+   "Mitschriften/V10_Folgen.pdf": "notes",
+   "Mitschriften/V11_Folgen.pdf": "notes",
+   "Mitschriften/V12_FolgenReihen.pdf": "notes"
+  }
+ },
+ {
+  "algo": "doctype",
+  "id": "doctype/mathe-uebung",
+  "folder": "Mathe I/Exercises",
+  "part": "Exercises",
+  "files": {
+   "Übungsblätter/0100_Grundlagen.pdf": "sheet",
+   "Übungsblätter/0101_Beweise.pdf": "sheet",
+   "Übungsblätter/0102_AussagenMengenStrukturen.pdf": "sheet",
+   "Übungsblätter/0103_Abbildungen.pdf": "sheet",
+   "Übungsblätter/0104_Ungleichungen.pdf": "sheet",
+   "Übungsblätter/0105_KomplexeZahlen.pdf": "sheet",
+   "Übungsblätter/0106_Folgen.pdf": "sheet",
+   "Übungsgruppen/Gruppe 05 WiSe 2026/Übung/Übung 01/Submission/uebung_1_rayyan.pdf": [
+    "sheet",
+    "other"
+   ],
+   "Übungsgruppen/Gruppe 05 WiSe 2026/Übung/Übung 01/uebung_1_rayyan_261024_114034.pdf": [
+    "sheet",
+    "other"
+   ]
+  }
+ },
+ {
+  "algo": "doctype",
+  "id": "doctype/mathe-gruppe",
+  "folder": "Mathe I/Tutorial group 05",
+  "part": "Tutorial group 05",
+  "files": {
+   "Übung/Übung 01/Submission/uebung_1_rayyan.pdf": [
+    "sheet",
+    "other"
+   ],
+   "Übung/Übung 01/uebung_1_rayyan_261024_114034.pdf": [
+    "sheet",
+    "other"
+   ]
+  }
+ },
+ {
+  "algo": "doctype",
+  "id": "doctype/softwaretechnik",
+  "folder": "Softwaretechnik",
+  "part": "Course",
+  "files": {
+   "Exercises and Homework/Exercise Slides/SSE_Exercise02.pdf": "exslides",
+   "Exercises and Homework/Exercise Slides/SSE_Exercise03.pdf": "exslides",
+   "Exercises and Homework/Exercise Slides/SSE_Exercise04.pdf": "exslides",
+   "Exercises and Homework/Exercise Slides/SSE_Exercise1.pdf": "exslides",
+   "Exercises and Homework/Homework Sheets/Homework 1 - Set Up.pdf": "sheet",
+   "Exercises and Homework/Homework Sheets/Homework 2 -Requirements.pdf": "sheet",
+   "Exercises and Homework/Homework Sheets/Homework 3 - Requirements_2_Architecture_Git.pdf": "sheet",
+   "Exercises and Homework/Homework Sheets/Homework 5 - Design Patterns I.pdf": "sheet",
+   "Exercises and Homework/Homework Sheets/Homework-4-SystemModelling.pdf": "sheet",
+   "Lecture/Lecture Slides/01_Introduction.pdf": [
+    "lecture",
+    "info"
+   ],
+   "Lecture/Lecture Slides/02_SE-Nutshell_27.pdf": "lecture",
+   "Lecture/Lecture Slides/03_Requirements I.pdf": "lecture",
+   "Lecture/Lecture Slides/04_Requirements II.pdf": "lecture",
+   "Lecture/Lecture Slides/05_Architecture_I.pdf": "lecture",
+   "Lecture/Lecture Slides/06_Architecture_II.pdf": "lecture",
+   "Lecture/Lecture Slides/07_Version Control with git.pdf": "lecture",
+   "Lecture/Lecture Slides/08-System Modeling I.pdf": "lecture",
+   "Lecture/Lecture Slides/09-System Modeling II.pdf": "lecture",
+   "Lecture/Lecture Slides/10_DesignPatterns I.pdf": "lecture",
+   "Lecture/Lecture Slides/11_DesignPatterns II.pdf": "lecture"
+  }
+ },
+ {
+  "algo": "doctype",
+  "id": "doctype/vis-vorlesung",
+  "folder": "Visualisierung/Lecture",
+  "part": "Lecture",
+  "files": {
+   "Videos zu den Vorlesungen/Vorlesung 01/DataSaurus DozenSlowed.gif": [
+    "video",
+    "other"
+   ],
+   "Videos zu den Vorlesungen/Vorlesung 01/VisualAnalyticsBeispiel.mp4": "video",
+   "Videos zu den Vorlesungen/Vorlesung 03: Wahrnehmung/VisualIllusionsInLanguage.mp4": "video",
+   "Videos zu den Vorlesungen/Vorlesung 06: Multivariate Daten/FLINAView-V7.mov": "video",
+   "Videos zu den Vorlesungen/Vorlesung 06: Multivariate Daten/Medien1.avi": "video",
+   "Vorlesungsfolien/Vis-V01.1_Orga.pdf": "info",
+   "Vorlesungsfolien/Vis-V01.2_Intro.pdf": "lecture",
+   "Vorlesungsfolien/Vis-V02_Folien_Gremienwahlen_Vorlesung.pdf": [
+    "info",
+    "other"
+   ],
+   "Vorlesungsfolien/Vis-V02_ViewsTools.pdf": "lecture",
+   "Vorlesungsfolien/Vis-V03_Wahrnehmung.pdf": "lecture",
+   "Vorlesungsfolien/Vis-V04_Datentypen+VisualMapping.pdf": "lecture",
+   "Vorlesungsfolien/Vis-V05_Sketching_2D.pdf": "lecture",
+   "Vorlesungsfolien/Vis-V06_Multivariate Daten.pdf": "lecture"
+  }
+ },
+ {
+  "algo": "doctype",
+  "id": "doctype/vis-uebung",
+  "folder": "Visualisierung/Exercises",
+  "part": "Exercises",
+  "files": {
+   "Übungsmaterialien/Uebung01/Tutorial_D3_deutsch.pdf": [
+    "tutorial",
+    "reading",
+    "exslides"
+   ],
+   "Übungsmaterialien/Uebung01/Uebung01.pdf": [
+    "exslides",
+    "sheet"
+   ],
+   "Übungsmaterialien/Uebung01/Uebung01_Daten.json": "data",
+   "Übungsmaterialien/Uebung02/Uebung02.pdf": [
+    "exslides",
+    "sheet"
+   ],
+   "Übungsmaterialien/Uebung02/Uebung02_Daten.json": "data",
+   "Übungsmaterialien/Uebung03/Uebung03.pdf": [
+    "exslides",
+    "sheet"
+   ],
+   "Übungsmaterialien/Uebung03/Uebung03_Daten.json": "data",
+   "Übungsmaterialien/Uebung04/Uebung04.pdf": [
+    "exslides",
+    "sheet"
+   ],
+   "Übungsmaterialien/Uebung04/Uebung04_Daten.json": "data",
+   "Übungsmaterialien/Uebung05/Uebung05.pdf": [
+    "exslides",
+    "sheet"
+   ],
+   "Übungsmaterialien/Uebung05/Uebung05_Daten.json": "data",
+   "Übungsmaterialien/Uebung06/Uebung06.pdf": [
+    "exslides",
+    "sheet"
+   ],
+   "Übungsmaterialien/Uebung06/Uebung06_Daten.json": "data"
+  }
+ }
+]

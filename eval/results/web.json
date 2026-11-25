@@ -1,0 +1,141 @@
+{
+ "when": "2026-11-25",
+ "summary": {
+  "errors": 13,
+  "tp": 219,
+  "fp": 4,
+  "fn": 9,
+  "passed": 11,
+  "ran": 17,
+  "skipped": 0,
+  "categories": {
+   "doctype": [
+    188,
+    0,
+    5
+   ],
+   "solutions": [
+    11,
+    0,
+    1
+   ],
+   "modules.group": [
+    12,
+    4,
+    2
+   ],
+   "modules.name": [
+    8,
+    0,
+    1
+   ]
+  },
+  "seconds": 0.01
+ },
+ "cases": {
+  "real/doctype/BWL": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "real/doctype/ISM": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "real/doctype/mathe-vorlesung": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "real/doctype/mathe-uebung": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "real/doctype/mathe-gruppe": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "real/doctype/softwaretechnik": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "real/doctype/vis-vorlesung": {
+   "status": "fail",
+   "errors": 2,
+   "details": [
+    "doctype: Videos zu den Vorlesungen/Vorlesung 01/DataSaurus DozenSlowed.gif: lecture, erwartet video/other (Ordner-Art lectures)",
+    "doctype: Vorlesungsfolien/Vis-V02_Folien_Gremienwahlen_Vorlesung.pdf: lecture, erwartet info/other (Ordner-Art lectures)"
+   ]
+  },
+  "real/doctype/vis-uebung": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "real/solutions/bwl": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "real/modules/rayyan-ws2627": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/doctype/andere-unis": {
+   "status": "fail",
+   "errors": 3,
+   "details": [
+    "doctype: Vorlesungen/Lösungsverfahren lineare Gleichungssysteme.pdf: solution, erwartet lecture (Ordner-Art solutions)",
+    "doctype: Week 3/answers_week3.pdf: other, erwartet solution (Ordner-Art other)",
+    "doctype: Exercise 3 Slides.pdf: sheet, erwartet exslides (Ordner-Art exercises)"
+   ]
+  },
+  "synthetic/solutions/andere-unis": {
+   "status": "fail",
+   "errors": 1,
+   "details": [
+    "solutions: answers_week3.pdf → nichts, erwartet worksheet_week3.pdf"
+   ]
+  },
+  "synthetic/solutions/gleiche-nummer-anderer-ordner": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/modules/andere-unis": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/modules/uebungen-zur": {
+   "status": "fail",
+   "errors": 3,
+   "details": [
+    "modules.group: Modul c1 („LinA I“) gibt es so nicht",
+    "modules.group: Modul c2 („ÜLA I“) gibt es so nicht",
+    "modules.group: verpasst: c1+c2 als ein Modul"
+   ]
+  },
+  "synthetic/modules/semester-vorn-ohne-klammer": {
+   "status": "fail",
+   "errors": 1,
+   "details": [
+    "modules.name: c1+c2: „WS 26/27 Datenbanksys…“, erwartet „Datenbanksysteme“ oder „DBS“"
+   ]
+  },
+  "synthetic/modules/english-tutorials": {
+   "status": "fail",
+   "errors": 3,
+   "details": [
+    "modules.group: Modul c1 („Programming (Winter…“) gibt es so nicht",
+    "modules.group: Modul c2 („Programming“) gibt es so nicht",
+    "modules.group: verpasst: c1+c2 als ein Modul"
+   ]
+  }
+ }
+}

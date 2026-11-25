@@ -1,0 +1,108 @@
+[
+  {"id": "zeit/mittwochs-gedankenstrich",
+   "files": {"00_Organisatorisches.pdf": [["Organisatorisches", "Vorlesung: mittwochs 10–11:30 Uhr, Hörsaal A1"]]},
+   "orga": {"slots": [{"type": "lecture", "weekday": 2, "start": "10:00", "end": "11:30", "alternative": false, "room": "Hörsaal A1"}]}},
+
+  {"id": "zeit/mi-mit-punkt",
+   "files": {"00_Organisatorisches.pdf": [["Termine", "Vorlesung Mi. 10:00-11:30, HS 2"]]},
+   "orga": {"slots": [{"type": "lecture", "weekday": 2, "start": "10:00", "end": "11:30", "alternative": false, "room": "HS 2"}]}},
+
+  {"id": "zeit/english-am",
+   "files": {"Lecture_00_Introduction.pdf": [["Course logistics", "Lectures: Wednesdays 10am–11:30am, Lecture Hall 3"]]},
+   "orga": {"slots": [{"type": "lecture", "weekday": 2, "start": "10:00", "end": "11:30", "alternative": false, "room": "Lecture Hall 3"}]}},
+
+  {"id": "zeit/ct",
+   "files": {"00_Organisatorisches.pdf": [["Vorlesung", "Donnerstag 10-12 Uhr c.t., Raum 1.23"]]},
+   "orga": {"slots": [{"type": "lecture", "weekday": 3, "start": "10:15", "end": "11:45", "alternative": false, "room": "Raum 1.23"}]}},
+
+  {"id": "zeit/st",
+   "files": {"00_Organisatorisches.pdf": [["Vorlesung: Dienstag, 10:00-11:30 s.t., Hörsaal 2"]]},
+   "orga": {"slots": [{"type": "lecture", "weekday": 1, "start": "10:00", "end": "11:30", "alternative": false, "room": "Hörsaal 2"}]}},
+
+  {"id": "zeit/english-pm",
+   "files": {"Lecture_00_Introduction.pdf": [["Exercise sessions", "Exercise: Tuesday 2:00-3:30 pm, Room S12"]]},
+   "orga": {"slots": [{"type": "exercise", "weekday": 1, "start": "14:00", "end": "15:30", "alternative": false, "room": "S12"}]}},
+
+  {"id": "zeit/punkt-statt-doppelpunkt",
+   "files": {"00_Organisatorisches.pdf": [["Übung: Freitag, 14.00–15.30 Uhr, Seminarraum 2"]]},
+   "orga": {"slots": [{"type": "exercise", "weekday": 4, "start": "14:00", "end": "15:30", "alternative": false, "room": "Seminarraum 2"}]}},
+
+  {"id": "zeit/uhr-bis-uhr-satz",
+   "files": {"00_Organisatorisches.pdf": [["Die Vorlesung findet montags von 10:00 Uhr bis 11:30 Uhr im Hörsaal XVIII statt."]]},
+   "orga": {"slots": [{"type": "lecture", "weekday": 0, "start": "10:00", "end": "11:30", "alternative": false, "room": "Hörsaal XVIII"}]}},
+
+  {"id": "zeit/von-bis-ohne-minuten",
+   "files": {"00_Organisatorisches.pdf": [["Die Übung findet freitags von 10 bis 12 Uhr statt (Raum 0.12)."]]},
+   "orga": {"slots": [{"type": "exercise", "weekday": 4, "start": "10:00", "end": "12:00", "alternative": false, "room": "Raum 0.12"}]}},
+
+  {"id": "zeit/do-kurz",
+   "files": {"00_Organisatorisches.pdf": [["Vorlesung: Do 16-17:30 Uhr, HS 3"]]},
+   "orga": {"slots": [{"type": "lecture", "weekday": 3, "start": "16:00", "end": "17:30", "alternative": false, "room": "HS 3"}]}},
+
+  {"id": "zeit/zwei-tage-ein-zeitraum-de",
+   "note": "Zwei Wochentage teilen sich eine Uhrzeit.",
+   "files": {"00_Organisatorisches.pdf": [["Vorlesung: jeweils dienstags und donnerstags von 8:15 bis 9:45 Uhr, Hörsaal C"]]},
+   "orga": {"slots": [
+     {"type": "lecture", "weekday": 1, "start": "08:15", "end": "09:45", "alternative": false, "room": "Hörsaal C"},
+     {"type": "lecture", "weekday": 3, "start": "08:15", "end": "09:45", "alternative": false, "room": "Hörsaal C"}]}},
+
+  {"id": "zeit/two-days-one-range-en",
+   "files": {"Syllabus.pdf": [["Class meetings: Mondays and Wednesdays, 4:00–5:30 pm, Room 101"]]},
+   "orga": {"slots": [
+     {"type": "lecture", "weekday": 0, "start": "16:00", "end": "17:30", "alternative": false, "room": "Room 101"},
+     {"type": "lecture", "weekday": 2, "start": "16:00", "end": "17:30", "alternative": false, "room": "Room 101"}]}},
+
+  {"id": "zeit/english-uk-zwei-zeilen",
+   "files": {"Lecture_01_Introduction.pdf": [["Lectures:", "Tuesday 09:00 - 10:30, Lecture Theatre 2", "Thursday 09:00 - 10:30, Lecture Theatre 2"]]},
+   "orga": {"slots": [
+     {"type": "lecture", "weekday": 1, "start": "09:00", "end": "10:30", "alternative": false, "room": "Lecture Theatre 2"},
+     {"type": "lecture", "weekday": 3, "start": "09:00", "end": "10:30", "alternative": false, "room": "Lecture Theatre 2"}]}},
+
+  {"id": "tabelle/eine-zeile-je-termin",
+   "files": {"Modulinformationen.pdf": [["Termine", "Veranstaltung Tag Zeit Raum", "Vorlesung Montag 12:00 - 13:30 H1", "Übung Mittwoch 16:00 - 17:30 S14"]]},
+   "orga": {"slots": [
+     {"type": "lecture", "weekday": 0, "start": "12:00", "end": "13:30", "alternative": false},
+     {"type": "exercise", "weekday": 2, "start": "16:00", "end": "17:30", "alternative": false}]}},
+
+  {"id": "tabelle/zellen-untereinander",
+   "note": "Tabellen-Spalten liefert pypdf oft Zelle für Zelle untereinander (wie die SE-Klausurtabelle).",
+   "files": {"Modulinformationen.pdf": [["Termine", "Vorlesung", "Dienstag", "14:00–15:30", "Hörsaal 1", "Übung", "Freitag", "10:00–11:30", "Seminarraum 3"]]},
+   "orga": {"slots": [
+     {"type": "lecture", "weekday": 1, "start": "14:00", "end": "15:30", "alternative": false, "room": "Hörsaal 1"},
+     {"type": "exercise", "weekday": 4, "start": "10:00", "end": "11:30", "alternative": false, "room": "Seminarraum 3"}]}},
+
+  {"id": "gruppen/mehrere-in-einer-zeile",
+   "files": {"00_Organisatorisches.pdf": [["Übungsgruppen:", "Gruppe 1: Mo 8-10, Gruppe 2: Mo 10-12, Gruppe 3: Di 14-16"]]},
+   "orga": {"slots": [
+     {"type": "exercise", "weekday": 0, "start": "08:00", "end": "10:00", "group": 1, "alternative": true},
+     {"type": "exercise", "weekday": 0, "start": "10:00", "end": "12:00", "group": 2, "alternative": true},
+     {"type": "exercise", "weekday": 1, "start": "14:00", "end": "16:00", "group": 3, "alternative": true}]}},
+
+  {"id": "gruppen/zweimal-aufgelistet",
+   "note": "Wie Visualisierung Folie 93/94: dieselben Gruppen noch einmal, Nummer und Zeit in getrennten Zeilen. Keine Doppelten ohne Gruppennummer.",
+   "files": {"00_Organisatorisches.pdf": [
+     ["Übungstermine", "• Gruppe 1: Mo 14:00 - 15:30", "• Gruppe 2: Di 10:00 - 11:30"],
+     ["Übungsanmeldung", "• Gruppe 1", "• Mo 14:00 - 15:30", "• PW: Beispiel1", "• Gruppe 2", "• Di 10:00 - 11:30", "• PW: Beispiel2"]]},
+   "orga": {"slots": [
+     {"type": "exercise", "weekday": 0, "start": "14:00", "end": "15:30", "group": 1, "alternative": true},
+     {"type": "exercise", "weekday": 1, "start": "10:00", "end": "11:30", "group": 2, "alternative": true}]}},
+
+  {"id": "gruppen/english-tutor-name",
+   "files": {"01_Introduction.pdf": [["Exercises: Software Engineering", "1 Group 1 (Anna): Mondays, 10:00 - 11:30 · Main Building, Room S12", "2 Group 2 (Ben): Tuesdays, 12:00 - 13:30 · Main Building, Room S14"]]},
+   "orga": {"slots": [
+     {"type": "exercise", "weekday": 0, "start": "10:00", "end": "11:30", "group": 1, "alternative": true, "room": "S12"},
+     {"type": "exercise", "weekday": 1, "start": "12:00", "end": "13:30", "group": 2, "alternative": true, "room": "S14"}]}},
+
+  {"id": "wahl/oder-zwei-zeiten",
+   "files": {"00_Organisatorisches.pdf": [["Es werden alternative Übungen angeboten (Montags 12:00 bis 13:30 Uhr oder Mittwochs 17:45 bis 19:15 Uhr)."]]},
+   "orga": {"slots": [
+     {"type": "exercise", "weekday": 0, "start": "12:00", "end": "13:30", "alternative": true},
+     {"type": "exercise", "weekday": 2, "start": "17:45", "end": "19:15", "alternative": true}]}},
+
+  {"id": "wahl/tutorium-drei-zeiten",
+   "files": {"00_Organisatorisches.pdf": [["Tutorium Donnerstag 10:00 Uhr - 11:30 Uhr, 14:00 - 15:30 Uhr oder 16:00 - 17:30 Uhr"]]},
+   "orga": {"slots": [
+     {"type": "tutorial", "weekday": 3, "start": "10:00", "end": "11:30", "alternative": true},
+     {"type": "tutorial", "weekday": 3, "start": "14:00", "end": "15:30", "alternative": true},
+     {"type": "tutorial", "weekday": 3, "start": "16:00", "end": "17:30", "alternative": true}]}}
+]

@@ -1,0 +1,489 @@
+{
+ "when": "2026-11-25",
+ "summary": {
+  "errors": 57,
+  "tp": 233,
+  "fp": 13,
+  "fn": 44,
+  "passed": 51,
+  "ran": 71,
+  "skipped": 0,
+  "categories": {
+   "orga.slots": [
+    59,
+    11,
+    25
+   ],
+   "orga.alt": [
+    59,
+    0,
+    0
+   ],
+   "orga.first": [
+    51,
+    0,
+    3
+   ],
+   "orga.extras": [
+    2,
+    0,
+    1
+   ],
+   "orga.credits": [
+    5,
+    0,
+    0
+   ],
+   "sheets": [
+    29,
+    2,
+    12
+   ],
+   "orga.room": [
+    27,
+    0,
+    3
+   ],
+   "orga.cancellations": [
+    1,
+    0,
+    0
+   ]
+  },
+  "seconds": 15.1
+ },
+ "cases": {
+  "real/bwl": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "real/ism": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "real/mathe-vorlesung": {
+   "status": "fail",
+   "errors": 4,
+   "details": [
+    "sheets: verpasst 00_ModulinformationenMathe1.pdf: klausur 2027-02-16 09:00",
+    "sheets: verpasst 00_ModulinformationenMathe1.pdf: klausur 2027-03-18 09:00",
+    "sheets: verpasst 00_ModulinformationenMathe1.pdf: termin 2026-12-02 12:00",
+    "sheets: verpasst 00_ModulinformationenMathe1.pdf: termin 2027-01-20 12:00"
+   ]
+  },
+  "real/mathe-uebung": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "real/mathe-gruppe": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "real/softwaretechnik": {
+   "status": "fail",
+   "errors": 1,
+   "details": [
+    "sheets: Fehlalarm SSE_Exercise04.pdf: termin 2026-11-19"
+   ]
+  },
+  "real/visualisierung-vorlesung": {
+   "status": "fail",
+   "errors": 12,
+   "details": [
+    "orga.slots: verpasst lecture Mi 10:00–11:30",
+    "orga.slots: verpasst lecture Mi 11:45–13:15",
+    "orga.slots: verpasst exercise Mo 14:00–15:30 Gruppe 1",
+    "orga.slots: verpasst exercise Mo 16:00–17:30 Gruppe 2",
+    "orga.slots: verpasst exercise Di 14:00–15:30 Gruppe 3",
+    "orga.slots: verpasst exercise Do 10:00–11:30 Gruppe 4",
+    "orga.slots: verpasst exercise Do 12:00–13:30 Gruppe 5",
+    "orga.slots: verpasst exercise Do 14:00–15:30 Gruppe 6",
+    "orga.first: exercise Mo zuerst am 2026-10-12, erwartet 2026-10-19 (starts={}, weekOffsets={})",
+    "sheets: verpasst Vis-V01.1_Orga.pdf: klausur 2027-02-15 08:00",
+    "sheets: verpasst Vis-V01.1_Orga.pdf: klausur 2027-03-15 09:00",
+    "sheets: verpasst Vis-V01.1_Orga.pdf: abgabe 2027-01-21 12:00"
+   ]
+  },
+  "real/visualisierung-uebung": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/falle/sprechstunde": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/falle/office-hours-en": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/falle/klausur-ist-kein-wochentermin": {
+   "status": "fail",
+   "errors": 1,
+   "details": [
+    "orga.slots: Fehlalarm lecture Mo 09:00–12:00 ← „• Nachklausur Montag, 15. März 2027 09:00 - 12:00 Uhr“"
+   ]
+  },
+  "synthetic/falle/lehramt": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/falle/ablauf-ohne-wochentag": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/falle/oeffnungszeiten": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/falle/vorlesungsplan-mit-daten": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/falle/credits": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/credits/label-darueber": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/credits/leistungspunkte": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/raum/zeile-davor": {
+   "status": "fail",
+   "errors": 1,
+   "details": [
+    "orga.room: lecture Mo 14:00–15:30 Raum „None“, erwartet „Hörsaal B“"
+   ]
+  },
+  "synthetic/raum/zeile-danach-fuer-zwei": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/raum/nach-der-liste": {
+   "status": "fail",
+   "errors": 6,
+   "details": [
+    "orga.slots: verpasst exercise Mo 14:00–15:30 Gruppe 1 (gefunden: lecture Mo 14:00–15:30 Gruppe 1)",
+    "orga.slots: verpasst exercise Mo 16:00–17:30 Gruppe 2 (gefunden: lecture Mo 16:00–17:30 Gruppe 2)",
+    "orga.slots: verpasst exercise Di 14:00–15:30 Gruppe 3 (gefunden: lecture Di 14:00–15:30 Gruppe 3)",
+    "orga.slots: Fehlalarm lecture Mo 14:00–15:30 Gruppe 1 ← „• Gruppe 1: Mo 14:00 - 15:30“",
+    "orga.slots: Fehlalarm lecture Mo 16:00–17:30 Gruppe 2 ← „• Gruppe 2: Mo 16:00 - 17:30“",
+    "orga.slots: Fehlalarm lecture Di 14:00–15:30 Gruppe 3 ← „• Gruppe 3: Di 14:00 - 15:30“"
+   ]
+  },
+  "synthetic/raum/label-zeile": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/seiten/orga-folie-88": {
+   "status": "fail",
+   "errors": 2,
+   "details": [
+    "orga.slots: verpasst lecture Mi 10:00–11:30",
+    "orga.slots: verpasst lecture Mi 11:45–13:15"
+   ]
+  },
+  "synthetic/seiten/introduction-folie-41": {
+   "status": "fail",
+   "errors": 1,
+   "details": [
+    "orga.slots: verpasst lecture Di 12:00–13:30"
+   ]
+  },
+  "synthetic/seiten/erste-vorlesung-ohne-orga-namen": {
+   "status": "fail",
+   "errors": 2,
+   "details": [
+    "orga.slots: verpasst lecture Mo 10:00–11:30",
+    "orga.slots: verpasst exercise Mi 12:00–13:30"
+   ]
+  },
+  "synthetic/seiten/klausur-auf-folie-36": {
+   "status": "fail",
+   "errors": 2,
+   "details": [
+    "sheets: verpasst 00_Modulinformationen.pdf: klausur 2027-02-18 10:00",
+    "sheets: verpasst 00_Modulinformationen.pdf: klausur 2027-03-25 10:00"
+   ]
+  },
+  "synthetic/beginn/uebungen-zweite-woche": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/beginn/datum": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/beginn/gruppen-ab-und-designuebung": {
+   "status": "fail",
+   "errors": 6,
+   "details": [
+    "orga.slots: verpasst exercise Mo 14:00–15:30 Gruppe 1 (gefunden: lecture Mo 14:00–15:30 Gruppe 1)",
+    "orga.slots: verpasst exercise Do 10:00–11:30 Gruppe 2 (gefunden: lecture Do 10:00–11:30 Gruppe 2)",
+    "orga.slots: Fehlalarm lecture Mo 14:00–15:30 Gruppe 1 ← „• Gruppe 1: Mo 14:00 - 15:30“",
+    "orga.slots: Fehlalarm lecture Do 10:00–11:30 Gruppe 2 ← „• Gruppe 2: Do 10:00 - 11:30“",
+    "orga.first: exercise Mo zuerst am 2026-10-12, erwartet 2026-10-19 (starts={'all': '2026-10-19', 'exercise': '2026-12-14'}, weekOffsets={})",
+    "orga.first: lecture Mi zuerst am 2026-10-21, erwartet 2026-10-14 (starts={'all': '2026-10-19', 'exercise': '2026-12-14'}, weekOffsets={})"
+   ]
+  },
+  "synthetic/beginn/english-week-3": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/ausfall/entfaellt": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/ausfall/findet-statt-falle": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/zusatz/termin": {
+   "status": "fail",
+   "errors": 1,
+   "details": [
+    "orga.extras: verpasst {\"date\": \"2026-11-20\", \"start\": \"12:00\", \"end\": \"13:30\"}"
+   ]
+  },
+  "synthetic/zeit/mittwochs-gedankenstrich": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/zeit/mi-mit-punkt": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/zeit/english-am": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/zeit/ct": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/zeit/st": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/zeit/english-pm": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/zeit/punkt-statt-doppelpunkt": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/zeit/uhr-bis-uhr-satz": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/zeit/von-bis-ohne-minuten": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/zeit/do-kurz": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/zeit/zwei-tage-ein-zeitraum-de": {
+   "status": "fail",
+   "errors": 1,
+   "details": [
+    "orga.slots: verpasst lecture Di 08:15–09:45"
+   ]
+  },
+  "synthetic/zeit/two-days-one-range-en": {
+   "status": "fail",
+   "errors": 3,
+   "details": [
+    "orga.slots: verpasst lecture Mo 16:00–17:30",
+    "orga.slots: verpasst lecture Mi 16:00–17:30 (gefunden: exercise Mi 16:00–17:30)",
+    "orga.slots: Fehlalarm exercise Mi 16:00–17:30 ← „Class meetings: Mondays and Wednesdays, 4:00-5:30 pm, Room 101“"
+   ]
+  },
+  "synthetic/zeit/english-uk-zwei-zeilen": {
+   "status": "fail",
+   "errors": 2,
+   "details": [
+    "orga.room: lecture Di 09:00–10:30 Raum „None“, erwartet „Lecture Theatre 2“",
+    "orga.room: lecture Do 09:00–10:30 Raum „None“, erwartet „Lecture Theatre 2“"
+   ]
+  },
+  "synthetic/tabelle/eine-zeile-je-termin": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/tabelle/zellen-untereinander": {
+   "status": "fail",
+   "errors": 2,
+   "details": [
+    "orga.slots: verpasst lecture Di 14:00–15:30",
+    "orga.slots: verpasst exercise Fr 10:00–11:30"
+   ]
+  },
+  "synthetic/gruppen/mehrere-in-einer-zeile": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/gruppen/zweimal-aufgelistet": {
+   "status": "fail",
+   "errors": 6,
+   "details": [
+    "orga.slots: verpasst exercise Mo 14:00–15:30 Gruppe 1 (gefunden: lecture Mo 14:00–15:30 Gruppe 1)",
+    "orga.slots: verpasst exercise Di 10:00–11:30 Gruppe 2 (gefunden: lecture Di 10:00–11:30 Gruppe 2)",
+    "orga.slots: Fehlalarm lecture Mo 14:00–15:30 Gruppe 1 ← „• Gruppe 1: Mo 14:00 - 15:30“",
+    "orga.slots: Fehlalarm lecture Mo 14:00–15:30 ← „• Mo 14:00 - 15:30“",
+    "orga.slots: Fehlalarm lecture Di 10:00–11:30 Gruppe 2 ← „• Gruppe 2: Di 10:00 - 11:30“",
+    "orga.slots: Fehlalarm lecture Di 10:00–11:30 ← „• Di 10:00 - 11:30“"
+   ]
+  },
+  "synthetic/gruppen/english-tutor-name": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/wahl/oder-zwei-zeiten": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/wahl/tutorium-drei-zeiten": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/frist/de-mit-uhrzeit": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/frist/de-ohne-jahr": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/frist/due-en-pm": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/frist/submit-by-en": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/frist/datum-naechste-zeile": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/frist/bearbeitung-bis": {
+   "status": "fail",
+   "errors": 1,
+   "details": [
+    "sheets: verpasst Blatt08.pdf: abgabe 2026-12-15 23:55"
+   ]
+  },
+  "synthetic/frist/iso-datum": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/frist/bis-24-uhr": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/falle/ausgabe-und-stand": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/falle/datum-ohne-fristwort": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/falle/loesung": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/falle/foliendatum-unter-titel": {
+   "status": "fail",
+   "errors": 1,
+   "details": [
+    "sheets: Fehlalarm SSE_Exercise05.pdf: termin 2026-11-19 ← „HOMEWORK PRESENTATION Software and Systems Engineering 19.11.2026“"
+   ]
+  },
+  "synthetic/klausur/tabelle-in-einer-zeile": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/klausur/tabelle-zellen-untereinander": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/klausur/nachklausur": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/klausur/pruefungstermin": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/klausur/final-exam-en": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/termin/bonustest": {
+   "status": "fail",
+   "errors": 2,
+   "details": [
+    "sheets: verpasst Modulinfo.pdf: termin 2026-12-02 12:00",
+    "sheets: verpasst Modulinfo.pdf: termin 2027-01-20 12:00"
+   ]
+  }
+ }
+}

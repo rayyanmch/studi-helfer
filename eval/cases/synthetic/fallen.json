@@ -1,0 +1,44 @@
+[
+  {"id": "falle/sprechstunde",
+   "files": {"00_Organisatorisches.pdf": [["Kontakt", "Sprechstunde: Dienstag 14-15 Uhr, Raum 3.12", "Vorlesung: Mittwoch 10:00-11:30, Hörsaal 1"]]},
+   "orga": {"slots": [{"type": "lecture", "weekday": 2, "start": "10:00", "end": "11:30", "alternative": false}]}},
+
+  {"id": "falle/office-hours-en",
+   "files": {"Syllabus.pdf": [["Office hours: Thursdays 3:00-4:00 pm, Room 210", "Lectures: Mondays 9:00-10:30, Lecture Hall B"]]},
+   "orga": {"slots": [{"type": "lecture", "weekday": 0, "start": "09:00", "end": "10:30", "alternative": false}]}},
+
+  {"id": "falle/klausur-ist-kein-wochentermin",
+   "files": {"00_Organisatorisches.pdf": [["Organisatorisches: Klausur", "• Klausur Montag, 15. Februar 2027 08:00 - 11:00 Uhr", "• Nachklausur Montag, 15. März 2027 09:00 - 12:00 Uhr"]]},
+   "orga": {"slots": []},
+   "sheets": {"00_Organisatorisches.pdf": [
+     {"date": "2027-02-15", "kind": "klausur", "time": "08:00"},
+     {"date": "2027-03-15", "kind": "klausur", "time": "09:00"}]}},
+
+  {"id": "falle/lehramt",
+   "files": {"00_Organisatorisches.pdf": [["Vorlesung: Freitag 10:00-11:30, Hörsaal 1", "Für Lehramts-Studierende: Übung Freitag 12:00-13:30"]]},
+   "orga": {"slots": [{"type": "lecture", "weekday": 4, "start": "10:00", "end": "11:30", "alternative": false}]}},
+
+  {"id": "falle/ablauf-ohne-wochentag",
+   "files": {"00_Organisatorisches.pdf": [["Ablauf einer Sitzung", "Vorlesung 10:00-11:30", "Pause 11:30-11:45", "Übung 11:45-13:15"]]},
+   "orga": {"slots": []}},
+
+  {"id": "falle/oeffnungszeiten",
+   "files": {"00_Organisatorisches.pdf": [["Bibliothek: Mo–Fr 8–20 Uhr geöffnet", "Lernraum: Montag 08:00 - 18:00 Uhr", "Vorlesung: Dienstag 12:00-13:30, Hörsaal 2"]]},
+   "orga": {"slots": [{"type": "lecture", "weekday": 1, "start": "12:00", "end": "13:30", "alternative": false}]}},
+
+  {"id": "falle/vorlesungsplan-mit-daten",
+   "files": {"00_Organisatorisches.pdf": [["Vorläufiger Vorlesungszeitplan", "Datum Thema", "14.10. Organisatorisches, Definition", "21.10. Tools", "28.10. Wahrnehmung", "03.02. Repetitorium"]]},
+   "orga": {"slots": [], "extras": [], "cancellations": []}},
+
+  {"id": "falle/credits",
+   "files": {"00_Organisatorisches.pdf": [["Modul: 6 ECTS", "Bachelorarbeit: 12 LP", "Studiengang insgesamt 180 ECTS"]]},
+   "orga": {"slots": [], "credits": [6]}},
+
+  {"id": "credits/label-darueber",
+   "files": {"00_Organisatorisches.pdf": [["Credits:", "7,5 CP"]]},
+   "orga": {"slots": [], "credits": [7.5]}},
+
+  {"id": "credits/leistungspunkte",
+   "files": {"00_Organisatorisches.pdf": [["Eckwerte zum Modul", "9 Leistungspunkte", "Rund 300 Studierende"]]},
+   "orga": {"slots": [], "credits": [9]}}
+]

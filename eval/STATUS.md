@@ -1,0 +1,57 @@
+# Prüfstand Erkennung – Stand
+
+Messlatte für die Regel-Erkennung (ohne KI). Der Loop „Erkennung“ liest diese Datei zu Beginn jeder Runde und aktualisiert sie am Ende.
+
+## Aufruf
+
+```bash
+services/ilias-sync/.venv/bin/python eval/run.py      # orga.py + sheets.py (≈ 15 s, echte PDFs aus ~/Uni)
+node eval/run-web.mjs                                 # doctype.ts, solutions.ts, modules.js (< 1 s)
+```
+
+Filter: `… run.py beginn` (nur Fälle mit „beginn“ in der Id, speichert dann nichts). `-v` zeigt auch Details bestandener Fälle, `--no-save` lässt `results/*.json` unverändert. Exit-Code 2 = ein vorher bestandener Fall schlägt jetzt fehl.
+
+- **Echte Fälle** (`cases/real/`): Kursordner in `~/Uni`, erwartete Werte von Hand aus den PDFs gelesen (Seiten stehen im Fall). PDFs und Text liegen nie im Repo. Fehlt eine Quelldatei oder hat sich ihr SHA-256 geändert, wird der Fall übersprungen (bei Mika z. B. alle echten Fälle).
+- **Ausgedachte Fälle** (`cases/synthetic/`): Der Prüfstand baut daraus echte PDFs (Füllseiten, Dateiname, Änderungsdatum) und schickt sie durch dieselbe Pipeline wie die App (`orga.refresh()`, `sheets.refresh()` mit eigenem Datenordner). Ohne Angabe gilt: Übrige PDFs im Fall dürfen keine Fristen liefern.
+- **Beginn** wird als „erster Termin je Art und Wochentag“ verglichen (Regel aus `schedule.js`), egal ob über „Beginn: …“ oder „ab Woche 3“ erkannt.
+- `optional` in einem Fall = darf gefunden werden, muss aber nicht (z. B. Anmeldefristen).
+- **Erwartete Werte nie an den Code anpassen.** Nur ändern, wenn Rayyan es bestätigt; Fragen unten sammeln.
+
+## Punktzahl
+
+| Runde | Datum | Python (Fehler · bestanden) | Web (Fehler · bestanden) | Änderung |
+|---|---|---|---|---|
+| 1 | 2026-11-25 | 57 · 51/71 | 13 · 11/17 | Prüfstand gebaut, noch keine Regel geändert |
+
+Laufzeit: orga 69 Dateien 1,3 s (langsamste 0,14 s), sheets 212 Dateien 13,6 s (langsamste 0,84 s: `uebung_1_rayyan_…pdf`, eigene eingescannte Abgabe). Pro Datei-Hash gecacht, läuft also je Datei einmal; nichts davon beim App-Start. Kein Handlungsbedarf bei der Geschwindigkeit.
+
+## Offene Fehler (nach Nutzen)
+
+1. **Seitenlimit 25** (`orga.MAX_PAGES`, `sheets.ORGA_PAGES`): verpasste Vorlesungen und Klausuren. Echt: Visualisierung (Folie 88/99, 8 Termine + 2 Klausuren + Abgabe), Mathe (Klausuren + Bonustests Folie 29/31). Ausgedacht: `seiten/*`.
+2. **Übungsgruppen werden zur Vorlesung**, wenn kein Art-Wort davorsteht („Übungstermine“ passt nicht auf `\w*übung\b`; „Gruppe N“ allein sagt Übung). `gruppen/zweimal-aufgelistet`, `raum/nach-der-liste`, `beginn/gruppen-ab-und-designuebung`.
+3. **Doppelte Gruppen ohne Nummer**, wenn Nummer und Zeit in getrennten Zeilen stehen (Visualisierung Folie 94).
+4. **Beginn falsch**: „Beginn der Gruppen ab 19.10.“ gilt für alles (auch die Vorlesung), „Ab 14.12.: Start Designübung“ wird Übungsbeginn. `beginn/gruppen-ab-und-designuebung`.
+5. **„Nachklausur Montag … 09:00–12:00“ wird Wochentermin** (`SKIP` hat `\bklausur`, „Nachklausur“ hat davor keine Wortgrenze). `falle/klausur-ist-kein-wochentermin`, Visualisierung nach Fix 1.
+6. **Zwei Wochentage, eine Uhrzeit** („dienstags und donnerstags von 8:15 bis 9:45“, „Mondays and Wednesdays, 4:00–5:30 pm“): erster Tag fehlt, im Englischen wird es eine Übung.
+7. **Tabellen-Zellen untereinander** (Art / Tag / Zeit / Raum je eine Zeile): `tabelle/zellen-untereinander`.
+8. **Orga-Folie in Datei ohne Orga-Namen** („Vorlesung_01_Grundlagen.pdf“): `seiten/erste-vorlesung-ohne-orga-namen`. Echt: Visualisierung wiederholt die Zeiten in `Vis-V02_ViewsTools.pdf` S. 3.
+9. **Raum**: Zeile davor („Veranstaltungsort: …“), unter der ganzen Liste („Abhaltungsort:“), englische Zeilen ohne Raum-Wort („Lecture Theatre 2“).
+10. **Zusatztermin** „Zusätzlicher Termin: Freitag, 20.11.2026, 12:00–13:30“ fehlt (`EXTRA_WORDS` kennt „Termin“ nicht).
+11. **sheets**: „Bearbeitung bis Di. … 23:55“ ist eine Abgabe; Bonustests („Test 1 Mi. 02.12.2026 12-12:30“) fehlen; Fußzeilen-Datum unter „HOMEWORK PRESENTATION“ wird Termin (echt: `SSE_Exercise04.pdf`).
+12. **Web**: `.gif` im Vorlesungsordner wird „Lecture“; „Gremienwahlen“-Folien sind keine Vorlesung; „Lösungsverfahren …“ ist keine Lösung; `answers_week3` wird nicht als Lösung erkannt; „Exercise 3 Slides“ → Übungsfolien; Module: „Übungen zur Linearen Algebra I“ gehört zu „Lineare Algebra I“, „WS 26/27 Datenbanksysteme“ (Semester vorn ohne Klammer) braucht einen Namen ohne Semester, „… – Tutorials“ gehört zum Kurs.
+
+## Noch nicht abgedeckt
+
+- `web/src/lib/weeks.ts` (Themenwochen): eigener Prüfstand fehlt noch (braucht Dateien mit Datum und ILIAS-Sitzungen; gut als ausgedachte Fälle).
+- `textfix.py` nur indirekt (über echte PowerPoint-PDFs wie SE).
+
+## Verworfene Versuche
+
+(noch keine)
+
+## Fragen an Rayyan
+
+1. **ISM**: Folie 11 sagt „Beginn: Donnerstag, 15.10.2026“, Folie 12: am 21.10. ist im Übungsslot ausnahmsweise Vorlesung. Erwartet ist jetzt: erste Übung am 21.10. (Datum laut Folie). Soll die Übung erst ab 28.10. zählen?
+2. **Mathe**: Die Bonustests (02.12. und 20.01., 12:00) erwarte ich als normalen Termin, nicht als Klausur (keine KLIPS-Anmeldung). Passt das?
+3. **Visualisierung**: Raum der Übungsgruppen erwarte ich als „Weyertal 121, Raum 5.08“ (Folie 93). Stimmt das für deine Gruppe 6?
+4. **Visualisierung**: Sind `Uebung01.pdf` … `Uebung06.pdf` Übungsfolien oder Übungsblätter? (Im Moment ist beides erlaubt.)

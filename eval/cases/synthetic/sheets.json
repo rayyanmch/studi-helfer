@@ -1,0 +1,85 @@
+[
+  {"id": "frist/de-mit-uhrzeit", "ref": "2026-11-16",
+   "files": {"Blatt03.pdf": [["Übungsblatt 3", "Abgabe bis Montag, 23.11.2026, 10 Uhr"]]},
+   "sheets": {"Blatt03.pdf": [{"date": "2026-11-23", "kind": "abgabe", "time": "10:00"}]}},
+
+  {"id": "frist/de-ohne-jahr", "ref": "2026-11-20",
+   "files": {"Uebungsblatt_04.pdf": [["Übungsblatt 4", "Abgabe: 30.11., 23:59 Uhr (ILIAS)"]]},
+   "sheets": {"Uebungsblatt_04.pdf": [{"date": "2026-11-30", "kind": "abgabe", "time": "23:59"}]}},
+
+  {"id": "frist/due-en-pm", "ref": "2026-11-20",
+   "files": {"Homework 6.pdf": [["Homework 6", "Due: Nov 30, 2026, 11:59 pm"]]},
+   "sheets": {"Homework 6.pdf": [{"date": "2026-11-30", "kind": "abgabe", "time": "23:59"}]}},
+
+  {"id": "frist/submit-by-en", "ref": "2026-11-25",
+   "files": {"Assignment_2.pdf": [["Assignment 2", "Submit by 7 December 2026, 10:00 via Moodle"]]},
+   "sheets": {"Assignment_2.pdf": [{"date": "2026-12-07", "kind": "abgabe", "time": "10:00"}]}},
+
+  {"id": "frist/datum-naechste-zeile", "ref": "2026-11-25",
+   "files": {"Blatt 5.pdf": [["Übungsblatt 5", "Abgabe:", "07.12.2026, 12:00 Uhr"]]},
+   "sheets": {"Blatt 5.pdf": [{"date": "2026-12-07", "kind": "abgabe", "time": "12:00"}]}},
+
+  {"id": "frist/bearbeitung-bis", "ref": "2026-12-09",
+   "note": "Mathe-Muster: „Bearbeitung bis Di. … 23:55 Uhr“ ist die Abgabefrist.",
+   "files": {"Blatt08.pdf": [["Übungsblatt 8", "Bearbeitung bis Di. 15.12.26 23:55 Uhr"]]},
+   "sheets": {"Blatt08.pdf": [{"date": "2026-12-15", "kind": "abgabe", "time": "23:55"}]}},
+
+  {"id": "frist/iso-datum", "ref": "2026-11-09",
+   "files": {"Exercise Sheet 2.pdf": [["Exercise Sheet 2", "Deadline: 2026-11-16 23:59"]]},
+   "sheets": {"Exercise Sheet 2.pdf": [{"date": "2026-11-16", "kind": "abgabe", "time": "23:59"}]}},
+
+  {"id": "frist/bis-24-uhr", "ref": "2026-11-20",
+   "files": {"Essay.pdf": [["Essay-Wettbewerb", "Abgabe des Essays ist bis zum 16. Dezember 2026, 24 Uhr möglich"]]},
+   "sheets": {"Essay.pdf": [{"date": "2026-12-16", "kind": "abgabe"}]}},
+
+  {"id": "falle/ausgabe-und-stand", "ref": "2026-11-10",
+   "files": {"Blatt 6.pdf": [["Übungsblatt 6", "Ausgabe: 10.11.2026", "Stand: 01.10.2026"]]},
+   "sheets": {"Blatt 6.pdf": []}},
+
+  {"id": "falle/datum-ohne-fristwort", "ref": "2026-11-12",
+   "files": {"Blatt 7.pdf": [["Übungsblatt 7 vom 12.11.2026", "Aufgabe 1 (Mengen)"]]},
+   "sheets": {"Blatt 7.pdf": []}},
+
+  {"id": "falle/loesung", "ref": "2026-11-24",
+   "files": {"Blatt 3 Lösung.pdf": [["Lösung zu Blatt 3", "Abgabe bis 23.11.2026"]]},
+   "sheets": {"Blatt 3 Lösung.pdf": []}},
+
+  {"id": "falle/foliendatum-unter-titel", "ref": "2026-11-19",
+   "note": "Wie SSE_Exercise04: Folientitel „Presentation“, Datum der Sitzung in der Fußzeile darunter.",
+   "files": {"SSE_Exercise05.pdf": [["SSE EXERCISE 5", "Software and Systems Engineering 19.11.2026"], ["HOMEWORK PRESENTATION", "Software and Systems Engineering 19.11.2026"]]},
+   "sheets": {"SSE_Exercise05.pdf": []}},
+
+  {"id": "klausur/tabelle-in-einer-zeile",
+   "files": {"00_Orga.pdf": [["Prüfung", "Klausur | 16.02.2027 | 10:00 | HS C"]]},
+   "sheets": {"00_Orga.pdf": [{"date": "2027-02-16", "kind": "klausur", "time": "10:00"}]}},
+
+  {"id": "klausur/tabelle-zellen-untereinander",
+   "files": {"01_Introduction.pdf": [["Exam", "2 h written exam", "First Exam:", "Thursday Feb 11 |", "12:00 |", "Kurt-Alder-Hörsaal", "Second exam:", "Monday Mar 08 |", "09:30 |", "Hörsaal A"]]},
+   "sheets": {"01_Introduction.pdf": [
+     {"date": "2027-02-11", "kind": "klausur", "time": "12:00"},
+     {"date": "2027-03-08", "kind": "klausur", "time": "09:30"}]}},
+
+  {"id": "klausur/nachklausur",
+   "files": {"Organisation.pdf": [["Klausur: Montag, 15.02.2027, 08:00 - 11:00 Uhr", "Nachklausur: Montag, 15.03.2027, 09:00 - 12:00 Uhr"]]},
+   "sheets": {"Organisation.pdf": [
+     {"date": "2027-02-15", "kind": "klausur", "time": "08:00"},
+     {"date": "2027-03-15", "kind": "klausur", "time": "09:00"}]}},
+
+  {"id": "klausur/pruefungstermin",
+   "files": {"Modulinformationen.pdf": [["Prüfung", "Prüfungstermin: 16.02.2027 9:00 - 11:00 Uhr", "Nachklausurtermin: 18.03.2027 9:00 - 11:00 Uhr"]]},
+   "sheets": {"Modulinformationen.pdf": [
+     {"date": "2027-02-16", "kind": "klausur", "time": "09:00"},
+     {"date": "2027-03-18", "kind": "klausur", "time": "09:00"}]}},
+
+  {"id": "klausur/final-exam-en",
+   "files": {"Syllabus.pdf": [["Final exam: February 18, 2027, 9:00 am, Main Hall"]]},
+   "sheets": {"Syllabus.pdf": [{"date": "2027-02-18", "kind": "klausur", "time": "09:00"}]}},
+
+  {"id": "termin/bonustest",
+   "note": "Bonustests sind Termine, keine Klausur (keine KLIPS-Anmeldung).",
+   "files": {"Modulinfo.pdf": [["Tests für Bonuspunkte", "Test 1 Mi. 02.12.2026 12-12:30 Uhr: Beweisverfahren", "Test 2 Mi. 20.01.2027 12-12:30 Uhr: Folgen und Reihen"]]},
+   "sheets": {"Modulinfo.pdf": [
+     {"date": "2026-12-02", "kind": "termin", "time": "12:00"},
+     {"date": "2027-01-20", "kind": "termin", "time": "12:00"}]},
+   "optional": {"extras": [{"date": "2026-12-02"}, {"date": "2027-01-20"}]}}
+]

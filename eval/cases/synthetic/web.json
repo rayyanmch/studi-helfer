@@ -1,0 +1,93 @@
+[
+  {"algo": "doctype", "id": "doctype/andere-unis", "part": "Course",
+   "note": "Benennungen anderer Unis und Fächer. where = Ordner in ILIAS/Moodle.",
+   "files": {
+     "Vorlesungen/Vorlesung 03 - Graphen.pdf": "lecture",
+     "Lecture 5 - Trees.pdf": "lecture",
+     "Vorlesungen/Lösungsverfahren lineare Gleichungssysteme.pdf": "lecture",
+     "Kapitel 4 Integrale.pdf": ["lecture", "notes"],
+     "Skript_Analysis.pdf": "notes",
+     "Handout_Woche3.pdf": "notes",
+     "Übungen/Übungsblatt 3.pdf": "sheet",
+     "Übungen/Lösung Übungsblatt 3.pdf": "solution",
+     "Problem Set 2.pdf": "sheet",
+     "HA3.pdf": "sheet",
+     "Musterlösung_HA3.pdf": "solution",
+     "Week 3/answers_week3.pdf": "solution",
+     "Week 3/worksheet_week3.pdf": "sheet",
+     "Fallstudie Tesla.pdf": "sheet",
+     "Exercise 3 Slides.pdf": "exslides",
+     "Tutorium/Tutorium 4 Folien.pdf": "tutorial",
+     "Altklausur WS2324.pdf": "exam",
+     "Mock Exam 2025.pdf": "exam",
+     "Exam_Information.pdf": ["exam", "info"],
+     "Organisatorisches.pdf": "info",
+     "Syllabus.pdf": "info",
+     "Literatur/Paper_Smith2020.pdf": "reading",
+     "Woche 3/Selbstlerneinheit Kosten.pdf": "selfstudy",
+     "Aufzeichnungen/Recording_Lecture_5.mp4": "video",
+     "Daten/messwerte.csv": "data"
+   }},
+
+  {"algo": "solutions", "id": "solutions/andere-unis",
+   "files": ["Sheet 6.pdf", "Sheet 16.pdf", "Solution Sheet 6.pdf",
+             "Blatt03.pdf", "Blatt13.pdf", "Blatt03_Loesung.pdf",
+             "Übung 2.pdf", "Vorlesung 2.pdf", "Musterlösung Übung 2.pdf",
+             "HA5_Aufgaben.pdf", "Loesungen_HA5.pdf",
+             "Week 3/worksheet_week3.pdf", "Week 3/answers_week3.pdf",
+             "Vorlesungen/Lösungsverfahren lineare Gleichungssysteme.pdf"],
+   "expect": {
+     "Solution Sheet 6.pdf": "Sheet 6.pdf",
+     "Blatt03_Loesung.pdf": "Blatt03.pdf",
+     "Musterlösung Übung 2.pdf": "Übung 2.pdf",
+     "Loesungen_HA5.pdf": "HA5_Aufgaben.pdf",
+     "Week 3/answers_week3.pdf": "Week 3/worksheet_week3.pdf"
+   }},
+
+  {"algo": "solutions", "id": "solutions/gleiche-nummer-anderer-ordner",
+   "files": ["Woche 4/Exercise_04.pdf", "Woche 4 (alt)/Exercise_04.pdf", "Woche 4/Exercise_04_solution.pdf"],
+   "expect": {"Woche 4/Exercise_04_solution.pdf": "Woche 4/Exercise_04.pdf"}},
+
+  {"algo": "modules", "id": "modules/andere-unis",
+   "courses": [
+     {"id": "c1", "kind": "crs", "title": "Analysis I - Vorlesung"},
+     {"id": "c2", "kind": "crs", "title": "Analysis I - Übung"},
+     {"id": "c3", "kind": "crs", "title": "Tutorium: Programmierung"},
+     {"id": "c4", "kind": "crs", "title": "Programmierung"},
+     {"id": "c5", "kind": "crs", "title": "Mathematik I"},
+     {"id": "c6", "kind": "crs", "title": "Mathematik II"},
+     {"id": "c7", "kind": "crs", "title": "Statistik I"},
+     {"id": "c8", "kind": "crs", "title": "Statistik I - Tutorium"},
+     {"id": "g9", "kind": "grp", "title": "Tutorium 3", "parent": "c8"}
+   ],
+   "expect": [
+     {"parts": ["c1", "c2"], "name": ["Analysis I"]},
+     {"parts": ["c3", "c4"], "name": ["Programmierung"]},
+     {"parts": ["c5"]},
+     {"parts": ["c6"]},
+     {"parts": ["c7", "c8", "g9"], "name": ["Statistik I"]}
+   ]},
+
+  {"algo": "modules", "id": "modules/uebungen-zur",
+   "note": "„Übungen zur Linearen Algebra I“ gehört zur Vorlesung, obwohl das Adjektiv gebeugt ist.",
+   "courses": [
+     {"id": "c1", "kind": "crs", "title": "Lineare Algebra I (WiSe 2026/27)"},
+     {"id": "c2", "kind": "crs", "title": "Übungen zur Linearen Algebra I"}
+   ],
+   "expect": [{"parts": ["c1", "c2"], "name": ["Lineare Algebra I", "LA I"]}]},
+
+  {"algo": "modules", "id": "modules/semester-vorn-ohne-klammer",
+   "note": "Moodle-Stil: Semester ohne eckige Klammern vorn.",
+   "courses": [
+     {"id": "c1", "kind": "crs", "title": "WS 26/27 Datenbanksysteme"},
+     {"id": "c2", "kind": "crs", "title": "WS 26/27 Datenbanksysteme Übung"}
+   ],
+   "expect": [{"parts": ["c1", "c2"], "name": ["Datenbanksysteme", "DBS"]}]},
+
+  {"algo": "modules", "id": "modules/english-tutorials",
+   "courses": [
+     {"id": "c1", "kind": "crs", "title": "Introduction to Programming (Winter 2026)"},
+     {"id": "c2", "kind": "crs", "title": "Introduction to Programming – Tutorials"}
+   ],
+   "expect": [{"parts": ["c1", "c2"]}]}
+]

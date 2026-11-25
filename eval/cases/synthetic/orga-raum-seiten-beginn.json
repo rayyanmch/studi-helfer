@@ -1,0 +1,96 @@
+[
+  {"id": "raum/zeile-davor",
+   "files": {"00_Organisatorisches.pdf": [["Vorlesungszeiten", "• Veranstaltungsort: Hörsaal B, Hauptgebäude", "• Montag, 14:00-15:30"]]},
+   "orga": {"slots": [{"type": "lecture", "weekday": 0, "start": "14:00", "end": "15:30", "alternative": false, "room": "Hörsaal B"}]}},
+
+  {"id": "raum/zeile-danach-fuer-zwei",
+   "files": {"Lecture_01_Introduction.pdf": [["Lectures:", "Wednesdays, 14:00-15:30", "Fridays, 14:00-15:30", "Lecture Hall II"]]},
+   "orga": {"slots": [
+     {"type": "lecture", "weekday": 2, "start": "14:00", "end": "15:30", "alternative": false, "room": "Lecture Hall II"},
+     {"type": "lecture", "weekday": 4, "start": "14:00", "end": "15:30", "alternative": false, "room": "Lecture Hall II"}]}},
+
+  {"id": "raum/nach-der-liste",
+   "note": "Wie Visualisierung Folie 93: Ort steht unter allen Gruppen.",
+   "files": {"00_Organisatorisches.pdf": [["Übungstermine", "• Gruppe 1: Mo 14:00 - 15:30", "• Gruppe 2: Mo 16:00 - 17:30", "• Gruppe 3: Di 14:00 - 15:30", "Abhaltungsort:", "Weyertal 121, Raum 5.08"]]},
+   "orga": {"slots": [
+     {"type": "exercise", "weekday": 0, "start": "14:00", "end": "15:30", "group": 1, "alternative": true, "room": "Weyertal 121"},
+     {"type": "exercise", "weekday": 0, "start": "16:00", "end": "17:30", "group": 2, "alternative": true, "room": "Weyertal 121"},
+     {"type": "exercise", "weekday": 1, "start": "14:00", "end": "15:30", "group": 3, "alternative": true, "room": "Weyertal 121"}]}},
+
+  {"id": "raum/label-zeile",
+   "files": {"00_Organisatorisches.pdf": [["Vorlesung", "Zeit: Donnerstag, 12:00-13:30", "Raum: Hörsaal III"]]},
+   "orga": {"slots": [{"type": "lecture", "weekday": 3, "start": "12:00", "end": "13:30", "alternative": false, "room": "Hörsaal III"}]}},
+
+  {"id": "seiten/orga-folie-88",
+   "note": "Wie Visualisierung: Orga-Teil kommt nach Vorstellung und Motivation.",
+   "files": {"V01_Orga.pdf": [{"filler": 87}, ["Vorlesungszeiten", "• Veranstaltungsort: Hörsaal 230, COPT-Gebäude", "• Erste Vorlesung: Mittwoch, 10:00-11:30", "• Zweite Vorlesung: Mittwoch, 11:45-13:15"], {"filler": 20}]},
+   "orga": {"slots": [
+     {"type": "lecture", "weekday": 2, "start": "10:00", "end": "11:30", "alternative": false, "room": "Hörsaal 230"},
+     {"type": "lecture", "weekday": 2, "start": "11:45", "end": "13:15", "alternative": false, "room": "Hörsaal 230"}]}},
+
+  {"id": "seiten/introduction-folie-41",
+   "files": {"01_Introduction.pdf": [{"filler": 40}, ["Organisation", "Lectures: Tuesdays, 12:00-13:30, Lecture Hall A"], {"filler": 10}]},
+   "orga": {"slots": [{"type": "lecture", "weekday": 1, "start": "12:00", "end": "13:30", "alternative": false, "room": "Lecture Hall A"}]}},
+
+  {"id": "seiten/erste-vorlesung-ohne-orga-namen",
+   "note": "Orga-Folie in der ersten Vorlesung, Dateiname ohne Orga-Wort („Vorlesung_01“).",
+   "files": {
+     "Vorlesung_01_Grundlagen.pdf": [["Grundlagen der Informatik"], ["Organisatorisches", "Vorlesung: Montag, 10:00-11:30, Hörsaal 5", "Übung: Mittwoch, 12:00-13:30, Seminarraum 1"], {"filler": 30}],
+     "Vorlesung_02_Mengen.pdf": [{"filler": 25}]},
+   "orga": {"slots": [
+     {"type": "lecture", "weekday": 0, "start": "10:00", "end": "11:30", "alternative": false, "room": "Hörsaal 5"},
+     {"type": "exercise", "weekday": 2, "start": "12:00", "end": "13:30", "alternative": false, "room": "Seminarraum 1"}]}},
+
+  {"id": "seiten/klausur-auf-folie-36",
+   "files": {"00_Modulinformationen.pdf": [{"filler": 35}, ["Prüfung", "Prüfungstermin: 18.02.2027 10:00 - 12:00 Uhr", "Nachklausurtermin: 25.03.2027 10:00 - 12:00 Uhr"]]},
+   "orga": {"slots": []},
+   "sheets": {"00_Modulinformationen.pdf": [
+     {"date": "2027-02-18", "kind": "klausur", "time": "10:00"},
+     {"date": "2027-03-25", "kind": "klausur", "time": "10:00"}]}},
+
+  {"id": "beginn/uebungen-zweite-woche",
+   "files": {"00_Organisatorisches.pdf": [["Termine", "Vorlesung: Montag, 10:00-11:30, Hörsaal 1", "Übung: Donnerstag, 14:00-15:30, Seminarraum 2", "Die Übungen beginnen in der zweiten Vorlesungswoche."]]},
+   "orga": {"slots": [
+     {"type": "lecture", "weekday": 0, "start": "10:00", "end": "11:30", "alternative": false},
+     {"type": "exercise", "weekday": 3, "start": "14:00", "end": "15:30", "alternative": false}],
+     "first": {"exercise": "2026-10-19"}}},
+
+  {"id": "beginn/datum",
+   "files": {"00_Organisatorisches.pdf": [["Vorlesung: Dienstag, 08:00-09:30, Hörsaal 2", "Beginn: Dienstag, 20.10.2026"]]},
+   "orga": {"slots": [{"type": "lecture", "weekday": 1, "start": "08:00", "end": "09:30", "alternative": false}],
+     "first": {"lecture": "2026-10-20"}}},
+
+  {"id": "beginn/gruppen-ab-und-designuebung",
+   "note": "Wie Visualisierung Folie 93/96: „Beginn der Gruppen ab 19.10.“ gilt für die Übung, nicht die Vorlesung; „Ab 14.12.: Start Designübung“ ist kein Beginn der Übungen.",
+   "files": {"00_Organisatorisches.pdf": [
+     ["Vorlesung: Mittwoch, 10:00-11:30, Hörsaal 1"],
+     ["Übungstermine", "• Wöchentliche Übungen, eine Woche versetzt zur Vorlesung", "• Beginn der Gruppen ab 19.10.2026", "• Gruppe 1: Mo 14:00 - 15:30", "• Gruppe 2: Do 10:00 - 11:30"],
+     ["Übungsplan", "• Ab 19.10.26: Intro Implementierung", "• Ab 14.12.26: Start Designübung", "• Ab 21.12.26: Weihnachtsferien"]]},
+   "orga": {"slots": [
+     {"type": "lecture", "weekday": 2, "start": "10:00", "end": "11:30", "alternative": false},
+     {"type": "exercise", "weekday": 0, "start": "14:00", "end": "15:30", "group": 1, "alternative": true},
+     {"type": "exercise", "weekday": 3, "start": "10:00", "end": "11:30", "group": 2, "alternative": true}],
+     "first": {"lecture": "2026-10-12", "exercise": "2026-10-19"}}},
+
+  {"id": "beginn/english-week-3",
+   "files": {"01_Introduction.pdf": [["Lectures: Wednesdays, 14:00-15:30, Lecture Hall 2"], ["Exercises", "Group 1: Mondays, 10:00 - 11:30, Room S234", "Exercise classes will start from week 3, on Monday 26th"]]},
+   "orga": {"slots": [
+     {"type": "lecture", "weekday": 2, "start": "14:00", "end": "15:30", "alternative": false},
+     {"type": "exercise", "weekday": 0, "start": "10:00", "end": "11:30", "group": 1, "alternative": true}],
+     "first": {"exercise": "2026-10-26"}}},
+
+  {"id": "ausfall/entfaellt",
+   "files": {"00_Organisatorisches.pdf": [["Vorlesung: Dienstag, 10:00-11:30, Hörsaal 1", "Die Vorlesung am 24.11. entfällt."]]},
+   "orga": {"slots": [{"type": "lecture", "weekday": 1, "start": "10:00", "end": "11:30", "alternative": false}],
+     "cancellations": [{"date": "2026-11-24"}]}},
+
+  {"id": "ausfall/findet-statt-falle",
+   "files": {"00_Organisatorisches.pdf": [["Vorlesung: Dienstag, 10:00-11:30, Hörsaal 1", "Die Vorlesung am Dienstag, 10.11. findet wie geplant statt."]]},
+   "orga": {"slots": [{"type": "lecture", "weekday": 1, "start": "10:00", "end": "11:30", "alternative": false}],
+     "cancellations": []}},
+
+  {"id": "zusatz/termin",
+   "files": {"00_Organisatorisches.pdf": [["Vorlesung: Dienstag, 10:00-11:30, Hörsaal 1", "Zusätzlicher Termin: Freitag, 20.11.2026, 12:00-13:30 Uhr, Raum 2.14"]]},
+   "orga": {"slots": [{"type": "lecture", "weekday": 1, "start": "10:00", "end": "11:30", "alternative": false}],
+     "extras": [{"date": "2026-11-20", "start": "12:00", "end": "13:30"}]}}
+]
