@@ -7,7 +7,7 @@
 // Echte Fälle lesen Dateinamen aus ~/Uni ($EVAL_UNI_DIR), nie den Inhalt. Fehlt der Ordner, wird übersprungen.
 // Exit-Code 2, wenn ein vorher bestandener Fall jetzt fehlschlägt (Vergleich mit results/web.json).
 
-import { createRequire } from "node:module";
+import { createRequire, register } from "node:module";
 import { existsSync, readdirSync, readFileSync, statSync, writeFileSync, mkdirSync } from "node:fs";
 import { basename, dirname, join, relative, extname } from "node:path";
 import { homedir } from "node:os";
@@ -17,8 +17,10 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO = join(HERE, "..");
 const require = createRequire(import.meta.url);
 const { categoryOf, buildModules } = require(join(REPO, "desktop/lib/modules.js"));
+register("./ts-resolve.mjs", import.meta.url); // „./doctype“ ohne Endung in weeks.ts
 const { autoDocType } = await import(join(REPO, "web/src/lib/doctype.ts"));
 const { linkSolutions } = await import(join(REPO, "web/src/lib/solutions.ts"));
+const { weeksOf } = await import(join(REPO, "web/src/lib/weeks.ts"));
 
 const args = process.argv.slice(2);
 const verbose = args.includes("-v") || args.includes("--verbose");
@@ -45,7 +47,7 @@ function loadCases() {
     for (const f of readdirSync(dir).filter((x) => x.endsWith(".json")).sort()) {
       const data = JSON.parse(readFileSync(join(dir, f), "utf8"));
       for (const c of Array.isArray(data) ? data : [data]) {
-        if (!["doctype", "solutions", "modules"].includes(c.algo)) continue;
+        if (!["doctype", "solutions", "modules", "weeks"].includes(c.algo)) continue;
         c.id = `${kind}/${c.id}`;
         c.kind = kind;
         if (!filter || c.id.includes(filter)) cases.push(c);
@@ -130,6 +132,38 @@ function runModules(c, sc) {
   for (const [k] of want) sc.add("modules.group", { fn: 1 }, `verpasst: ${k} als ein Modul`);
 }
 
+// Themenwochen: Kurs wie backend.js bauen (Ordner-Art aus categoryOf, Änderungsdatum, ILIAS-Pfad), dann je Datei
+// die Woche vergleichen („w3“, „info“, „exam“; eine Liste erlaubt mehrere).
+function runWeeks(c, sc, uniRoot) {
+  let entries;
+  if (c.kind === "real") {
+    entries = walk(uniRoot).map((rel) => ({ rel, mtime: statSync(join(uniRoot, rel)).mtimeMs }));
+  } else {
+    entries = Object.entries(c.files).map(([rel, day]) => ({ rel, mtime: new Date(`${day}T12:00:00`).getTime() }));
+  }
+  const cats = new Map();
+  for (const { rel, mtime } of entries) {
+    const f = { ...fileOf(rel), modifiedAt: mtime, updated: "", size: "", isNew: false };
+    const cat = categoryOf(f.name, f.where, c.part ?? "Course");
+    if (!cats.has(cat)) cats.set(cat, { id: cat, name: cat, category: cat, files: [] });
+    cats.get(cat).files.push(f);
+  }
+  const course = { id: c.id, name: c.name ?? "Kurs", fullName: c.fullName, lecturer: "", total: entries.length, folders: [...cats.values()] };
+  const weeks = weeksOf(course, { today: c.today ?? "2026-11-25" });
+  const keyOf = new Map();
+  for (const w of weeks) for (const x of w.files) keyOf.set(x.file.id, w.key);
+  for (const [rel, want] of Object.entries(c.expect)) {
+    const got = keyOf.get(rel);
+    if (got === undefined) {
+      sc.add("weeks", { fn: 1 }, `${rel}: Datei fehlt`);
+      continue;
+    }
+    const ok = Array.isArray(want) ? want.includes(got) : got === want;
+    if (ok) sc.add("weeks", { tp: 1 });
+    else sc.add("weeks", { fn: 1 }, `${rel}: ${got}, erwartet ${Array.isArray(want) ? want.join("/") : want}`);
+  }
+}
+
 const cases = loadCases();
 const results = {};
 const totals = {};
@@ -150,6 +184,7 @@ for (const c of cases) {
   const sc = new Score();
   if (c.algo === "doctype") runDoctype(c, sc);
   else if (c.algo === "solutions") runSolutions(c, sc, root);
+  else if (c.algo === "weeks") runWeeks(c, sc, root);
   else runModules(c, sc);
   for (const [cat, v] of Object.entries(sc.cats)) {
     const t = (totals[cat] ??= [0, 0, 0]);

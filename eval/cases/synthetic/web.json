@@ -1,205 +1,658 @@
 [
-  {"algo": "doctype", "id": "doctype/andere-unis", "part": "Course",
-   "note": "Benennungen anderer Unis und Fächer. where = Ordner in ILIAS/Moodle.",
-   "files": {
-     "Vorlesungen/Vorlesung 03 - Graphen.pdf": "lecture",
-     "Lecture 5 - Trees.pdf": "lecture",
-     "Vorlesungen/Lösungsverfahren lineare Gleichungssysteme.pdf": "lecture",
-     "Kapitel 4 Integrale.pdf": ["lecture", "notes"],
-     "Skript_Analysis.pdf": "notes",
-     "Handout_Woche3.pdf": "notes",
-     "Übungen/Übungsblatt 3.pdf": "sheet",
-     "Übungen/Lösung Übungsblatt 3.pdf": "solution",
-     "Problem Set 2.pdf": "sheet",
-     "HA3.pdf": "sheet",
-     "Musterlösung_HA3.pdf": "solution",
-     "Week 3/answers_week3.pdf": "solution",
-     "Week 3/worksheet_week3.pdf": "sheet",
-     "Fallstudie Tesla.pdf": "sheet",
-     "Exercise 3 Slides.pdf": "exslides",
-     "Tutorium/Tutorium 4 Folien.pdf": "tutorial",
-     "Altklausur WS2324.pdf": "exam",
-     "Mock Exam 2025.pdf": "exam",
-     "Exam_Information.pdf": ["exam", "info"],
-     "Organisatorisches.pdf": "info",
-     "Syllabus.pdf": "info",
-     "Literatur/Paper_Smith2020.pdf": "reading",
-     "Woche 3/Selbstlerneinheit Kosten.pdf": "selfstudy",
-     "Aufzeichnungen/Recording_Lecture_5.mp4": "video",
-     "Daten/messwerte.csv": "data"
-   }},
-
-  {"algo": "solutions", "id": "solutions/andere-unis",
-   "files": ["Sheet 6.pdf", "Sheet 16.pdf", "Solution Sheet 6.pdf",
-             "Blatt03.pdf", "Blatt13.pdf", "Blatt03_Loesung.pdf",
-             "Übung 2.pdf", "Vorlesung 2.pdf", "Musterlösung Übung 2.pdf",
-             "HA5_Aufgaben.pdf", "Loesungen_HA5.pdf",
-             "Week 3/worksheet_week3.pdf", "Week 3/answers_week3.pdf",
-             "Vorlesungen/Lösungsverfahren lineare Gleichungssysteme.pdf"],
-   "expect": {
-     "Solution Sheet 6.pdf": "Sheet 6.pdf",
-     "Blatt03_Loesung.pdf": "Blatt03.pdf",
-     "Musterlösung Übung 2.pdf": "Übung 2.pdf",
-     "Loesungen_HA5.pdf": "HA5_Aufgaben.pdf",
-     "Week 3/answers_week3.pdf": "Week 3/worksheet_week3.pdf"
-   }},
-
-  {"algo": "solutions", "id": "solutions/schreibweisen",
-   "files": ["Sheet4.pdf", "Answers-Sheet4.pdf", "HW2.pdf", "HW2_answer_key.pdf", "Blatt 5.pdf", "Lösungsvorschlag Blatt 5.pdf",
-             "Vorlesungen/Lösungsmengen und Ungleichungen.pdf", "Vorlesungen/Vorlesung 5.pdf"],
-   "expect": {
-     "Answers-Sheet4.pdf": "Sheet4.pdf",
-     "HW2_answer_key.pdf": "HW2.pdf",
-     "Lösungsvorschlag Blatt 5.pdf": "Blatt 5.pdf"
-   }},
-
-  {"algo": "doctype", "id": "doctype/uebungsfolien-mit-nummer", "part": "Course",
-   "files": {
-     "Exercise_05_slides.pdf": "exslides",
-     "Slides Exercise Session 7.pdf": "exslides",
-     "Übung 4 – Folien.pdf": "exslides",
-     "Exercises 3.pdf": "sheet",
-     "Slides Lecture 5.pdf": "lecture"
-   }},
-
-  {"algo": "doctype", "id": "doctype/ankuendigungen", "part": "Lecture",
-   "files": {
-     "Vorlesungsfolien/Folien_Hochschulwahlen_2026.pdf": "info",
-     "Vorlesungen/Lehrevaluation_Ergebnisse.pdf": "info",
-     "Lectures/Announcement - room change.pdf": "info",
-     "Vorlesungen/Ankündigung Gastvortrag.pdf": "info",
-     "Vorlesungen/Vorlesung 5 - Wahlen und Wahlsysteme.pdf": "lecture",
-     "Lectures/Lecture 9 - Evaluation.pdf": "lecture"
-   }},
-
-  {"algo": "doctype", "id": "doctype/bilder", "part": "Lecture",
-   "files": {
-     "Vorlesungen/Abbildung_3.png": "other",
-     "Folien/diagramm.jpg": "other",
-     "Videos/animation.gif": ["video", "other"],
-     "Lecture 2 screenshot.jpeg": "other",
-     "Vorlesungen/Vorlesung 3.pdf": "lecture",
-     "Bilder Vorlesung 4.pdf": "lecture"
-   }},
-
-  {"algo": "doctype", "id": "doctype/loesungs-woerter", "part": "Course",
-   "files": {
-     "Answers-Sheet4.pdf": "solution",
-     "HW2_answer_key.pdf": "solution",
-     "Lösungsvorschlag Blatt 5.pdf": "solution",
-     "Vorlesungen/Lösungsmengen und Ungleichungen.pdf": "lecture",
-     "Vorlesungen/Lösungsstrategien beim Beweisen.pdf": "lecture"
-   }},
-
-  {"algo": "solutions", "id": "solutions/gleiche-nummer-anderer-ordner",
-   "files": ["Woche 4/Exercise_04.pdf", "Woche 4 (alt)/Exercise_04.pdf", "Woche 4/Exercise_04_solution.pdf"],
-   "expect": {"Woche 4/Exercise_04_solution.pdf": "Woche 4/Exercise_04.pdf"}},
-
-  {"algo": "modules", "id": "modules/andere-unis",
-   "courses": [
-     {"id": "c1", "kind": "crs", "title": "Analysis I - Vorlesung"},
-     {"id": "c2", "kind": "crs", "title": "Analysis I - Übung"},
-     {"id": "c3", "kind": "crs", "title": "Tutorium: Programmierung"},
-     {"id": "c4", "kind": "crs", "title": "Programmierung"},
-     {"id": "c5", "kind": "crs", "title": "Mathematik I"},
-     {"id": "c6", "kind": "crs", "title": "Mathematik II"},
-     {"id": "c7", "kind": "crs", "title": "Statistik I"},
-     {"id": "c8", "kind": "crs", "title": "Statistik I - Tutorium"},
-     {"id": "g9", "kind": "grp", "title": "Tutorium 3", "parent": "c8"}
-   ],
-   "expect": [
-     {"parts": ["c1", "c2"], "name": ["Analysis I"]},
-     {"parts": ["c3", "c4"], "name": ["Programmierung"]},
-     {"parts": ["c5"]},
-     {"parts": ["c6"]},
-     {"parts": ["c7", "c8", "g9"], "name": ["Statistik I"]}
-   ]},
-
-  {"algo": "modules", "id": "modules/uebungen-zur",
-   "note": "„Übungen zur Linearen Algebra I“ gehört zur Vorlesung, obwohl das Adjektiv gebeugt ist.",
-   "courses": [
-     {"id": "c1", "kind": "crs", "title": "Lineare Algebra I (WiSe 2026/27)"},
-     {"id": "c2", "kind": "crs", "title": "Übungen zur Linearen Algebra I"}
-   ],
-   "expect": [{"parts": ["c1", "c2"], "name": ["Lineare Algebra I", "LA I"]}]},
-
-  {"algo": "modules", "id": "modules/uebung-zu",
-   "courses": [
-     {"id": "c1", "kind": "crs", "title": "Analysis II"},
-     {"id": "c2", "kind": "crs", "title": "Übung zu Analysis II"}
-   ],
-   "expect": [{"parts": ["c1", "c2"], "name": ["Analysis II"]}]},
-
-  {"algo": "modules", "id": "modules/tutorium-zur-gebeugt",
-   "courses": [
-     {"id": "c1", "kind": "crs", "title": "Theoretische Informatik"},
-     {"id": "c2", "kind": "crs", "title": "Tutorium zur Theoretischen Informatik"}
-   ],
-   "expect": [{"parts": ["c1", "c2"]}]},
-
-  {"algo": "modules", "id": "modules/exercises-for",
-   "courses": [
-     {"id": "c1", "kind": "crs", "title": "Software Engineering"},
-     {"id": "c2", "kind": "crs", "title": "Exercises for Software Engineering"}
-   ],
-   "expect": [{"parts": ["c1", "c2"], "name": ["Software Engineering"]}]},
-
-  {"algo": "modules", "id": "modules/uebungen-zu-den",
-   "courses": [
-     {"id": "c1", "kind": "crs", "title": "Grundlagen der Informatik"},
-     {"id": "c2", "kind": "crs", "title": "Übungen zu den Grundlagen der Informatik"}
-   ],
-   "expect": [{"parts": ["c1", "c2"]}]},
-
-  {"algo": "modules", "id": "falle/uebung-zu-anderem-kurs",
-   "courses": [
-     {"id": "c1", "kind": "crs", "title": "Mathematik I"},
-     {"id": "c2", "kind": "crs", "title": "Übungen zur Mathematik II"}
-   ],
-   "expect": [{"parts": ["c1"]}, {"parts": ["c2"]}]},
-
-  {"algo": "modules", "id": "modules/semester-vorn-ohne-klammer",
-   "note": "Moodle-Stil: Semester ohne eckige Klammern vorn.",
-   "courses": [
-     {"id": "c1", "kind": "crs", "title": "WS 26/27 Datenbanksysteme"},
-     {"id": "c2", "kind": "crs", "title": "WS 26/27 Datenbanksysteme Übung"}
-   ],
-   "expect": [{"parts": ["c1", "c2"], "name": ["Datenbanksysteme", "DBS"]}]},
-
-  {"algo": "modules", "id": "modules/sose-vorn-mit-doppelpunkt",
-   "courses": [
-     {"id": "c1", "kind": "crs", "title": "SoSe 2027: Statistik II"},
-     {"id": "c2", "kind": "crs", "title": "SoSe 2027: Statistik II - Übung"}
-   ],
-   "expect": [{"parts": ["c1", "c2"], "name": ["Statistik II"]}]},
-
-  {"algo": "modules", "id": "modules/fall-term-vor-teil",
-   "courses": [
-     {"id": "c1", "kind": "crs", "title": "Data Structures (Fall 2026)"},
-     {"id": "c2", "kind": "crs", "title": "Data Structures (Fall 2026) - Exercises"}
-   ],
-   "expect": [{"parts": ["c1", "c2"], "name": ["Data Structures"]}]},
-
-  {"algo": "modules", "id": "modules/wintersemester-vorn-und-hinten",
-   "courses": [
-     {"id": "c1", "kind": "crs", "title": "Wintersemester 2026/27 – Einführung in die Informatik"},
-     {"id": "c2", "kind": "crs", "title": "Übung: Einführung in die Informatik (Wintersemester 2026/27)"}
-   ],
-   "expect": [{"parts": ["c1", "c2"]}]},
-
-  {"algo": "modules", "id": "falle/gleicher-kurs-anderes-semester",
-   "note": "Derselbe Kurs aus zwei Semestern bleibt getrennt, auch wenn das Semester verschieden geschrieben ist.",
-   "courses": [
-     {"id": "c1", "kind": "crs", "title": "[WS25/26] Mathematik I"},
-     {"id": "c2", "kind": "crs", "title": "Mathematik I (WiSe 2026/27)"},
-     {"id": "c3", "kind": "crs", "title": "Mathematik I - Übung (WiSe 2026/27)"}
-   ],
-   "expect": [{"parts": ["c1"]}, {"parts": ["c2", "c3"]}]},
-
-  {"algo": "modules", "id": "modules/english-tutorials",
-   "courses": [
-     {"id": "c1", "kind": "crs", "title": "Introduction to Programming (Winter 2026)"},
-     {"id": "c2", "kind": "crs", "title": "Introduction to Programming – Tutorials"}
-   ],
-   "expect": [{"parts": ["c1", "c2"]}]}
+  {
+    "algo": "doctype",
+    "id": "doctype/andere-unis",
+    "part": "Course",
+    "note": "Benennungen anderer Unis und Fächer. where = Ordner in ILIAS/Moodle.",
+    "files": {
+      "Vorlesungen/Vorlesung 03 - Graphen.pdf": "lecture",
+      "Lecture 5 - Trees.pdf": "lecture",
+      "Vorlesungen/Lösungsverfahren lineare Gleichungssysteme.pdf": "lecture",
+      "Kapitel 4 Integrale.pdf": [
+        "lecture",
+        "notes"
+      ],
+      "Skript_Analysis.pdf": "notes",
+      "Handout_Woche3.pdf": "notes",
+      "Übungen/Übungsblatt 3.pdf": "sheet",
+      "Übungen/Lösung Übungsblatt 3.pdf": "solution",
+      "Problem Set 2.pdf": "sheet",
+      "HA3.pdf": "sheet",
+      "Musterlösung_HA3.pdf": "solution",
+      "Week 3/answers_week3.pdf": "solution",
+      "Week 3/worksheet_week3.pdf": "sheet",
+      "Fallstudie Tesla.pdf": "sheet",
+      "Exercise 3 Slides.pdf": "exslides",
+      "Tutorium/Tutorium 4 Folien.pdf": "tutorial",
+      "Altklausur WS2324.pdf": "exam",
+      "Mock Exam 2025.pdf": "exam",
+      "Exam_Information.pdf": [
+        "exam",
+        "info"
+      ],
+      "Organisatorisches.pdf": "info",
+      "Syllabus.pdf": "info",
+      "Literatur/Paper_Smith2020.pdf": "reading",
+      "Woche 3/Selbstlerneinheit Kosten.pdf": "selfstudy",
+      "Aufzeichnungen/Recording_Lecture_5.mp4": "video",
+      "Daten/messwerte.csv": "data"
+    }
+  },
+  {
+    "algo": "solutions",
+    "id": "solutions/andere-unis",
+    "files": [
+      "Sheet 6.pdf",
+      "Sheet 16.pdf",
+      "Solution Sheet 6.pdf",
+      "Blatt03.pdf",
+      "Blatt13.pdf",
+      "Blatt03_Loesung.pdf",
+      "Übung 2.pdf",
+      "Vorlesung 2.pdf",
+      "Musterlösung Übung 2.pdf",
+      "HA5_Aufgaben.pdf",
+      "Loesungen_HA5.pdf",
+      "Week 3/worksheet_week3.pdf",
+      "Week 3/answers_week3.pdf",
+      "Vorlesungen/Lösungsverfahren lineare Gleichungssysteme.pdf"
+    ],
+    "expect": {
+      "Solution Sheet 6.pdf": "Sheet 6.pdf",
+      "Blatt03_Loesung.pdf": "Blatt03.pdf",
+      "Musterlösung Übung 2.pdf": "Übung 2.pdf",
+      "Loesungen_HA5.pdf": "HA5_Aufgaben.pdf",
+      "Week 3/answers_week3.pdf": "Week 3/worksheet_week3.pdf"
+    }
+  },
+  {
+    "algo": "solutions",
+    "id": "solutions/schreibweisen",
+    "files": [
+      "Sheet4.pdf",
+      "Answers-Sheet4.pdf",
+      "HW2.pdf",
+      "HW2_answer_key.pdf",
+      "Blatt 5.pdf",
+      "Lösungsvorschlag Blatt 5.pdf",
+      "Vorlesungen/Lösungsmengen und Ungleichungen.pdf",
+      "Vorlesungen/Vorlesung 5.pdf"
+    ],
+    "expect": {
+      "Answers-Sheet4.pdf": "Sheet4.pdf",
+      "HW2_answer_key.pdf": "HW2.pdf",
+      "Lösungsvorschlag Blatt 5.pdf": "Blatt 5.pdf"
+    }
+  },
+  {
+    "algo": "doctype",
+    "id": "doctype/uebungsfolien-mit-nummer",
+    "part": "Course",
+    "files": {
+      "Exercise_05_slides.pdf": "exslides",
+      "Slides Exercise Session 7.pdf": "exslides",
+      "Übung 4 – Folien.pdf": "exslides",
+      "Exercises 3.pdf": "sheet",
+      "Slides Lecture 5.pdf": "lecture"
+    }
+  },
+  {
+    "algo": "doctype",
+    "id": "doctype/ankuendigungen",
+    "part": "Lecture",
+    "files": {
+      "Vorlesungsfolien/Folien_Hochschulwahlen_2026.pdf": "info",
+      "Vorlesungen/Lehrevaluation_Ergebnisse.pdf": "info",
+      "Lectures/Announcement - room change.pdf": "info",
+      "Vorlesungen/Ankündigung Gastvortrag.pdf": "info",
+      "Vorlesungen/Vorlesung 5 - Wahlen und Wahlsysteme.pdf": "lecture",
+      "Lectures/Lecture 9 - Evaluation.pdf": "lecture"
+    }
+  },
+  {
+    "algo": "doctype",
+    "id": "doctype/bilder",
+    "part": "Lecture",
+    "files": {
+      "Vorlesungen/Abbildung_3.png": "other",
+      "Folien/diagramm.jpg": "other",
+      "Videos/animation.gif": [
+        "video",
+        "other"
+      ],
+      "Lecture 2 screenshot.jpeg": "other",
+      "Vorlesungen/Vorlesung 3.pdf": "lecture",
+      "Bilder Vorlesung 4.pdf": "lecture"
+    }
+  },
+  {
+    "algo": "doctype",
+    "id": "doctype/loesungs-woerter",
+    "part": "Course",
+    "files": {
+      "Answers-Sheet4.pdf": "solution",
+      "HW2_answer_key.pdf": "solution",
+      "Lösungsvorschlag Blatt 5.pdf": "solution",
+      "Vorlesungen/Lösungsmengen und Ungleichungen.pdf": "lecture",
+      "Vorlesungen/Lösungsstrategien beim Beweisen.pdf": "lecture"
+    }
+  },
+  {
+    "algo": "solutions",
+    "id": "solutions/gleiche-nummer-anderer-ordner",
+    "files": [
+      "Woche 4/Exercise_04.pdf",
+      "Woche 4 (alt)/Exercise_04.pdf",
+      "Woche 4/Exercise_04_solution.pdf"
+    ],
+    "expect": {
+      "Woche 4/Exercise_04_solution.pdf": "Woche 4/Exercise_04.pdf"
+    }
+  },
+  {
+    "algo": "modules",
+    "id": "modules/andere-unis",
+    "courses": [
+      {
+        "id": "c1",
+        "kind": "crs",
+        "title": "Analysis I - Vorlesung"
+      },
+      {
+        "id": "c2",
+        "kind": "crs",
+        "title": "Analysis I - Übung"
+      },
+      {
+        "id": "c3",
+        "kind": "crs",
+        "title": "Tutorium: Programmierung"
+      },
+      {
+        "id": "c4",
+        "kind": "crs",
+        "title": "Programmierung"
+      },
+      {
+        "id": "c5",
+        "kind": "crs",
+        "title": "Mathematik I"
+      },
+      {
+        "id": "c6",
+        "kind": "crs",
+        "title": "Mathematik II"
+      },
+      {
+        "id": "c7",
+        "kind": "crs",
+        "title": "Statistik I"
+      },
+      {
+        "id": "c8",
+        "kind": "crs",
+        "title": "Statistik I - Tutorium"
+      },
+      {
+        "id": "g9",
+        "kind": "grp",
+        "title": "Tutorium 3",
+        "parent": "c8"
+      }
+    ],
+    "expect": [
+      {
+        "parts": [
+          "c1",
+          "c2"
+        ],
+        "name": [
+          "Analysis I"
+        ]
+      },
+      {
+        "parts": [
+          "c3",
+          "c4"
+        ],
+        "name": [
+          "Programmierung"
+        ]
+      },
+      {
+        "parts": [
+          "c5"
+        ]
+      },
+      {
+        "parts": [
+          "c6"
+        ]
+      },
+      {
+        "parts": [
+          "c7",
+          "c8",
+          "g9"
+        ],
+        "name": [
+          "Statistik I"
+        ]
+      }
+    ]
+  },
+  {
+    "algo": "modules",
+    "id": "modules/uebungen-zur",
+    "note": "„Übungen zur Linearen Algebra I“ gehört zur Vorlesung, obwohl das Adjektiv gebeugt ist.",
+    "courses": [
+      {
+        "id": "c1",
+        "kind": "crs",
+        "title": "Lineare Algebra I (WiSe 2026/27)"
+      },
+      {
+        "id": "c2",
+        "kind": "crs",
+        "title": "Übungen zur Linearen Algebra I"
+      }
+    ],
+    "expect": [
+      {
+        "parts": [
+          "c1",
+          "c2"
+        ],
+        "name": [
+          "Lineare Algebra I",
+          "LA I"
+        ]
+      }
+    ]
+  },
+  {
+    "algo": "modules",
+    "id": "modules/uebung-zu",
+    "courses": [
+      {
+        "id": "c1",
+        "kind": "crs",
+        "title": "Analysis II"
+      },
+      {
+        "id": "c2",
+        "kind": "crs",
+        "title": "Übung zu Analysis II"
+      }
+    ],
+    "expect": [
+      {
+        "parts": [
+          "c1",
+          "c2"
+        ],
+        "name": [
+          "Analysis II"
+        ]
+      }
+    ]
+  },
+  {
+    "algo": "modules",
+    "id": "modules/tutorium-zur-gebeugt",
+    "courses": [
+      {
+        "id": "c1",
+        "kind": "crs",
+        "title": "Theoretische Informatik"
+      },
+      {
+        "id": "c2",
+        "kind": "crs",
+        "title": "Tutorium zur Theoretischen Informatik"
+      }
+    ],
+    "expect": [
+      {
+        "parts": [
+          "c1",
+          "c2"
+        ]
+      }
+    ]
+  },
+  {
+    "algo": "modules",
+    "id": "modules/exercises-for",
+    "courses": [
+      {
+        "id": "c1",
+        "kind": "crs",
+        "title": "Software Engineering"
+      },
+      {
+        "id": "c2",
+        "kind": "crs",
+        "title": "Exercises for Software Engineering"
+      }
+    ],
+    "expect": [
+      {
+        "parts": [
+          "c1",
+          "c2"
+        ],
+        "name": [
+          "Software Engineering"
+        ]
+      }
+    ]
+  },
+  {
+    "algo": "modules",
+    "id": "modules/uebungen-zu-den",
+    "courses": [
+      {
+        "id": "c1",
+        "kind": "crs",
+        "title": "Grundlagen der Informatik"
+      },
+      {
+        "id": "c2",
+        "kind": "crs",
+        "title": "Übungen zu den Grundlagen der Informatik"
+      }
+    ],
+    "expect": [
+      {
+        "parts": [
+          "c1",
+          "c2"
+        ]
+      }
+    ]
+  },
+  {
+    "algo": "modules",
+    "id": "falle/uebung-zu-anderem-kurs",
+    "courses": [
+      {
+        "id": "c1",
+        "kind": "crs",
+        "title": "Mathematik I"
+      },
+      {
+        "id": "c2",
+        "kind": "crs",
+        "title": "Übungen zur Mathematik II"
+      }
+    ],
+    "expect": [
+      {
+        "parts": [
+          "c1"
+        ]
+      },
+      {
+        "parts": [
+          "c2"
+        ]
+      }
+    ]
+  },
+  {
+    "algo": "modules",
+    "id": "modules/semester-vorn-ohne-klammer",
+    "note": "Moodle-Stil: Semester ohne eckige Klammern vorn.",
+    "courses": [
+      {
+        "id": "c1",
+        "kind": "crs",
+        "title": "WS 26/27 Datenbanksysteme"
+      },
+      {
+        "id": "c2",
+        "kind": "crs",
+        "title": "WS 26/27 Datenbanksysteme Übung"
+      }
+    ],
+    "expect": [
+      {
+        "parts": [
+          "c1",
+          "c2"
+        ],
+        "name": [
+          "Datenbanksysteme",
+          "DBS"
+        ]
+      }
+    ]
+  },
+  {
+    "algo": "modules",
+    "id": "modules/sose-vorn-mit-doppelpunkt",
+    "courses": [
+      {
+        "id": "c1",
+        "kind": "crs",
+        "title": "SoSe 2027: Statistik II"
+      },
+      {
+        "id": "c2",
+        "kind": "crs",
+        "title": "SoSe 2027: Statistik II - Übung"
+      }
+    ],
+    "expect": [
+      {
+        "parts": [
+          "c1",
+          "c2"
+        ],
+        "name": [
+          "Statistik II"
+        ]
+      }
+    ]
+  },
+  {
+    "algo": "modules",
+    "id": "modules/fall-term-vor-teil",
+    "courses": [
+      {
+        "id": "c1",
+        "kind": "crs",
+        "title": "Data Structures (Fall 2026)"
+      },
+      {
+        "id": "c2",
+        "kind": "crs",
+        "title": "Data Structures (Fall 2026) - Exercises"
+      }
+    ],
+    "expect": [
+      {
+        "parts": [
+          "c1",
+          "c2"
+        ],
+        "name": [
+          "Data Structures"
+        ]
+      }
+    ]
+  },
+  {
+    "algo": "modules",
+    "id": "modules/wintersemester-vorn-und-hinten",
+    "courses": [
+      {
+        "id": "c1",
+        "kind": "crs",
+        "title": "Wintersemester 2026/27 – Einführung in die Informatik"
+      },
+      {
+        "id": "c2",
+        "kind": "crs",
+        "title": "Übung: Einführung in die Informatik (Wintersemester 2026/27)"
+      }
+    ],
+    "expect": [
+      {
+        "parts": [
+          "c1",
+          "c2"
+        ]
+      }
+    ]
+  },
+  {
+    "algo": "modules",
+    "id": "falle/gleicher-kurs-anderes-semester",
+    "note": "Derselbe Kurs aus zwei Semestern bleibt getrennt, auch wenn das Semester verschieden geschrieben ist.",
+    "courses": [
+      {
+        "id": "c1",
+        "kind": "crs",
+        "title": "[WS25/26] Mathematik I"
+      },
+      {
+        "id": "c2",
+        "kind": "crs",
+        "title": "Mathematik I (WiSe 2026/27)"
+      },
+      {
+        "id": "c3",
+        "kind": "crs",
+        "title": "Mathematik I - Übung (WiSe 2026/27)"
+      }
+    ],
+    "expect": [
+      {
+        "parts": [
+          "c1"
+        ]
+      },
+      {
+        "parts": [
+          "c2",
+          "c3"
+        ]
+      }
+    ]
+  },
+  {
+    "algo": "modules",
+    "id": "modules/english-tutorials",
+    "courses": [
+      {
+        "id": "c1",
+        "kind": "crs",
+        "title": "Introduction to Programming (Winter 2026)"
+      },
+      {
+        "id": "c2",
+        "kind": "crs",
+        "title": "Introduction to Programming – Tutorials"
+      }
+    ],
+    "expect": [
+      {
+        "parts": [
+          "c1",
+          "c2"
+        ]
+      }
+    ]
+  },
+  {
+    "algo": "weeks",
+    "id": "weeks/week-ordner-englisch",
+    "part": "Course",
+    "name": "Algorithms",
+    "files": {
+      "Week 1/Lecture 1.pdf": "2026-10-13",
+      "Week 2/Lecture 2.pdf": "2026-10-20",
+      "Week 2/Exercise 2.pdf": "2026-10-21",
+      "Week 3/Lecture 3.pdf": "2026-10-27"
+    },
+    "expect": {
+      "Week 1/Lecture 1.pdf": "w1",
+      "Week 2/Lecture 2.pdf": "w2",
+      "Week 2/Exercise 2.pdf": "w2",
+      "Week 3/Lecture 3.pdf": "w3"
+    }
+  },
+  {
+    "algo": "weeks",
+    "id": "weeks/kw-ordner",
+    "part": "Course",
+    "name": "Statistik",
+    "note": "KW 44 2026 = 26.–30.10. = 3. Vorlesungswoche (Beginn 12.10. in KW 42).",
+    "files": {
+      "KW 42/Folien.pdf": "2026-10-13",
+      "KW 44/Folien.pdf": "2026-10-27",
+      "KW 44/Aufgaben.pdf": "2026-10-27"
+    },
+    "expect": {
+      "KW 42/Folien.pdf": "w1",
+      "KW 44/Folien.pdf": "w3",
+      "KW 44/Aufgaben.pdf": "w3"
+    }
+  },
+  {
+    "algo": "weeks",
+    "id": "weeks/alles-am-selben-tag",
+    "part": "Course",
+    "name": "Logik",
+    "note": "Alle Folien am ersten Tag hochgeladen: die Nummer im Namen ist die Woche.",
+    "files": {
+      "Vorlesung 1 Aussagenlogik.pdf": "2026-10-12",
+      "Vorlesung 2 Praedikatenlogik.pdf": "2026-10-12",
+      "Vorlesung 3 Beweise.pdf": "2026-10-12",
+      "Vorlesung 4 Induktion.pdf": "2026-10-12"
+    },
+    "expect": {
+      "Vorlesung 1 Aussagenlogik.pdf": "w1",
+      "Vorlesung 2 Praedikatenlogik.pdf": "w2",
+      "Vorlesung 3 Beweise.pdf": "w3",
+      "Vorlesung 4 Induktion.pdf": "w4"
+    }
+  },
+  {
+    "algo": "weeks",
+    "id": "weeks/uebung-zum-thema",
+    "part": "Course",
+    "name": "Datenstrukturen",
+    "note": "Übung ohne Woche im Namen gehört zur Vorlesung mit demselben Thema.",
+    "files": {
+      "Folien/VL02_Graphen.pdf": "2026-10-20",
+      "Folien/VL03_Baeume.pdf": "2026-10-27",
+      "Übungen/Uebung_Baeume.pdf": "2026-11-02"
+    },
+    "expect": {
+      "Folien/VL02_Graphen.pdf": "w2",
+      "Folien/VL03_Baeume.pdf": "w3",
+      "Übungen/Uebung_Baeume.pdf": "w3"
+    }
+  },
+  {
+    "algo": "weeks",
+    "id": "weeks/orga-und-altklausur",
+    "part": "Course",
+    "name": "Recht",
+    "files": {
+      "Organisatorisches.pdf": "2026-10-12",
+      "Altklausur 2025.pdf": "2026-11-20",
+      "Vorlesung 1.pdf": "2026-10-13",
+      "Woche 0/Einführung.pdf": "2026-10-12"
+    },
+    "expect": {
+      "Organisatorisches.pdf": "info",
+      "Altklausur 2025.pdf": "exam",
+      "Vorlesung 1.pdf": "w1",
+      "Woche 0/Einführung.pdf": "info"
+    }
+  }
 ]

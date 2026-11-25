@@ -2,11 +2,11 @@
  "when": "2026-11-25",
  "summary": {
   "errors": 1,
-  "tp": 268,
+  "tp": 377,
   "fp": 0,
   "fn": 1,
-  "passed": 30,
-  "ran": 31,
+  "passed": 37,
+  "ran": 38,
   "skipped": 0,
   "categories": {
    "doctype": [
@@ -28,9 +28,14 @@
     13,
     0,
     1
+   ],
+   "weeks": [
+    109,
+    0,
+    0
    ]
   },
-  "seconds": 0.02
+  "seconds": 0.04
  },
  "cases": {
   "real/doctype/BWL": {
@@ -79,6 +84,16 @@
    "details": []
   },
   "real/modules/rayyan-ws2627": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "real/weeks/bwl": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "real/weeks/ism": {
    "status": "pass",
    "errors": 0,
    "details": []
@@ -186,6 +201,31 @@
    "details": []
   },
   "synthetic/modules/english-tutorials": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/weeks/week-ordner-englisch": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/weeks/kw-ordner": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/weeks/alles-am-selben-tag": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/weeks/uebung-zum-thema": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/weeks/orga-und-altklausur": {
    "status": "pass",
    "errors": 0,
    "details": []
