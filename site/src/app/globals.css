@@ -1,0 +1,257 @@
+@import "tailwindcss";
+
+/* Ordo-Website. Designsprache wie Richtung C (ruhig, hell, große Schrift in 500, Haarlinien),
+   Farben und Schrift aus der App (Wochenstreifen): Tinte als einzige UI-Farbe, Kursfarben für Inhalte. */
+:root {
+  --bg: #f4f7fb;
+  --surface: #ffffff;
+  --sunken: #e9eef3;
+  --line: #dde3ea;
+  --line-soft: #e9edf2;
+  --ink: #16202a;
+  --muted: #5b6774;
+  --faint: #8a95a1;
+  --accent: #16202a;
+  --on-accent: #ffffff;
+  --on-solid: #ffffff;
+  --paper: #fdfdfc;
+  --paper-ink: #2a333d;
+  --marker: #ffe58a;
+  --desk: #dfe6ee;
+  --glass: rgba(255, 255, 255, 0.8);
+  --glass-2: rgba(255, 255, 255, 0.64);
+  --shadow-color: 22 32 42;
+  --ring: rgb(22 32 42 / 0.08);
+
+  --c-blue: #3a6ea5;
+  --c-blue-soft: #e9f0f8;
+  --c-blue-ink: #2c5683;
+  --c-orange: #b15f2d;
+  --c-orange-soft: #f8ece3;
+  --c-orange-ink: #8f4a1f;
+  --c-green: #3b8152;
+  --c-green-soft: #e6f2ea;
+  --c-green-ink: #2b6640;
+  --c-plum: #9a4f86;
+  --c-plum-soft: #f4e9f1;
+  --c-plum-ink: #7a3a69;
+
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #121519;
+    --surface: #1d2329;
+    --sunken: #171b20;
+    --line: #2a3139;
+    --line-soft: #232a31;
+    --ink: #e8ecf0;
+    --muted: #97a2ae;
+    --faint: #6c7783;
+    --accent: #e8ecf0;
+    --on-accent: #15191e;
+    --on-solid: #15191e;
+    --paper: #e4e2dc;
+    --paper-ink: #2a333d;
+    --marker: #f3d76b;
+    --desk: #1a2028;
+    --glass: rgba(44, 49, 56, 0.82);
+    --glass-2: rgba(44, 49, 56, 0.62);
+    --shadow-color: 0 0 0;
+    --ring: rgb(255 255 255 / 0.07);
+
+    --c-blue: #6b9fd6;
+    --c-blue-soft: #1f2c3b;
+    --c-blue-ink: #a9c8ea;
+    --c-orange: #e08e5a;
+    --c-orange-soft: #3a2a20;
+    --c-orange-ink: #f0bc98;
+    --c-green: #6cbf86;
+    --c-green-soft: #1e3326;
+    --c-green-ink: #a8dcb7;
+    --c-plum: #c983b6;
+    --c-plum-soft: #352331;
+    --c-plum-ink: #e6b8d9;
+  }
+}
+
+@theme inline {
+  --font-sans: var(--font-instrument), ui-sans-serif, system-ui, sans-serif;
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-sunken: var(--sunken);
+  --color-line: var(--line);
+  --color-line-soft: var(--line-soft);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-accent: var(--accent);
+  --color-on-accent: var(--on-accent);
+  --color-paper: var(--paper);
+}
+
+html {
+  background: var(--bg);
+  color: var(--ink);
+  scroll-padding-top: 72px;
+  -webkit-text-size-adjust: 100%;
+}
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: "ss01" 0;
+}
+::selection {
+  background: var(--c-blue-soft);
+  color: var(--ink);
+}
+:focus-visible {
+  outline: 2px solid var(--c-blue);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+/* Zahlen in Uhrzeiten und Daten gleich breit, damit nichts springt */
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Knöpfe: Rückmeldung beim Drücken, nicht erst beim Loslassen */
+.press {
+  transition:
+    transform 160ms var(--ease-out),
+    background-color 160ms ease,
+    box-shadow 160ms ease;
+}
+.press:active {
+  transform: scale(0.97);
+  transition-duration: 60ms;
+}
+.press .nudge {
+  transition: transform 260ms var(--ease-out);
+}
+@media (hover: hover) {
+  .press:hover .nudge {
+    transform: translateY(2px);
+  }
+}
+
+/* Überschrift „sorted.“: Buchstaben sortieren sich beim Laden. Bis das Skript die
+   Startposition gesetzt hat, bleibt das Wort unsichtbar (sonst springt es); nach 2,5 s
+   zeigt es sich auf jeden Fall, falls JavaScript hängt. */
+.js [data-sort-word]:not([data-ready]) {
+  visibility: hidden;
+  animation: show-anyway 0s 2.5s forwards;
+}
+@keyframes show-anyway {
+  to {
+    visibility: visible;
+  }
+}
+
+/* Textmarker auf dem Übungsblatt */
+.marker {
+  background-image: linear-gradient(var(--marker), var(--marker));
+  background-repeat: no-repeat;
+  background-position: 0 62%;
+  background-size: 0% 78%;
+  border-radius: 3px;
+  padding: 0 3px;
+  margin: 0 -3px;
+  transition: background-size 750ms var(--ease-in-out);
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+.marker[data-on="true"] {
+  background-size: 100% 78%;
+}
+.marker[data-hot="true"] {
+  background-size: 100% 100%;
+  background-position: 0 50%;
+}
+
+/* Ziel-Plätze im Mac-Ordner: leer gestrichelt, gefüllt mit Kursfläche */
+.slot {
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--c) 35%, transparent);
+  background: repeating-linear-gradient(
+    135deg,
+    transparent 0 6px,
+    color-mix(in srgb, var(--c) 7%, transparent) 6px 12px
+  );
+  transition:
+    background 320ms ease,
+    box-shadow 320ms ease;
+}
+.slot > * {
+  opacity: 0;
+  transform: translateY(3px);
+  transition:
+    opacity 260ms ease,
+    transform 360ms var(--ease-out);
+}
+.slot[data-filled="true"] {
+  box-shadow: inset 0 0 0 0 transparent;
+  background: var(--soft);
+}
+.slot[data-filled="true"] > * {
+  opacity: 1;
+  transform: none;
+}
+.ghost {
+  transition:
+    opacity 260ms ease,
+    color 260ms ease;
+}
+.forum[data-done="true"] .forum-text {
+  text-decoration: line-through;
+  text-decoration-color: var(--muted);
+}
+
+/* „Things you can stop doing“: Strich in Kursfarbe. Als Hintergrund der Textzeile,
+   damit er bei Umbruch Zeile für Zeile weiterläuft. */
+.strike {
+  background-image: linear-gradient(var(--c), var(--c));
+  background-repeat: no-repeat;
+  background-position: 0 58%;
+  background-size: 0% 0.085em;
+  transition:
+    background-size 700ms var(--ease-in-out),
+    color 500ms ease 350ms;
+}
+[data-struck="true"] .strike {
+  background-size: 100% 0.085em;
+  color: var(--muted);
+}
+
+/* Glas für Kopfzeile und Mitteilungen */
+.glass {
+  background: color-mix(in srgb, var(--bg) 72%, transparent);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+}
+@media (prefers-reduced-transparency: reduce) {
+  .glass {
+    background: var(--bg);
+    backdrop-filter: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marker,
+  .strike,
+  .slot,
+  .slot > *,
+  .press {
+    transition: none;
+  }
+}

@@ -13,6 +13,7 @@ Neue wichtige Erkenntnisse und Entscheidungen trägst du in `NOTIZEN.md` ein und
 - `web/`: Next.js 16 (App Router, TypeScript, Tailwind 4). UI, API-Routen, KI-Aufrufe. Laptop zuerst, aber responsiv fürs Handy.
 - `desktop/` (kommt): Electron-Hülle, macht daraus eine Mac-App. Hintergrundteil für ILIAS-Login (macOS-Schlüsselbund), PFERD, Dateien in `~/Uni` und Sync. `web/` ist die Oberfläche darin.
 - `services/ilias-sync/`: Python-Dienst um PFERD, holt Dateien aus dem ILIAS der Uni Köln.
+- `site/`: Website für Ordo (eigenes Next.js, statisch, Port 3200). Unabhängig von `web/`; Texte dort nie nur „ILIAS“, Ordo kann zum Release auch Moodle.
 - Daten, Login und Datei-Speicher: Supabase. KI: Claude API über `web/src/lib/ai.ts`.
 
 Next.js 16 weicht von älterem Wissen ab: Vor neuem Next-Code die passende Doku in `web/node_modules/next/dist/docs/` lesen (siehe `web/AGENTS.md`).
