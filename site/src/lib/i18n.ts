@@ -15,6 +15,13 @@ const en = {
     other: { label: "Deutsch", href: "/de", lang: "de" as Lang },
     download: "Download for Mac",
     appStore: "Mac App Store",
+    linksLabel: "Sections",
+    links: [
+      { id: "files", label: "Files" },
+      { id: "deadlines", label: "Deadlines" },
+      { id: "reminders", label: "Reminders" },
+      { id: "setup", label: "Setup" },
+    ],
   },
   hero: {
     first: "Uni,",
@@ -102,6 +109,13 @@ const de: Dict = {
     other: { label: "English", href: "/", lang: "en" },
     download: "Für Mac laden",
     appStore: "Mac App Store",
+    linksLabel: "Abschnitte",
+    links: [
+      { id: "files", label: "Dateien" },
+      { id: "deadlines", label: "Fristen" },
+      { id: "reminders", label: "Erinnerungen" },
+      { id: "setup", label: "Einrichtung" },
+    ],
   },
   hero: {
     first: "Uni,",

@@ -1,6 +1,6 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { ArrowDown } from "lucide-react";
 import { AppIcon } from "./ui";
 import { LangLink } from "./LangHint";
@@ -13,9 +13,25 @@ const onScroll = (cb: () => void) => {
 };
 
 // Kopfzeile: oben durchsichtig, beim Scrollen Glas mit weicher Kante statt harter Linie.
+// In der Mitte schlichte Links zu den Abschnitten; der, in dem man gerade ist, steht in Tinte.
 export function Header({ lang }: { lang: Lang }) {
   const t = dict[lang].nav;
   const scrolled = useSyncExternalStore(onScroll, () => window.scrollY > 8, () => false);
+  const [active, setActive] = useState<string | null>(null);
+
+  useEffect(() => {
+    const els = t.links.map((l) => document.getElementById(l.id)).filter((e): e is HTMLElement => !!e);
+    const visible = new Map<string, boolean>();
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) visible.set(e.target.id, e.isIntersecting);
+        setActive(t.links.find((l) => visible.get(l.id))?.id ?? null);
+      },
+      { rootMargin: "-45% 0px -50% 0px" },
+    );
+    els.forEach((el) => io.observe(el));
+    return () => io.disconnect();
+  }, [t.links]);
 
   return (
     <header className="fixed inset-x-0 top-0 z-40">
@@ -24,12 +40,27 @@ export function Header({ lang }: { lang: Lang }) {
         className={`glass absolute inset-0 transition-opacity duration-300 ${scrolled ? "opacity-100" : "opacity-0"}`}
         style={{ maskImage: "linear-gradient(black 70%, transparent)" }}
       />
-      <div className="relative mx-auto flex h-16 max-w-[1160px] items-center gap-6 px-6 sm:px-8">
-        <a href={`${t.home === "/" ? "" : t.home}#top`} className="flex items-center gap-2.5 text-[19px] font-semibold tracking-[-0.01em] text-ink">
+      <div className="relative mx-auto grid h-16 max-w-[1160px] grid-cols-[1fr_auto] items-center gap-6 px-6 sm:px-8 lg:grid-cols-[1fr_auto_1fr]">
+        <a
+          href={`${t.home === "/" ? "" : t.home}#top`}
+          className="flex items-center gap-2.5 justify-self-start text-[19px] font-semibold tracking-[-0.01em] text-ink"
+        >
           <AppIcon size={30} />
           Ordo
         </a>
-        <div className="ml-auto flex items-center gap-6">
+        <nav aria-label={t.linksLabel} className="hidden items-center gap-7 lg:flex">
+          {t.links.map((l) => (
+            <a
+              key={l.id}
+              href={`#${l.id}`}
+              aria-current={active === l.id ? "true" : undefined}
+              className={`text-sm transition-colors duration-200 hover:text-ink ${active === l.id ? "text-ink" : "text-muted"}`}
+            >
+              {l.label}
+            </a>
+          ))}
+        </nav>
+        <div className="flex items-center gap-6 justify-self-end">
           <LangLink lang={lang} className="hidden text-sm text-muted hover:text-ink sm:block" />
           <a
             href={DOWNLOAD_URL}
