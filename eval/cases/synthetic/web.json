@@ -44,6 +44,24 @@
      "Week 3/answers_week3.pdf": "Week 3/worksheet_week3.pdf"
    }},
 
+  {"algo": "solutions", "id": "solutions/schreibweisen",
+   "files": ["Sheet4.pdf", "Answers-Sheet4.pdf", "HW2.pdf", "HW2_answer_key.pdf", "Blatt 5.pdf", "Lösungsvorschlag Blatt 5.pdf",
+             "Vorlesungen/Lösungsmengen und Ungleichungen.pdf", "Vorlesungen/Vorlesung 5.pdf"],
+   "expect": {
+     "Answers-Sheet4.pdf": "Sheet4.pdf",
+     "HW2_answer_key.pdf": "HW2.pdf",
+     "Lösungsvorschlag Blatt 5.pdf": "Blatt 5.pdf"
+   }},
+
+  {"algo": "doctype", "id": "doctype/loesungs-woerter", "part": "Course",
+   "files": {
+     "Answers-Sheet4.pdf": "solution",
+     "HW2_answer_key.pdf": "solution",
+     "Lösungsvorschlag Blatt 5.pdf": "solution",
+     "Vorlesungen/Lösungsmengen und Ungleichungen.pdf": "lecture",
+     "Vorlesungen/Lösungsstrategien beim Beweisen.pdf": "lecture"
+   }},
+
   {"algo": "solutions", "id": "solutions/gleiche-nummer-anderer-ordner",
    "files": ["Woche 4/Exercise_04.pdf", "Woche 4 (alt)/Exercise_04.pdf", "Woche 4/Exercise_04_solution.pdf"],
    "expect": {"Woche 4/Exercise_04_solution.pdf": "Woche 4/Exercise_04.pdf"}},

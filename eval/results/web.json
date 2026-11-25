@@ -1,23 +1,23 @@
 {
  "when": "2026-11-25",
  "summary": {
-  "errors": 7,
-  "tp": 237,
+  "errors": 4,
+  "tp": 248,
   "fp": 0,
-  "fn": 7,
-  "passed": 22,
-  "ran": 26,
+  "fn": 4,
+  "passed": 25,
+  "ran": 28,
   "skipped": 0,
   "categories": {
    "doctype": [
-    188,
+    195,
     0,
-    5
+    3
    ],
    "solutions": [
-    11,
+    15,
     0,
-    1
+    0
    ],
    "modules.group": [
     25,
@@ -88,19 +88,25 @@
   },
   "synthetic/doctype/andere-unis": {
    "status": "fail",
-   "errors": 3,
+   "errors": 1,
    "details": [
-    "doctype: Vorlesungen/Lösungsverfahren lineare Gleichungssysteme.pdf: solution, erwartet lecture (Ordner-Art solutions)",
-    "doctype: Week 3/answers_week3.pdf: other, erwartet solution (Ordner-Art other)",
     "doctype: Exercise 3 Slides.pdf: sheet, erwartet exslides (Ordner-Art exercises)"
    ]
   },
   "synthetic/solutions/andere-unis": {
-   "status": "fail",
-   "errors": 1,
-   "details": [
-    "solutions: answers_week3.pdf → nichts, erwartet worksheet_week3.pdf"
-   ]
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/solutions/schreibweisen": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/doctype/loesungs-woerter": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
   },
   "synthetic/solutions/gleiche-nummer-anderer-ordner": {
    "status": "pass",

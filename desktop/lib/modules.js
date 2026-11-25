@@ -251,7 +251,7 @@ function buildModules(courses, custom = {}, fileNamesByCourse = {}) {
 // ------------------------------------------------------------------ Art einer Datei
 
 const CATEGORIES = [
-  ["solutions", "Solutions", /(lösung|loesung|losung|solution|musterlös)/i],
+  ["solutions", "Solutions", /(l(?:ö|oe|o)sung(?!s?(?:verfahren|menge|ans[aä]tz|strategie|raum|methode))|solution|musterlös|answers?(?![a-z]))/i],
   ["exams", "Exams", /(alt\s*klausur|probeklausur|klausur|exam|prüfung|pruefung)/i],
   ["selfstudy", "Self-study", /(selbststudium|selbstlern|self.?study)/i],
   ["readings", "Readings", /(begleittext|literatur|reading|paper|artikel|reader)/i],

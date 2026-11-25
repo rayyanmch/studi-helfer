@@ -3,7 +3,8 @@
 
 import type { CourseFile } from "./mock-data";
 
-const SOLUTION = /(l(ö|oe|o)sung|solution|musterl|answer[\s_-]*key|answers\b)/i;
+// „answers_week3“ zählt, „Lösungsverfahren“/„Lösungsmengen“ (Vorlesungsthemen) nicht
+const SOLUTION = /(l(?:ö|oe|o)sung(?!s?(?:verfahren|menge|ans[aä]tz|strategie|raum|methode))|solution|musterl|answer[\s_-]*key|answers?(?![a-z]))/i;
 // Wörter vor der Nummer, die auf ein Blatt hinweisen (Woche/Einheit, weil manche Kurse nach Wochen zählen)
 const UNIT = /(?<![a-zäöüß])(?:blatt|sheet|übung(?:sblatt)?|uebung(?:sblatt)?|ubung|exercise|homework|hw|aufgabe(?:nblatt)?|assignment|tutorial|tutorium|fall|case|woche|week|einheit|unit|ex|ü|u)[\s_\-.]*0*(\d{1,2})(?!\d)/gi;
 const LECTURE = /(^|[\s_\-])(vl|vorlesung|lecture|folien|slides|chapter|kapitel)([\s_\-\d]|$)/i;

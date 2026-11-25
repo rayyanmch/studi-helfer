@@ -44,7 +44,8 @@ export const isTaskDoc = (t: DocType) => t === "sheet" || t === "exam";
 export const isStudyDoc = (t: DocType) => !["info", "video", "data", "other"].includes(t);
 
 const RE = {
-  solution: /(lösung|loesung|losung|solution|musterl|answers?\b|antworten)/i,
+  // „answers_week3“ zählt, „Lösungsverfahren“/„Lösungsmengen“ (Vorlesungsthemen) nicht
+  solution: /(l(?:ö|oe|o)sung(?!s?(?:verfahren|menge|ans[aä]tz|strategie|raum|methode))|solution|musterl|answers?(?![a-z])|antworten)/i,
   exam: /(altklausur|probeklausur|klausur|exam\b|exams\b|prüfung|pruefung|testat|midterm|final exam)/i,
   info: /(organisator|(?:^|[^a-zäöü])orga(?:[^a-zäöü]|$)|modulinfo|modul-?information|allgemeines|general information|course info|syllabus|einführungsveranstaltung)/i,
   infoFolder: /^(grundlegende informationen|allgemein|organisator|orga\b|course info|course information|general|modul ?info|informationen zum modul|info\b)/i,
