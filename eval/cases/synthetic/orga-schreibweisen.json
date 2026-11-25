@@ -119,6 +119,29 @@
    "files": {"00_Organisatorisches.pdf": [["Kontakt", "Sprechstunde", "Dienstag", "14:00 - 15:00", "Raum 3.12", "Vorlesung: Freitag, 10:00-11:30, Hörsaal 2"]]},
    "orga": {"slots": [{"type": "lecture", "weekday": 4, "start": "10:00", "end": "11:30", "alternative": false, "room": "Hörsaal 2"}]}},
 
+  {"id": "gruppen/ohne-art-wort-englisch",
+   "files": {"Syllabus.pdf": [["Groups", "Group 1: Monday 10:00-11:30, Building C", "Group 2: Tuesday 10:00-11:30, Building C"]]},
+   "orga": {"slots": [
+     {"type": "exercise", "weekday": 0, "start": "10:00", "end": "11:30", "group": 1, "alternative": true},
+     {"type": "exercise", "weekday": 1, "start": "10:00", "end": "11:30", "group": 2, "alternative": true}]}},
+
+  {"id": "gruppen/grp-abkuerzung",
+   "files": {"00_Organisatorisches.pdf": [["Kleingruppen", "Grp. 1 Do 08:00-09:30", "Grp. 2 Do 10:00-11:30"]]},
+   "orga": {"slots": [
+     {"type": "exercise", "weekday": 3, "start": "08:00", "end": "09:30", "group": 1, "alternative": true},
+     {"type": "exercise", "weekday": 3, "start": "10:00", "end": "11:30", "group": 2, "alternative": true}]}},
+
+  {"id": "gruppen/nummer-ueber-tabellenzeile",
+   "files": {"00_Organisatorisches.pdf": [["Gruppe 3", "Mittwoch", "16:00-17:30"]]},
+   "orga": {"slots": [{"type": "exercise", "weekday": 2, "start": "16:00", "end": "17:30", "group": 3, "alternative": true}]}},
+
+  {"id": "falle/vorlesung-in-zwei-gruppen",
+   "note": "Große Vorlesung, in zwei Gruppen geteilt: bleibt Vorlesung (Art steht in der Zeile).",
+   "files": {"00_Organisatorisches.pdf": [["Vorlesung Gruppe 1: Montag 08:00-09:30, Hörsaal A", "Vorlesung Gruppe 2: Montag 10:00-11:30, Hörsaal A"]]},
+   "orga": {"slots": [
+     {"type": "lecture", "weekday": 0, "start": "08:00", "end": "09:30", "group": 1, "alternative": true},
+     {"type": "lecture", "weekday": 0, "start": "10:00", "end": "11:30", "group": 2, "alternative": true}]}},
+
   {"id": "gruppen/mehrere-in-einer-zeile",
    "files": {"00_Organisatorisches.pdf": [["Übungsgruppen:", "Gruppe 1: Mo 8-10, Gruppe 2: Mo 10-12, Gruppe 3: Di 14-16"]]},
    "orga": {"slots": [

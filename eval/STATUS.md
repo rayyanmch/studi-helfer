@@ -24,6 +24,7 @@ Filter: `… run.py beginn` (nur Fälle mit „beginn“ in der Id, speichert da
 |---|---|---|---|---|
 | 1 | 2026-11-25 | 57 · 51/71 | 13 · 11/17 | Prüfstand gebaut, noch keine Regel geändert |
 | 2 | 2026-11-25 | 67 → 59 · 51 → 55/76 | 13 · 11/17 | Beginn (orga.py, RULES_VERSION 5): „Gruppen“ = Übung, Beginn der Anmeldung zählt nicht, Beginn > 6 Wochen nach dem frühesten zählt nicht. 5 neue Fälle (67 = alter Code mit neuen Fällen). Seitenlimit verworfen, siehe unten |
+| 10 | 2026-11-25 | 56 → 31 · 97 → 102/112 | 13 · 11/17 | Gruppen ohne Art-Wort sind Übungen (orga.py RULES_VERSION 11): „Gruppe 1: Mo 14-16“, „Group 1: Monday …“, „Grp. 1 Do …“, Gruppennummer über einer Tabellenzeile; „Vorlesung Gruppe 1: …“ bleibt Vorlesung (Art steht in der Zeile). 4 neue Fälle, davon 1 Falle |
 | 9 | 2026-11-25 | 53 → 46 · 91 → 96/108 | 13 · 11/17 | Zusatztermine (orga.py RULES_VERSION 10): „Zusätzlicher/Weiterer Termin“, „Nachholtermin“, „Extra meeting“; zusätzliche Sprechstunden zählen nicht; Datum mit Monatsnamen zwischen Wochentag und Uhrzeit („Wednesday, 25 November 2026, 18:00“, „Montag, 15. März 2027 09:00“) macht einen Einzeltermin statt eines Wochentermins. Damit auch „Nachklausur“ als Wochentermin behoben (echt Visualisierung). 4 neue Fälle, davon 1 Falle |
 | 8 | 2026-11-25 | 55 → 49 · 86 → 90/104 | 13 · 11/17 | Tabellen-Zellen (orga.py RULES_VERSION 9): Zeile nur mit Wochentag + nächste Zeile mit Uhrzeit-Spanne werden verbunden (auch mit „|“ und „Mo.“); „Sprechstunde“ als Überschrift schaltet die Zeiten darunter ab. 4 neue Fälle, davon 1 Falle. Echte Fälle unverändert |
 | 7 | 2026-11-25 | 57 → 51 · 81 → 85/100 | 13 · 11/17 | Erste Vorlesung ohne Orga-Namen ist Kandidat (orga.py RULES_VERSION 8, `FIRST_UNIT`: „Vorlesung_01“, „Lecture 1“, „VL 01“, „Week 1“, „Kapitel 1“ …), schwächer als Orga-Dateien; daraus zählen nur Termine mit Art oder Raum. 4 neue Fälle, davon 1 Falle (Stoff im ersten Kapitel). Echt neu gelesen: nur `ISM_…_UB01_…_Teil1.pdf`, ohne Wirkung |
@@ -37,9 +38,9 @@ Laufzeit: orga 69 Dateien 1,3 s (langsamste 0,14 s), sheets 212 Dateien 13,6 s (
 ## Offene Fehler (nach Nutzen)
 
 1. ~~Seitenlimit 25~~ (Runde 3), ~~„Prüfungstermin“~~ (Runde 4), ~~Bonustests~~ (Runde 5).
-   - Verpasste Termine sind abgearbeitet. Nächster großer Nutzen: Übungsgruppen-Art (2) und Doppel (3), die viele Fehler auf einmal bringen, dann Räume (9) für Visualisierung, dann sheets-Reste (11) und Web (12).
-2. **Übungsgruppen werden zur Vorlesung**, wenn kein Art-Wort davorsteht („Übungstermine“ passt nicht auf `\w*übung\b`; „Gruppe N“ allein sagt Übung). `gruppen/zweimal-aufgelistet`, `raum/nach-der-liste`, `beginn/gruppen-ab-und-designuebung`.
-3. **Doppelte Gruppen ohne Nummer**, wenn Nummer und Zeit in getrennten Zeilen stehen (Visualisierung Folie 94).
+   - Verpasste Termine sind abgearbeitet. Nächster großer Nutzen: Doppel (3), dann Räume (9) für Visualisierung, dann sheets-Reste (11) und Web (12).
+2. ~~Übungsgruppen werden zur Vorlesung~~ (Runde 10).
+3. **Doppelte Gruppen ohne Nummer**, wenn Nummer und Zeit in getrennten Zeilen stehen und die Zeile mit „•“ beginnt (`before` ist dann nicht leer, die Nummer aus der Zeile davor wird nicht genommen). Visualisierung Folie 94 (6 Fehlalarme), `gruppen/zweimal-aufgelistet`. **Nächster Kandidat.**
 4. ~~Beginn falsch~~ (Runde 2 behoben).
 5. ~~„Nachklausur“ als Wochentermin~~ (Runde 9, über das Datum in der Zeile). `SKIP` kennt „Nachklausur“ weiterhin nicht (ohne Datum würde es wieder passieren).
 6. ~~Zwei Wochentage, eine Uhrzeit~~ (Runde 6). Rest: **„Room 101“ macht aus einem Termin eine Übung** (`SMALL_ROOM` hat `room\s+s?\d`, gedacht für Kölner „Room S234“). `zeit/two-days-one-range-en` („Class meetings … Room 101“ ist eine Vorlesung).

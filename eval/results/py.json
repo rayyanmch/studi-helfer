@@ -1,26 +1,26 @@
 {
  "when": "2026-11-25",
  "summary": {
-  "errors": 46,
-  "tp": 421,
-  "fp": 21,
-  "fn": 25,
-  "passed": 96,
-  "ran": 108,
+  "errors": 31,
+  "tp": 457,
+  "fp": 12,
+  "fn": 19,
+  "passed": 102,
+  "ran": 112,
   "skipped": 0,
   "categories": {
    "orga.slots": [
-    111,
-    19,
-    11
+    127,
+    10,
+    2
    ],
    "orga.alt": [
-    111,
+    127,
     0,
     0
    ],
    "orga.first": [
-    84,
+    88,
     0,
     0
    ],
@@ -42,7 +42,7 @@
    "orga.room": [
     53,
     0,
-    13
+    16
    ],
    "orga.cancellations": [
     1,
@@ -50,7 +50,7 @@
     0
    ]
   },
-  "seconds": 36.2
+  "seconds": 34.6
  },
  "cases": {
   "real/bwl": {
@@ -174,14 +174,11 @@
   },
   "synthetic/raum/nach-der-liste": {
    "status": "fail",
-   "errors": 6,
+   "errors": 3,
    "details": [
-    "orga.slots: verpasst exercise Mo 14:00–15:30 Gruppe 1 (gefunden: lecture Mo 14:00–15:30 Gruppe 1)",
-    "orga.slots: verpasst exercise Mo 16:00–17:30 Gruppe 2 (gefunden: lecture Mo 16:00–17:30 Gruppe 2)",
-    "orga.slots: verpasst exercise Di 14:00–15:30 Gruppe 3 (gefunden: lecture Di 14:00–15:30 Gruppe 3)",
-    "orga.slots: Fehlalarm lecture Mo 14:00–15:30 Gruppe 1 ← „• Gruppe 1: Mo 14:00 - 15:30“",
-    "orga.slots: Fehlalarm lecture Mo 16:00–17:30 Gruppe 2 ← „• Gruppe 2: Mo 16:00 - 17:30“",
-    "orga.slots: Fehlalarm lecture Di 14:00–15:30 Gruppe 3 ← „• Gruppe 3: Di 14:00 - 15:30“"
+    "orga.room: exercise Mo 14:00–15:30 Gruppe 1 Raum „None“, erwartet „Weyertal 121“",
+    "orga.room: exercise Mo 16:00–17:30 Gruppe 2 Raum „None“, erwartet „Weyertal 121“",
+    "orga.room: exercise Di 14:00–15:30 Gruppe 3 Raum „None“, erwartet „Weyertal 121“"
    ]
   },
   "synthetic/raum/label-zeile": {
@@ -263,24 +260,14 @@
    "details": []
   },
   "synthetic/beginn/gruppen-ab-und-designuebung": {
-   "status": "fail",
-   "errors": 4,
-   "details": [
-    "orga.slots: verpasst exercise Mo 14:00–15:30 Gruppe 1 (gefunden: lecture Mo 14:00–15:30 Gruppe 1)",
-    "orga.slots: verpasst exercise Do 10:00–11:30 Gruppe 2 (gefunden: lecture Do 10:00–11:30 Gruppe 2)",
-    "orga.slots: Fehlalarm lecture Mo 14:00–15:30 Gruppe 1 ← „• Gruppe 1: Mo 14:00 - 15:30“",
-    "orga.slots: Fehlalarm lecture Do 10:00–11:30 Gruppe 2 ← „• Gruppe 2: Do 10:00 - 11:30“"
-   ]
+   "status": "pass",
+   "errors": 0,
+   "details": []
   },
   "synthetic/beginn/uebungsgruppen-starten": {
-   "status": "fail",
-   "errors": 4,
-   "details": [
-    "orga.slots: verpasst exercise Mi 12:00–13:30 Gruppe 1 (gefunden: lecture Mi 12:00–13:30 Gruppe 1)",
-    "orga.slots: verpasst exercise Fr 08:00–09:30 Gruppe 2 (gefunden: lecture Fr 08:00–09:30 Gruppe 2)",
-    "orga.slots: Fehlalarm lecture Mi 12:00–13:30 Gruppe 1 ← „Gruppe 1: Mi 12:00 - 13:30“",
-    "orga.slots: Fehlalarm lecture Fr 08:00–09:30 Gruppe 2 ← „Gruppe 2: Fr 08:00 - 09:30“"
-   ]
+   "status": "pass",
+   "errors": 0,
+   "details": []
   },
   "synthetic/beginn/groups-start-english": {
    "status": "pass",
@@ -470,6 +457,26 @@
    "errors": 0,
    "details": []
   },
+  "synthetic/gruppen/ohne-art-wort-englisch": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/gruppen/grp-abkuerzung": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/gruppen/nummer-ueber-tabellenzeile": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/falle/vorlesung-in-zwei-gruppen": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
   "synthetic/gruppen/mehrere-in-einer-zeile": {
    "status": "pass",
    "errors": 0,
@@ -477,13 +484,9 @@
   },
   "synthetic/gruppen/zweimal-aufgelistet": {
    "status": "fail",
-   "errors": 6,
+   "errors": 2,
    "details": [
-    "orga.slots: verpasst exercise Mo 14:00–15:30 Gruppe 1 (gefunden: lecture Mo 14:00–15:30 Gruppe 1)",
-    "orga.slots: verpasst exercise Di 10:00–11:30 Gruppe 2 (gefunden: lecture Di 10:00–11:30 Gruppe 2)",
-    "orga.slots: Fehlalarm lecture Mo 14:00–15:30 Gruppe 1 ← „• Gruppe 1: Mo 14:00 - 15:30“",
     "orga.slots: Fehlalarm lecture Mo 14:00–15:30 ← „• Mo 14:00 - 15:30“",
-    "orga.slots: Fehlalarm lecture Di 10:00–11:30 Gruppe 2 ← „• Gruppe 2: Di 10:00 - 11:30“",
     "orga.slots: Fehlalarm lecture Di 10:00–11:30 ← „• Di 10:00 - 11:30“"
    ]
   },
