@@ -224,7 +224,12 @@ const CATEGORY_LABEL = Object.fromEntries([...CATEGORIES.map(([id, label]) => [i
 /** Art einer Datei aus Dateiname (zuerst) und Ordnerpfad; partLabel hilft bei Übungskursen. */
 function categoryOf(fileName, folderPath, partLabel) {
   if (VIDEO.test(fileName)) return "recordings";
-  for (const [id, , re] of CATEGORIES) if (re.test(fileName)) return id;
+  for (const [id, , re] of CATEGORIES) {
+    if (!re.test(fileName)) continue;
+    // „Über interne Informationen berichten“ im Ordner Selbststudium ist eine Lerneinheit, keine Kurs-Info
+    if (id === "info" && CATEGORIES.find(([k]) => k === "selfstudy")[2].test(folderPath)) return "selfstudy";
+    return id;
+  }
   for (const [id, , re] of CATEGORIES) if (re.test(folderPath)) return id;
   if (partLabel === "Exercises" || /^Tutorial/.test(partLabel || "")) return "exercises";
   if (partLabel === "Lecture") return "lectures";

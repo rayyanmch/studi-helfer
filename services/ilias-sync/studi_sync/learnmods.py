@@ -41,7 +41,7 @@ FULL_RECHECK_S = 7 * 86400
 QUICK_PER_RUN = 6
 FULL_PER_RUN = 2
 SECONDS = {"new": 11.0, "full": 9.0, "quick": 1.6}  # für die Restzeit
-TEMPLATE_VERSION = 1  # erhöhen, wenn sich Aufräumen oder Aussehen ändern (alles wird neu erzeugt)
+TEMPLATE_VERSION = 2  # erhöhen, wenn sich Aufräumen oder Aussehen ändern (alles wird neu erzeugt)
 TIMEOUT = 45
 MAX_IMAGE = 8 * 1024 * 1024
 DROP_TAGS = ("script", "style", "noscript", "iframe", "button", "form", "input", "select", "textarea", "link", "meta")
@@ -152,7 +152,7 @@ def clean(raw: str, module_title: str) -> tuple[Tag, str, list[Tag]]:
 
     text = re.sub(r"\s+", " ", root.get_text(" ", strip=True))
     pics = sorted(urlsplit(str(img["src"])).path for img in images)
-    sig = hashlib.sha256(f"{TEMPLATE_VERSION}\n{text}\n{' '.join(pics)}".encode()).hexdigest()
+    sig = hashlib.sha256(f"{text}\n{' '.join(pics)}".encode()).hexdigest()  # nur Inhalt, ohne Vorlage
     return root, sig, images
 
 
@@ -178,6 +178,7 @@ CSS = """
 @page { size: A4; margin: 16mm 17mm 17mm 17mm; }
 * { box-sizing: border-box; }
 body { font: 10.5pt/1.55 -apple-system, "Helvetica Neue", Helvetica, Arial, sans-serif; color: #1d1d1f; margin: 0;
+  font-variant-ligatures: none; /* „ff“ statt Ligatur-Zeichen: Suche und Textauszug finden „Begriffe“ */
   -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 .meta { font-size: 8.5pt; color: #6b7280; display: flex; justify-content: space-between; gap: 12px; }
 .meta a { color: #6b7280; }
@@ -345,12 +346,14 @@ def refresh(get_session: Callable[[], requests.Session], found: list[dict[str, s
             fresh = cid in known_courses and cid not in initial_set
             if old is None and fresh:
                 added.append({"course": cid, "path": rel})
-            elif old is not None and old.get("sig") and old.get("sig") != sig and fresh:
+            elif old is not None and old.get("v") == TEMPLATE_VERSION and old.get("sig") != sig and fresh:
+                # Inhalt in ILIAS geändert (nach neuer Vorlage nicht vergleichbar: dann still neu drucken)
                 item = {"course": cid, "path": rel}
                 if prev := _backup(_pdf_path(cfg, cid, rel), cfg, cid, rel):
                     item["previous"] = prev
                 changed.append(item)
-            entry.update(sig=sig, v=TEMPLATE_VERSION, hash=sig[:20], fetchedAt=now, images=len(images), missingImages=missing)
+            look = hashlib.sha256(f"{TEMPLATE_VERSION}:{sig}".encode()).hexdigest()[:20]  # Electron druckt neu, wenn anders
+            entry.update(sig=sig, v=TEMPLATE_VERSION, hash=look, fetchedAt=now, images=len(images), missingImages=missing)
             fetched += 1
             log(f"Lernmodul geholt: {rel} ({len(images)} Bilder, {time.time() - started:.1f} s)")
         except Exception as e:  # noqa: BLE001 – ein Lernmodul darf den Lauf nie stören
