@@ -410,6 +410,7 @@ export async function initApp() {
   });
   desktop.onSyncState(onSyncState);
   desktop.onDeadlinesChanged(() => void refreshDeadlines());
+  desktop.onFilesChanged?.(() => void refresh());
   desktop.onCommand((cmd) => {
     for (const l of commandListeners) l(cmd);
   });

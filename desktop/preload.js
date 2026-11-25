@@ -135,4 +135,10 @@ contextBridge.exposeInMainWorld("studi", {
     ipcRenderer.on("studi:syncState", listener);
     return () => ipcRenderer.removeListener("studi:syncState", listener);
   },
+  // Neue Dateien ohne Sync (z. B. PDFs der Selbstlerneinheiten, die die App selbst druckt)
+  onFilesChanged(callback) {
+    const listener = () => callback();
+    ipcRenderer.on("studi:filesChanged", listener);
+    return () => ipcRenderer.removeListener("studi:filesChanged", listener);
+  },
 });

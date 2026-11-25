@@ -214,6 +214,7 @@ class Run:
         self.deleted: list[dict[str, str]] = []
         self.problems: list[dict[str, Any]] = []
         self.versions: dict[tuple[str, str], str] = {}  # (Kurs, Pfad) → gesicherte alte Fassung
+        self.learnmods: list[dict[str, str]] = []  # von PFERD gemeldete Lernmodule (learnmods.py)
         # Während des Laufs gemeldete Dateien. Fallback, falls PFERD vor dem Bericht beendet wird.
         self.live: dict[str, dict[str, list[str]]] = {}
         self.proc: Optional[subprocess.Popen[str]] = None
@@ -287,6 +288,9 @@ def run_pferd(run: Run, log: Any) -> int:
         if m := re.match(r"^STUDI-VERSION\t(.+)\t(.+)$", line):
             if run.current:
                 run.versions[(run.current, m.group(1))] = m.group(2)
+        elif m := re.match(r"^STUDI-LM\t(.+)\t(.+)$", line):
+            if run.current:
+                run.learnmods.append({"course": run.current, "path": m.group(1), "url": m.group(2)})
         elif m := re.match(r"^Running crawl:(\S+)", line):
             run.start_course(m.group(1))
         elif m := re.match(r"^Report for crawl:(\S+)", line):
@@ -457,16 +461,24 @@ def sync(auto: bool) -> dict[str, Any]:
     else:
         status = "ok"
 
+    # Eine ILIAS-Sitzung für Kalender und Lernmodule (erst bei Bedarf anmelden)
+    sessions: list[Any] = []
+
+    def ilias_session() -> Any:
+        if not sessions:
+            import keyring
+
+            from .ilias import login
+
+            sessions.append(login(cfg["username"], keyring.get_password(KEYCHAIN_SERVICE, cfg["username"]) or ""))
+        return sessions[0]
+
     # Fristen aus dem ILIAS-Kalender mit aktualisieren. Fehler hier lassen den Sync nicht scheitern.
     if status in ("ok", "error"):
         try:
-            import keyring
-
             from .deadlines import refresh
-            from .ilias import login
 
-            password = keyring.get_password(KEYCHAIN_SERVICE, cfg["username"]) or ""
-            n = len(refresh(login(cfg["username"], password))["deadlines"])
+            n = len(refresh(ilias_session())["deadlines"])
             log(f"Fristen aus dem ILIAS-Kalender: {n}")
         except Exception as e:  # noqa: BLE001
             log(f"Fristen konnten nicht aktualisiert werden: {type(e).__name__}: {e}")
@@ -489,6 +501,21 @@ def sync(auto: bool) -> dict[str, Any]:
             log(f"Stundenplan aus Orga-Folien: {sum(len(c['slots']) for c in orga['courses'].values())} Wochentermine")
         except Exception as e:  # noqa: BLE001
             log(f"Orga-Folien konnten nicht ausgewertet werden: {type(e).__name__}: {e}")
+        # Lernmodule (Selbstlerneinheiten) als Druckansicht holen; PDFs druckt danach die App
+        try:
+            from .learnmods import refresh as refresh_learnmods
+
+            synced = [cid for cid, c in run.courses.items() if c["status"] == "done"]
+            lm = refresh_learnmods(ilias_session, run.learnmods, cfg, synced, run.initial, log,
+                                   progress=lambda left: run.state(etaSeconds=round(left), phase="learnmods"))
+            run.added += lm["added"]
+            run.changed += lm["changed"]
+            for item in lm["added"]:
+                if item["course"] in run.courses:
+                    run.courses[item["course"]]["added"] += 1
+            log(f"Lernmodule: {lm['count']} gefunden, {lm['checked']} geprüft, {lm['fetched']} neu geholt")
+        except Exception as e:  # noqa: BLE001
+            log(f"Lernmodule konnten nicht geholt werden: {type(e).__name__}: {e}")
 
     ended = time.time()
     record = {

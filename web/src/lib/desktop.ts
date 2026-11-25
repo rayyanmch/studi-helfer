@@ -201,6 +201,8 @@ export interface StudiDesktop {
   cancelSync(): Promise<Ok | Fail>;
   getSyncState(): Promise<SyncState>;
   onSyncState(callback: (state: SyncState) => void): () => void;
+  /** Neue Dateien ohne Sync (PDFs der ILIAS-Selbstlerneinheiten, die die App nach dem Sync druckt) → getFiles() neu. Ältere Apps: fehlt. */
+  onFilesChanged?(callback: () => void): () => void;
   getRuns(limit?: number): Promise<SyncRun[]>;
   getFiles(): Promise<DesktopCourse[]>;
   openFile(path: string): Promise<Ok | Fail>;

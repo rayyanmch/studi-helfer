@@ -23,7 +23,19 @@ const places = require("./lib/places");
 const study = require("./lib/study");
 const { createMensa } = require("./lib/mensa");
 const { createReminders } = require("./lib/reminders");
+const { createLearnmods } = require("./lib/learnmods");
 const mensa = createMensa({ dataDir: backend.DATA_DIR });
+const learnmods = createLearnmods({ backend, BrowserWindow });
+
+/** Selbstlerneinheiten aus dem letzten Sync als PDF in die Kursordner drucken, danach Dateien neu laden. */
+async function renderLearnmods() {
+  try {
+    const n = await learnmods.renderPending();
+    if (n > 0) for (const win of windows) win.webContents.send("studi:filesChanged");
+  } catch (e) {
+    console.error("[learnmods]", e);
+  }
+}
 
 let uiUrl = process.env.STUDI_UI_URL || "http://localhost:3000";
 let uiServer = null;
@@ -413,7 +425,8 @@ function pushState() {
   if (wasRunning && !state.running) {
     for (const win of windows) win.webContents.send("studi:deadlinesChanged");
     runAiDeadlines();
-    notifyNewFiles();
+    // Erst die PDFs der Selbstlerneinheiten drucken, damit ein Klick auf die Mitteilung sie schon zeigt
+    renderLearnmods().finally(() => notifyNewFiles());
   }
   wasRunning = Boolean(state.running);
 }
@@ -565,6 +578,8 @@ app.whenReady().then(async () => {
   reminders.start(60_000);
   // Kurz nach dem Start Übungsblätter auswerten, die noch nicht ausgewertet sind (z. B. aus dem 7-Uhr-Sync).
   setTimeout(() => runAiDeadlines(), 15_000);
+  // Selbstlerneinheiten, die der Hintergrund-Sync bei geschlossener App geholt hat, als PDF drucken
+  setTimeout(() => renderLearnmods(), 4_000);
 
   // Beim App-Start synchronisieren, wenn der letzte Lauf länger als 6 Stunden her ist.
   const cfg = backend.loadConfig();
