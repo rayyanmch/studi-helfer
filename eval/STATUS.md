@@ -24,6 +24,7 @@ Filter: `… run.py beginn` (nur Fälle mit „beginn“ in der Id, speichert da
 |---|---|---|---|---|
 | 1 | 2026-11-25 | 57 · 51/71 | 13 · 11/17 | Prüfstand gebaut, noch keine Regel geändert |
 | 2 | 2026-11-25 | 67 → 59 · 51 → 55/76 | 13 · 11/17 | Beginn (orga.py, RULES_VERSION 5): „Gruppen“ = Übung, Beginn der Anmeldung zählt nicht, Beginn > 6 Wochen nach dem frühesten zählt nicht. 5 neue Fälle (67 = alter Code mit neuen Fällen). Seitenlimit verworfen, siehe unten |
+| 25 | 2026-11-25 | 0 · 141/141 | 1 → 0 · 38/38 | Keine Regel geändert: Rayyan bestätigt „LinA I“ als Kurzname (Frage 5), Erwartung in `modules/uebungen-zur` ergänzt. **Alle Fälle bestehen.** |
 | 24 | 2026-11-25 | 0 · 141/141 | 1 · 37/38 | **Prüfstand für Themenwochen** (`weeks.ts`, run-web.mjs; `ts-resolve.mjs` ergänzt „.ts“ beim Import ohne Endung). Echt: BWL (75 Dateien, Woche aus „Woche N“) und ISM (16 Dateien, Woche aus dem Sitzungsdatum) stimmen; 5 ausgedachte Fälle (Week-Ordner, KW, alles am selben Tag, Übung zum Thema, Orga/Altklausur) bestehen. ISM-Übungen landen in der Themenwoche statt der Sitzungswoche → beides erlaubt, Frage 6. **Loop beendet:** einziger offener Fehler („LinA I“) wartet auf Frage 5 |
 | 23 | 2026-11-25 | 6 → 0 · 135 → 141/141 | 1 · 30/31 | **Titel werden jetzt geprüft** (run.py: `title` in erwarteten sheets-Einträgen, Liste erlaubter englischer Titel; 6 = alter Code mit den neuen Erwartungen). sheets.py RULES_VERSION 12: Beim Zusammenfassen kommt der Titel vom Treffer in der Datumszeile, die Uhrzeit von dem, der eine hat; Text hinter dem Datum wird nur Titel, wenn dort das Fristwort steht. Visualisierung-Klausur heißt jetzt „Exam“ statt „Organisatorisches exam exam“, alle anderen echten Titel unverändert. 3 neue Fälle |
 | 22 | 2026-11-25 | 0 · 138/138 | 6 → 1 · 28 → 30/31 | Ankündigungen sind Kurs-Info (doctype.ts `RE.announce`): Gremien-/Hochschul-/Fachschaftswahl, Lehrevaluation, Ankündigung, Announcement. „Wahlen und Wahlsysteme“ und „Lecture 9 - Evaluation“ bleiben Vorlesung (Fallen). Echter Fall Visualisierung besteht jetzt auch bei der Dokument-Art. lint + build ok. 1 neuer Fall mit 6 Dateien |
@@ -53,9 +54,9 @@ Runde 12: orga langsamste Datei 0,86 s (`00_AlgebraGrundwissen.pdf`, 84 Seiten).
 ## Offene Fehler (nach Nutzen)
 
 1. ~~Seitenlimit 25~~ (Runde 3), ~~„Prüfungstermin“~~ (Runde 4), ~~Bonustests~~ (Runde 5).
-   - **Python komplett grün (Runde 16), Web bis auf „LinA I“ grün (Runde 22).** Der letzte Fehler wartet auf Frage 5 und lässt sich nach Regel 5 nicht im Loop lösen.
+   - **Python komplett grün (Runde 16), Web komplett grün (Runde 25, nach Rayyans Ja zu „LinA I“).**
    - ~~Titel prüfen~~ (Runde 23), ~~Prüfstand für `weeks.ts`~~ (Runde 24).
-   - **Loop beendet nach Runde 24.** Offen ist nur, was Rayyan entscheiden muss (Fragen 5 und 6). Ideen für später: Mikas Orga-Folien (Database Systems, Programmierung) und Folien anderer Fakultäten/Unis als echte Fälle; „Short test in Übung“ (halb übersetzter Titel); Wochen für SE/Mathe/Visualisierung (Wahrheit braucht Vorlesungsdaten).
+   - **Loop beendet nach Runde 24.** Offen ist nur, was Rayyan entscheiden muss (Fragen 1–4 und 6). Ideen für später: Mikas Orga-Folien (Database Systems, Programmierung) und Folien anderer Fakultäten/Unis als echte Fälle; „Short test in Übung“ (halb übersetzter Titel); Wochen für SE/Mathe/Visualisierung (Wahrheit braucht Vorlesungsdaten).
    - Wichtig bei modules.js: Modulnamen sind Ordnernamen in `~/Uni` (`applyLayout` verschiebt). Vor dem Behalten immer alt/neu für Rayyans config.json vergleichen (Skript in Runde 17: `buildModules` mit `object-parents.json`).
 2. ~~Übungsgruppen werden zur Vorlesung~~ (Runde 10).
 3. ~~Doppelte Gruppen ohne Nummer~~ (Runde 11).
@@ -88,4 +89,7 @@ Hinweis zur App: Gleiche Gruppe aus ILIAS-Gruppe und Orga-Folie (Visualisierung 
 3. **Visualisierung**: Raum der Übungsgruppen erwarte ich als „Weyertal 121, Raum 5.08“ (Folie 93). Stimmt das für deine Gruppe 6?
 4. **Visualisierung**: Sind `Uebung01.pdf` … `Uebung06.pdf` Übungsfolien oder Übungsblätter? (Im Moment ist beides erlaubt.)
 6. **Wochen von Übungen (ISM)**: „UB01_Informationssysteme“ liegt in ILIAS in der Sitzung vom 28.10. (3. Woche), `weeks.ts` ordnet es aber der Vorlesung mit gleichem Thema zu (VL01, 1. Woche) – so ist „Themenwoche“ gedacht. Soll eine Übung zur Woche ihres Themas gehören (jetzt) oder zur Woche, in der sie stattfindet? Im Moment ist beides erlaubt.
-5. **Kurzname „LinA I“**: `modules.js` kürzt „Lineare Algebra“ bewusst zu „LinA“ (unter Studierenden üblich). Im Fall `modules/uebungen-zur` hatte ich nur „Lineare Algebra I“ oder „LA I“ erwartet, deshalb zählt das als Fehler. Soll „LinA I“ als richtig gelten? (Ich ändere die Erwartung erst nach deinem Ja.)
+
+### Beantwortet
+
+- 5. **Kurzname „LinA I“** (25.11.): Rayyan: „LinA I passt.“ Gilt jetzt neben „Lineare Algebra I“ und „LA I“ als richtig.

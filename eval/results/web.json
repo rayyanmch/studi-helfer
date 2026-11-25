@@ -1,11 +1,11 @@
 {
  "when": "2026-11-25",
  "summary": {
-  "errors": 1,
-  "tp": 377,
+  "errors": 0,
+  "tp": 378,
   "fp": 0,
-  "fn": 1,
-  "passed": 37,
+  "fn": 0,
+  "passed": 38,
   "ran": 38,
   "skipped": 0,
   "categories": {
@@ -25,9 +25,9 @@
     0
    ],
    "modules.name": [
-    13,
+    14,
     0,
-    1
+    0
    ],
    "weeks": [
     109,
@@ -35,7 +35,7 @@
     0
    ]
   },
-  "seconds": 0.04
+  "seconds": 0.03
  },
  "cases": {
   "real/doctype/BWL": {
@@ -144,11 +144,9 @@
    "details": []
   },
   "synthetic/modules/uebungen-zur": {
-   "status": "fail",
-   "errors": 1,
-   "details": [
-    "modules.name: c1+c2: „LinA I“, erwartet „Lineare Algebra I“ oder „LA I“"
-   ]
+   "status": "pass",
+   "errors": 0,
+   "details": []
   },
   "synthetic/modules/uebung-zu": {
    "status": "pass",

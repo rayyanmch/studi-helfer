@@ -244,7 +244,7 @@
   {
     "algo": "modules",
     "id": "modules/uebungen-zur",
-    "note": "„Übungen zur Linearen Algebra I“ gehört zur Vorlesung, obwohl das Adjektiv gebeugt ist.",
+    "note": "„Übungen zur Linearen Algebra I“ gehört zur Vorlesung, obwohl das Adjektiv gebeugt ist. „LinA I“ als Kurzname von Rayyan bestätigt (25.11.).",
     "courses": [
       {
         "id": "c1",
@@ -265,7 +265,8 @@
         ],
         "name": [
           "Lineare Algebra I",
-          "LA I"
+          "LA I",
+          "LinA I"
         ]
       }
     ]
