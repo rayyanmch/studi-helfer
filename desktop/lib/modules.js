@@ -30,6 +30,9 @@ const PART_SUFFIX =
   /\s*[-–:|]\s*(Übungen|Übung|Uebungen|Uebung|Exercises?|Tutorien|Tutorium|Tutorials?|Vorlesung|Lecture|Hausaufgaben|Homework|Praktikum|Lab)\s*$/i;
 const PART_TRAILING_WORD = /\s+(Übungen|Übung|Uebungen|Uebung|Exercises?|Tutorium|Tutorial)\s*$/i;
 const PART_PREFIX = /^(Tutorium|Tutorial|Übung|Uebung|Exercise|Vorlesung|Lecture|Praktikum)\s*[:\-–]\s*/i;
+// „Übungen zur Linearen Algebra I“, „Übung zu Analysis II“, „Tutorium zur …“, „Exercises for Software Engineering“
+const PART_PREFIX_TO =
+  /^(Übungen|Übung|Uebungen|Uebung|Tutorien|Tutorium|Tutorials?|Exercises?|Exercise class(?:es)?)\s+(?:zu[rm]?|for|to)\s+(?:(?:der|die|das|den|dem|des|the)\s+)?/i;
 
 function partLabelFromWord(word) {
   const w = word.toLowerCase();
@@ -49,7 +52,7 @@ function splitTitle(title) {
     rest = rest.slice(tag[0].length);
   }
   let part = null;
-  const pre = rest.match(PART_PREFIX);
+  const pre = rest.match(PART_PREFIX) || rest.match(PART_PREFIX_TO);
   if (pre) {
     part = partLabelFromWord(pre[1]);
     rest = rest.slice(pre[0].length);
@@ -71,13 +74,17 @@ function splitTitle(title) {
   return { semester, base: rest || String(title).trim(), part };
 }
 
+// Gebeugte Endungen zählen beim Vergleich nicht („Übungen zur Linearen Algebra I“ ↔ „Lineare Algebra I“)
 const keyOf = (semester, base) =>
   `${(semester || "").toLowerCase()}|${base
     .toLowerCase()
     .normalize("NFKD")
     .replace(/[̀-ͯ]/g, "")
     .replace(/[^a-z0-9]+/g, " ")
-    .trim()}`;
+    .trim()
+    .split(" ")
+    .map((w) => (w.length >= 5 && /e[nmrs]$/.test(w) ? w.slice(0, -1) : w))
+    .join(" ")}`;
 
 /** Bezeichnung einer Übungsgruppe: „Gruppe 05 WiSe 2026“ → „Tutorial group 05“, „Gruppe 7: Do 12 Uhr“ → „Tutorial group 7 (Do 12 Uhr)“ */
 function groupLabel(title) {

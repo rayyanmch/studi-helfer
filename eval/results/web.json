@@ -1,12 +1,12 @@
 {
  "when": "2026-11-25",
  "summary": {
-  "errors": 9,
-  "tp": 228,
-  "fp": 2,
+  "errors": 7,
+  "tp": 237,
+  "fp": 0,
   "fn": 7,
-  "passed": 17,
-  "ran": 21,
+  "passed": 22,
+  "ran": 26,
   "skipped": 0,
   "categories": {
    "doctype": [
@@ -20,14 +20,14 @@
     1
    ],
    "modules.group": [
-    18,
-    2,
-    1
-   ],
-   "modules.name": [
-    11,
+    25,
     0,
     0
+   ],
+   "modules.name": [
+    13,
+    0,
+    1
    ]
   },
   "seconds": 0.02
@@ -114,12 +114,35 @@
   },
   "synthetic/modules/uebungen-zur": {
    "status": "fail",
-   "errors": 3,
+   "errors": 1,
    "details": [
-    "modules.group: Modul c1 („LinA I“) gibt es so nicht",
-    "modules.group: Modul c2 („ÜLA I“) gibt es so nicht",
-    "modules.group: verpasst: c1+c2 als ein Modul"
+    "modules.name: c1+c2: „LinA I“, erwartet „Lineare Algebra I“ oder „LA I“"
    ]
+  },
+  "synthetic/modules/uebung-zu": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/modules/tutorium-zur-gebeugt": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/modules/exercises-for": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/modules/uebungen-zu-den": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/falle/uebung-zu-anderem-kurs": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
   },
   "synthetic/modules/semester-vorn-ohne-klammer": {
    "status": "pass",

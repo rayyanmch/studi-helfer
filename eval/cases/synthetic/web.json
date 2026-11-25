@@ -76,6 +76,41 @@
    ],
    "expect": [{"parts": ["c1", "c2"], "name": ["Lineare Algebra I", "LA I"]}]},
 
+  {"algo": "modules", "id": "modules/uebung-zu",
+   "courses": [
+     {"id": "c1", "kind": "crs", "title": "Analysis II"},
+     {"id": "c2", "kind": "crs", "title": "Übung zu Analysis II"}
+   ],
+   "expect": [{"parts": ["c1", "c2"], "name": ["Analysis II"]}]},
+
+  {"algo": "modules", "id": "modules/tutorium-zur-gebeugt",
+   "courses": [
+     {"id": "c1", "kind": "crs", "title": "Theoretische Informatik"},
+     {"id": "c2", "kind": "crs", "title": "Tutorium zur Theoretischen Informatik"}
+   ],
+   "expect": [{"parts": ["c1", "c2"]}]},
+
+  {"algo": "modules", "id": "modules/exercises-for",
+   "courses": [
+     {"id": "c1", "kind": "crs", "title": "Software Engineering"},
+     {"id": "c2", "kind": "crs", "title": "Exercises for Software Engineering"}
+   ],
+   "expect": [{"parts": ["c1", "c2"], "name": ["Software Engineering"]}]},
+
+  {"algo": "modules", "id": "modules/uebungen-zu-den",
+   "courses": [
+     {"id": "c1", "kind": "crs", "title": "Grundlagen der Informatik"},
+     {"id": "c2", "kind": "crs", "title": "Übungen zu den Grundlagen der Informatik"}
+   ],
+   "expect": [{"parts": ["c1", "c2"]}]},
+
+  {"algo": "modules", "id": "falle/uebung-zu-anderem-kurs",
+   "courses": [
+     {"id": "c1", "kind": "crs", "title": "Mathematik I"},
+     {"id": "c2", "kind": "crs", "title": "Übungen zur Mathematik II"}
+   ],
+   "expect": [{"parts": ["c1"]}, {"parts": ["c2"]}]},
+
   {"algo": "modules", "id": "modules/semester-vorn-ohne-klammer",
    "note": "Moodle-Stil: Semester ohne eckige Klammern vorn.",
    "courses": [
