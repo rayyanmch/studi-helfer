@@ -24,6 +24,7 @@ Filter: `… run.py beginn` (nur Fälle mit „beginn“ in der Id, speichert da
 |---|---|---|---|---|
 | 1 | 2026-11-25 | 57 · 51/71 | 13 · 11/17 | Prüfstand gebaut, noch keine Regel geändert |
 | 2 | 2026-11-25 | 67 → 59 · 51 → 55/76 | 13 · 11/17 | Beginn (orga.py, RULES_VERSION 5): „Gruppen“ = Übung, Beginn der Anmeldung zählt nicht, Beginn > 6 Wochen nach dem frühesten zählt nicht. 5 neue Fälle (67 = alter Code mit neuen Fällen). Seitenlimit verworfen, siehe unten |
+| 27 | 2026-11-25 | 7 → 0 · 141 → 146/146 | 0 · 42/42 | Rayyans Antwort zu Frage 1 (ISM: Übung erst ab 28.10.). orga.py RULES_VERSION 16: **Zusatztermin im Zeitfenster eines Wochentermins ersetzt ihn an diesem Tag** (`replaced_by_extras`, Ausfall mit `start`, schedule.js streicht nur den Termin dieser Uhrzeit); Beginn-Zeile mit Datum wird nicht mehr mit der nächsten Zeile verbunden. run.py: erster Termin überspringt Ausfälle (wie schedule.js). 7 = alter Code mit den neuen Fällen. 5 neue Fälle (Vorlesung statt Übung, englisch im Tutorium-Slot, Probeklausur zur Vorlesungszeit, Beginn in der nächsten Zeile, Falle andere Uhrzeit). Bei Rayyan nur ISM 21.10. betroffen |
 | 26 | 2026-11-25 | 0 · 141/141 | 6 → 0 · 38 → 42/42 | Rayyans Antworten (Fragen 2, 3, 4, 6) eingetragen: `Uebung01–06` nur noch Übungsfolien (6 = alter Code mit der engeren Erwartung), ISM-Übungen nur Themenwoche. **Seitenformat** (`pdfshape.py`, `pdf-shapes.json`): Querformat entscheidet bei mehrdeutigen Namen für Übungsfolien, Blatt-Wörter in Name/Ordner gewinnen (bei Rayyan alle 157 PDFs eindeutig: Folien quer, Blätter hoch; 0,7 s für alle, danach gecacht). **Hinweis „wann ist die Übung“** (`sessionHints` in weeks.ts, neue Kategorie `hints`): ILIAS-Sitzung > Abgabe des Blatts > eigener Übungstermin nahe am Hochladen. 1 neuer doctype-Fall, 3 neue Wochen-Fälle (davon 1 Falle), Hinweise im echten ISM-Fall |
 | 25 | 2026-11-25 | 0 · 141/141 | 1 → 0 · 38/38 | Keine Regel geändert: Rayyan bestätigt „LinA I“ als Kurzname (Frage 5), Erwartung in `modules/uebungen-zur` ergänzt. **Alle Fälle bestehen.** |
 | 24 | 2026-11-25 | 0 · 141/141 | 1 · 37/38 | **Prüfstand für Themenwochen** (`weeks.ts`, run-web.mjs; `ts-resolve.mjs` ergänzt „.ts“ beim Import ohne Endung). Echt: BWL (75 Dateien, Woche aus „Woche N“) und ISM (16 Dateien, Woche aus dem Sitzungsdatum) stimmen; 5 ausgedachte Fälle (Week-Ordner, KW, alles am selben Tag, Übung zum Thema, Orga/Altklausur) bestehen. ISM-Übungen landen in der Themenwoche statt der Sitzungswoche → beides erlaubt, Frage 6. **Loop beendet:** einziger offener Fehler („LinA I“) wartet auf Frage 5 |
@@ -57,7 +58,7 @@ Runde 12: orga langsamste Datei 0,86 s (`00_AlgebraGrundwissen.pdf`, 84 Seiten).
 1. ~~Seitenlimit 25~~ (Runde 3), ~~„Prüfungstermin“~~ (Runde 4), ~~Bonustests~~ (Runde 5).
    - **Python komplett grün (Runde 16), Web komplett grün (Runde 25, nach Rayyans Ja zu „LinA I“).**
    - ~~Titel prüfen~~ (Runde 23), ~~Prüfstand für `weeks.ts`~~ (Runde 24).
-   - **Loop beendet nach Runde 24.** Offen ist nur Frage 1 (ISM, erste Übung). Ideen für später: Mikas Orga-Folien (Database Systems, Programmierung) und Folien anderer Fakultäten/Unis als echte Fälle; „Short test in Übung“ (halb übersetzter Titel); Wochen für SE/Mathe/Visualisierung (Wahrheit braucht Vorlesungsdaten).
+   - **Loop beendet nach Runde 24.** Keine offenen Fragen. Ideen für später: Mikas Orga-Folien (Database Systems, Programmierung) und Folien anderer Fakultäten/Unis als echte Fälle; „Short test in Übung“ (halb übersetzter Titel); Wochen für SE/Mathe/Visualisierung (Wahrheit braucht Vorlesungsdaten).
    - Wichtig bei modules.js: Modulnamen sind Ordnernamen in `~/Uni` (`applyLayout` verschiebt). Vor dem Behalten immer alt/neu für Rayyans config.json vergleichen (Skript in Runde 17: `buildModules` mit `object-parents.json`).
 2. ~~Übungsgruppen werden zur Vorlesung~~ (Runde 10).
 3. ~~Doppelte Gruppen ohne Nummer~~ (Runde 11).
@@ -85,7 +86,7 @@ Hinweis zur App: Gleiche Gruppe aus ILIAS-Gruppe und Orga-Folie (Visualisierung 
 
 ## Fragen an Rayyan
 
-1. **ISM**: Folie 11 sagt „Beginn: Donnerstag, 15.10.2026“, Folie 12: am 21.10. ist im Übungsslot ausnahmsweise Vorlesung. Erwartet ist jetzt: erste Übung am 21.10. (Datum laut Folie). Soll die Übung erst ab 28.10. zählen?
+Keine offenen Fragen.
 
 ### Beantwortet
 
@@ -94,3 +95,4 @@ Hinweis zur App: Gleiche Gruppe aus ILIAS-Gruppe und Orga-Folie (Visualisierung 
 - 3. **Visualisierung** (25.11.): Rayyan: stimmt (Weyertal 121, Raum 5.08).
 - 4. **Visualisierung** (25.11.): Rayyan: Übungsfolien. Erwartung jetzt nur `exslides`; erkannt über das Querformat (`pdfshape.py`).
 - 6. **Wochen von Übungen (ISM)** (25.11.): Rayyan: Themenwoche, dazu ein Hinweis, wann die Übung/das Tutorium ist (`sessionHints`, Unterzeile der Datei in „By week“).
+- 1. **ISM** (25.11.): Rayyan: am 21.10. war im Übungsslot Vorlesung, danach Donnerstag wieder Vorlesung, erst ab dem zweiten Übungstermin (28.10.) echte Übung. Erwartung: Ausfall der Übung am 21.10., erster Übungstermin 28.10.

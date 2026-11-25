@@ -1,7 +1,7 @@
 [
   {
     "id": "ism",
-    "note": "Folie 11: zwei Wochentermine ohne Art, Art nur über den Raum (Aula = Vorlesung, Seminarraum = Übung; Folie 12 sagt „Übungsslot“ zum Mittwoch). „Beginn: Donnerstag, 15.10.2026“ gilt allgemein. Folie 12: Zusatz-Vorlesung 21.10. im Übungsslot. Klausur ohne Datum.",
+    "note": "Folie 11: zwei Wochentermine ohne Art, Art nur über den Raum (Aula = Vorlesung, Seminarraum = Übung; Folie 12 sagt „Übungsslot“ zum Mittwoch). „Beginn: Donnerstag, 15.10.2026“ gilt allgemein. Folie 12: Zusatz-Vorlesung 21.10. im Übungsslot. Klausur ohne Datum. Rayyan (25.11.): am 21.10. war im Übungsslot Vorlesung, erste echte Übung am 28.10. → Übung am 21.10. fällt aus.",
     "folder": "ISM",
     "sources": [
       {"name": "ISM_WS26_27_VL00_Organisatorisches.pdf", "sha256": "30d9e7ce8a2d3c22a5d5634f3707686805c832162cdef3149a7d6094d9eccabe", "pages": "11, 12"}
@@ -13,6 +13,7 @@
       ],
       "first": {"lecture": "2026-10-15", "exercise": "2026-10-15"},
       "extras": [{"date": "2026-10-21", "start": "17:45", "end": "19:15"}],
+      "cancellations": [{"date": "2026-10-21", "type": "exercise"}],
       "credits": []
     },
     "sheets": {

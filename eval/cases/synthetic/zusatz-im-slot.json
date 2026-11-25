@@ -1,0 +1,208 @@
+[
+  {
+    "id": "zusatz-im-slot/vorlesung-statt-uebung",
+    "note": "Wie ISM (Rayyan, 25.11.): Zusatz-Vorlesung im Übungsslot → die Übung an diesem Tag fällt aus, erste echte Übung eine Woche später.",
+    "files": {
+      "00_Organisatorisches.pdf": [
+        [
+          "Vorlesung: Donnerstag, 10:00-11:30, Hörsaal A1",
+          "Übung: Mittwoch, 16:00-17:30, Seminarraum 3",
+          "Beginn: Donnerstag, 15.10.2026",
+          "Am Mittwoch, 21.10.2026, 16:00-17:30 Uhr findet statt der Übung eine zusätzliche Vorlesung statt."
+        ]
+      ]
+    },
+    "orga": {
+      "slots": [
+        {
+          "type": "lecture",
+          "weekday": 3,
+          "start": "10:00",
+          "end": "11:30",
+          "alternative": false
+        },
+        {
+          "type": "exercise",
+          "weekday": 2,
+          "start": "16:00",
+          "end": "17:30",
+          "alternative": false
+        }
+      ],
+      "first": {
+        "lecture": "2026-10-15",
+        "exercise": "2026-10-15"
+      },
+      "extras": [
+        {
+          "date": "2026-10-21",
+          "start": "16:00",
+          "end": "17:30"
+        }
+      ],
+      "cancellations": [
+        {
+          "date": "2026-10-21",
+          "type": "exercise"
+        }
+      ]
+    }
+  },
+  {
+    "id": "zusatz-im-slot/english-tutorial-slot",
+    "files": {
+      "01_Introduction.pdf": [
+        [
+          "Lectures: Tuesdays, 14:00-15:30, Lecture Hall 2",
+          "Tutorials: Fridays, 10:00-11:30, Room S12"
+        ],
+        [
+          "Additional lecture on Friday, 30.10.2026, 10:00-11:30, in the tutorial slot (Room S12)"
+        ]
+      ]
+    },
+    "orga": {
+      "slots": [
+        {
+          "type": "lecture",
+          "weekday": 1,
+          "start": "14:00",
+          "end": "15:30",
+          "alternative": false
+        },
+        {
+          "type": "tutorial",
+          "weekday": 4,
+          "start": "10:00",
+          "end": "11:30",
+          "alternative": false
+        }
+      ],
+      "extras": [
+        {
+          "date": "2026-10-30",
+          "start": "10:00",
+          "end": "11:30"
+        }
+      ],
+      "cancellations": [
+        {
+          "date": "2026-10-30",
+          "type": "tutorial"
+        }
+      ]
+    }
+  },
+  {
+    "id": "zusatz-im-slot/probeklausur-in-vorlesungszeit",
+    "files": {
+      "00_Organisatorisches.pdf": [
+        [
+          "Vorlesung: Montag, 12:00-13:30, Hörsaal 2",
+          "Probeklausur: Montag, 07.12.2026, 12:00-13:30 Uhr, Hörsaal 2"
+        ]
+      ]
+    },
+    "orga": {
+      "slots": [
+        {
+          "type": "lecture",
+          "weekday": 0,
+          "start": "12:00",
+          "end": "13:30",
+          "alternative": false
+        }
+      ],
+      "extras": [
+        {
+          "date": "2026-12-07",
+          "start": "12:00",
+          "end": "13:30"
+        }
+      ],
+      "cancellations": [
+        {
+          "date": "2026-12-07",
+          "type": "lecture"
+        }
+      ]
+    },
+    "note": "Probeklausur zur Vorlesungszeit: Vorlesung fällt an dem Tag aus. sheets.py meldet Probeklausuren absichtlich als Termin (wie die Bonustests).",
+    "sheets": {
+      "00_Organisatorisches.pdf": [
+        {
+          "date": "2026-12-07",
+          "kind": "termin",
+          "time": "12:00"
+        }
+      ]
+    }
+  },
+  {
+    "id": "zusatz-im-slot/andere-uhrzeit-falle",
+    "note": "Falle: Zusatztermin am selben Tag, aber zu anderer Zeit → die Vorlesung findet trotzdem statt.",
+    "files": {
+      "00_Organisatorisches.pdf": [
+        [
+          "Vorlesung: Montag, 10:00-11:30, Hörsaal 1",
+          "Weiterer Termin: Montag, 16.11.2026, 14:00 - 15:30 Uhr, Raum S12"
+        ]
+      ]
+    },
+    "orga": {
+      "slots": [
+        {
+          "type": "lecture",
+          "weekday": 0,
+          "start": "10:00",
+          "end": "11:30",
+          "alternative": false
+        }
+      ],
+      "extras": [
+        {
+          "date": "2026-11-16",
+          "start": "14:00",
+          "end": "15:30"
+        }
+      ],
+      "cancellations": []
+    }
+  },
+  {
+    "id": "zusatz-im-slot/beginn-in-naechster-zeile",
+    "note": "Gegenprobe zur Beginn-Regel: kurze Zeile ohne Datum geht in der nächsten weiter.",
+    "files": {
+      "00_Organisatorisches.pdf": [
+        [
+          "Vorlesung: Dienstag, 10:00-11:30, Hörsaal 1",
+          "Übung: Freitag, 12:00-13:30, Raum S12",
+          "Beginn der Übungen:",
+          "Freitag, 30.10.2026"
+        ]
+      ]
+    },
+    "orga": {
+      "slots": [
+        {
+          "type": "lecture",
+          "weekday": 1,
+          "start": "10:00",
+          "end": "11:30",
+          "alternative": false
+        },
+        {
+          "type": "exercise",
+          "weekday": 4,
+          "start": "12:00",
+          "end": "13:30",
+          "alternative": false
+        }
+      ],
+      "first": {
+        "lecture": "2026-10-12",
+        "exercise": "2026-10-30"
+      }
+    }
+  }
+]

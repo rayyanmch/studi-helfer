@@ -2,30 +2,30 @@
  "when": "2026-11-25",
  "summary": {
   "errors": 0,
-  "tp": 573,
+  "tp": 606,
   "fp": 0,
   "fn": 0,
-  "passed": 141,
-  "ran": 141,
+  "passed": 146,
+  "ran": 146,
   "skipped": 0,
   "categories": {
    "orga.slots": [
-    153,
+    161,
     0,
     0
    ],
    "orga.alt": [
-    153,
+    161,
     0,
     0
    ],
    "orga.first": [
-    106,
+    114,
     0,
     0
    ],
    "orga.extras": [
-    6,
+    10,
     0,
     0
    ],
@@ -35,7 +35,7 @@
     0
    ],
    "sheets": [
-    59,
+    60,
     0,
     0
    ],
@@ -45,12 +45,12 @@
     0
    ],
    "orga.cancellations": [
-    1,
+    5,
     0,
     0
    ]
   },
-  "seconds": 17.7
+  "seconds": 18.0
  },
  "cases": {
   "real/bwl": {
@@ -754,6 +754,31 @@
    "details": []
   },
   "synthetic/titel/ueberschrift-abgabe": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/zusatz-im-slot/vorlesung-statt-uebung": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/zusatz-im-slot/english-tutorial-slot": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/zusatz-im-slot/probeklausur-in-vorlesungszeit": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/zusatz-im-slot/andere-uhrzeit-falle": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/zusatz-im-slot/beginn-in-naechster-zeile": {
    "status": "pass",
    "errors": 0,
    "details": []

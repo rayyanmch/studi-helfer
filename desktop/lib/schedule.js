@@ -131,7 +131,10 @@ function buildSchedule({ orga, cfg, moduleOf, modules, today = new Date() }) {
         if (fromWeek > first) first = fromWeek;
       }
 
-      const cancelled = new Set((b.cancellations || []).filter((c) => !c.type || c.type === s.type).map((c) => c.date));
+      // Ausfälle je Art; mit `start` nur der Termin zu dieser Uhrzeit (Zusatztermin im Übungsslot, orga.py)
+      const cancelled = new Set(
+        (b.cancellations || []).filter((c) => (!c.type || c.type === s.type) && (!c.start || c.start === s.start)).map((c) => c.date),
+      );
       let d = addDays(mondayOf(first), s.weekday);
       if (d < first) d = addDays(d, 7);
       for (; d <= period.end && d <= hi; d = addDays(d, 7)) {

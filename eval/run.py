@@ -294,9 +294,18 @@ def first_threshold(got: dict, typ: str, sem_start: date) -> date:
     return first
 
 
-def _occurrence(threshold: date, weekday: int) -> date:
+def _occurrence(threshold: date, weekday: int, skip: set[str] = frozenset()) -> date:
+    """Erster Termin an diesem Wochentag ab threshold; ausgefallene Tage (skip) zählen nicht (wie schedule.js)."""
     d = date.fromordinal(_monday(threshold).toordinal() + weekday)
-    return d if d >= threshold else date.fromordinal(d.toordinal() + 7)
+    if d < threshold:
+        d = date.fromordinal(d.toordinal() + 7)
+    while d.isoformat() in skip:
+        d = date.fromordinal(d.toordinal() + 7)
+    return d
+
+
+def _skipped(cancellations: list, typ: str) -> set[str]:
+    return {c["date"] for c in cancellations if not c.get("type") or c.get("type") == typ}
 
 
 def compare_first(exp: dict, got: dict, sem_start: date, sc: Score) -> None:
@@ -307,11 +316,13 @@ def compare_first(exp: dict, got: dict, sem_start: date, sc: Score) -> None:
     for typ, days in sorted(by_type.items()):
         want_thr = date.fromisoformat(exp.get("first", {}).get(typ, sem_start.isoformat()))
         have_thr = first_threshold(got, typ, sem_start)
-        bad = [wd for wd in sorted(days) if _occurrence(want_thr, wd) != _occurrence(have_thr, wd)]
+        want_skip = _skipped(exp.get("cancellations", []), typ)
+        have_skip = _skipped(got.get("cancellations", []), typ)
+        bad = [wd for wd in sorted(days) if _occurrence(want_thr, wd, want_skip) != _occurrence(have_thr, wd, have_skip)]
         if bad:
             wd = bad[0]
-            sc.add("orga.first", fn=1, msg=f"{typ} {WD[wd]} zuerst am {_occurrence(have_thr, wd)}, "
-                                           f"erwartet {_occurrence(want_thr, wd)} (starts={got.get('starts')}, "
+            sc.add("orga.first", fn=1, msg=f"{typ} {WD[wd]} zuerst am {_occurrence(have_thr, wd, have_skip)}, "
+                                           f"erwartet {_occurrence(want_thr, wd, want_skip)} (starts={got.get('starts')}, "
                                            f"weekOffsets={got.get('weekOffsets')})")
         else:
             sc.add("orga.first", tp=1)

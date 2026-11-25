@@ -46,6 +46,42 @@ async function refreshShapes() {
   }
 }
 
+/**
+ * Nach einem Update gelten neue Erkennungsregeln (orga.py, sheets.py) sofort: Stundenplan, Klausuren und Fristen aus
+ * den vorhandenen Dateien neu lesen, statt bis zum nächsten Abruf zu warten (der kommt beim Start erst nach 6 h).
+ * Einmal je Fassung, ohne ILIAS-Anmeldung. Läuft gerade ein Abruf, macht der es am Ende selbst; dann beim nächsten Start.
+ */
+async function applyNewRules() {
+  if (!packaged()) return;
+  const stampFile = path.join(backend.DATA_DIR, "rules-build.json");
+  let sha = null;
+  try {
+    sha = JSON.parse(fs.readFileSync(path.join(process.resourcesPath, "build-info.json"), "utf8")).sha ?? null;
+  } catch {
+    return;
+  }
+  let done = null;
+  try {
+    done = JSON.parse(fs.readFileSync(stampFile, "utf8")).sha ?? null;
+  } catch {
+    // noch nie gelaufen
+  }
+  const cfg = backend.loadConfig();
+  if (!sha || sha === done || !cfg.username || !cfg.targetDir || backend.readState().running) return;
+  const orga = await backend.runHelper(packaged(), ["orga"], { timeoutMs: 300_000 });
+  const sheets = await backend.runHelper(packaged(), ["sheet-deadlines"], { timeoutMs: 300_000 });
+  if (orga.type !== "result" || sheets.type !== "result") return;
+  try {
+    fs.writeFileSync(stampFile, JSON.stringify({ sha, at: new Date().toISOString() }));
+  } catch {
+    // nächster Start versucht es erneut
+  }
+  for (const win of windows) {
+    win.webContents.send("studi:deadlinesChanged");
+    win.webContents.send("studi:filesChanged"); // Wochenplan der Module hängt am Stundenplan
+  }
+}
+
 let uiUrl = process.env.STUDI_UI_URL || "http://localhost:3000";
 let uiServer = null;
 const TEST_MODE = process.argv.includes("--test");
@@ -640,6 +676,8 @@ app.whenReady().then(async () => {
   setTimeout(() => renderLearnmods(), 4_000);
   // Seitenformat für Dateien, die seit dem letzten Start dazugekommen sind (auch aus dem Hintergrund-Sync)
   setTimeout(() => refreshShapes(), 6_000);
+  // Neue Fassung: Stundenplan und Fristen mit den neuen Regeln neu lesen (nach dem Start-Abruf, falls einer läuft)
+  setTimeout(() => applyNewRules().catch((e) => console.error("[rules]", e)), 8_000);
 
   // Beim App-Start synchronisieren, wenn der letzte Lauf länger als 6 Stunden her ist.
   const cfg = backend.loadConfig();

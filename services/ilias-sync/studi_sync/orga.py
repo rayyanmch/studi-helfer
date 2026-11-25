@@ -28,7 +28,7 @@ from .deadlines import PARENTS
 from .sheets import _MONTH_RE, DEADLINE_WORDS, EVENT_WORDS, SOLUTION, _find_dates
 from .textfix import WEEKDAY_RE, fix_year, normalize, weekday_before, weekday_of
 
-RULES_VERSION = 15  # 2: Überschrift „ROOM“ ist kein Raum, „start in lecture week 3“ gilt für die genannte Art; 3: Leistungspunkte (credits); 4: beides zusammen; 5: Beginn (Gruppen = Übung, Anmeldung zählt nicht, späte Planpunkte zählen nicht); 6: bis Seite 200; 7: Aufzählung von Wochentagen („Di/Do 14-16“); 8: erste Vorlesung ohne Orga-Namen (nur Termine mit Art oder Raum); 9: Tabellenzellen Tag + Uhrzeit, Sprechstunde als Überschrift; 10: Zusatz-/Nachholtermine, Datum mit Monatsnamen = Einzeltermin; 11: Gruppe ohne Art-Wort = Übung; 12: Gruppennummer aus Listenzeile davor; 13: beschriftete Ort-Zeile gilt für alle Termine der Seite; 14: „Room 101“ ist kein Seminarraum; 15: englische Raum-Wörter (Lecture Theatre, Auditorium, Audimax, Seminar Room)
+RULES_VERSION = 16  # 2: Überschrift „ROOM“ ist kein Raum, „start in lecture week 3“ gilt für die genannte Art; 3: Leistungspunkte (credits); 4: beides zusammen; 5: Beginn (Gruppen = Übung, Anmeldung zählt nicht, späte Planpunkte zählen nicht); 6: bis Seite 200; 7: Aufzählung von Wochentagen („Di/Do 14-16“); 8: erste Vorlesung ohne Orga-Namen (nur Termine mit Art oder Raum); 9: Tabellenzellen Tag + Uhrzeit, Sprechstunde als Überschrift; 10: Zusatz-/Nachholtermine, Datum mit Monatsnamen = Einzeltermin; 11: Gruppe ohne Art-Wort = Übung; 12: Gruppennummer aus Listenzeile davor; 13: beschriftete Ort-Zeile gilt für alle Termine der Seite; 14: „Room 101“ ist kein Seminarraum; 15: englische Raum-Wörter (Lecture Theatre, Auditorium, Audimax, Seminar Room); 16: Beginn-Zeile mit Datum nicht mit der nächsten Zeile verbinden
 CACHE = DATA_DIR / "orga-cache.json"
 OUTPUT = DATA_DIR / "orga-events.json"
 # Orga-Folien ganz lesen: oft stehen die Zeiten erst nach Vorstellung und Motivation (Visualisierung: Folie 88 von 109).
@@ -423,7 +423,10 @@ def find_markers(lines: list[str], ref: date) -> dict[str, Any]:
     week_offsets: dict[str, int] = {}
     cancellations: list[dict[str, Any]] = []
     for i, line in enumerate(lines):
-        window = f"{line} {lines[i + 1]}" if i + 1 < len(lines) and len(line) < 50 else line
+        # Kurze Zeile ohne Datum geht in der nächsten weiter („Beginn der Übungen:“ / „Mittwoch, 21.10.“). Steht das
+        # Datum schon in der Zeile, gehört die nächste zu etwas anderem („… statt der Übung eine Vorlesung“).
+        joined = i + 1 < len(lines) and len(line) < 50 and not _date_hits(line, ref)
+        window = f"{line} {lines[i + 1]}" if joined else line
         if START_RE.search(line) and not SKIP.search(window) and not REGISTER.search(line):
             typ = _type_in(WEEK_WORDS.sub(" ", window)) or ("exercise" if GROUP_WORDS.search(line) else "all")
             hits = _date_hits(window, ref)
@@ -583,6 +586,35 @@ def _clean(slot: dict[str, Any]) -> dict[str, Any]:
     return {k: v for k, v in slot.items() if not k.startswith("_")}
 
 
+def _hm(t: str) -> int:
+    h, m = t.split(":")
+    return int(h) * 60 + int(m)
+
+
+def replaced_by_extras(b: dict[str, Any]) -> list[dict[str, Any]]:
+    """Zusatztermin im Zeitfenster eines Wochentermins („im Übungsslot (21.10., 17:45–19:15) ausnahmsweise eine
+    Vorlesung“, Probeklausur zur Vorlesungszeit): An diesem Tag findet der Wochentermin nicht statt.
+    Nur der Termin mit dieser Uhrzeit fällt aus (`start`), andere Gruppen am selben Tag bleiben."""
+    out: list[dict[str, Any]] = []
+    for x in b.get("extras", []):
+        try:
+            day = date.fromisoformat(x["date"])
+            xs, xe = _hm(x["start"]), _hm(x["end"])
+        except (KeyError, ValueError):
+            continue
+        for s in b.get("slots", []):
+            try:
+                if s["weekday"] != day.weekday() or not (_hm(s["start"]) < xe and xs < _hm(s["end"])):
+                    continue
+            except (KeyError, ValueError):
+                continue
+            c = {"date": x["date"], "type": s["type"], "start": s["start"],
+                 "evidence": f"{x.get('title') or 'Extra session'} instead: {str(x.get('evidence', ''))[:140]}"}
+            if not any(o["date"] == c["date"] and o["type"] == c["type"] and o["start"] == c["start"] for o in out):
+                out.append(c)
+    return out
+
+
 def refresh() -> dict[str, Any]:
     cfg = load_config()
     cache: dict[str, Any] = read_json(CACHE, {})
@@ -636,6 +668,10 @@ def refresh() -> dict[str, Any]:
             same["mine"] = True
         else:
             b["slots"].append(s)
+
+    # Läuft bei jedem Aufruf über das Ergebnis (nicht im Datei-Cache), braucht also kein neues RULES_VERSION
+    for b in courses.values():
+        b["cancellations"] += replaced_by_extras(b)
 
     write_json(CACHE, cache)
     out = {"updatedAt": time.time(), "courses": courses, "myGroups": groups}
