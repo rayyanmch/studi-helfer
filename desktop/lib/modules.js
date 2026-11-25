@@ -10,8 +10,22 @@
 // ------------------------------------------------------------------ Titel zerlegen
 
 const SEMESTER_TAG = /^\s*\[([^\]]{1,20})\]\s*/;
-const SEMESTER_WORDS =
-  /\s*[(,]?\s*\b(WiSe|WS|SoSe|SS|Wintersemester|Sommersemester|Winter term|Summer term)\s*'?\d{2,4}(\s*[/_-]\s*\d{2,4})?\)?\s*$/i;
+const SEASON =
+  "WiSe|WS|SoSe|SS|Wintersemester|Sommersemester|Winter(?:\\s+(?:term|semester))?|Summer(?:\\s+(?:term|semester))?|Fall|Spring|Autumn";
+const SEMESTER_WORDS = new RegExp(`\\s*[(,]?\\s*\\b(${SEASON})\\s*'?\\d{2,4}(\\s*[/_-]\\s*\\d{2,4})?\\)?\\s*$`, "i");
+// Semester vorn ohne Klammern (Moodle u. a.): „WS 26/27 Datenbanksysteme“, „SoSe 2027: Statistik II“, „Wintersemester 2026/27 – …“
+const SEMESTER_LEAD = new RegExp(`^\\s*(?:${SEASON})\\s*'?\\d{2,4}(?:\\s*[/_-]\\s*\\d{2,4})?\\s*[-–:|]?\\s*`, "i");
+
+/** Semester vergleichbar machen: „[WS26/27]“, „WiSe 2026/27“, „Winter 2026“, „Fall 2026“ → „w26“; „SoSe26“ → „s26“. */
+function normSemester(s) {
+  if (!s) return null;
+  const t = String(s).toLowerCase();
+  const year = t.match(/\d{2,4}/);
+  const word = (t.match(/[a-zäöü]+/) || [""])[0];
+  if (!year || !word) return null;
+  const season = /^(wise|ws|winter|fall|autumn)/.test(word) ? "w" : /^(sose|ss|sommer|summer|spring)/.test(word) ? "s" : "?";
+  return season + year[0].slice(-2);
+}
 const PART_SUFFIX =
   /\s*[-–:|]\s*(Übungen|Übung|Uebungen|Uebung|Exercises?|Tutorien|Tutorium|Tutorials?|Vorlesung|Lecture|Hausaufgaben|Homework|Praktikum|Lab)\s*$/i;
 const PART_TRAILING_WORD = /\s+(Übungen|Übung|Uebungen|Uebung|Exercises?|Tutorium|Tutorial)\s*$/i;
@@ -29,9 +43,9 @@ function partLabelFromWord(word) {
 function splitTitle(title) {
   let rest = String(title || "").trim();
   let semester = null;
-  const tag = rest.match(SEMESTER_TAG);
+  const tag = rest.match(SEMESTER_TAG) || rest.match(SEMESTER_LEAD);
   if (tag) {
-    semester = tag[1];
+    semester = (tag[1] || tag[0]).replace(/[\s\-–:|]+$/, "").trim();
     rest = rest.slice(tag[0].length);
   }
   let part = null;
@@ -40,11 +54,19 @@ function splitTitle(title) {
     part = partLabelFromWord(pre[1]);
     rest = rest.slice(pre[0].length);
   }
-  rest = rest.replace(SEMESTER_WORDS, "").trim();
+  // Semester hinten, auch vor dem Teil („Data Structures (Fall 2026) - Exercises“)
+  const dropSemester = () => {
+    const m = rest.match(SEMESTER_WORDS);
+    if (!m) return;
+    semester = semester || m[0].replace(/^[\s(,]+|[\s)]+$/g, "");
+    rest = rest.slice(0, m.index).trim();
+  };
+  dropSemester();
   const suf = rest.match(PART_SUFFIX) || rest.match(PART_TRAILING_WORD);
   if (suf && !part) {
     part = partLabelFromWord(suf[1]);
     rest = rest.slice(0, suf.index).trim();
+    dropSemester();
   }
   return { semester, base: rest || String(title).trim(), part };
 }
@@ -145,10 +167,23 @@ function buildModules(courses, custom = {}, fileNamesByCourse = {}) {
   const moduleOfCourse = new Map();
   const info = new Map(courses.map((c) => [c.id, { ...c, ...splitTitle(c.title) }]));
 
-  // 1. Kurse (crs) nach Grundname + Semester
-  for (const c of courses.filter((x) => x.kind !== "grp")) {
+  // 1. Kurse (crs) nach Grundname; verschiedene bekannte Semester trennen („[WS25/26] Mathe I“ ≠ „Mathe I (WiSe 2026/27)“),
+  //    ein Kurs ohne Semester gehört zu dem einen bekannten („Introduction … (Winter 2026)“ + „Introduction … – Tutorials“)
+  const crs = courses.filter((x) => x.kind !== "grp");
+  const semesOf = new Map();
+  for (const c of crs) {
     const t = info.get(c.id);
-    const key = keyOf(t.semester, t.base);
+    const base = keyOf("", t.base);
+    const sem = normSemester(t.semester);
+    if (!semesOf.has(base)) semesOf.set(base, new Set());
+    if (sem) semesOf.get(base).add(sem);
+  }
+  for (const c of crs) {
+    const t = info.get(c.id);
+    const base = keyOf("", t.base);
+    const known = [...semesOf.get(base)];
+    const sem = normSemester(t.semester) || (known.length === 1 ? known[0] : "?");
+    const key = `${sem}${base}`;
     if (!byKey.has(key)) byKey.set(key, { key, base: t.base, semester: t.semester, parts: [] });
     byKey.get(key).parts.push({ courseId: c.id, label: t.part, kind: "crs" });
     moduleOfCourse.set(c.id, key);

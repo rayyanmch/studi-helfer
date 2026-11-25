@@ -24,6 +24,7 @@ Filter: `… run.py beginn` (nur Fälle mit „beginn“ in der Id, speichert da
 |---|---|---|---|---|
 | 1 | 2026-11-25 | 57 · 51/71 | 13 · 11/17 | Prüfstand gebaut, noch keine Regel geändert |
 | 2 | 2026-11-25 | 67 → 59 · 51 → 55/76 | 13 · 11/17 | Beginn (orga.py, RULES_VERSION 5): „Gruppen“ = Übung, Beginn der Anmeldung zählt nicht, Beginn > 6 Wochen nach dem frühesten zählt nicht. 5 neue Fälle (67 = alter Code mit neuen Fällen). Seitenlimit verworfen, siehe unten |
+| 17 | 2026-11-25 | 0 · 138/138 | 18 → 9 · 12 → 17/21 | Module (desktop/lib/modules.js): Semester vorn ohne Klammern („WS 26/27 …“, „SoSe 2027: …“, „Wintersemester 2026/27 – …“) und hinten in mehr Schreibweisen („(Winter 2026)“, „(Fall 2026)“, auch vor „- Exercises“); gebündelt wird nach Grundnamen, getrennt nur bei verschiedenen bekannten Semestern (`normSemester`: „[WS26/27]“ = „WiSe 2026/27“ = „Winter 2026“). 4 neue Fälle, davon 1 Falle. Für Rayyans echte config.json alle 15 Module unverändert (kein Ordner wird umbenannt) |
 | 16 | 2026-11-25 | 7 → 0 · 133 → 138/138 | 13 · 11/17 | Englische Raum-Wörter (orga.py RULES_VERSION 15): „Lecture Theatre/Theater“, „Auditorium“, „Audimax“, „Classroom“, „Seminar/Tutorial Room“ (Seminar Room → Übung wie Seminarraum, nicht Art „Seminar“). „Prüfungsort: …“ in der Zeile darunter ist nicht der Raum des Kurstermins (war nach der Erweiterung ein Rückschritt, sofort behoben). 5 neue Fälle, davon 1 Falle. **Python-Prüfstand komplett grün** |
 | 15 | 2026-11-25 | 12 → 2 · 129 → 132/133 | 13 · 11/17 | „Room 101“ ist kein Seminarraum mehr (orga.py RULES_VERSION 14, `SMALL_ROOM`: nur „Room S…“); eine Raumnummer allein sagt nichts über die Art. Gegenproben Seminarraum und „Room S234“ bleiben Übung. 4 neue Fälle, davon 2 Gegenproben |
 | 14 | 2026-11-25 | 9 → 6 · 124 → 127/129 | 13 · 11/17 | Fußzeilen (sheets.py RULES_VERSION 11): Eine Zeile, die ohne Ziffern mehrfach im Dokument steht, ist Kopf-/Fußzeile; ihr Datum wird nicht an eine Überschrift in der Zeile darüber gehängt („HOMEWORK PRESENTATION“ / „… Engineering 19.11.2026“). Kopfzeile mit Fristwort auf jeder Seite zählt weiter. **Alle echten Fälle bestehen.** 4 neue Fälle, davon 2 Fallen |
@@ -45,7 +46,8 @@ Runde 12: orga langsamste Datei 0,86 s (`00_AlgebraGrundwissen.pdf`, 84 Seiten).
 ## Offene Fehler (nach Nutzen)
 
 1. ~~Seitenlimit 25~~ (Runde 3), ~~„Prüfungstermin“~~ (Runde 4), ~~Bonustests~~ (Runde 5).
-   - **Python-Prüfstand komplett grün (Runde 16).** Weiter mit Web (12, 13 Fehler): Module zuerst (falsch gebündelte Kurse wirken auf Ordner und Kalender), dann Lösungen, dann Dokument-Art.
+   - **Python-Prüfstand komplett grün (Runde 16).** Web noch 9 Fehler: „Übungen zur Linearen Algebra I“ (Modul, gebeugtes Adjektiv), dann Lösungen (`answers_week3`), dann Dokument-Art (4).
+   - Wichtig bei modules.js: Modulnamen sind Ordnernamen in `~/Uni` (`applyLayout` verschiebt). Vor dem Behalten immer alt/neu für Rayyans config.json vergleichen (Skript in Runde 17: `buildModules` mit `object-parents.json`).
 2. ~~Übungsgruppen werden zur Vorlesung~~ (Runde 10).
 3. ~~Doppelte Gruppen ohne Nummer~~ (Runde 11).
 4. ~~Beginn falsch~~ (Runde 2 behoben).

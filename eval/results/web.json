@@ -1,12 +1,12 @@
 {
  "when": "2026-11-25",
  "summary": {
-  "errors": 13,
-  "tp": 219,
-  "fp": 4,
-  "fn": 9,
-  "passed": 11,
-  "ran": 17,
+  "errors": 9,
+  "tp": 228,
+  "fp": 2,
+  "fn": 7,
+  "passed": 17,
+  "ran": 21,
   "skipped": 0,
   "categories": {
    "doctype": [
@@ -20,17 +20,17 @@
     1
    ],
    "modules.group": [
-    12,
-    4,
-    2
+    18,
+    2,
+    1
    ],
    "modules.name": [
-    8,
+    11,
     0,
-    1
+    0
    ]
   },
-  "seconds": 0.01
+  "seconds": 0.02
  },
  "cases": {
   "real/doctype/BWL": {
@@ -122,20 +122,34 @@
    ]
   },
   "synthetic/modules/semester-vorn-ohne-klammer": {
-   "status": "fail",
-   "errors": 1,
-   "details": [
-    "modules.name: c1+c2: „WS 26/27 Datenbanksys…“, erwartet „Datenbanksysteme“ oder „DBS“"
-   ]
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/modules/sose-vorn-mit-doppelpunkt": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/modules/fall-term-vor-teil": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/modules/wintersemester-vorn-und-hinten": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/falle/gleicher-kurs-anderes-semester": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
   },
   "synthetic/modules/english-tutorials": {
-   "status": "fail",
-   "errors": 3,
-   "details": [
-    "modules.group: Modul c1 („Programming (Winter…“) gibt es so nicht",
-    "modules.group: Modul c2 („Programming“) gibt es so nicht",
-    "modules.group: verpasst: c1+c2 als ein Modul"
-   ]
+   "status": "pass",
+   "errors": 0,
+   "details": []
   }
  }
 }

@@ -84,6 +84,36 @@
    ],
    "expect": [{"parts": ["c1", "c2"], "name": ["Datenbanksysteme", "DBS"]}]},
 
+  {"algo": "modules", "id": "modules/sose-vorn-mit-doppelpunkt",
+   "courses": [
+     {"id": "c1", "kind": "crs", "title": "SoSe 2027: Statistik II"},
+     {"id": "c2", "kind": "crs", "title": "SoSe 2027: Statistik II - Übung"}
+   ],
+   "expect": [{"parts": ["c1", "c2"], "name": ["Statistik II"]}]},
+
+  {"algo": "modules", "id": "modules/fall-term-vor-teil",
+   "courses": [
+     {"id": "c1", "kind": "crs", "title": "Data Structures (Fall 2026)"},
+     {"id": "c2", "kind": "crs", "title": "Data Structures (Fall 2026) - Exercises"}
+   ],
+   "expect": [{"parts": ["c1", "c2"], "name": ["Data Structures"]}]},
+
+  {"algo": "modules", "id": "modules/wintersemester-vorn-und-hinten",
+   "courses": [
+     {"id": "c1", "kind": "crs", "title": "Wintersemester 2026/27 – Einführung in die Informatik"},
+     {"id": "c2", "kind": "crs", "title": "Übung: Einführung in die Informatik (Wintersemester 2026/27)"}
+   ],
+   "expect": [{"parts": ["c1", "c2"]}]},
+
+  {"algo": "modules", "id": "falle/gleicher-kurs-anderes-semester",
+   "note": "Derselbe Kurs aus zwei Semestern bleibt getrennt, auch wenn das Semester verschieden geschrieben ist.",
+   "courses": [
+     {"id": "c1", "kind": "crs", "title": "[WS25/26] Mathematik I"},
+     {"id": "c2", "kind": "crs", "title": "Mathematik I (WiSe 2026/27)"},
+     {"id": "c3", "kind": "crs", "title": "Mathematik I - Übung (WiSe 2026/27)"}
+   ],
+   "expect": [{"parts": ["c1"]}, {"parts": ["c2", "c3"]}]},
+
   {"algo": "modules", "id": "modules/english-tutorials",
    "courses": [
      {"id": "c1", "kind": "crs", "title": "Introduction to Programming (Winter 2026)"},
