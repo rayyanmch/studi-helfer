@@ -1,18 +1,18 @@
 {
  "when": "2026-11-25",
  "summary": {
-  "errors": 3,
-  "tp": 254,
+  "errors": 2,
+  "tp": 261,
   "fp": 0,
-  "fn": 3,
-  "passed": 27,
-  "ran": 29,
+  "fn": 2,
+  "passed": 28,
+  "ran": 30,
   "skipped": 0,
   "categories": {
    "doctype": [
-    201,
+    208,
     0,
-    2
+    1
    ],
    "solutions": [
     15,
@@ -65,9 +65,8 @@
   },
   "real/doctype/vis-vorlesung": {
    "status": "fail",
-   "errors": 2,
+   "errors": 1,
    "details": [
-    "doctype: Videos zu den Vorlesungen/Vorlesung 01/DataSaurus DozenSlowed.gif: lecture, erwartet video/other (Ordner-Art lectures)",
     "doctype: Vorlesungsfolien/Vis-V02_Folien_Gremienwahlen_Vorlesung.pdf: lecture, erwartet info/other (Ordner-Art lectures)"
    ]
   },
@@ -102,6 +101,11 @@
    "details": []
   },
   "synthetic/doctype/uebungsfolien-mit-nummer": {
+   "status": "pass",
+   "errors": 0,
+   "details": []
+  },
+  "synthetic/doctype/bilder": {
    "status": "pass",
    "errors": 0,
    "details": []

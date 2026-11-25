@@ -58,6 +58,7 @@ const RE = {
   reading: /(begleittext|literatur|reading|paper|artikel|article|kapitel aus|chapter from|lektüre|lektuere)/i,
   selfstudy: /(selbststudium|selbstlern|self-?study|lerneinheit)/i,
   video: /\.(mp4|mov|avi|m4v|webm|mkv)$/i,
+  image: /\.(gif|png|jpe?g|svg|webp|bmp|tiff?|heic)$/i,
   data: /\.(json|csv|zip|xlsx?|py|r|ipynb|java|c|cpp|js|ts|sql|txt)$/i,
 };
 
@@ -69,6 +70,8 @@ export function autoDocType(file: Pick<CourseFile, "name" | "where" | "kind">, f
   const cat = folder?.category ?? "";
   if (RE.video.test(name) || cat === "recordings") return "video";
   if (RE.data.test(name) && file.kind !== "pdf") return "data";
+  // Bilder (Abbildung, Animation, Screenshot) sind keine Vorlesung, auch im Vorlesungsordner
+  if (RE.image.test(name)) return /(video|aufzeichnung|recording)/i.test(where) ? "video" : "other";
   if (RE.solution.test(name) || cat === "solutions") return "solution";
   if (cat === "exams" || RE.exam.test(name)) return "exam";
   if (cat === "info" || RE.info.test(name) || (RE.infoFolder.test(where) && !/(woche|week)\s*\d/i.test(where) && cat !== "exams")) return "info";

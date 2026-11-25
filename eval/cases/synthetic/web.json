@@ -62,6 +62,16 @@
      "Slides Lecture 5.pdf": "lecture"
    }},
 
+  {"algo": "doctype", "id": "doctype/bilder", "part": "Lecture",
+   "files": {
+     "Vorlesungen/Abbildung_3.png": "other",
+     "Folien/diagramm.jpg": "other",
+     "Videos/animation.gif": ["video", "other"],
+     "Lecture 2 screenshot.jpeg": "other",
+     "Vorlesungen/Vorlesung 3.pdf": "lecture",
+     "Bilder Vorlesung 4.pdf": "lecture"
+   }},
+
   {"algo": "doctype", "id": "doctype/loesungs-woerter", "part": "Course",
    "files": {
      "Answers-Sheet4.pdf": "solution",
